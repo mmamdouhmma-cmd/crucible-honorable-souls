@@ -1,0 +1,4 @@
+repository "CRUCIBLE Honorable Souls/CRUCIBLE Honorable Souls@18968421266326@cloud"
+  path "/"
+    br "/main"
+    co "/main"
