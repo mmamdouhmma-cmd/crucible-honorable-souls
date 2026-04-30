@@ -21,7 +21,7 @@ MonoBehaviour:
   startupFrames: 15
   activeFrames: 5
   recoveryFrames: 15
-  animationClip: {fileID: 0}
+  animationClip: {fileID: -203655887218126122, guid: f56c48a57b22e754fa2567b293436be2, type: 3}
   animatorTriggerName: HeavyAttack
   attackHeight: 0
   attackType: 2

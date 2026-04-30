@@ -19,7 +19,7 @@ MonoBehaviour:
   startupFrames: 6
   activeFrames: 3
   recoveryFrames: 8
-  animationClip: {fileID: 0}
+  animationClip: {fileID: -203655887218126122, guid: bada7b5cebbadbc41b96764c55fe3b7b, type: 3}
   animatorTriggerName: LightAttack
   attackHeight: 1
   attackType: 0

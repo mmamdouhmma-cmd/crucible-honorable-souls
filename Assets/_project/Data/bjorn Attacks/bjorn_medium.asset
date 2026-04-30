@@ -19,7 +19,7 @@ MonoBehaviour:
   startupFrames: 10
   activeFrames: 5
   recoveryFrames: 14
-  animationClip: {fileID: 0}
+  animationClip: {fileID: -203655887218126122, guid: eb004d33400bbe6418d3c34ff1214435, type: 3}
   animatorTriggerName: MediumAttack
   attackHeight: 1
   attackType: 1
