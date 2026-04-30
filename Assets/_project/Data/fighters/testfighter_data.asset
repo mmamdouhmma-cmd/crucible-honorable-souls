@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c90c0068803df8c489005346f4f5a2d0, type: 3}
   m_Name: testfighter_data
   m_EditorClassIdentifier: Assembly-CSharp::FighterData
-  fighterName: New Fighter
+  fighterName: test Fighter
   archetype: Berserker
   maxHealth: 100
   maxStamina: 100
