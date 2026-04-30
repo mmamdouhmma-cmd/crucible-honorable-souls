@@ -95,23 +95,9 @@ public class CombatSystem : MonoBehaviour
         if (fighter == null || fighter.Stats == null) return false;
 
         AttackData found = FindAttack(attackType);
-        if (found == null)
-        {
-            if (debugLogs)
-            {
-                Debug.Log($"P{fighter.PlayerNumber}: no attack configured for {attackType}");
-            }
-            return false;
-        }
+        if (found == null) return false;
 
-        if (!fighter.Stats.HasStamina(found.StaminaCost))
-        {
-            if (debugLogs)
-            {
-                Debug.Log($"P{fighter.PlayerNumber}: not enough stamina for {found.AttackName} ({found.StaminaCost} required)");
-            }
-            return false;
-        }
+        if (!fighter.Stats.HasStamina(found.StaminaCost)) return false;
 
         isAttacking = true;
         currentAttack = found;
@@ -174,8 +160,7 @@ public class CombatSystem : MonoBehaviour
         {
             Debug.Log(
                 $"P{fighter.PlayerNumber} {currentAttack.AttackName} HIT P{target.PlayerNumber} " +
-                $"for {finalDamage} dmg (base {currentAttack.Damage}, pierce {currentAttack.ArmorPierce}%, " +
-                $"target HP {target.Stats.currentHealth}/{target.Stats.maxHealth})");
+                $"for {finalDamage} dmg (target HP: {target.Stats.currentHealth}/{target.Stats.maxHealth})");
         }
     }
 

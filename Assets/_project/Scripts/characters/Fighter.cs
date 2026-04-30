@@ -37,7 +37,7 @@ public class Fighter : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         if (rb == null)
         {
-            Debug.LogWarning($"Fighter on {name}: no Rigidbody found — physics-driven movement will be unavailable.");
+            Debug.LogWarning($"Fighter on {name}: no Rigidbody found.");
         }
 
         if (combatSystem == null)
@@ -50,21 +50,20 @@ public class Fighter : MonoBehaviour
             stats = new FighterStats(fighterData.MaxHealth, fighterData.MaxStamina, fighterData.Armor);
         }
 
-        // P1 starts on the left facing right; P2 starts on the right facing left.
+        // Set facingRight based on player number (used for combat logic)
         facingRight = (playerNumber == 1);
-        //transform.rotation = Quaternion.Euler(0f, facingRight ? 90f : -90f, 0f);
     }
 
     private void Start()
     {
         if (InputManager.Instance == null)
         {
-            Debug.LogError($"Fighter on {name}: InputManager.Instance is missing — add an InputManager to the scene.");
+            Debug.LogError($"Fighter on {name}: InputManager.Instance is missing.");
         }
 
         if (fighterData == null)
         {
-            Debug.LogError($"Fighter on {name}: fighterData is not assigned — create a FighterData asset and assign it.");
+            Debug.LogError($"Fighter on {name}: fighterData is not assigned.");
             return;
         }
 
@@ -86,7 +85,6 @@ public class Fighter : MonoBehaviour
 
     /// <summary>
     /// Routes attack-button presses to <see cref="CombatSystem.TryAttack"/>.
-    /// Light/Medium/Heavy map directly; specials are handled elsewhere.
     /// </summary>
     private void HandleCombatInput()
     {
@@ -107,40 +105,27 @@ public class Fighter : MonoBehaviour
     }
 
     /// <summary>
-    /// Applies horizontal movement from the current input snapshot and logs
-    /// crouch/taunt states (placeholder until full state machine is in).
+    /// Applies horizontal movement and updates animator's MoveSpeed parameter.
     /// </summary>
-   private void HandleMovement()
-{
-    float moveSpeed = fighterData.MovementSpeed / 10f;
-    transform.position += new Vector3(currentInput.moveDirection * moveSpeed * Time.deltaTime, 0f, 0f);
-
-    if (currentInput.crouch)
+    private void HandleMovement()
     {
-        Debug.Log($"P{playerNumber}: Ducking");
-    }
+        float moveSpeed = fighterData.MovementSpeed / 10f;
+        transform.position += new Vector3(currentInput.moveDirection * moveSpeed * Time.deltaTime, 0f, 0f);
 
-    if (currentInput.taunt)
-    {
-        Debug.Log($"P{playerNumber}: Taunting");
-    }
-
-    // Send movement to Animator for walk animations
-    Animator animator = GetComponent<Animator>();
-    if (animator != null)
-    {
-        // Get raw input direction
-        float animMoveSpeed = currentInput.moveDirection;
-        
-        // If facing left, invert (so walking forward visually = forward animation)
-        if (!facingRight)
+        // Send movement to Animator for walk animations
+        Animator animator = GetComponent<Animator>();
+        if (animator != null)
         {
-            animMoveSpeed = -animMoveSpeed;
+            float animMoveSpeed = currentInput.moveDirection;
+            
+            if (!facingRight)
+            {
+                animMoveSpeed = -animMoveSpeed;
+            }
+            
+            animator.SetFloat("MoveSpeed", animMoveSpeed);
         }
-        
-        animator.SetFloat("MoveSpeed", animMoveSpeed);
     }
-}
 
     /// <summary>
     /// Ticks passive stamina regeneration each frame.
