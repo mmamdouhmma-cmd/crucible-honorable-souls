@@ -16,7 +16,7 @@ MonoBehaviour:
 
 '
   damage: 16
-  staminaCost: 15
+  staminaCost: 20
   armorPierce: 5
   startupFrames: 15
   activeFrames: 5
@@ -25,6 +25,8 @@ MonoBehaviour:
   animatorTriggerName: HeavyAttack
   attackHeight: 0
   attackType: 2
+  comesFrom: 1
+  hitSide: 2
   hitboxRange: 1.9
-  hitboxOffset: {x: 0, y: 1, z: 0.7}
+  hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1, y: 1, z: 1}

@@ -21,6 +21,9 @@ public class FighterStats
 
     public bool signatureUsed; // True if signature already used this match
 
+    private float staminaRecoveryRemainder; // Sub-1 stamina regen carried between frames
+    private float healthRegenRemainder;     // Sub-1 health regen carried between frames
+
     /// <summary>
     /// Builds a fresh stats block at full health/stamina with an empty super bar.
     /// </summary>
@@ -75,12 +78,41 @@ public class FighterStats
     }
 
     /// <summary>
-    /// Regenerates stamina across <paramref name="deltaTime"/> seconds, capped at max.
+    /// Regenerates stamina across <paramref name="deltaTime"/> seconds at
+    /// <paramref name="perSecond"/>, capped at max.
     /// </summary>
-    public void RecoverStamina(float deltaTime)
+    public void RecoverStamina(float deltaTime, float perSecond)
     {
-        currentStamina += Mathf.RoundToInt(BalanceConfig.STAMINA_RECOVERY_PER_SECOND * deltaTime);
-        if (currentStamina > maxStamina) currentStamina = maxStamina;
+        // Carry the fractional part between frames — at 60fps a single frame's
+        // regen is ~0.25, which would otherwise round to 0 every time.
+        staminaRecoveryRemainder += Mathf.Max(perSecond, 0f) * deltaTime;
+        int whole = Mathf.FloorToInt(staminaRecoveryRemainder);
+        currentStamina += whole;
+        staminaRecoveryRemainder -= whole;
+
+        if (currentStamina >= maxStamina)
+        {
+            currentStamina = maxStamina;
+            staminaRecoveryRemainder = 0f;
+        }
+    }
+
+    /// <summary>
+    /// Slowly restores health across <paramref name="deltaTime"/> seconds at
+    /// <paramref name="perSecond"/>, capped at max. A defeated fighter does not regenerate.
+    /// </summary>
+    public void RegenerateHealth(float deltaTime, float perSecond)
+    {
+        if (!IsAlive() || currentHealth >= maxHealth)
+        {
+            healthRegenRemainder = 0f;
+            return;
+        }
+
+        healthRegenRemainder += Mathf.Max(perSecond, 0f) * deltaTime;
+        int whole = Mathf.FloorToInt(healthRegenRemainder);
+        healthRegenRemainder -= whole;
+        Heal(whole);
     }
 
     /// <summary>

@@ -7,6 +7,7 @@ public class Player2Controller : MonoBehaviour
     
     [Header("References")]
     public Transform opponent; // drag P1 here in the Inspector
+    public Animator animator;
     
     private bool isAttacking = false;
     
@@ -17,27 +18,32 @@ public class Player2Controller : MonoBehaviour
     }
     
     void HandleMovement()
+{
+    if (isAttacking)
     {
-        // Don't move while attacking
-        if (isAttacking) return;
-        
-        // Numpad 1 = walk forward (toward P1)
-        // Numpad 3 = walk backward (away from P1)
-        
-        Vector3 toOpponent = (opponent.position - transform.position).normalized;
-        toOpponent.y = 0; // ignore vertical
-        
-        if (Input.GetKey(KeyCode.Keypad1))
-        {
-            // Walk forward = toward opponent
-            transform.position += toOpponent * walkSpeed * Time.deltaTime;
-        }
-        else if (Input.GetKey(KeyCode.Keypad3))
-        {
-            // Walk backward = away from opponent
-            transform.position -= toOpponent * walkSpeed * Time.deltaTime;
-        }
+        animator.SetFloat("movespeed", 0f); // stop walk animation while attacking
+        return;
     }
+    
+    Vector3 toOpponent = (opponent.position - transform.position).normalized;
+    toOpponent.y = 0;
+    
+    float currentSpeed = 0f;
+    
+    if (Input.GetKey(KeyCode.Keypad1))
+    {
+        transform.position += toOpponent * walkSpeed * Time.deltaTime;
+        currentSpeed = walkSpeed;
+    }
+   else if (Input.GetKey(KeyCode.Keypad3))
+{
+    transform.position -= toOpponent * walkSpeed * Time.deltaTime;
+    currentSpeed = -walkSpeed; // ← negative value triggers walk-back animation
+}
+
+    Debug.Log("Setting MoveSpeed to: " + currentSpeed);
+    animator.SetFloat("movespeed", currentSpeed);
+}
     
     void HandleAttacks()
     {
@@ -58,34 +64,28 @@ public class Player2Controller : MonoBehaviour
     }
     
     void DoLightAttack()
-    {
-        isAttacking = true;
-        Debug.Log("[P2] Light Attack");
-        // TODO: trigger your attack logic here
-        // - play animation
-        // - enable hitbox
-        // - apply damage to P1 if hit
-        
-        Invoke(nameof(EndAttack), 0.5f); // adjust duration to match animation
-    }
-    
-    void DoMediumAttack()
-    {
-        isAttacking = true;
-        Debug.Log("[P2] Medium Attack");
-        // TODO: trigger your attack logic here
-        
-        Invoke(nameof(EndAttack), 0.7f);
-    }
-    
-    void DoHeavyAttack()
-    {
-        isAttacking = true;
-        Debug.Log("[P2] Heavy Attack");
-        // TODO: trigger your attack logic here
-        
-        Invoke(nameof(EndAttack), 1.0f);
-    }
+{
+    isAttacking = true;
+    Debug.Log("[P2] Light Attack");
+    animator.SetTrigger("LightAttack");
+    Invoke(nameof(EndAttack), 0.5f);
+}
+
+void DoMediumAttack()
+{
+    isAttacking = true;
+    Debug.Log("[P2] Medium Attack");
+    animator.SetTrigger("MediumAttack");
+    Invoke(nameof(EndAttack), 0.7f);
+}
+
+void DoHeavyAttack()
+{
+    isAttacking = true;
+    Debug.Log("[P2] Heavy Attack");
+    animator.SetTrigger("HeavyAttack");
+    Invoke(nameof(EndAttack), 1.0f);
+}
     
     void EndAttack()
     {

@@ -11,10 +11,11 @@ public static class DamageCalculator
     /// Computes final integer damage for a single hit.
     ///
     /// Pipeline:
-    ///   1. Scale base damage by the attacker's damage multiplier (100 = 1.0x).
+    ///   1. Scale base damage by the attacker's damage multiplier (100 = 1.0x) and
+    ///      any bonus multiplier (e.g. dash counter).
     ///   2. Reduce defender armor by the attack's armor pierce percentage.
     ///   3. Apply remaining armor as a flat percentage damage reduction.
-    ///   4. If the defender is blocking, apply <see cref="BalanceConfig.BLOCK_DAMAGE_REDUCTION"/>.
+    ///   4. Apply the defender's block reduction percentage (0 when not blocking).
     ///   5. Round to the nearest integer; clamp to a minimum of 1 if the hit landed.
     /// </summary>
     public static int CalculateDamage(
@@ -22,12 +23,13 @@ public static class DamageCalculator
         int attackerDamageMultiplier,
         int defenderArmor,
         int armorPierce,
-        bool isBlocking)
+        int blockReductionPercent,
+        float bonusMultiplier = 1f)
     {
         if (baseDamage <= 0) return 0;
 
-        // Step 1: attacker's damage multiplier (100 = 1.0x).
-        float damage = baseDamage * (attackerDamageMultiplier / 100f);
+        // Step 1: attacker's damage multiplier (100 = 1.0x) and situational bonus.
+        float damage = baseDamage * (attackerDamageMultiplier / 100f) * bonusMultiplier;
 
         // Step 2: effective armor after pierce.
         int pierce = Mathf.Clamp(armorPierce, 0, 100);
@@ -38,10 +40,8 @@ public static class DamageCalculator
         damage *= 1f - (effectiveArmor / 100f);
 
         // Step 4: blocking shaves off another chunk.
-        if (isBlocking)
-        {
-            damage *= 1f - BalanceConfig.BLOCK_DAMAGE_REDUCTION;
-        }
+        int block = Mathf.Clamp(blockReductionPercent, 0, 100);
+        damage *= 1f - (block / 100f);
 
         int finalDamage = Mathf.RoundToInt(damage);
         if (finalDamage < 1) finalDamage = 1;

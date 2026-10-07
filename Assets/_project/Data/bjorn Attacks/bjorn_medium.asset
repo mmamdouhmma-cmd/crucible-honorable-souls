@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Heavy Cleave
   damage: 12
-  staminaCost: 10
+  staminaCost: 18
   armorPierce: 2
   startupFrames: 10
   activeFrames: 5
@@ -23,6 +23,8 @@ MonoBehaviour:
   animatorTriggerName: MediumAttack
   attackHeight: 1
   attackType: 1
+  comesFrom: 1
+  hitSide: 2
   hitboxRange: 1.5
-  hitboxOffset: {x: 0, y: 1, z: 0.6}
+  hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1, y: 1, z: 1}
