@@ -61,3 +61,9 @@ desktop.ini
 
 # Other generated files
 ignore.conf
+# Plastic SCM state (unused), Unity crash recovery, and the 716 MB character pack (too big for GitHub without LFS)
+.plastic/
+/Assets/_Recovery/
+/Assets/_Recovery.meta
+/Assets/Character model/
+/Assets/Character model.meta
