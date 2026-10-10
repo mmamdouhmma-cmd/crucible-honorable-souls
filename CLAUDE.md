@@ -9,7 +9,10 @@
 - `Assets/_project/Scripts/config/BalanceConfig.cs` — global tuning constants, `FRAME_TIME = 1/60`.
 - `Assets/_project/Scripts/input/` — `InputManager` singleton on the `GameMangers` object.
 - `Assets/_project/Scripts/UI/FightHud.cs`, `Assets/_project/Scripts/core/FightCamera.cs`.
-- `Assets/_project/Data/bjorn Attacks/` — P1 (Bjorn) attack assets. `Assets/_project/models/characters/p2/*.asset` — P2 (Miyamoto) attack assets.
+- `Assets/_project/Characters/<Name>/Attacks/` — per-character `AttackData` assets, named `<Name>_<Weight>_<Move>`. `Characters/<Name>/Model/` — the Tripo rigged FBX + textures + material (git-ignored, see Git notes). `Characters/_Unrigged/` — Tripo meshes not rigged yet (git-ignored).
+- `Assets/_project/Animation/Controllers/` — `P1_Bjorn.controller`, `P2_Miyamoto.controller`. `Animation/Clips/{Mixamo,Maria}/` — placeholder test clips; `Animation/Clips/Custom/` — for Blender exports.
+- `Assets/_project/Data/Fighters/` — `FighterData` assets. `Assets/_project/Input/` — the Input System actions asset. `Assets/_project/Art/ConceptArt/` — character portraits.
+- `Assets/_project/_Legacy/` — unreferenced leftovers (old Bjorn test model, Maria mesh/material, `Player2Controller.cs`, URP template readme). Safe to delete once nobody misses them.
 - `Assets/_project/Scenes/testarena.unity` — the test scene.
 
 ## How combat works
@@ -47,7 +50,7 @@ where the `.rsp` files are built from the csproj's `DefineConstants`, `HintPath`
 
 ## Git notes
 
-- `Assets/Character model/` (rigged FBX characters, ~716 MB) is not committed; it needs Git LFS or stays local. The scene references its prefabs.
+- `Assets/_project/Characters/*/Model/` and `Characters/_Unrigged/` (Tripo FBX meshes, ~700 MB, ~1M verts each) are not committed; they need Git LFS (after decimation) or stay local. The scene references the Bjorn and Miyamoto FBX directly, so a fresh clone has no character models until those folders are copied in.
 - `Assets/_Recovery/` holds Unity crash-recovery scenes. Do not commit.
 - `.plastic/` is Plastic SCM state. Leave it out of git commits.
 
@@ -71,3 +74,5 @@ where the `.rsp` files are built from the csproj's `DefineConstants`, `HintPath`
 - Reach authored per weapon: Miyamoto (katana) 2.5 on Slash/OverHead/HeavySwing; Bjorn (axe) light 3.0, medium 3.5, heavy 4.0. `fighterRadius` raised 0.8 → 1.2 in the scene so fighters stand off at 2.4 units, where the axe reaches and the katana does not. Note the body capsules are 1.2 (P2) / 1.6 (P1) world units wide, so centre-to-centre reach = offset.z + hitboxRange + opponent radius.
 - Body capsules shrunk to ~0.6 world units (P1 capsule radius 0.15 on 4x, P2 0.2 on 3x; were 1.6 / 1.2). `Fighter.BodyRadius` reads the capsule radius × root scale and is what the dodge reach check, whiff log and reach gizmo use; `Fighter.Radius` (`fighterRadius`) is only the walk/dash standoff.
 - Whiff log: when an attack's active window closes without touching anyone (and it was not dodged), `CombatSystem.LogWhiff` prints `P#: <attack> WHIFFED - opponent X units away, reach Y (...) - out of reach by Z` or why else it missed.
+- Both animator controllers (`Assets/_project/Animation/Controllers/*.controller`) now define `HitSide` (int) and `GetHit` (trigger), so `Fighter.PlayHitAnimation` sets them instead of logging. No get-hit states exist yet because the project has no hit-reaction clips; until three states (Straight/Left/Right, Any State → state on `GetHit` + `HitSide == n`, exit back to idle) are wired, the trigger is set but nothing plays.
+- Reorganised `Assets/`: everything lives under `_project/` (see Layout). Files were moved with their `.meta` so GUIDs and scene references are unchanged. Controllers renamed `P1_Bjorn` / `P2_Miyamoto`; attack assets renamed `<Name>_<Weight>_<Move>`; URP template readme, old test models and `Player2Controller.cs` parked in `_project/_Legacy/`.
