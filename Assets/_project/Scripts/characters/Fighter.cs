@@ -45,6 +45,8 @@ public class Fighter : MonoBehaviour
 
     private const string ANIM_HIT_SIDE = "HitSide"; // int: 0 = Straight, 1 = Left, 2 = Right
     private const string ANIM_GET_HIT = "GetHit";   // trigger: play the get-hit animation
+    private const string ANIM_BLOCKING = "Blocking"; // bool: guard is up (controller holds the block pose)
+    private bool animatorHasBlocking;
 
     [Header("Dash")]
     [SerializeField] private float dashDistance = 2.5f;
@@ -143,6 +145,7 @@ public class Fighter : MonoBehaviour
             animator = GetComponentInChildren<Animator>();
         }
         animatorHasHitParams = HasAnimatorParameters(ANIM_HIT_SIDE, ANIM_GET_HIT);
+        animatorHasBlocking = HasAnimatorParameters(ANIM_BLOCKING);
 
         if (fighterData != null)
         {
@@ -232,6 +235,11 @@ public class Fighter : MonoBehaviour
         if (wasBlocking && !isBlocking && currentInput.blockHeld && stats.currentStamina <= 0)
         {
             Debug.Log($"P{playerNumber}: Block BROKEN - out of stamina");
+        }
+
+        if (animatorHasBlocking && animator != null && wasBlocking != isBlocking)
+        {
+            animator.SetBool(ANIM_BLOCKING, isBlocking);
         }
     }
 

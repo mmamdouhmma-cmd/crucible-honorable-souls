@@ -69,3 +69,7 @@ ignore.conf
 /Assets/_project/Characters/*/Model.meta
 /Assets/_project/Characters/_Unrigged/
 /Assets/_project/Characters/_Unrigged.meta
+
+# Blender auto-backups
+*.blend1
+*.blend2
