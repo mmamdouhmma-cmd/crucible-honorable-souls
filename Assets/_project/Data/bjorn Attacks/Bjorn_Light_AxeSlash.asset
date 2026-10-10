@@ -25,6 +25,6 @@ MonoBehaviour:
   attackType: 0
   comesFrom: 2
   hitSide: 1
-  hitboxRange: 1.5
+  hitboxRange: 3
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1, y: 1, z: 1}

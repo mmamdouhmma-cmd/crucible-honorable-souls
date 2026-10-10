@@ -22,6 +22,7 @@ public class FighterStats
     public bool signatureUsed; // True if signature already used this match
 
     private float staminaRecoveryRemainder; // Sub-1 stamina regen carried between frames
+    private float staminaDrainRemainder;    // Sub-1 stamina drain (block hold) carried between frames
     private float healthRegenRemainder;     // Sub-1 health regen carried between frames
 
     /// <summary>
@@ -75,6 +76,34 @@ public class FighterStats
     public void UseStamina(int amount)
     {
         currentStamina -= amount;
+    }
+
+    /// <summary>
+    /// Drains stamina across <paramref name="deltaTime"/> seconds at
+    /// <paramref name="perSecond"/> (e.g. holding block), never below 0.
+    /// Returns true if this call emptied the bar.
+    /// </summary>
+    public bool DrainStamina(float deltaTime, float perSecond)
+    {
+        if (currentStamina <= 0)
+        {
+            staminaDrainRemainder = 0f;
+            return false;
+        }
+
+        // Same fractional carry as recovery: a single frame's drain is well under 1.
+        staminaDrainRemainder += Mathf.Max(perSecond, 0f) * deltaTime;
+        int whole = Mathf.FloorToInt(staminaDrainRemainder);
+        staminaDrainRemainder -= whole;
+        currentStamina -= whole;
+
+        if (currentStamina <= 0)
+        {
+            currentStamina = 0;
+            staminaDrainRemainder = 0f;
+            return true;
+        }
+        return false;
     }
 
     /// <summary>

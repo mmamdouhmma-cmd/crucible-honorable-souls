@@ -11,7 +11,7 @@ public static class BalanceConfig
     public const float STAMINA_RECOVERY_PER_SECOND = 15f;          // default; each Fighter can override it in the Inspector
     public const float DEFAULT_HEALTH_REGEN_PER_SECOND = 1f;       // default; each Fighter can override it in the Inspector
     public const float DEFAULT_HEALTH_REGEN_DELAY = 3f;            // seconds after a hit before regen resumes; per-Fighter override
-    public const float BLOCK_STAMINA_DRAIN_PER_SECOND = 4f;
+    public const float BLOCK_STAMINA_DRAIN_PER_SECOND = 4f;        // default drain while holding block; each Fighter can override it in the Inspector
     public const float POSTURE_BREAK_DURATION = 0.6f;
     
     // ==================== ATTACK STAMINA COSTS ====================
@@ -35,6 +35,14 @@ public static class BalanceConfig
     public const float PARRY_COUNTER_WINDOW = 0.5f;
     public const float COMBO_INPUT_WINDOW = 0.5f;
     
+    // ==================== CLASH (both attacks connect on the same frame) ====================
+    // Equal weight: no damage, both fighters are shoved apart and staggered.
+    // Unequal weight: the heavier attack lands normally and the lighter one is cancelled.
+    public const float CLASH_PUSHBACK_DISTANCE = 2.0f;      // world units each fighter slides away from the other
+    public const float CLASH_PUSHBACK_DURATION = 0.15f;     // seconds the slide takes
+    public const int CLASH_STAGGER_FRAMES = 15;             // frames neither fighter can act after an equal clash
+    public const float CLASH_HUD_FLASH_DURATION = 0.6f;     // seconds the HUD shows CLASH
+
     // ==================== DAMAGE MODIFIERS ====================
     public const int DEFAULT_BLOCK_DAMAGE_REDUCTION = 50;   // percent; each Fighter can override it in the Inspector
     public const float DASH_COUNTER_DAMAGE_MULTIPLIER = 1.35f; // +35% on the attack after a clean dodge

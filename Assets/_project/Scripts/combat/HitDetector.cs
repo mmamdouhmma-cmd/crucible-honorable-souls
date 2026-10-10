@@ -14,6 +14,9 @@ public class HitDetector : MonoBehaviour
     private Fighter ownerFighter;
     private bool hasHit;
 
+    /// <summary>True once the current activation has touched a fighter (one hit per swing).</summary>
+    public bool HasHit => hasHit;
+
     [SerializeField] private bool debugLogs = true;
 
     private void Awake()

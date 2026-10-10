@@ -55,7 +55,14 @@ public class Fighter : MonoBehaviour
     private Vector3 dashVelocity = Vector3.zero;
     private float dashForwardAmount = 0f; // dash direction relative to facing: +1 forward, -1 back
     private float dashRightAmount = 0f;   // +1 right, -1 left
+    private Vector3 dashStartPosition;    // where the fighter stood when the current dash began
     public bool IsDashing { get { return isDashing; } }
+
+    /// <summary>World position this fighter was at when the current dash started (only meaningful while dashing).</summary>
+    public Vector3 DashStartPosition => dashStartPosition;
+
+    /// <summary>The fighter this one is fighting (null until both are in the scene).</summary>
+    public Fighter Opponent => opponent;
 
     // Dash counter: a dash made while the opponent is attacking (a dodge) opens a short
     // window in which the next attack deals bonus damage.
@@ -68,6 +75,13 @@ public class Fighter : MonoBehaviour
     [Tooltip("Percent of damage removed while blocking (0 = block does nothing, 100 = no damage). Set per character.")]
     [Range(0, 100)]
     [SerializeField] private int blockDamageReduction = BalanceConfig.DEFAULT_BLOCK_DAMAGE_REDUCTION;
+
+    [Tooltip("Stamina drained per second while block is held, on top of the per-hit cost paid when a strike is blocked. 0 = holding block is free.")]
+    [Min(0f)]
+    [SerializeField] private float blockStaminaDrainPerSecond = BalanceConfig.BLOCK_STAMINA_DRAIN_PER_SECOND;
+
+    [Tooltip("If off, stamina does not regenerate while block is held, so a turtling fighter eventually runs dry.")]
+    [SerializeField] private bool staminaRecoversWhileBlocking = false;
     private bool isBlocking = false;
 
     /// <summary>True while block is held and the fighter is able to block (not attacking, dashing or out of stamina).</summary>
@@ -81,6 +95,14 @@ public class Fighter : MonoBehaviour
 
     /// <summary>Seconds left in the dash-counter window (0 when no counter is ready).</summary>
     public float DashCounterTimeLeft => Mathf.Max(dashCounterTimer, 0f);
+
+    // Clash: a shove away from the opponent plus a stagger, applied when two equal attacks meet.
+    private Vector3 knockbackVelocity = Vector3.zero;
+    private float knockbackTimer = 0f;
+    private float clashFlashTimer = 0f;
+
+    /// <summary>Seconds left for the HUD to show CLASH (0 when none is pending).</summary>
+    public float ClashFlashTimeLeft => Mathf.Max(clashFlashTimer, 0f);
 
     [Header("Recovery")]
     [Tooltip("Stamina regained per second. Set per character.")]
@@ -172,8 +194,13 @@ public class Fighter : MonoBehaviour
         {
             dashCounterTimer -= Time.deltaTime;
         }
+        if (clashFlashTimer > 0f)
+        {
+            clashFlashTimer -= Time.deltaTime;
+        }
 
         HandleFacing();
+        HandleKnockback();
         HandleDash();
         HandleMovement();
         HandleStaminaRecovery();
@@ -184,12 +211,26 @@ public class Fighter : MonoBehaviour
 
     /// <summary>
     /// Block is up while the button is held, unless the fighter is attacking,
-    /// dashing, or has no stamina left to absorb a hit.
+    /// dashing, or has no stamina left to absorb a hit. Holding block drains
+    /// stamina every frame; when it runs out the guard drops until the bar
+    /// recovers above zero.
     /// </summary>
     private void HandleBlock()
     {
+        bool wasBlocking = isBlocking;
         bool attacking = combatSystem != null && combatSystem.IsAttacking;
         isBlocking = currentInput.blockHeld && !isDashing && !attacking && stats.currentStamina > 0;
+
+        if (isBlocking && stats.DrainStamina(Time.deltaTime, blockStaminaDrainPerSecond))
+        {
+            // The hold itself emptied the bar: guard drops this frame.
+            isBlocking = false;
+        }
+
+        if (wasBlocking && !isBlocking && currentInput.blockHeld && stats.currentStamina <= 0)
+        {
+            Debug.Log($"P{playerNumber}: Block BROKEN - out of stamina");
+        }
     }
 
     /// <summary>
@@ -211,6 +252,43 @@ public class Fighter : MonoBehaviour
         dashCounterTimer = 0f;
         lastDodgeTime = -1f;
         return ready;
+    }
+
+    /// <summary>
+    /// Called when this fighter's attack met an equal one. Cancels the swing (done by
+    /// <see cref="CombatSystem"/>), plays the straight flinch as a recoil, locks the fighter
+    /// for the clash stagger and shoves it <paramref name="awayFromOpponent"/>.
+    /// </summary>
+    public void NotifyClash(Vector3 awayFromOpponent)
+    {
+        PlayHitAnimation(HitSide.Straight);
+        if (combatSystem != null) combatSystem.ApplyHitstun(BalanceConfig.CLASH_STAGGER_FRAMES);
+
+        awayFromOpponent.y = 0f;
+        if (awayFromOpponent.sqrMagnitude > 0.0001f && BalanceConfig.CLASH_PUSHBACK_DURATION > 0f)
+        {
+            knockbackVelocity = awayFromOpponent.normalized *
+                                (BalanceConfig.CLASH_PUSHBACK_DISTANCE / BalanceConfig.CLASH_PUSHBACK_DURATION);
+            knockbackTimer = BalanceConfig.CLASH_PUSHBACK_DURATION;
+        }
+
+        clashFlashTimer = BalanceConfig.CLASH_HUD_FLASH_DURATION;
+    }
+
+    /// <summary>Slides the fighter along the clash knockback for its duration.</summary>
+    private void HandleKnockback()
+    {
+        if (knockbackTimer <= 0f) return;
+
+        float step = Mathf.Min(Time.deltaTime, knockbackTimer);
+        knockbackTimer -= Time.deltaTime;
+        transform.position += knockbackVelocity * step;
+
+        if (knockbackTimer <= 0f)
+        {
+            knockbackTimer = 0f;
+            knockbackVelocity = Vector3.zero;
+        }
     }
 
     /// <summary>
@@ -419,6 +497,7 @@ private void HandleDash()
     Stats.UseStamina(dashStaminaCost);
     isDashing = true;
     dashTimer = 0f;
+    dashStartPosition = transform.position;
     dodgedAttackThisDash = false;
     hitDuringDash = false;
     dashCounterTimer = 0f;
@@ -522,6 +601,9 @@ private void EndDash(string reason)
 [Header("Collision")]
 [SerializeField] private float fighterRadius = 0.6f;
 
+/// <summary>Body radius in world units, used for contact and attack-reach checks.</summary>
+public float Radius => fighterRadius;
+
 /// <summary>
 /// How much of <paramref name="step"/> (0-1) this fighter can travel before touching
 /// the opponent's body radius. 1 means the whole step is clear. Moves that don't
@@ -611,7 +693,11 @@ private bool WouldCollideWithOpponent(Vector3 desiredMove)
     /// </summary>
     private void HandleStaminaRecovery()
     {
-        stats.RecoverStamina(Time.deltaTime, staminaRecoveryPerSecond);
+        // Guarding pauses recovery (unless allowed per character), so block has a real cost.
+        if (!isBlocking || staminaRecoversWhileBlocking)
+        {
+            stats.RecoverStamina(Time.deltaTime, staminaRecoveryPerSecond);
+        }
 
         if (healthRegenDelayTimer > 0f)
         {

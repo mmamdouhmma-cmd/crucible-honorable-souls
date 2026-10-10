@@ -260,7 +260,7 @@ MonoBehaviour:
   healthRegenPerSecond: 1
   healthRegenDelay: 3
   turnSpeed: 720
-  fighterRadius: 0.8
+  fighterRadius: 1.2
 --- !u!136 &126681667
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -1106,7 +1106,7 @@ MonoBehaviour:
   healthRegenPerSecond: 1
   healthRegenDelay: 3
   turnSpeed: 720
-  fighterRadius: 0.8
+  fighterRadius: 1.2
 --- !u!54 &1967802159
 Rigidbody:
   m_ObjectHideFlags: 0
