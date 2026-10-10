@@ -32,6 +32,18 @@ public class CombatSystem : MonoBehaviour
              "If off, the attack keeps going under the flinch animation.")]
     [SerializeField] private bool hitInterruptsAttack = true;
 
+    [Header("Hit feel")]
+    [Tooltip("Spawn a blood burst on the target when this fighter's strike lands unblocked.")]
+    [SerializeField] private bool bloodOnHit = true;
+    [SerializeField] private Color bloodColor = new Color(0.42f, 0.015f, 0.02f, 1f);
+    [Tooltip("Freeze both fighters for a few frames on impact (BalanceConfig.HIT_STOP_FRAMES).")]
+    [SerializeField] private bool hitStop = true;
+    [Tooltip("Sparks when this fighter's strike is blocked or clashes.")]
+    [SerializeField] private bool sparksOnBlock = false;
+    [Tooltip("Blade trail while the hitbox is live (needs a WeaponTrail on the fighter; added automatically).")]
+    [SerializeField] private bool bladeTrail = false;
+    private WeaponTrail weaponTrail;
+
     [Header("Debug")]
     [SerializeField] private bool debugLogs = true;
 
@@ -56,6 +68,12 @@ public class CombatSystem : MonoBehaviour
         {
             hitDetector = GetComponentInChildren<HitDetector>();
         }
+
+        if (bladeTrail)
+        {
+            weaponTrail = GetComponent<WeaponTrail>();
+            if (weaponTrail == null) weaponTrail = gameObject.AddComponent<WeaponTrail>();
+        }
     }
 
     private void Update()
@@ -63,6 +81,12 @@ public class CombatSystem : MonoBehaviour
         // Whichever fighter updates first this frame settles every hit the physics step produced,
         // so both sides of a clash are judged together before either attack advances.
         ResolvePendingHits();
+
+        // Hit-stop: everything below (attack timers, hitstun, animation) holds still for a few frames.
+        HitStop.Tick(Time.deltaTime);
+        bool frozen = HitStop.IsActive;
+        if (animator != null) animator.speed = frozen ? 0f : 1f;
+        if (frozen) return;
 
         if (inHitstun)
         {
@@ -93,6 +117,7 @@ public class CombatSystem : MonoBehaviour
             }
             hitboxStarted = true;
             hitboxActive = true;
+            if (weaponTrail != null && weaponTrail.enabled) weaponTrail.Begin();
 
             // Decide now whether an opponent mid-dash just dodged this swing. Waiting for the
             // trigger would only ever see dodges that are still inside the box when it arms.
@@ -110,6 +135,7 @@ public class CombatSystem : MonoBehaviour
                 hitDetector.Deactivate();
             }
             hitboxActive = false;
+            if (weaponTrail != null) weaponTrail.End();
 
             if (!touched && !swingEvaded) LogWhiff();
         }
@@ -320,6 +346,13 @@ public class CombatSystem : MonoBehaviour
             fighter.NotifyClash(away);
             other.fighter.NotifyClash(-away);
 
+            if (sparksOnBlock || other.sparksOnBlock)
+            {
+                Vector3 mid = (HitEffects.Chest(fighter) + HitEffects.Chest(other.fighter)) * 0.5f;
+                HitEffects.SpawnSparks(mid, Vector3.up, fighter.BodyRadius);
+            }
+            if (FightCamera.Instance != null) FightCamera.Instance.OnClash();
+
             if (debugLogs || other.debugLogs)
             {
                 Debug.Log($"CLASH! P{fighter.PlayerNumber} {mine} met P{other.fighter.PlayerNumber} {theirs} " +
@@ -395,6 +428,25 @@ public class CombatSystem : MonoBehaviour
 
         target.Stats.TakeDamage(finalDamage);
         target.NotifyHit(currentAttack.HitSide, currentAttack.HitstunFrames);
+
+        if (!blocked && finalDamage > 0 && bloodOnHit)
+        {
+            HitEffects.SpawnBlood(target, fighter, bloodColor);
+        }
+        if (blocked && sparksOnBlock)
+        {
+            Vector3 at = HitEffects.Chest(target) + (fighter.transform.position - target.transform.position).normalized * target.BodyRadius;
+            HitEffects.SpawnSparks(at, Vector3.up + (target.transform.position - fighter.transform.position).normalized, target.BodyRadius);
+        }
+        if (hitStop)
+        {
+            int frames = blocked ? BalanceConfig.HIT_STOP_BLOCK_FRAMES : BalanceConfig.HIT_STOP_FRAMES;
+            HitStop.Request(frames * BalanceConfig.FRAME_TIME);
+        }
+        if (FightCamera.Instance != null)
+        {
+            FightCamera.Instance.OnImpact(finalDamage, currentAttack.AttackType, blocked);
+        }
 
         // Blocking a hit costs the blocker stamina, scaled by how heavy the attack is.
         int blockCost = 0;

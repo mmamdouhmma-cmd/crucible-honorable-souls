@@ -46,7 +46,10 @@ public class Fighter : MonoBehaviour
     private const string ANIM_HIT_SIDE = "HitSide"; // int: 0 = Straight, 1 = Left, 2 = Right
     private const string ANIM_GET_HIT = "GetHit";   // trigger: play the get-hit animation
     private const string ANIM_BLOCKING = "Blocking"; // bool: guard is up (controller holds the block pose)
+    private const string ANIM_DASH = "Dash";         // trigger: a dash just started
+    private const string ANIM_DASH_DIR = "DashDir";  // int: 0 forward, 1 back, 2 left, 3 right (relative to facing)
     private bool animatorHasBlocking;
+    private bool animatorHasDash;
 
     [Header("Dash")]
     [SerializeField] private float dashDistance = 2.5f;
@@ -120,6 +123,13 @@ public class Fighter : MonoBehaviour
     [Header("Facing")]
     [Tooltip("How fast the fighter turns to face the opponent, in degrees per second.")]
     [SerializeField] private float turnSpeed = 720f;
+
+    [Tooltip("Turn speed while dashing and during the dash-counter window, so a sidestep squares up on the opponent at once.")]
+    [SerializeField] private float dodgeTurnSpeed = 2000f;
+
+    [Header("Effects")]
+    [Tooltip("Dust puffs on dash push-off and landing. Off: blood is the only effect in the fight.")]
+    [SerializeField] private bool dustEffects = false;
     private const float FACING_FLIP_DEAD_ZONE = 0.1f; // min left/right gap before input sides swap
     private Fighter opponent;
     private Transform cameraTransform;
@@ -146,6 +156,7 @@ public class Fighter : MonoBehaviour
         }
         animatorHasHitParams = HasAnimatorParameters(ANIM_HIT_SIDE, ANIM_GET_HIT);
         animatorHasBlocking = HasAnimatorParameters(ANIM_BLOCKING);
+        animatorHasDash = HasAnimatorParameters(ANIM_DASH, ANIM_DASH_DIR);
 
         if (fighterData != null)
         {
@@ -194,6 +205,9 @@ public class Fighter : MonoBehaviour
         currentInput = (playerNumber == 1)
             ? InputManager.Instance.GetPlayer1Input()
             : InputManager.Instance.GetPlayer2Input();
+
+        // Hit-stop: hold still (movement, dash, timers) while the impact freeze runs.
+        if (HitStop.IsActive) return;
 
         if (dashCounterTimer > 0f)
         {
@@ -394,14 +408,15 @@ private Fighter FindOpponent()
 }
 
 /// <summary>
-/// Rotates the fighter on the ground plane to face the opponent. Facing is locked
-/// while dashing or attacking, so a sidestep can evade an attack already thrown.
+/// Rotates the fighter on the ground plane to face the opponent. Facing is locked while
+/// attacking. During a dash and the counter window that follows a dodge it turns much faster,
+/// so a sidestep squares up on the opponent immediately instead of drifting past them.
 /// </summary>
 private void HandleFacing()
 {
     if (opponent == null) return;
-    if (isDashing) return;
     if (combatSystem != null && combatSystem.IsAttacking) return;
+    float speed = (isDashing || dashCounterTimer > 0f) ? dodgeTurnSpeed : turnSpeed;
 
     Vector3 toOpponent = opponent.transform.position - transform.position;
     toOpponent.y = 0f;
@@ -419,7 +434,7 @@ private void HandleFacing()
     }
 
     Quaternion targetRotation = Quaternion.LookRotation(toOpponent);
-    transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, turnSpeed * Time.deltaTime);
+    transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, speed * Time.deltaTime);
 }
 
 private void HandleMovement()
@@ -527,6 +542,16 @@ private void HandleDash()
     Vector3 dir3D = (forward.normalized * dashForwardAmount + right.normalized * dashRightAmount).normalized;
     dashVelocity = dir3D * (dashDistance / dashDuration);
 
+    if (animatorHasDash && animator != null)
+    {
+        int dir = Mathf.Abs(dashRightAmount) > Mathf.Abs(dashForwardAmount)
+            ? (dashRightAmount > 0f ? 3 : 2)
+            : (dashForwardAmount >= 0f ? 0 : 1);
+        animator.SetInteger(ANIM_DASH_DIR, dir);
+        animator.SetTrigger(ANIM_DASH);
+    }
+
+    if (dustEffects) HitEffects.SpawnDust(FeetPosition(), BodyRadius, 1f);
     Debug.Log($"P{playerNumber}: Dash STARTED {DescribeDash()} velocity={dashVelocity}");
 }
 
@@ -594,6 +619,7 @@ private void EndDash(string reason)
     isDashing = false;
     dashTimer = 0f;
     dashVelocity = Vector3.zero;
+    if (dustEffects) HitEffects.SpawnDust(FeetPosition(), BodyRadius, 0.8f);
     Debug.Log($"P{playerNumber}: Dash {reason}");
 
     // A dash that made a strike miss (and wasn't hit by anything else) opens the counter window
@@ -610,6 +636,23 @@ private void EndDash(string reason)
 
 [Header("Collision")]
 [SerializeField] private float fighterRadius = 0.6f;
+
+/// <summary>Ground point between the feet (from the Humanoid avatar), for dust and landing effects.</summary>
+public Vector3 FeetPosition()
+{
+    if (animator != null && animator.isHuman)
+    {
+        Transform l = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+        Transform r = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+        if (l != null && r != null)
+        {
+            Vector3 p = (l.position + r.position) * 0.5f;
+            p.y = transform.position.y;
+            return p;
+        }
+    }
+    return transform.position;
+}
 
 /// <summary>Standoff radius in world units: how close fighters may walk or dash to each other.</summary>
 public float Radius => fighterRadius;

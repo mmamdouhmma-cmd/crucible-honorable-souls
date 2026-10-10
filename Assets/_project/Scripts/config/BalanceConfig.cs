@@ -43,6 +43,10 @@ public static class BalanceConfig
     public const int CLASH_STAGGER_FRAMES = 15;             // frames neither fighter can act after an equal clash
     public const float CLASH_HUD_FLASH_DURATION = 0.6f;     // seconds the HUD shows CLASH
 
+    // ==================== HIT FEEL ====================
+    public const int HIT_STOP_FRAMES = 4;         // both fighters freeze this long when a strike lands
+    public const int HIT_STOP_BLOCK_FRAMES = 2;   // shorter freeze on a blocked strike
+
     // ==================== DAMAGE MODIFIERS ====================
     public const int DEFAULT_BLOCK_DAMAGE_REDUCTION = 50;   // percent; each Fighter can override it in the Inspector
     public const float DASH_COUNTER_DAMAGE_MULTIPLIER = 1.35f; // +35% on the attack after a clean dodge

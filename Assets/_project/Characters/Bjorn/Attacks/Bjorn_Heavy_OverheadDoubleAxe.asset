@@ -10,21 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
-  m_Name: HeavySwing
+  m_Name: Bjorn_Heavy_OverheadDoubleAxe
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
-  attackName: heavy slash
-  damage: 15
-  staminaCost: 17
-  armorPierce: 0
-  startupFrames: 8
-  activeFrames: 3
-  recoveryFrames: 12
-  animationClip: {fileID: -203655887218126122, guid: c2d1513b8b91eb14f92136653bc88ee4, type: 3}
+  attackName: Overhead Double Axe
+  damage: 18
+  staminaCost: 20
+  armorPierce: 5
+  startupFrames: 15
+  activeFrames: 5
+  recoveryFrames: 15
+  animationClip: {fileID: -203655887218126122, guid: f56c48a57b22e754fa2567b293436be2, type: 3}
   animatorTriggerName: HeavyAttack
-  attackHeight: 1
+  attackHeight: 0
   attackType: 2
   comesFrom: 0
   hitSide: 0
-  hitboxRange: 2.5
+  hitboxRange: 3.2
   hitboxOffset: {x: 0, y: 1, z: 0}
-  hitboxSize: {x: 1, y: 1, z: 1}
+  hitboxSize: {x: 0.9, y: 1.6, z: 1}

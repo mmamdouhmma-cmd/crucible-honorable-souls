@@ -73,3 +73,6 @@ ignore.conf
 # Blender auto-backups
 *.blend1
 *.blend2
+
+# Tripo originals backed up by ArtSource/Blender/prep_character.py (hundreds of MB)
+ArtSource/Characters/

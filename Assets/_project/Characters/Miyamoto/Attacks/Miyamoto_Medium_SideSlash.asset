@@ -10,23 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
-  m_Name: Bjorn_Heavy_SpinningBackSlash
+  m_Name: Miyamoto_Medium_SideSlash
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
-  attackName: 'Spinning Back Slash
-
-'
-  damage: 16
-  staminaCost: 20
-  armorPierce: 5
-  startupFrames: 15
-  activeFrames: 5
-  recoveryFrames: 15
-  animationClip: {fileID: -203655887218126122, guid: f56c48a57b22e754fa2567b293436be2, type: 3}
-  animatorTriggerName: HeavyAttack
-  attackHeight: 0
-  attackType: 2
-  comesFrom: 1
-  hitSide: 2
-  hitboxRange: 4
+  attackName: Side Slash
+  damage: 14
+  staminaCost: 12
+  armorPierce: 0
+  startupFrames: 10
+  activeFrames: 4
+  recoveryFrames: 12
+  animationClip: {fileID: -203655887218126122, guid: 2de9179e990a1a345b11117e930a2952, type: 3}
+  animatorTriggerName: MediumAttack
+  attackHeight: 1
+  attackType: 1
+  comesFrom: 2
+  hitSide: 1
+  hitboxRange: 2.6
   hitboxOffset: {x: 0, y: 1, z: 0}
-  hitboxSize: {x: 1, y: 1, z: 1}
+  hitboxSize: {x: 1.5, y: 1, z: 1}
