@@ -436,7 +436,7 @@ public class CombatSystem : MonoBehaviour
 
         reachTarget = target;
         reachTargetPos = target.DashStartPosition;
-        if (!IsWithinReach(currentAttack, reachTargetPos, target.Radius)) return;
+        if (!IsWithinReach(currentAttack, reachTargetPos, target.BodyRadius)) return;
 
         DashHitOutcome outcome = target.ResolveDashAgainst(currentAttack.ComesFrom);
         if (outcome != DashHitOutcome.Evaded && outcome != DashHitOutcome.EvadedNoCounter) return;
@@ -477,13 +477,13 @@ public class CombatSystem : MonoBehaviour
 
         // Centre-to-centre reach: the box starts at the offset and runs HitboxRange forward,
         // and the opponent's body radius adds to what it can touch.
-        float reach = currentAttack.HitboxOffset.z + currentAttack.HitboxRange + target.Radius;
+        float reach = currentAttack.HitboxOffset.z + currentAttack.HitboxRange + target.BodyRadius;
         string why = distance > reach
             ? $"out of reach by {distance - reach:0.00}"
             : target.IsDashing ? "opponent dashed clear" : "box missed the body (height/side?)";
 
         Debug.Log($"P{fighter.PlayerNumber}: {currentAttack.AttackName} WHIFFED - opponent {distance:0.00} units away, " +
-                  $"reach {reach:0.00} ({currentAttack.HitboxRange:0.0} + {target.Radius:0.0} body) - {why}");
+                  $"reach {reach:0.00} ({currentAttack.HitboxRange:0.0} + {target.BodyRadius:0.0} body) - {why}");
     }
 
     /// <summary>
@@ -532,7 +532,7 @@ public class CombatSystem : MonoBehaviour
         Transform space = (hitDetector != null && hitDetector.transform.parent != null)
             ? hitDetector.transform.parent
             : transform;
-        float radius = reachTarget != null ? reachTarget.Radius : 0f;
+        float radius = reachTarget != null ? reachTarget.BodyRadius : 0f;
         HitDetector.GetLocalBox(currentAttack, out Vector3 center, out Vector3 size);
         size.x += radius * 2f;
         size.z += radius * 2f;

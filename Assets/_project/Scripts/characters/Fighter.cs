@@ -135,6 +135,8 @@ public class Fighter : MonoBehaviour
             combatSystem = GetComponent<CombatSystem>();
         }
 
+        CacheBodyRadius();
+
         animator = GetComponent<Animator>();
         if (animator == null)
         {
@@ -601,8 +603,26 @@ private void EndDash(string reason)
 [Header("Collision")]
 [SerializeField] private float fighterRadius = 0.6f;
 
-/// <summary>Body radius in world units, used for contact and attack-reach checks.</summary>
+/// <summary>Standoff radius in world units: how close fighters may walk or dash to each other.</summary>
 public float Radius => fighterRadius;
+
+private float bodyRadius; // world-unit radius of the body capsule hitboxes actually touch
+
+/// <summary>
+/// Radius of the body collider in world units (capsule radius times the root scale).
+/// This is what an attack's hitbox has to reach; falls back to <see cref="Radius"/> without a capsule.
+/// </summary>
+public float BodyRadius => bodyRadius > 0f ? bodyRadius : fighterRadius;
+
+private void CacheBodyRadius()
+{
+    CapsuleCollider capsule = GetComponent<CapsuleCollider>();
+    if (capsule == null) capsule = GetComponentInChildren<CapsuleCollider>();
+    if (capsule == null) { bodyRadius = 0f; return; }
+
+    Vector3 s = capsule.transform.lossyScale;
+    bodyRadius = capsule.radius * Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.z));
+}
 
 /// <summary>
 /// How much of <paramref name="step"/> (0-1) this fighter can travel before touching
