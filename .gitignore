@@ -82,3 +82,7 @@ ArtSource/Characters/
 /PlayProbe*.txt
 /ClipProbe.request
 /ClipMap.request
+
+# Generated animation masters (anim_rig.py rebuilds them from the body FBX) and Python cache
+ArtSource/Blender/*_AnimMaster.blend
+ArtSource/Blender/__pycache__/
