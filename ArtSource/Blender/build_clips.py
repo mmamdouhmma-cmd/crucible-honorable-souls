@@ -325,14 +325,27 @@ CLIPS["Miyamoto_Heavy_Overhead"] = {"length": 32, "keys": [
 # ---------------------------------------------------------------- weapon stances: idle / walk / block per character
 # Offsets on top of STANCE. Bjorn: two axes held up in a crossed guard, low and wide. Miyamoto:
 # two-handed chudan, blade forward at waist height, right foot leading, narrow and level.
-GUARD_AXE = add(
-    spine(x=-5, scale=(0.5, 1, 1, 0.3, 0.1)),
-    arms(l=(32, 0, 22), r=(32, 0, -22), lf=48, rf=48), hands(l=(-12, 0, 0), r=(-12, 0, 0)),
-    legs(lt=8, rt=8, lc=-20, rc=-20), pelvis(x=2), hip(up=-0.012),
+# Arm numbers below were solved live in Blender with livepose.py (reach() for hand position, aim() for
+# weapon direction) against the real meshes. Weapon directions in the rest pose, armature space:
+#   Bjorn's axe handles continue the arm line (L (-0.02, 0.93, -0.37), R (-0.08, -0.93, -0.35));
+#   Miyamoto's katana points straight UP from the right hand (0, -0.04, 1), i.e. along R_Hand local X.
+# Upper arm Y twist and forearm Y twist (pronation) are what turn the blade; wrist X/Z finish the aim.
+def limb(side, upper, fore, hand=(0, 0, 0)):
+    return {side + "_Upperarm": upper, side + "_Forearm": fore, side + "_Hand": hand}
+
+# Keep solved values inside Unity's Humanoid muscle ranges or the retarget clamps them: forearm twist <= 75,
+# wrist flex <= 60, wrist deviation <= 30, upper-arm twist <= 40 (all degrees). The 2026-10-11 guards that used
+# a 90 twist and 80 wrist came out as hanging arms in Unity.
+GUARD_AXE = add(   # heavy low guard: elbows at the sides, forearms level, hands at belt height, axe heads forward
+    spine(x=-6, scale=(0.5, 1, 1, 0.3, 0.1)), head(3),
+    limb("L", (20, 0, 0), (0, -15, 0), (50, 0, -10)), limb("R", (20, 0, 0), (0, 15, 0), (50, 0, 10)),
+    legs(lt=10, rt=10, lc=-24, rc=-24), pelvis(x=2), hip(up=-0.015),
 )
-GUARD_KATANA = add(
-    spine(x=-4, y=-6, scale=(0.5, 1, 1, 0.3, 0.1)), head(0, 6, 0),
-    arms(l=(30, 0, -6), r=(30, 0, 6), lf=12, rf=12), hands(l=(22, 0, 0), r=(22, 0, 0)),   # hands at the waist, blade angled up at the throat
+GUARD_KATANA = add(   # low chudan: hands in front of the belt, forearms angled down, blade forward and up 35 deg
+    spine(x=-3, y=-8, scale=(0.5, 1, 1, 0.3, 0.1)), head(0, 8, 0),
+    # Elbows must stay bent >= 50 deg total: with a near-straight elbow Unity cannot split twist between the
+    # upper arm and the forearm and flips between the two solutions every frame (the katana span in the idle).
+    limb("R", (-10, -40, 30), (15, -60, 0), (-60, 0, -20)), limb("L", (-10, -20, -60), (15, 0, 0)),
     legs(lt=-3, rt=12, lc=-12, rc=-18, rf=-4), pelvis(y=-8, x=1), hip(up=-0.008, fwd=0.01),
 )
 
@@ -380,13 +393,18 @@ CLIPS["Miyamoto_Idle"] = {"length": 120, "loop": True, "keys": guard_idle_keys(G
 CLIPS["Miyamoto_Walk_Forward"] = {"length": 36, "loop": True, "keys": guard_walk_keys(GUARD_KATANA, length=36, stride=11, knee_extra=14, bob=0.0, arm_sway=1.5, twist=1.5, slide=True)}
 CLIPS["Miyamoto_Walk_Back"] = {"length": 36, "loop": True, "keys": guard_walk_keys(GUARD_KATANA, length=36, direction=-1, stride=11, knee_extra=14, bob=0.0, arm_sway=1.5, twist=1.5, slide=True)}
 
-# Blocks: the axes cross high in front of the face; the katana rises to a vertical guard at the chin.
-BLOCK_AXE = add(GUARD_AXE, spine(x=-3, scale=(0.5, 1, 1, 0.5, 0.3)), head(-6),
-                arms(l=(26, 0, 14), r=(26, 0, -14), lf=26, rf=26), hands(l=(-8, 0, 0), r=(-8, 0, 0)),
-                legs(lc=-6, rc=-6), hip(up=-0.006))
-BLOCK_KATANA = add(GUARD_KATANA, spine(x=-2, scale=(0.5, 1, 1, 0.5, 0.3)), head(-4),
-                   arms(l=(6, 0, 4), r=(6, 0, -4), lf=48, rf=48), hands(l=(10, 0, 0), r=(10, 0, 0)),
-                   legs(lc=-4, rc=-4))
+# Blocks (absolute poses, not built on the guards): the axes cross in front of the face, heads up and out;
+# the katana stands near vertical in front of the chest with both hands on the hilt.
+BLOCK_AXE = add(   # axes crossed in front of the face, heads up ~55 deg and out ~30 deg
+    spine(x=-2, scale=(0.5, 1, 1, 0.3, 0.3)), head(-4),
+    limb("L", (0, 20, -70), (20, 60, 0), (60, 0, 10)), limb("R", (0, -20, 70), (20, -60, 0), (60, 0, -10)),
+    legs(lt=8, rt=8, lc=-16, rc=-16), hip(up=-0.008),
+)
+BLOCK_KATANA = add(   # blade raised across the chest, up ~60 deg (a true vertical needs a wrist beyond Humanoid range)
+    spine(x=-2, y=-6, scale=(0.5, 1, 1, 0.3, 0.3)), head(-3, 6, 0),
+    limb("R", (0, -40, 40), (15, -60, 0), (-60, 0, -30)), limb("L", (-10, -20, -50), (15, 0, 0)),
+    legs(lt=-3, rt=12, lc=-10, rc=-14, rf=-4), pelvis(y=-8, x=1), hip(up=-0.006),
+)
 BREATH_SMALL = add(spine(x=-1, scale=(0.5, 1, 1, 0.5, 0.3)), arms(l=(1.5, 0, 0.5), r=(1.5, 0, -0.5), lf=1.5, rf=1.5))
 CLIPS["Bjorn_Block_Hold"] = {"length": 30, "loop": True, "keys": [(0, BLOCK_AXE), (15, add(BLOCK_AXE, BREATH_SMALL)), (30, BLOCK_AXE)]}
 CLIPS["Bjorn_Block_Impact"] = {"length": 14, "keys": [
@@ -533,11 +551,41 @@ def render_checks(name, spec):
         sc.render.filepath = os.path.join(RENDER_DIR, f"{name}_f{f:02d}.png")
         bpy.ops.render.render(write_still=True)
 
+REST_FRAME = -10  # frame holding the T-pose for export; outside the baked 0..length range
+
+def key_rest_pose(act, frame):
+    """Key every animated channel at its rest value on `frame`, so the exported node defaults are the T-pose."""
+    for fc in action_fcurves(act):
+        if "rotation_euler" in fc.data_path or "location" in fc.data_path:
+            fc.keyframe_points.insert(frame, 0.0, options={'FAST'})
+        elif "scale" in fc.data_path:
+            fc.keyframe_points.insert(frame, 1.0, options={'FAST'})
+        fc.update()
+
+def unkey_frame(act, frame):
+    for fc in action_fcurves(act):
+        for kp in list(fc.keyframe_points):
+            if abs(kp.co.x - frame) < 0.01:
+                fc.keyframe_points.remove(kp)
+                break
+        fc.update()
+
 def export(name, spec):
     bpy.ops.object.select_all(action='DESELECT')
     arm.select_set(True)
     bpy.context.view_layer.objects.active = arm
     path = os.path.join(EXPORT_DIR, f"{name}.fbx")
+    # Blender's FBX exporter writes each bone's node defaults from the CURRENT pose, and Unity builds a Humanoid
+    # avatar for an armature-only file from those defaults. A guard pose there (folded, twisted arms) is not a
+    # valid T-pose, the avatar fails and the clip plays as a T-pose. So export from a rest-pose frame.
+    act = arm.animation_data.action
+    key_rest_pose(act, REST_FRAME)
+    sc.frame_set(REST_FRAME)
+    bpy.context.view_layer.update()
+    # The clip importers copy the Bjorn model's avatar, and Unity matches it by transform path. The Tripo model
+    # files name the armature node "Armature", so the exported clip must too, or the copy is rejected
+    # ("Rig Error: Invalid copied Avatar Rig Configuration") and the clip imports with no animation at all.
+    arm.name = "Armature"
     bpy.ops.export_scene.fbx(
         filepath=path, use_selection=True, object_types={'ARMATURE'},
         add_leaf_bones=False, armature_nodetype='NULL',
@@ -547,6 +595,9 @@ def export(name, spec):
         apply_unit_scale=True, apply_scale_options='FBX_SCALE_NONE',
         axis_forward='-Z', axis_up='Y', path_mode='AUTO',
     )
+    arm.name = "TripoRig"
+    unkey_frame(act, REST_FRAME)
+    sc.frame_set(0)
     print(f"exported {path} ({os.path.getsize(path)//1024} KB)")
 
 for name, spec in CLIPS.items():

@@ -76,3 +76,9 @@ ignore.conf
 
 # Tripo originals backed up by ArtSource/Blender/prep_character.py (hundreds of MB)
 ArtSource/Characters/
+
+# Animation pipeline probe outputs (Crucible > Debug, PlayProbe)
+/ClipProbe*.txt
+/PlayProbe*.txt
+/ClipProbe.request
+/ClipMap.request
