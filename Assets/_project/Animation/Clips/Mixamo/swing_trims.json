@@ -1,0 +1,101 @@
+{
+ "standing melee attack horizontal": {
+  "first": 1,
+  "last": 73,
+  "fps": 30,
+  "peak": 30,
+  "core_start": 17,
+  "core_end": 34,
+  "peak_speed_m_per_frame": 0.3031
+ },
+ "standing melee attack 360 high": {
+  "first": 1,
+  "last": 85,
+  "fps": 30,
+  "peak": 33,
+  "core_start": 12,
+  "core_end": 44,
+  "peak_speed_m_per_frame": 0.2747
+ },
+ "standing melee attack downward": {
+  "first": 1,
+  "last": 69,
+  "fps": 30,
+  "peak": 26,
+  "core_start": 3,
+  "core_end": 32,
+  "peak_speed_m_per_frame": 0.2371
+ },
+ "standing melee attack backhand": {
+  "first": 1,
+  "last": 96,
+  "fps": 30,
+  "peak": 32,
+  "core_start": 22,
+  "core_end": 46,
+  "peak_speed_m_per_frame": 0.3342
+ },
+ "standing react large gut": {
+  "first": 1,
+  "last": 46,
+  "fps": 30,
+  "peak": 5,
+  "core_start": 1,
+  "core_end": 20,
+  "peak_speed_m_per_frame": 0.0616
+ },
+ "standing block react large": {
+  "first": 1,
+  "last": 41,
+  "fps": 30,
+  "peak": 10,
+  "core_start": 3,
+  "core_end": 32,
+  "peak_speed_m_per_frame": 0.0845
+ },
+ "great sword slash": {
+  "first": 1,
+  "last": 39,
+  "fps": 30,
+  "peak": 18,
+  "core_start": 4,
+  "core_end": 39,
+  "peak_speed_m_per_frame": 0.2289
+ },
+ "great sword slash (2)": {
+  "first": 1,
+  "last": 107,
+  "fps": 30,
+  "peak": 52,
+  "core_start": 42,
+  "core_end": 65,
+  "peak_speed_m_per_frame": 0.2314
+ },
+ "great sword attack": {
+  "first": 1,
+  "last": 37,
+  "fps": 30,
+  "peak": 15,
+  "core_start": 1,
+  "core_end": 23,
+  "peak_speed_m_per_frame": 0.1419
+ },
+ "great sword slash (3)": {
+  "first": 1,
+  "last": 56,
+  "fps": 30,
+  "peak": 24,
+  "core_start": 1,
+  "core_end": 41,
+  "peak_speed_m_per_frame": 0.1497
+ },
+ "great sword impact": {
+  "first": 1,
+  "last": 27,
+  "fps": 30,
+  "peak": 6,
+  "core_start": 1,
+  "core_end": 27,
+  "peak_speed_m_per_frame": 0.0293
+ }
+}

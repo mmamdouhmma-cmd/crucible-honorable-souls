@@ -26,54 +26,60 @@ Reach numbers are world units (see CLAUDE.md: hitbox range + offset, 1 unit ≈ 
 
 ---
 
-# 1. BJORN IRONSIDE — twin bearded axes
+# 1. BJORN IRONSIDE — two-handed Dane axe
 
-Fighting style: Viking twin-axe. Short, hard, forward. Hooks (the axe beard) are his thing:
-he catches limbs, shields and necks with the beard and pulls. He commits his hips to every
-swing, leads with the right axe, finishes with the left. Stance: low, wide, axes at belt
-height (the `GUARD_AXE` guard already in `build_clips.py`).
+Weapon: one long-hafted bearded axe (haft ~1.25 m, bearded blade with a back spike, iron butt ring),
+`Bjorn_Axe` in the right hand with the left hand on the haft. Fighting style: Viking long-axe.
+Both hands on the haft (right hand low near the butt, left hand high under the head); the cuts come
+from the hips and the rear foot, the beard hooks shields, limbs and necks, the spike thrusts, the
+butt punches. Guard: left foot leading, body bladed, haft diagonal across the body with the head high
+on the right shoulder side (the Mixamo "Pro Melee Axe" idle approximates it until the hand-keyed set
+exists). Heavy, committed, never bouncy: when he moves it is because the whole body moved. Reach is
+the axe's edge: hitboxRange 3.6 on the long cuts, 3.0 on the short haft work.
 
 ## NORMAL ATTACKS (high)
 
 ```
 LIGHT · □ — "Raven Cut"
-DMG 8 | STA 6 | 6/3/8 [17] | PIERCE 0 | KB 0.3 | HITSTUN 12
+DMG 9 | STA 6 | 6/3/8 [17] | PIERCE 0 | KB 0.4 | HITSTUN 12
 HIT Left | EVADE Right, Back
-ANIM: right-hand horizontal cut at chest height, elbow leads, hips open a quarter turn,
-      left axe stays low as a guard. Reach 3.0.
+ANIM: short two-handed horizontal cut right-to-left at neck height from the guard, the left hand slides
+      down the haft a hand's width to lengthen it, hips open a quarter turn, head stays on the target.
+      Reach 3.6, wide flat box.
 
 MEDIUM · ✕ — "Fjord Splitter"
-DMG 12 | STA 10 | 10/5/14 [29] | PIERCE 5 | KB 0.6 | HITSTUN 16
+DMG 13 | STA 11 | 10/5/14 [29] | PIERCE 5 | KB 0.7 | HITSTUN 16
 HIT Right | EVADE Left, Back
-ANIM: left-hand backhand diagonal from high-left to low-right, right foot steps 0.4 in.
-      Right axe trails and resets high. Reach 3.2.
+ANIM: backhand return cut left-to-right, diagonal from the left hip up through the shoulder line, the
+      right foot steps 0.4 in behind it. The beard leads. Reach 3.6, wide box.
 
 HEAVY · △ — "Skull Cleaver"
-DMG 18 | STA 18 | 15/5/15 [35] | PIERCE 20 | KB 1.0 | HITSTUN 22
+DMG 20 | STA 18 | 15/5/15 [35] | PIERCE 20 | KB 1.0 | HITSTUN 22
 HIT Straight | EVADE Left, Right
 PROPERTIES: overhead, knockdown on counter-hit
-ANIM: both axes raised over the head during startup (a visible, readable wind), full hip
-      drop into a double chop that ends at knee height. Reach 3.2, tall narrow box.
+ANIM: the axe goes up over the right shoulder with both hands (a readable wind), the rear foot drives,
+      the whole body drops into a vertical chop that finishes at knee height with the hips squared.
+      Reach 3.4, tall narrow box.
 ```
 
 ## LOW ATTACKS (L2 + button)
 
 ```
 LOW LIGHT · L2+□ — "Shin Hook"
-DMG 7 | STA 7 | 8/3/10 [21] | PIERCE 0 | KB 0.2 | HITSTUN 12
+DMG 7 | STA 7 | 8/3/10 [21] | PIERCE 0 | KB 0.3 | HITSTUN 12
 HIT Left | EVADE Right, Back | PROPERTIES: low
-ANIM: short crouch, right axe swung low and inside, the beard catches the shin.
+ANIM: the head drops to the ground on the right side and the beard hooks inward at shin height; short crouch.
 
 LOW MEDIUM · L2+✕ — "Hamstring"
-DMG 11 | STA 11 | 12/4/14 [30] | PIERCE 5 | KB 0.5 | HITSTUN 16
+DMG 12 | STA 11 | 12/4/14 [30] | PIERCE 5 | KB 0.5 | HITSTUN 16
 HIT Right | EVADE Left, Back | PROPERTIES: low
-ANIM: deep lunge on the left leg, left axe sweeps across both of the opponent's knees.
+ANIM: deep lunge on the left leg, long horizontal cut at knee height left-to-right with the haft fully extended.
 
 LOW HEAVY · L2+△ — "Ankle Breaker"
-DMG 16 | STA 18 | 18/5/20 [43] | PIERCE 10 | KB 0.8 | HITSTUN 24
+DMG 17 | STA 18 | 18/5/20 [43] | PIERCE 10 | KB 0.9 | HITSTUN 24
 HIT Straight | EVADE Back | PROPERTIES: low, knockdown
-ANIM: drops to one knee and whips both axes in a low circle, left then right, rising on
-      the recovery. Reach 3.4, wide flat box.
+ANIM: drops to the right knee, the axe sweeps a full low circle right-to-left at ankle height, rises on
+      the recovery. Reach 3.8, wide flat box.
 ```
 
 ## UPPERCUTS (↓ + button)
@@ -82,63 +88,66 @@ ANIM: drops to one knee and whips both axes in a low circle, left then right, ri
 LIGHT UPPERCUT · ↓+□ — "Beard Lift"
 DMG 8 | STA 7 | 7/3/12 [22] | PIERCE 0 | KB 0.4 | HITSTUN 12
 HIT Straight | EVADE Left, Right | PROPERTIES: anti-overhead
-ANIM: right axe hooked upward from the hip to above the head, body rises on the toes.
+ANIM: the head is flicked upward from the hip with the hands close together, the beard catching an
+      incoming weapon or chin; the body rises onto the toes.
 
-MEDIUM UPPERCUT · ↓+✕ — "Rising Twins"
-DMG 12 | STA 11 | 11/4/16 [31] | PIERCE 5 | KB 0.7 | HITSTUN 16
+MEDIUM UPPERCUT · ↓+✕ — "Rising Edge"
+DMG 13 | STA 11 | 11/4/16 [31] | PIERCE 5 | KB 0.7 | HITSTUN 16
 HIT Straight | EVADE Left, Right | PROPERTIES: anti-overhead, launcher (short)
-ANIM: both axes cross low then rip apart upward in an X, chest opens, back arches.
+ANIM: reverse of the Skull Cleaver: a two-handed rising vertical cut from the knees to above the head,
+      back arching, the butt ring finishing at the chest.
 
 HEAVY UPPERCUT · ↓+△ — "Valhalla's Gate"
-DMG 17 | STA 20 | 16/5/22 [43] | PIERCE 15 | KB 1.2 | HITSTUN 26
+DMG 18 | STA 20 | 16/5/22 [43] | PIERCE 15 | KB 1.2 | HITSTUN 26
 HIT Straight | EVADE Left, Right, Back | PROPERTIES: launcher, knockdown
-ANIM: squat, then a jumping double uppercut; feet leave the ground for 6 frames, lands
-      heavy with a dust hit, two-frame stagger step on recovery.
+ANIM: squat, then a jumping rising cut; feet leave the ground for 6 frames, the axe ends vertical over
+      the head, heavy landing with a stagger step.
 ```
 
 ## SPECIAL ATTACKS — default (L1 + button)
 
 ```
-LIGHT SPECIAL · L1+□ — "Berserker Flurry"
-DMG 5+5+6 (16) | STA 16 | 8/(3+3+3 over 18)/14 [40] | PIERCE 0 | KB 0.3 | HITSTUN 10 each
-HIT Left, Right, Left | EVADE Back | PROPERTIES: multi-hit (3), each hit cancels into the next on hit
-ANIM: right, left, right alternating diagonal cuts, feet shuffle forward 0.3 each cut.
+LIGHT SPECIAL · L1+□ — "Haft Strike"
+DMG 6+8 (14) | STA 14 | 8/(3+3)/14 [31] | PIERCE 0 | KB 0.4 | HITSTUN 10, 14
+HIT Straight, Left | EVADE Back | PROPERTIES: multi-hit (2)
+ANIM: the butt of the haft punches straight forward from the guard (hands slide to the middle), then
+      the head whips round into a short cut. Close-range tool: reach 3.0.
 
 MEDIUM SPECIAL · L1+✕ — "Hewing Charge"
-DMG 15 | STA 20 | 14/6/18 [38] | PIERCE 10 | KB 1.0 | HITSTUN 18
+DMG 16 | STA 20 | 14/6/18 [38] | PIERCE 10 | KB 1.0 | HITSTUN 18
 HIT Left | EVADE Left, Right | PROPERTIES: moves 1.5, armor (frames 4–14)
-ANIM: shoulder drops, three driving steps, right axe comes across at the end of the
-      charge. The left axe is held across the chest as a guard the whole way.
+ANIM: the axe is carried across the chest, three driving steps, a horizontal cut released at the end
+      of the charge with the full haft.
 
 HEAVY SPECIAL · L1+△ — "Blood Eagle"
-DMG 22 | STA 28 | 20/6/22 [48] | PIERCE 30 | KB 1.4 | HITSTUN 28
+DMG 24 | STA 28 | 20/6/22 [48] | PIERCE 30 | KB 1.4 | HITSTUN 28
 HIT Straight | EVADE Left, Right, Back | PROPERTIES: guard-crush
-ANIM: axes crossed in front of the chest, then torn apart outward and downward in one
-      motion, as if opening a ribcage. Heavy exhale, head drops with the cut.
+ANIM: the spike is driven into the guard with both hands and the axe is ripped back and down with the
+      beard, opening it. Heavy exhale, head follows the pull.
 ```
 
 ## DIRECTIONAL SPECIALS
 
 ```
 BACKWARD · L1+←
-  □ "Shieldless Step"   DMG 9  | 6/3/12  | defensive: hop back 1.0 with a right-hand cut on the retreat
-  ✕ "Retreating Hook"   DMG 12 | 10/4/14 | hop back 1.0, left axe hooks the opponent's weapon arm (pulls them 0.5 toward him)
-  △ "Whirl Away"        DMG 15 | 14/5/18 | full spin away, both axes out, ends 1.5 further back, knockback 1.0
+  □ "Measured Step"     DMG 9  | 6/3/12  | defensive: hop back 1.0 with a short horizontal cut on the retreat
+  ✕ "Retreating Hook"   DMG 13 | 10/4/14 | hop back 1.0, the beard hooks the weapon arm and pulls the opponent 0.5 forward
+  △ "Whirl Away"        DMG 16 | 14/5/18 | full turning cut away, ends 1.5 further back, knockback 1.0
 
 DOWN · L1+↓
-  □ "Earth Splitter"    DMG 10 | 9/3/14  | low, right axe into the ground, dust burst, hits the feet
-  ✕ "Trip Hook"         DMG 12 | 12/4/16 | low, beard hooks the lead ankle and yanks: knockdown on counter-hit
-  △ "Stomp of the North" DMG 16 | 16/4/22 | low, knockdown, left foot stomps then both axes drop on the grounded target
+  □ "Earth Splitter"    DMG 10 | 9/3/14  | low, the head slams into the ground, dust burst, hits the feet
+  ✕ "Trip Hook"         DMG 13 | 12/4/16 | low, the beard hooks the lead ankle and yanks: knockdown on counter-hit
+  △ "Stomp of the North" DMG 17 | 16/4/22 | low, knockdown, a stomp then the axe drops on the grounded target
 
 OVERHEAD · L1+↑
-  □ "Hammer Fall"       DMG 10 | 10/3/14 | overhead (anti-duck), single right axe from above
-  ✕ "Twin Fall"         DMG 14 | 13/4/18 | overhead, both axes, pierce 10
-  △ "Mountain Breaker"  DMG 20 | 22/5/26 | overhead, unblockable, slowest move he has, huge wind-up with a step
+  □ "Hammer Fall"       DMG 11 | 10/3/14 | overhead (anti-duck), short vertical chop from the shoulder
+  ✕ "Twin Fall"         DMG 15 | 13/4/18 | overhead, pierce 10, chop with a full step in
+  △ "Mountain Breaker"  DMG 22 | 22/5/26 | overhead, unblockable, the slowest move: the axe goes behind the back first
 
 FORWARD / CHARGED · L1+→
-  □ "Charging Cleave"   DMG 12→18 | 10/4/16 | charged (hold up to 40 f for +6 dmg and pierce 20), step-in cut
-  ✕ "Bull Rush"         DMG 14 | 12/6/18 | moves 2.0, armor, shoulder check that staggers (hitstun 24) and sets up a throw
-  △ "Ragnarök Spin"     DMG 8×3 | 16/(4+4+4)/24 | charged, multi-hit, moves 1.0, the old spinning slash made into a special
+  □ "Charging Cleave"   DMG 13→19 | 10/4/16 | charged (hold up to 40 f for +6 dmg and pierce 20), step-in cut
+  ✕ "Bull Rush"         DMG 14 | 12/6/18 | moves 2.0, armor, shoulder-and-haft check that staggers (hitstun 24)
+  △ "Ragnarök Spin"     DMG 9×3 | 16/(4+4+4)/24 | charged, multi-hit, moves 1.0, three turning cuts on the long haft
 ```
 
 ## GRAPPLING
@@ -146,36 +155,33 @@ FORWARD / CHARGED · L1+→
 ```
 OFFENSIVE THROW · R1 — "Hook and Haul"
 DMG 14 | STA 14 | 8/2/20 | KB 2.0 | knockdown
-ANIM: right axe beard goes over the opponent's shoulder and hooks the neck, Bjorn pivots
-      and hauls them past him onto the ground. Grab range 1.6.
+ANIM: the beard goes over the opponent's shoulder and hooks the neck; Bjorn pivots and hauls them past
+      him onto the ground with both hands. Grab range 1.8.
 
 DEFENSIVE THROW · R1+← — "Viking Toss"
 DMG 10 | STA 12 | 6/2/22 | KB 2.5 | knockdown, counter-throw (only from block or parry)
-ANIM: catches the incoming arm with the left axe beard, steps through and throws them
-      over the hip.
+ANIM: the haft catches the incoming arm, a step through and a hip throw over the haft.
 
 TACKLE · L2+↓+△ — "Shield Wall Breaker"
 DMG 12 | STA 55 | 12/6/24 | KB 2.0 | moves 2.5, interrupts attacks, knockdown, target invulnerable on standup
-ANIM: axes dropped to the sides, full sprint tackle, shoulder into the chest, both go down,
-      Bjorn rolls up first.
+ANIM: axe held across the chest like a bar, full sprint tackle, both go down, Bjorn rolls up first.
 
 TAKEDOWN · L2+↓+✕+□ — "Ground and Pound"
 DMG 6+6+8 (20) | STA 30 | 10/—/30 | knockdown
-ANIM: leg trip into a mount, two axe-hammer strikes with the butts of the handles, then a
-      push off. Opponent gets up at 1.5 units.
+ANIM: leg trip with the haft into a mount, two strikes with the butt ring, then a push off.
 ```
 
 ## SIGNATURE · L1+L2+R1+R2 — "Ironside's Wrath"
 
 ```
 DAMAGE 30% of opponent max HP | STA 60 | SEQUENCE HIGH → LOW
-FIRST HIT (HIGH)   26/4/—: twin horizontal cut at head height, right then left half a beat
-                   behind. If it lands → full combo. If blocked/dashed → second hit.
-SECOND HIT (LOW)   8/4/24 after the first: drops the stance and reverses both axes into a
-                   low scything cut at the knees. If it lands → full combo.
-FULL COMBO         Beard hooks the lead leg and rips it out (knockdown), Bjorn steps onto
-                   the chest, raises both axes and drives them down. Camera: low angle,
-                   hit-stop 8 f on the final blow, then the opponent is pushed 2 units away.
+FIRST HIT (HIGH)   26/4/—: a full two-handed horizontal cut at head height with the whole body behind
+                   it. If it lands → full combo. If blocked/dashed → second hit.
+SECOND HIT (LOW)   8/4/24 after the first: the cut is reversed into a low scything cut at the knees
+                   without stopping. If it lands → full combo.
+FULL COMBO         The beard hooks the lead leg and rips it out (knockdown), Bjorn steps onto the chest,
+                   raises the axe over his head and drives it down. Camera: low angle, hit-stop 8 f on
+                   the final blow, then the opponent is pushed 2 units away.
 MISS               Both defended: Bjorn is left in a 30 f recovery, fully punishable.
 ```
 

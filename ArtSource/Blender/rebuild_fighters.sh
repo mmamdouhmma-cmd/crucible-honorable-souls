@@ -19,9 +19,8 @@ for n in $chars; do
   fi
   case $n in
     Bjorn)
-      W=("$C/Bjorn/Weapons/Bjorn_Axe.fbx:R_Hand:0" "$C/Bjorn/Weapons/Bjorn_Axe.fbx:L_Hand:1") ;;
+      W=("$C/Bjorn/Weapons/Bjorn_Axe.fbx:R_Hand:0" "none:L_Hand:0") ;;   # one big two-handed axe, left fist for the haft
     Miyamoto)
-      "$B" -b --python "$S/build_katana.py" -- "$C/Miyamoto/Weapons" Miyamoto_Katana 0.57 0.12 2>&1 | grep -E "BUILD-OK|Error|Traceback" || true
       W=("$C/Miyamoto/Weapons/Miyamoto_Katana.fbx:R_Hand:0" "none:L_Hand:0") ;;
   esac
   echo "== $n: attach weapons + fists"

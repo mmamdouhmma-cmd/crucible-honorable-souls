@@ -27,8 +27,11 @@ fbm = os.path.join(OUT_DIR, NAME + ".fbm")
 os.makedirs(fbm, exist_ok=True)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
-bpy.ops.import_scene.gltf(filepath=SRC)
-mesh = next(o for o in bpy.data.objects if o.type == 'MESH')
+if SRC.lower().endswith((".glb", ".gltf")):
+    bpy.ops.import_scene.gltf(filepath=SRC)
+else:
+    bpy.ops.wm.fbx_import(filepath=SRC)
+mesh = max((o for o in bpy.data.objects if o.type == 'MESH'), key=lambda o: len(o.data.vertices))
 for o in list(bpy.data.objects):
     if o is not mesh and o.type != 'MESH':
         bpy.data.objects.remove(o)
@@ -71,9 +74,12 @@ def radial90(sel):
 z0 = co[:, 2].min()
 top_r = radial90(co[co[:, 2] > z0 + 0.85 * L])
 bot_r = radial90(co[co[:, 2] < z0 + 0.15 * L])
+def xext_band(sel):
+    return (sel[:, 0].max() - sel[:, 0].min()) if len(sel) else 0.0
+top_x = xext_band(co[co[:, 2] > z0 + 0.85 * L]); bot_x = xext_band(co[co[:, 2] < z0 + 0.15 * L])
 if EDGE == "curve":
-    # sword: the tsuba/handle end is the wide end and must be at the BOTTOM
-    if top_r > bot_r:
+    # sword: the handle end is THICK (tsuka + tsuba) where the blade is thin; it must be at the BOTTOM
+    if top_x > bot_x:
         co[:, 2] *= -1; co[:, 1] *= -1
         print(f"{NAME}: flipped so the tip is at +Z (end radii top {top_r:.3f} bottom {bot_r:.3f})")
 else:
@@ -140,11 +146,29 @@ for node in mat.node_tree.nodes:
         for link in node.outputs[0].links:
             imgs[link.to_socket.name] = node.image
         nm = node.image.name.lower()
-        if nm.startswith("color"): imgs["color"] = node.image
+        if nm.startswith("color") or "basecolor" in nm: imgs["color"] = node.image
         elif nm.startswith("orm"): imgs["orm"] = node.image
-        elif nm.startswith("normal"): imgs["normal"] = node.image
+        elif "normal" in nm: imgs["normal"] = node.image
+        elif "metallic" in nm: imgs["metal"] = node.image
+        elif "roughness" in nm: imgs["rough"] = node.image
+# Tripo FBX packages ship separate maps in a .fbm folder next to the file (basecolor/metallic/roughness/normal)
+if SRC.lower().endswith(".fbx"):
+    import glob
+    for d in glob.glob(os.path.join(os.path.dirname(SRC), "*.fbm")):
+        for fp in os.listdir(d):
+            lo = fp.lower()
+            key = "color" if "basecolor" in lo else "normal" if "normal" in lo else "metal" if "metallic" in lo else "rough" if "roughness" in lo else None
+            if key:
+                imgs[key] = bpy.data.images.load(os.path.join(d, fp))   # the node-linked images often carry no pixels
 
+import shutil
 def save(img, path, colorspace):
+    # images that came from files on disk (Tripo .fbm maps) are copied as-is, keeping their extension
+    src = bpy.path.abspath(img.filepath) if img.filepath else ""
+    if src and os.path.exists(src) and not img.is_dirty:
+        dst = os.path.splitext(path)[0] + os.path.splitext(src)[1].lower().replace(".jpeg", ".jpg")
+        shutil.copy2(src, dst)
+        return
     img.colorspace_settings.name = colorspace
     img.filepath_raw = path
     img.file_format = 'PNG'
@@ -154,6 +178,17 @@ if "color" in imgs:
     save(imgs["color"], os.path.join(fbm, NAME + "_basecolor.png"), 'sRGB')
 if "normal" in imgs:
     save(imgs["normal"], os.path.join(fbm, NAME + "_normal.png"), 'Non-Color')
+if "orm" not in imgs and "metal" in imgs and "rough" in imgs:
+    met, rough = imgs["metal"], imgs["rough"]
+    met.colorspace_settings.name = 'Non-Color'; rough.colorspace_settings.name = 'Non-Color'
+    w, h = met.size
+    if rough.size[0] != w or rough.size[1] != h: rough.scale(w, h)
+    a = np.array(met.pixels[:], dtype=np.float32).reshape(h, w, 4)
+    r = np.array(rough.pixels[:], dtype=np.float32).reshape(h, w, 4)
+    out = np.empty_like(a); out[..., 0] = a[..., 0]; out[..., 1] = 1.0; out[..., 2] = 0.0; out[..., 3] = 1.0 - r[..., 0]
+    m = bpy.data.images.new(NAME + "_mask", w, h, alpha=True); m.colorspace_settings.name = 'Non-Color'
+    m.pixels[:] = out.ravel().tolist()
+    save(m, os.path.join(fbm, NAME + "_mask.png"), 'Non-Color')
 if "orm" in imgs:
     orm = imgs["orm"]; orm.colorspace_settings.name = 'Non-Color'
     w, h = orm.size

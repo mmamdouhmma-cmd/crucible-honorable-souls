@@ -15,7 +15,7 @@ guard meter, parry and signature are not implemented yet and are listed here as 
 
 | # | Fighter | Archetype | Weapons (separate meshes) | Health | Armor | Dmg | Move spd | Atk spd | Weight |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Bjorn Ironside | Aggressive rushdown | Twin bearded axes (R + L) | 90 | 15 | 115 | 45 | 100 | 1.10 |
+| 1 | Bjorn Ironside | Aggressive rushdown | Two-handed Dane axe (right hand low, left hand high on the haft) | 90 | 15 | 115 | 45 | 100 | 1.10 |
 | 2 | Miyamoto Musashi | Fast duelist / counter | Katana (R), wakizashi (sheathed L hip, signature only) | 85 | 10 | 100 | 50 | 115 | 0.85 |
 | 3 | Saladin | Balanced combo master | Scimitar (R), round shield (L), push kicks | 105 | 20 | 100 | 40 | 105 | 1.00 |
 | 4 | Karen Moorehead | Skirmisher / range hybrid | Dagger (R), longbow (L, swapped in), quiver | 95 | 12 | 90 | 46 | 110 | 0.90 |
@@ -33,7 +33,7 @@ needs a Krea T-pose sheet before his model can be generated.
 ```yaml
 CHARACTER: Bjorn Ironside
 ARCHETYPE: Aggressive Rushdown
-WEAPON: Twin bearded axes (one per hand; the template said two-handed battle axe, the
+WEAPON: Two-handed Dane axe (switched from twin axes on 2026-10-12; the
         concept art and the current in-game model both show two one-handed axes, so twin
         axes it is)
 ORIGIN: Scandinavia, 9th Century

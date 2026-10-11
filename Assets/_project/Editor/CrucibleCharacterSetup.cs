@@ -17,6 +17,16 @@ public static class CrucibleCharacterSetup
 {
     const float TargetHeight = 2.9f;   // world units, matches the previous fighters (~1.75 m at 0.6 m/unit)
 
+    // Vertical offset of the model child under the Player root, in root-local units, so the animated feet rest
+    // on the floor (y = 0). The roots sit where the physics capsule lands (P1 0.20, P2 0.75 world) and the
+    // Humanoid idle puts the feet a little below the rest pose; measured in Play mode on 2026-10-12 as the
+    // renderer-bounds minimum: Bjorn 0.136 world under root scale 4, Miyamoto 0.623 under root scale 3.
+    static readonly System.Collections.Generic.Dictionary<string, float> GroundOffset = new System.Collections.Generic.Dictionary<string, float>
+    {
+        { "Bjorn", -0.136f / 4f },
+        { "Miyamoto", -0.623f / 3f },
+    };
+
     [MenuItem("Crucible/Characters/Rebuild Player1 (Bjorn new body)")]
     public static void RebuildP1() => Rebuild("Player1", "Bjorn");
 
@@ -87,7 +97,8 @@ public static class CrucibleCharacterSetup
         float h = bounds.size.y / Mathf.Max(player.transform.lossyScale.y, 1e-4f) * 1f; // height in root-local units at child scale 1
         float childScale = TargetHeight / Mathf.Max(bounds.size.y, 1e-4f);
         inst.transform.localScale = Vector3.one * childScale;
-        Debug.Log($"{charName}: model height {bounds.size.y:F3} world units at child scale 1 under root scale {player.transform.lossyScale.y}; child scale set to {childScale:F3} for {TargetHeight} units");
+        if (GroundOffset.TryGetValue(charName, out float gy)) inst.transform.localPosition = new Vector3(0f, gy, 0f);
+        Debug.Log($"{charName}: model height {bounds.size.y:F3} world units at child scale 1 under root scale {player.transform.lossyScale.y}; child scale set to {childScale:F3} for {TargetHeight} units, ground offset {inst.transform.localPosition.y:F3}");
 
         // 4. animators
         foreach (var a in inst.GetComponentsInChildren<Animator>(true)) a.enabled = false;

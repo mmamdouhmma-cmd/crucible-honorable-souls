@@ -138,10 +138,10 @@ for wpath, hand, flip in WEAPONS:
     wobj.name = f"{name}_{os.path.splitext(os.path.basename(wpath))[0].split('_',1)[-1]}_{hand[0]}"
     grip, thumb, palm, along, pts = hand_frame(hand)
     make_fist(hand, grip, thumb, palm, along)
-    # weapon local axes: +Z handle -> thumb direction (head toward the thumb), +Y edge -> -along (away from fingers)
-    # so X = Y x Z = (-along) x thumb
+    # weapon local axes: +Z handle -> thumb direction (head toward the thumb), +Y edge -> +along, the way the
+    # knuckles point (a blade or axe bit cuts in the direction the fingers point, not toward the wrist)
     zax = thumb
-    yax = -along
+    yax = along
     xax = yax.cross(zax).normalized()
     R = Matrix((xax, yax, zax)).transposed()   # columns = local axes in world
     M = Matrix.Translation(grip) @ R.to_4x4()
