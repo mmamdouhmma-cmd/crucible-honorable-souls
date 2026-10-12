@@ -71,6 +71,15 @@
   "core_end": 65,
   "peak_speed_m_per_frame": 0.2314
  },
+ "great sword slash (3)": {
+  "first": 1,
+  "last": 56,
+  "fps": 30,
+  "peak": 24,
+  "core_start": 1,
+  "core_end": 41,
+  "peak_speed_m_per_frame": 0.1497
+ },
  "great sword attack": {
   "first": 1,
   "last": 37,
@@ -80,14 +89,14 @@
   "core_end": 23,
   "peak_speed_m_per_frame": 0.1419
  },
- "great sword slash (3)": {
+ "great sword high spin attack": {
   "first": 1,
-  "last": 56,
+  "last": 57,
   "fps": 30,
-  "peak": 24,
+  "peak": 33,
   "core_start": 1,
-  "core_end": 41,
-  "peak_speed_m_per_frame": 0.1497
+  "core_end": 57,
+  "peak_speed_m_per_frame": 0.2164
  },
  "great sword impact": {
   "first": 1,

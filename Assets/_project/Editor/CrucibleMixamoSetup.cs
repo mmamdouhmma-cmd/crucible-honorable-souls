@@ -23,9 +23,11 @@ public static class CrucibleMixamoSetup
     // state name -> (pack, clip file stem, loop)
     static readonly (string state, string pack, string clip, bool loop)[] P1Map =
     {
-        ("Bjorn_Idle",                   "AxePack", "standing idle",                     true),
-        ("Bjorn_Walk_Forward",           "AxePack", "standing walk forward",             true),
-        ("Bjorn_Walk_Back",              "AxePack", "standing walk back",                true),
+        // AxePack2H = the axe pack carry re-posed in Blender (mixamo_carry2h.py) so the weapon sits in front of
+        // the belly where the left-hand IK can reach the haft
+        ("Bjorn_Idle",                   "AxePack2H", "standing idle",                   true),
+        ("Bjorn_Walk_Forward",           "AxePack2H", "standing walk forward",           true),
+        ("Bjorn_Walk_Back",              "AxePack2H", "standing walk back",              true),
         ("Bjorn_Light_Slash",            "AxePack", "standing melee attack horizontal",  false),
         ("Bjorn_Medium_SpinningSlash",   "AxePack", "standing melee attack 360 high",    false),
         ("Bjorn_Heavy_OverheadDoubleAxe","AxePack", "standing melee attack downward",    false),
@@ -37,12 +39,15 @@ public static class CrucibleMixamoSetup
     };
     static readonly (string state, string pack, string clip, bool loop)[] P2Map =
     {
-        ("Miyamoto_Idle",                "GreatSwordPack", "great sword idle",          true),
-        ("Miyamoto_Walk_Forward",        "GreatSwordPack", "great sword walk",          true),
-        ("Miyamoto_Walk_Back",           "GreatSwordPack", "great sword walk (2)",      true),
-        ("Miyamoto_Light_Thrust",        "GreatSwordPack", "great sword slash",         false),
-        ("Miyamoto_Medium_SideSlash",    "GreatSwordPack", "great sword slash (2)",     false),
-        ("Miyamoto_Heavy_Overhead",      "GreatSwordPack", "great sword attack",        false),
+        // locomotion from the (male) axe pack: the Great Sword walk is Maria's, with a feminine sway.
+        ("Miyamoto_Idle",                "AxePack2H", "standing idle",                   true),
+        ("Miyamoto_Walk_Forward",        "AxePack2H", "standing walk forward",           true),
+        ("Miyamoto_Walk_Back",           "AxePack2H", "standing walk back",              true),
+        // strikes chosen by hand-trajectory analysis (swing_analysis / strike_analysis in the session notes):
+        // light = horizontal middle slash, medium = overhead diagonal, heavy = spinning strike
+        ("Miyamoto_Light_Thrust",        "GreatSwordPack", "great sword slash (3)",     false),
+        ("Miyamoto_Medium_SideSlash",    "GreatSwordPack", "great sword slash",         false),
+        ("Miyamoto_Heavy_Overhead",      "GreatSwordPack", "great sword high spin attack", false),
         ("React_Front",                  "GreatSwordPack", "great sword impact",        false),
         ("React_Left",                   "GreatSwordPack", "great sword impact (2)",    false),
         ("React_Right",                  "GreatSwordPack", "great sword impact (3)",    false),

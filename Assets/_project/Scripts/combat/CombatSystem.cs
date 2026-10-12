@@ -545,9 +545,9 @@ public class CombatSystem : MonoBehaviour
     /// </summary>
     private bool IsWithinReach(AttackData attack, Vector3 worldPos, float radius)
     {
-        Transform space = (hitDetector != null && hitDetector.transform.parent != null)
+        Transform space = (hitDetector != null && hitDetector.transform.parent != null && !hitDetector.FollowWeapon)
             ? hitDetector.transform.parent
-            : transform;
+            : transform;   // weapon-mounted detectors live under a hand bone: reach/dodge maths stays in fighter space
         Vector3 local = Quaternion.Inverse(space.rotation) * (worldPos - space.position);
 
         HitDetector.GetLocalBox(attack, out Vector3 center, out Vector3 size);
@@ -581,9 +581,9 @@ public class CombatSystem : MonoBehaviour
     {
         if (!Application.isPlaying || !isAttacking || !hitboxStarted || currentAttack == null) return;
 
-        Transform space = (hitDetector != null && hitDetector.transform.parent != null)
+        Transform space = (hitDetector != null && hitDetector.transform.parent != null && !hitDetector.FollowWeapon)
             ? hitDetector.transform.parent
-            : transform;
+            : transform;   // weapon-mounted detectors live under a hand bone: reach/dodge maths stays in fighter space
         float radius = reachTarget != null ? reachTarget.BodyRadius : 0f;
         HitDetector.GetLocalBox(currentAttack, out Vector3 center, out Vector3 size);
         size.x += radius * 2f;
@@ -608,9 +608,9 @@ public class CombatSystem : MonoBehaviour
 
         // Hitboxes follow the fighter's position and facing but are authored in world
         // units, so draw them without the fighter's model scale.
-        Transform space = (hitDetector != null && hitDetector.transform.parent != null)
+        Transform space = (hitDetector != null && hitDetector.transform.parent != null && !hitDetector.FollowWeapon)
             ? hitDetector.transform.parent
-            : transform;
+            : transform;   // weapon-mounted detectors live under a hand bone: reach/dodge maths stays in fighter space
         Gizmos.matrix = Matrix4x4.TRS(space.position, space.rotation, Vector3.one);
 
         foreach (AttackData attack in attacks)

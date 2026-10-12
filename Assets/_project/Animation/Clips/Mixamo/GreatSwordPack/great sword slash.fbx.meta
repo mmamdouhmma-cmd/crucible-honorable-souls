@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Miyamoto_Light_Thrust
+      name: Miyamoto_Medium_SideSlash
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 3.1249995
-      lastFrame: 38.125
+      firstFrame: 1.8461537
+      lastFrame: 36.846153
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

@@ -19,6 +19,14 @@ public class HitDetector : MonoBehaviour
 
     [SerializeField] private bool debugLogs = true;
 
+    [Tooltip("True when this detector sits on the weapon mesh: the trigger box stays where it was authored " +
+             "(along the blade) and only gets switched on for the active frames, instead of being re-shaped " +
+             "from the attack's HitboxRange/Offset/Size in front of the fighter.")]
+    [SerializeField] private bool followWeapon = false;
+
+    /// <summary>True when the box is the weapon's own blade box rather than the authored front box.</summary>
+    public bool FollowWeapon { get => followWeapon; set => followWeapon = value; }
+
     private void Awake()
     {
         hitbox = GetComponent<BoxCollider>();
@@ -41,7 +49,7 @@ public class HitDetector : MonoBehaviour
         ownerFighter = ownerFighterRef;
         hasHit = false;
 
-        if (attack != null)
+        if (attack != null && !followWeapon)
         {
             GetLocalBox(attack, out Vector3 center, out Vector3 size);
 

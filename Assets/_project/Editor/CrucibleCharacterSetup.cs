@@ -107,6 +107,15 @@ public static class CrucibleCharacterSetup
         Undo.RecordObject(rootAnim, "avatar");
         rootAnim.avatar = avatar;
         rootAnim.Rebind();
+        // IK pass on layer 0 so TwoHandGrip can place the off hand
+        var ac = rootAnim.runtimeAnimatorController as UnityEditor.Animations.AnimatorController;
+        if (ac != null && ac.layers.Length > 0 && !ac.layers[0].iKPass)
+        {
+            var layers = ac.layers; layers[0].iKPass = true; ac.layers = layers; EditorUtility.SetDirty(ac);
+        }
+
+        // 4b. weapon: blade hitbox + off-hand grip socket + two-hand IK
+        SetupWeapon(player, inst, charName, rootAnim);
 
         // 5. materials
         string matDir = $"{charDir}/Materials";
@@ -147,6 +156,91 @@ public static class CrucibleCharacterSetup
 
         UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(player.scene);
         Debug.Log($"{charName}: rebuilt under {playerName}. Renderers: {string.Join(", ", rends.Select(r => r.name))}. Save the scene.");
+    }
+
+    // Blade region of each weapon mesh along its local +Y (grip at the origin, business end at +Y), as a
+    // fraction of the mesh's Y extent where the hitting part starts; and where the off hand holds the haft
+    // (weapon-local Y, file units: a 0.98-tall body).
+    // Both values are fractions of the mesh's Y extent measured from its bottom (butt / kashira), because the
+    // imported mesh is in its own units (the FBX node carries the unit scale), so absolute file units don't apply.
+    static readonly System.Collections.Generic.Dictionary<string, (float bladeStartFrac, float leftGripFrac)> WeaponSpec =
+        new System.Collections.Generic.Dictionary<string, (float, float)>
+    {
+        { "Bjorn_Axe",       (0.62f, 0.50f) },   // 0.70 haft, butt at -0.21: head is the top ~38%; left hand 0.22 above the right (0.43/0.70)
+        { "Miyamoto_Katana", (0.24f, 0.04f) },   // blade starts past the tsuba; left hand near the kashira (0.023/0.57 up from the butt)
+    };
+
+    static void SetupWeapon(GameObject player, GameObject inst, string charName, Animator rootAnim)
+    {
+        var weapon = inst.GetComponentsInChildren<MeshRenderer>(true).FirstOrDefault(r => WeaponSpec.Keys.Any(k => r.name.StartsWith(k)));
+        if (weapon == null) { Debug.LogWarning($"{charName}: no weapon renderer found for the blade hitbox"); return; }
+        var spec = WeaponSpec[WeaponSpec.Keys.First(k => weapon.name.StartsWith(k))];
+        var mf = weapon.GetComponent<MeshFilter>();
+        var b = mf.sharedMesh.bounds;   // weapon-local
+        // The Blender FBX exporter keeps mesh data in Blender axes and puts the axis swap on the node, so the
+        // handle (Blender +Z) is the MESH-LOCAL +Z here, not +Y.
+        float y0 = b.min.z + spec.bladeStartFrac * (b.max.z - b.min.z);
+        var box = weapon.GetComponent<BoxCollider>();
+        if (box == null) box = Undo.AddComponent<BoxCollider>(weapon.gameObject);
+        box.isTrigger = true;
+        box.center = new Vector3(b.center.x, b.center.y, (y0 + b.max.z) * 0.5f);
+        box.size = new Vector3(b.size.x, b.size.y, b.max.z - y0);
+        box.enabled = false;   // HitDetector arms it on the active frames
+        var det = weapon.GetComponent(RuntimeType("HitDetector"));
+        if (det == null) det = Undo.AddComponent(weapon.gameObject, RuntimeType("HitDetector"));
+        var sd = new SerializedObject(det);
+        sd.FindProperty("followWeapon").boolValue = true;
+        sd.ApplyModifiedProperties();
+        // point the CombatSystem at it and park the old front box
+        var combat = player.GetComponent(RuntimeType("CombatSystem"));
+        if (combat != null)
+        {
+            var sc = new SerializedObject(combat);
+            sc.FindProperty("hitDetector").objectReferenceValue = det;
+            sc.ApplyModifiedProperties();
+        }
+        var oldBox = player.transform.Find("Hitbox");
+        if (oldBox != null && oldBox.gameObject.activeSelf) { Undo.RecordObject(oldBox.gameObject, "park hitbox"); oldBox.gameObject.SetActive(false); }
+
+        // off-hand socket: on the haft axis, oriented like the right hand bone (same wrap around the haft)
+        var socket = weapon.transform.Find("LeftGrip");
+        if (socket == null)
+        {
+            var go = new GameObject("LeftGrip");
+            Undo.RegisterCreatedObjectUndo(go, "grip socket");
+            socket = go.transform;
+            socket.SetParent(weapon.transform, false);
+        }
+        float gripY = b.min.z + spec.leftGripFrac * b.size.z;
+        socket.localPosition = new Vector3(b.center.x, b.center.y, gripY);
+        var rightHand = rootAnim.GetBoneTransform(HumanBodyBones.RightHand);
+        socket.rotation = rightHand != null ? rightHand.rotation : weapon.transform.rotation;
+
+        var grip = player.GetComponent(RuntimeType("TwoHandGrip"));
+        if (grip == null) grip = Undo.AddComponent(player, RuntimeType("TwoHandGrip"));
+        var sg = new SerializedObject(grip);
+        sg.FindProperty("leftGrip").objectReferenceValue = socket;
+        sg.ApplyModifiedProperties();
+        Debug.Log($"{charName}: blade box on {weapon.name} z {y0:F4}..{b.max.z:F4} (mesh local), LeftGrip at y {gripY:F4} (mesh units), TwoHandGrip + IK pass set");
+    }
+
+    [MenuItem("Crucible/Debug/Slow motion 15% (toggle on GameMangers)")]
+    public static void ToggleSlowMo()
+    {
+        var gm = GameObject.Find("GameMangers");
+        if (gm == null) { Debug.LogError("GameMangers not found"); return; }
+        var ts = gm.GetComponent(RuntimeType("DebugTimeScale"));
+        if (ts == null) { ts = Undo.AddComponent(gm, RuntimeType("DebugTimeScale")); var so = new SerializedObject(ts); so.FindProperty("timeScale").floatValue = 0.85f; so.ApplyModifiedProperties(); Debug.Log("Slow motion ON (0.85)"); }
+        else { Undo.DestroyObjectImmediate(ts); Debug.Log("Slow motion OFF"); }
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gm.scene);
+    }
+
+    // The Editor asmdef cannot reference the default game assembly, so runtime components are looked up by name.
+    static System.Type RuntimeType(string name)
+    {
+        var t = System.Type.GetType(name + ", Assembly-CSharp");
+        if (t == null) throw new System.Exception("runtime type " + name + " not found in Assembly-CSharp");
+        return t;
     }
 
     static Material BuildFlatMaterial(string matPath, Color color, float metallic, float smoothness)
