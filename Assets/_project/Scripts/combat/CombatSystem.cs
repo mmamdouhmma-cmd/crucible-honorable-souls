@@ -105,7 +105,7 @@ public class CombatSystem : MonoBehaviour
 
         float startupEnd = currentAttack.StartupFrames * BalanceConfig.FRAME_TIME;
         float activeEnd = startupEnd + currentAttack.ActiveFrames * BalanceConfig.FRAME_TIME;
-        float total = currentAttack.GetTotalDuration();
+        float total = currentAttack.GetTotalDuration() + evadedExtraRecovery;
 
         // A blade box only hits where the weapon physically is, so it stays armed a few frames either
         // side of the authored active window (the authored front box was a slab that was always touching).
@@ -187,6 +187,7 @@ public class CombatSystem : MonoBehaviour
     hitboxActive = false;
     hitboxStarted = false;
     swingEvaded = false;
+    evadedExtraRecovery = 0f;
     reachTarget = null;
     currentAttackIsDashCounter = fighter.ConsumeDashCounter();
     if (currentAttackIsDashCounter)
@@ -261,6 +262,30 @@ public class CombatSystem : MonoBehaviour
     }
 
     private static readonly List<PendingHit> pendingHits = new List<PendingHit>();
+
+    // Added to the current attack's total when the opponent dodged it: the attacker stays locked in the
+    // recovery (no turning, no walking) so a well-timed dash leaves them open to the counter.
+    private float evadedExtraRecovery;
+
+    private void MarkEvaded()
+    {
+        swingEvaded = true;
+        if (evadedExtraRecovery <= 0f)
+        {
+            evadedExtraRecovery = BalanceConfig.DODGED_RECOVERY_FRAMES * BalanceConfig.FRAME_TIME;
+            if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {currentAttack.AttackName} was DODGED - +{BalanceConfig.DODGED_RECOVERY_FRAMES} f recovery");
+        }
+    }
+
+    /// <summary>Clears any attack, hitstun and queued hits (new match / return to the menu).</summary>
+    public void ResetForMatch()
+    {
+        if (isAttacking) EndAttack("match reset");
+        inHitstun = false;
+        hitstunTimer = 0f;
+        evadedExtraRecovery = 0f;
+        pendingHits.Clear();
+    }
 
     /// <summary>
     /// Called by <see cref="HitDetector"/> when its trigger overlaps another fighter
@@ -410,6 +435,7 @@ public class CombatSystem : MonoBehaviour
         if (dashOutcome == DashHitOutcome.Evaded || dashOutcome == DashHitOutcome.EvadedNoCounter)
         {
             bool counterAllowed = dashOutcome == DashHitOutcome.Evaded;
+            MarkEvaded();
             target.NotifyEvaded(counterAllowed);
 
             if (debugLogs)
@@ -507,7 +533,7 @@ public class CombatSystem : MonoBehaviour
         if (outcome != DashHitOutcome.Evaded && outcome != DashHitOutcome.EvadedNoCounter) return;
 
         bool counterAllowed = outcome == DashHitOutcome.Evaded;
-        swingEvaded = true;
+        MarkEvaded();
         target.NotifyEvaded(counterAllowed);
 
         if (debugLogs)

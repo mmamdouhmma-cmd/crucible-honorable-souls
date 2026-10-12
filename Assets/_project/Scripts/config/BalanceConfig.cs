@@ -45,6 +45,7 @@ public static class BalanceConfig
     public const float PARRY_WINDOW = 0.15f;        // 9 frames at 60fps
     public const float DASH_IFRAME_DURATION = 0.15f;
     public const float DASH_COUNTER_WINDOW = 0.5f;  // time after a dodge-dash to start a counter attack
+    public const int DODGED_RECOVERY_FRAMES = 18;     // extra recovery (facing locked, no walking) for an attack that was dodged
     public const float PARRY_COUNTER_WINDOW = 0.5f;
     public const float COMBO_INPUT_WINDOW = 0.5f;
     

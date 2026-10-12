@@ -309,6 +309,30 @@ private float lungeTotal;    // distance the lunge covers in all
 private float lungeCovered;  // distance moved so far
 private float lungeDuration; // seconds: startup + half the active window, eased out
 
+/// <summary>Fresh stats, no dash/knockback/block/attack, back on the spawn mark (new match or back to the menu).</summary>
+public void ResetForMatch(Vector3 position, Quaternion rotation)
+{
+    if (fighterData != null) stats = new FighterStats(fighterData.MaxHealth, fighterData.MaxStamina, fighterData.Armor);
+    isDashing = false;
+    dashTimer = 0f;
+    dashCounterTimer = 0f;
+    lastDodgeTime = -1f;
+    knockbackVelocity = Vector3.zero;
+    knockbackTimer = 0f;
+    isBlocking = false;
+    lungeStarted = false;
+    if (combatSystem != null) combatSystem.ResetForMatch();
+    transform.SetPositionAndRotation(position, rotation);
+    if (rb != null) { rb.position = position; rb.rotation = rotation; rb.linearVelocity = Vector3.zero; }
+    Physics.SyncTransforms();
+    facingRight = (playerNumber == 1);
+    if (animator != null && animator.runtimeAnimatorController != null)
+    {
+        animator.SetFloat("MoveSpeed", 0f);
+        if (animatorHasBlocking) animator.SetBool(ANIM_BLOCKING, false);
+    }
+}
+
 private bool InAttackStartup()
 {
     if (combatSystem == null || !combatSystem.IsAttacking || combatSystem.CurrentAttack == null) return false;
@@ -549,6 +573,19 @@ private void HandleDash()
         // Trim the last frame so the dash covers exactly dashDistance, never more
         float frameTime = Mathf.Min(Time.deltaTime, dashDuration - dashTimer);
         dashTimer += Time.deltaTime;
+        // A side dash arcs around the opponent instead of running off on a tangent, so the dodge ends at
+        // the same distance, squared up, ready to counter.
+        if (opponent != null && Mathf.Abs(dashRightAmount) > Mathf.Abs(dashForwardAmount))
+        {
+            Vector3 toOpp = opponent.transform.position - transform.position;
+            toOpp.y = 0f;
+            if (toOpp.sqrMagnitude > 1e-4f)
+            {
+                Vector3 side = Vector3.Cross(Vector3.up, toOpp.normalized);
+                float sign = Vector3.Dot(dashVelocity, side) >= 0f ? 1f : -1f;
+                dashVelocity = side * sign * dashVelocity.magnitude;
+            }
+        }
 
         // Move only as far as the opponent's body; reaching it ends the dash early
         Vector3 step = dashVelocity * frameTime;
