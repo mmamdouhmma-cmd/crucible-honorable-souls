@@ -13,6 +13,12 @@ public static class BalanceConfig
     // authored active window starts and after it ends, because a physical blade is only inside the target for a
     // few frames of a fast swing. One hit per swing still holds; hitstun/damage come from the AttackData.
     public const int WEAPON_ARM_PAD_FRAMES = 5;
+
+    // ATTACK LUNGE: during an attack's startup the fighter closes toward the opponent so the blade lands
+    // at ATTACK_LUNGE_STOP (centre to centre, world units) instead of relying on the stock swing's reach.
+    // Never more than ATTACK_LUNGE_MAX units per attack. AttackData can override both per move.
+    public const float ATTACK_LUNGE_MAX = 1.5f;
+    public const float ATTACK_LUNGE_STOP = 1.7f;
     public const float STAMINA_RECOVERY_PER_SECOND = 15f;          // default; each Fighter can override it in the Inspector
     public const float DEFAULT_HEALTH_REGEN_PER_SECOND = 1f;       // default; each Fighter can override it in the Inspector
     public const float DEFAULT_HEALTH_REGEN_DELAY = 3f;            // seconds after a hit before regen resumes; per-Fighter override

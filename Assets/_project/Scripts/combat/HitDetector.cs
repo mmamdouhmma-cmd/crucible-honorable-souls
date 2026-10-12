@@ -29,7 +29,7 @@ public class HitDetector : MonoBehaviour
 
     [Tooltip("Weapon boxes only: radius of the swept capsule between the blade's position last frame and now, " +
              "so a fast swing cannot pass through the opponent between two physics steps. World units.")]
-    [SerializeField] private float sweepRadius = 0.25f;
+    [SerializeField] private float sweepRadius = 0.35f;
 
     [Tooltip("Weapon boxes only: the blade tip must move at least this fast (world units per second) for a touch " +
              "to count, so a weapon resting against the opponent in the guard does not 'hit' the moment it arms.")]

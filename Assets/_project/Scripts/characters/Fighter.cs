@@ -120,6 +120,9 @@ public class Fighter : MonoBehaviour
     [SerializeField] private float healthRegenDelay = BalanceConfig.DEFAULT_HEALTH_REGEN_DELAY;
     private float healthRegenDelayTimer = 0f;
 
+    [Header("Debug")]
+    [SerializeField] private bool debugLogs = true;
+
     [Header("Facing")]
     [Tooltip("How fast the fighter turns to face the opponent, in degrees per second.")]
     [SerializeField] private float turnSpeed = 720f;
@@ -222,6 +225,7 @@ public class Fighter : MonoBehaviour
         HandleKnockback();
         HandleDash();
         HandleMovement();
+        HandleAttackLunge();
         HandleStaminaRecovery();
         HandleBlock();
         HandleCombatInput();
@@ -300,7 +304,56 @@ public class Fighter : MonoBehaviour
     }
 
     /// <summary>Slides the fighter along the clash knockback for its duration.</summary>
-    private void HandleKnockback()
+    private bool lungeStarted;
+private float lungeSpeed;   // world units per second along the ground toward the opponent
+private float lungeLeft;    // distance still to cover
+
+private bool InAttackStartup()
+{
+    if (combatSystem == null || !combatSystem.IsAttacking || combatSystem.CurrentAttack == null) return false;
+    return combatSystem.AttackTime < combatSystem.CurrentAttack.StartupFrames * BalanceConfig.FRAME_TIME;
+}
+
+/// <summary>
+/// Attack lunge: on the first frame of an attack, work out how far the fighter must close so the blade
+/// lands at the attack's stop distance, then cover it evenly over the startup frames. The stock swings
+/// reach different distances, so without this a strike only connects from point-blank range.
+/// </summary>
+private void HandleAttackLunge()
+{
+    if (combatSystem == null || opponent == null) return;
+    if (!combatSystem.IsAttacking || combatSystem.CurrentAttack == null)
+    {
+        lungeStarted = false;
+        return;
+    }
+    AttackData a = combatSystem.CurrentAttack;
+    float startup = a.StartupFrames * BalanceConfig.FRAME_TIME;
+    if (!lungeStarted)
+    {
+        lungeStarted = true;
+        Vector3 gap = opponent.transform.position - transform.position;
+        gap.y = 0f;
+        float dist = gap.magnitude;
+        lungeLeft = Mathf.Clamp(dist - a.LungeStopDistance, 0f, a.LungeMaxDistance);
+        lungeSpeed = startup > 1e-4f ? lungeLeft / startup : lungeLeft * 60f;
+        if (debugLogs && lungeLeft > 0.01f)
+            Debug.Log($"P{playerNumber}: {a.AttackName} lunge {lungeLeft:0.00} units (gap {dist:0.00} -> {a.LungeStopDistance:0.00}) over {a.StartupFrames} f");
+    }
+    if (lungeLeft <= 0f || IsInHitstun) return;
+    if (combatSystem.AttackTime > startup + BalanceConfig.FRAME_TIME) return; // only through the startup
+    Vector3 toOpp = opponent.transform.position - transform.position;
+    toOpp.y = 0f;
+    if (toOpp.sqrMagnitude < 1e-4f) return;
+    float step = Mathf.Min(lungeLeft, lungeSpeed * Time.deltaTime);
+    // Never closer than the stop distance even if the opponent walked in
+    step = Mathf.Min(step, Mathf.Max(0f, toOpp.magnitude - a.LungeStopDistance));
+    if (step <= 0f) { lungeLeft = 0f; return; }
+    transform.position += toOpp.normalized * step;
+    lungeLeft -= step;
+}
+
+private void HandleKnockback()
     {
         if (knockbackTimer <= 0f) return;
 
@@ -415,7 +468,9 @@ private Fighter FindOpponent()
 private void HandleFacing()
 {
     if (opponent == null) return;
-    if (combatSystem != null && combatSystem.IsAttacking) return;
+    // Facing is locked from the active frames on; during the startup the attacker still squares up so
+    // every strike, however the clip swings, is thrown at the opponent's centre.
+    if (combatSystem != null && combatSystem.IsAttacking && !InAttackStartup()) return;
     float speed = (isDashing || dashCounterTimer > 0f) ? dodgeTurnSpeed : turnSpeed;
 
     Vector3 toOpponent = opponent.transform.position - transform.position;

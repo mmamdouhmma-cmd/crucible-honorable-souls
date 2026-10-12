@@ -115,6 +115,14 @@ public class AttackData : ScriptableObject
     [Tooltip("Width (X) and height (Y) of the hitbox in world units. Its depth comes from Hitbox Range, so Z is ignored.")]
     [SerializeField] private Vector3 hitboxSize = new Vector3(1f, 1f, 1f);
 
+    [Header("Lunge")]
+    [Tooltip("During the startup the attacker steps toward the opponent until they are this far apart (centre to centre, " +
+             "world units), so the strike reaches whatever the clip does. -1 = BalanceConfig.ATTACK_LUNGE_STOP.")]
+    [SerializeField] private float lungeStopDistance = -1f;
+
+    [Tooltip("Farthest the attacker may travel during the lunge, world units. 0 = no lunge, -1 = BalanceConfig.ATTACK_LUNGE_MAX.")]
+    [SerializeField] private float lungeMaxDistance = -1f;
+
     /// <summary>Display name for logs/UI (e.g. "Axe Slash").</summary>
     public string AttackName => attackName;
 
@@ -165,6 +173,12 @@ public class AttackData : ScriptableObject
 
     /// <summary>Local-space size of the hitbox.</summary>
     public Vector3 HitboxSize => hitboxSize;
+
+    /// <summary>Centre-to-centre distance the lunge closes to (world units).</summary>
+    public float LungeStopDistance => lungeStopDistance < 0f ? BalanceConfig.ATTACK_LUNGE_STOP : lungeStopDistance;
+
+    /// <summary>Longest lunge this attack may make (world units, 0 = none).</summary>
+    public float LungeMaxDistance => lungeMaxDistance < 0f ? BalanceConfig.ATTACK_LUNGE_MAX : lungeMaxDistance;
 
     /// <summary>
     /// Total attack duration in seconds (startup + active + recovery, at 60fps).

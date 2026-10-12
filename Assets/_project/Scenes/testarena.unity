@@ -297,6 +297,7 @@ MonoBehaviour:
   staminaRecoveryPerSecond: 10
   healthRegenPerSecond: 1
   healthRegenDelay: 3
+  debugLogs: 1
   turnSpeed: 720
   dodgeTurnSpeed: 2000
   dustEffects: 0
@@ -341,6 +342,11 @@ MonoBehaviour:
   rotationWeight: 0
   leftElbowHint: {fileID: 2114265666}
   socketName: LeftGrip
+  strikeReachWeight: 1
+  bladeOverlap: 0.5
+  targetHeight: 0.55
+  maxArmExtension: 0.95
+  reachFadeOut: 0.12
 --- !u!114 &126681669
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2428,7 +2434,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HitDetector
   debugLogs: 1
   followWeapon: 1
-  sweepRadius: 0.25
+  sweepRadius: 0.35
   minBladeSpeed: 3
 --- !u!65 &1167820292
 BoxCollider:
@@ -3580,6 +3586,7 @@ MonoBehaviour:
   staminaRecoveryPerSecond: 13
   healthRegenPerSecond: 1
   healthRegenDelay: 3
+  debugLogs: 1
   turnSpeed: 720
   dodgeTurnSpeed: 2000
   dustEffects: 0
@@ -3628,6 +3635,11 @@ MonoBehaviour:
   rotationWeight: 0
   leftElbowHint: {fileID: 1225674234}
   socketName: LeftGrip
+  strikeReachWeight: 1
+  bladeOverlap: 0.5
+  targetHeight: 0.55
+  maxArmExtension: 0.95
+  reachFadeOut: 0.12
 --- !u!114 &1967802161
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3849,7 +3861,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HitDetector
   debugLogs: 1
   followWeapon: 1
-  sweepRadius: 0.25
+  sweepRadius: 0.35
   minBladeSpeed: 3
 --- !u!65 &1994759406
 BoxCollider:
