@@ -26,6 +26,10 @@ public class WeaponAim : MonoBehaviour
     private Fighter me, opponent;
     private Vector3 bladeAxisLocal = Vector3.forward;
     private float fadeTimer;
+    // The weapon is a static child of the hand bone: the Animator never rewrites its local rotation, so any
+    // aim applied one frame would stay. Remember the rest orientation and restore it before each aim.
+    private Quaternion restLocalRotation;
+    private bool hasRest;
 
     private void Awake()
     {
@@ -38,6 +42,7 @@ public class WeaponAim : MonoBehaviour
         }
         if (weapon != null)
         {
+            restLocalRotation = weapon.localRotation; hasRest = true;
             var box = weapon.GetComponent<BoxCollider>();
             if (box != null)
             {
@@ -50,6 +55,7 @@ public class WeaponAim : MonoBehaviour
     private void LateUpdate()
     {
         if (weapon == null || combat == null) return;
+        if (hasRest) weapon.localRotation = restLocalRotation;   // undo last frame's aim before computing this one
         if (opponent == null)
         {
             foreach (var f in FindObjectsByType<Fighter>(FindObjectsSortMode.None)) if (f != me) { opponent = f; break; }
