@@ -13,7 +13,7 @@ public class WeaponAim : MonoBehaviour
     [Tooltip("Weapon transform (the object carrying the blade HitDetector). Found automatically if empty.")]
     [SerializeField] private Transform weapon;
     [Tooltip("Largest correction applied, degrees.")]
-    [Range(0f, 90f)] [SerializeField] private float maxAngle = 55f;
+    [Range(0f, 150f)] [SerializeField] private float maxAngle = 110f;
     [Tooltip("Aim weight during the active frames; startup ramps to this, recovery fades from it.")]
     [Range(0f, 1f)] [SerializeField] private float weight = 1f;
     [Tooltip("Height on the opponent the blade aims at, as a fraction of their body height (0 feet, 1 head).")]
@@ -81,10 +81,15 @@ public class WeaponAim : MonoBehaviour
         w *= weight;
         if (w <= 1e-3f) return;
 
-        var cap = opponent.GetComponent<CapsuleCollider>();
-        Vector3 target = cap != null
-            ? new Vector3(cap.bounds.center.x, Mathf.Lerp(cap.bounds.min.y, cap.bounds.max.y, targetHeight), cap.bounds.center.z)
-            : opponent.transform.position + Vector3.up * 1.5f;
+        // Aim at the visible body, not the physics capsule (that one is 2.1 x root scale tall, well above the head).
+        var rend = opponent.GetComponentInChildren<SkinnedMeshRenderer>();
+        Vector3 target;
+        if (rend != null)
+        {
+            var b = rend.bounds;
+            target = new Vector3(opponent.transform.position.x, Mathf.Lerp(b.min.y, b.max.y, targetHeight), opponent.transform.position.z);
+        }
+        else target = opponent.transform.position + Vector3.up * 1.5f;
         Vector3 grip = weapon.position;
         Vector3 current = weapon.TransformDirection(bladeAxisLocal).normalized;
         Vector3 desired = (target - grip).normalized;

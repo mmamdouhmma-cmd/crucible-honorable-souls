@@ -178,7 +178,7 @@ Transform:
   m_GameObject: {fileID: 126681661}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -2, y: 0.46, z: -0.32}
+  m_LocalPosition: {x: -0.13888574, y: 0.89270914, z: -0.20368037}
   m_LocalScale: {x: 4, y: 4, z: 4}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -271,7 +271,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 126681661}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d7b0fd566ff5074481dd13f8021c624, type: 3}
   m_Name: 
@@ -354,7 +354,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponAim
   weapon: {fileID: 1167820288}
-  maxAngle: 55
+  maxAngle: 120
   weight: 1
   targetHeight: 0.55
   fadeOut: 0.12
@@ -3554,7 +3554,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1967802153}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d7b0fd566ff5074481dd13f8021c624, type: 3}
   m_Name: 
@@ -3641,7 +3641,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponAim
   weapon: {fileID: 1994759402}
-  maxAngle: 55
+  maxAngle: 120
   weight: 1
   targetHeight: 0.55
   fadeOut: 0.12

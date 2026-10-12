@@ -18,6 +18,7 @@ SRC, OUT = args[0], args[1]
 FWD = float(args[2]) if len(args) > 2 else 0.32
 HEIGHT = float(args[3]) if len(args) > 3 else -0.08
 SIDE = float(args[4]) if len(args) > 4 else 0.05
+LOCK = len(args) > 5 and args[5] == "lock"   # lock: REPLACE the arm keys with the solved pose (constant, chest-relative) instead of offsetting
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.wm.fbx_import(filepath=SRC)
@@ -75,17 +76,18 @@ def fcurves():
             cb = strip.channelbag(slot)
             if cb: return cb.fcurves
     return []
-for bone, delta in ((uarm, du), (farm, df)):
+for bone, delta, base in ((uarm, du, base_u), (farm, df, base_f)):
     path = f'pose.bones["{bone.name}"].rotation_quaternion'
     curves = [fc for fc in fcurves() if fc.data_path == path]
     if len(curves) != 4:
         print("no quaternion curves for", bone.name, len(curves)); continue
     curves.sort(key=lambda c: c.array_index)
     n = len(curves[0].keyframe_points)
+    locked = base @ delta
     for i in range(n):
         q = Quaternion((curves[0].keyframe_points[i].co.y, curves[1].keyframe_points[i].co.y,
                         curves[2].keyframe_points[i].co.y, curves[3].keyframe_points[i].co.y))
-        q2 = q @ delta
+        q2 = locked if LOCK else (q @ delta)
         for k in range(4):
             curves[k].keyframe_points[i].co.y = q2[k]
     for c in curves: c.update()

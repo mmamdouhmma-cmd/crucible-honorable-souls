@@ -13,6 +13,9 @@ public class BladeTrace : MonoBehaviour
     public bool onlyWhileAttacking = true;
 
     private Fighter me, other;
+
+    /// <summary>Forget the cached fighters so a changed fighterName takes effect.</summary>
+    public void Retarget() { me = null; other = null; box = null; cap = null; combat = null; }
     private CombatSystem combat;
     private BoxCollider box;
     private CapsuleCollider cap;
@@ -42,6 +45,9 @@ public class BladeTrace : MonoBehaviour
         float tipXZ = Vector2.Distance(new Vector2(tip.x, tip.z), new Vector2(c.x, c.z));
         float baseXZ = Vector2.Distance(new Vector2(bse.x, bse.z), new Vector2(c.x, c.z));
         float capR = cap.radius * Mathf.Max(cap.transform.lossyScale.x, cap.transform.lossyScale.z);
-        Debug.Log($"BLADE {me.name} f{Time.frameCount} t={combat.AttackTime:F3} active={combat.IsInActivePhase()} armed={box.enabled} tipXZ={tipXZ:F2} baseXZ={baseXZ:F2} capR={capR:F2} tipY={tip.y:F2} baseY={bse.y:F2} dt={Time.deltaTime:F3}");
+        // tip in the attacker's frame: lateral (+ = attacker's right) and forward distance from the root
+        Vector3 rel = tip - me.transform.position;
+        float lat = Vector3.Dot(rel, me.transform.right), fw = Vector3.Dot(rel, me.transform.forward);
+        Debug.Log($"BLADE {me.name} f{Time.frameCount} t={combat.AttackTime:F3} active={combat.IsInActivePhase()} armed={box.enabled} tipXZ={tipXZ:F2} baseXZ={baseXZ:F2} capR={capR:F2} tipY={tip.y:F2} baseY={bse.y:F2} lat={lat:+0.00} fwd={fw:0.00} dt={Time.deltaTime:F3}");
     }
 }

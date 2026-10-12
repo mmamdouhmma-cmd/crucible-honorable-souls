@@ -63,7 +63,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Medium_SideSlash
-  m_Speed: 2.6923075
+  m_Speed: 1.7999998
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4285678766431743475}
@@ -318,7 +318,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Light_Thrust
-  m_Speed: 4
+  m_Speed: 1.7999998
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 6154231440653099939}
@@ -912,7 +912,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Heavy_Overhead
-  m_Speed: 3.1875002
+  m_Speed: 1.7999997
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}

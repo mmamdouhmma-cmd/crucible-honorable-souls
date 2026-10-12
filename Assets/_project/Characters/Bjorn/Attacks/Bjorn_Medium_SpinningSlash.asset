@@ -16,15 +16,16 @@ MonoBehaviour:
   damage: 13
   staminaCost: 18
   armorPierce: 2
-  startupFrames: 10
+  startupFrames: 12
   activeFrames: 5
-  recoveryFrames: 14
+  recoveryFrames: 28
   animationClip: {fileID: -203655887218126122, guid: eb004d33400bbe6418d3c34ff1214435, type: 3}
   animatorTriggerName: MediumAttack
   attackHeight: 1
   attackType: 1
   comesFrom: 2
   hitSide: 1
+  hitstunFrames: 12
   hitboxRange: 3.5
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1.8, y: 1, z: 1}

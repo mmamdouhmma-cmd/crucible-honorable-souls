@@ -75,7 +75,6 @@ public class HitDetector : MonoBehaviour
         }
 
         hitbox.enabled = true;
-        hasLast = false;
 
         if (debugLogs)
         {
@@ -99,18 +98,18 @@ public class HitDetector : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        if (!followWeapon || hitbox == null || !hitbox.enabled || hasHit || owner == null) return;
+        if (!followWeapon || hitbox == null) return;
+        // Track the blade every frame (armed or not) so the speed and the sweep are valid on the very first
+        // armed frame: a crossing that happens on the arming frame was lost otherwise.
         BladeSegment(out Vector3 bse, out Vector3 tip);
         if (hasLast)
-        {
             tipSpeed = Time.deltaTime > 1e-5f ? (tip - lastTip).magnitude / Time.deltaTime : 0f;
-            if (tipSpeed >= minBladeSpeed)
-            {
-                TrySweep(lastTip, tip);
-                TrySweep(lastBase, bse);
-                TrySweep((lastBase + lastTip) * 0.5f, (bse + tip) * 0.5f);
-                TrySweep(bse, tip);
-            }
+        if (hitbox.enabled && !hasHit && owner != null && hasLast && tipSpeed >= minBladeSpeed)
+        {
+            TrySweep(lastTip, tip);
+            TrySweep(lastBase, bse);
+            TrySweep((lastBase + lastTip) * 0.5f, (bse + tip) * 0.5f);
+            TrySweep(bse, tip);
         }
         lastBase = bse; lastTip = tip; hasLast = true;
     }

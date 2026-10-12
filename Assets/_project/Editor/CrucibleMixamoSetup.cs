@@ -89,11 +89,31 @@ public static class CrucibleMixamoSetup
             float hitFrac = (s + a * 0.5f) / total;
             float len = Mathf.Max(ce - cs, 6);
             float start = peak - hitFrac * len;
+            // Measured contact (Animation/Clips/Mixamo/swing_contacts.json: state -> source frame where the weapon TIP
+            // crosses the opponent's line, from BladeTrace) beats the hand-speed peak: the window is re-cut around it
+            // at a fixed playback speed so the contact lands on the hit frame.
+            float contact = ContactFrame(m.state);
+            if (!float.IsNaN(contact))
+            {
+                len = Mathf.Max(ContactSpeed * total * 0.5f, 6f);   // source frames: speed x total/60 s x 30 fps
+                start = contact - hitFrac * len;
+            }
             if (start < first) start = first;
             float end = Mathf.Min(start + len, last);
+            if (end - start < len - 0.5f && !float.IsNaN(contact)) start = Mathf.Max(first, end - len);
             Trims[m.state] = (start, end, total);
-            Debug.Log($"{m.state}: clip {m.clip} frames {first}-{last}, peak {peak}, core {cs}-{ce} -> window {start:F0}-{end:F0} for {total} f (hit at {hitFrac:P0})");
+            Debug.Log($"{m.state}: clip {m.clip} frames {first}-{last}, peak {peak}, core {cs}-{ce}, contact {(float.IsNaN(contact) ? "-" : contact.ToString("F1"))} -> window {start:F1}-{end:F1} for {total} f (hit at {hitFrac:P0})");
         }
+    }
+
+    const float ContactSpeed = 1.8f;   // playback speed used for contact-calibrated windows
+
+    static float ContactFrame(string state)
+    {
+        string p = $"{MixamoDir}/swing_contacts.json";
+        if (!File.Exists(p)) return float.NaN;
+        var mm = System.Text.RegularExpressions.Regex.Match(File.ReadAllText(p), "\"" + System.Text.RegularExpressions.Regex.Escape(state) + "\"\\s*:\\s*(-?[0-9.]+)");
+        return mm.Success ? float.Parse(mm.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : float.NaN;
     }
 
     [MenuItem("Crucible/Animation/Use Mixamo packs")]
