@@ -107,6 +107,7 @@ public static class CrucibleMixamoSetup
     }
 
     const float ContactSpeed = 1.8f;   // playback speed used for contact-calibrated windows
+    const float ReactDuration = 0.45f; // seconds a get-hit flinch takes on screen
 
     // swing_contacts.json entries are either  "State": 28.7  or  "State": {"contact": 36.2, "speed": 2.0}
     static float ContactFrame(string state) => ContactField(state, "contact", float.NaN);
@@ -238,6 +239,13 @@ public static class CrucibleMixamoSetup
             if (clip == null) { Debug.LogError($"{m.clip}: clip {m.state} failed to import"); continue; }
             cs.state.motion = clip;
             cs.state.speed = 1f;
+            // flinches: the Mixamo reacts are 1-2 s stagger performances; play each over ReactDuration so the
+            // stun reads as a hit, not a collapse
+            if (m.state.StartsWith("React_") && clip.length > 0.05f)
+            {
+                cs.state.speed = clip.length / ReactDuration;
+                Debug.Log($"{m.state}: react {clip.length:F2}s fitted to {ReactDuration:F2}s, speed x{cs.state.speed:F2}");
+            }
             if (m.state.StartsWith("Dash_") && clip.length > 0.05f)
             {
                 cs.state.speed = clip.length / Mathf.Max(dashDuration, 0.05f);

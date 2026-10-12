@@ -163,6 +163,9 @@ public static class CrucibleCharacterSetup
     // (weapon-local Y, file units: a 0.98-tall body).
     // Both values are fractions of the mesh's Y extent measured from its bottom (butt / kashira), because the
     // imported mesh is in its own units (the FBX node carries the unit scale), so absolute file units don't apply.
+    /// <summary>Fraction of the blade length the hit box extends past the tip (user tuning 2026-10-12: strikes felt a little short).</summary>
+    const float BladeTipExtend = 0.15f;
+
     static readonly System.Collections.Generic.Dictionary<string, (float bladeStartFrac, float leftGripFrac)> WeaponSpec =
         new System.Collections.Generic.Dictionary<string, (float, float)>
     {
@@ -183,8 +186,11 @@ public static class CrucibleCharacterSetup
         var box = weapon.GetComponent<BoxCollider>();
         if (box == null) box = Undo.AddComponent<BoxCollider>(weapon.gameObject);
         box.isTrigger = true;
-        box.center = new Vector3(b.center.x, b.center.y, (y0 + b.max.z) * 0.5f);
-        box.size = new Vector3(b.size.x, b.size.y, b.max.z - y0);
+        // The hit volume runs BladeTipExtend past the real tip: strikes read as landing a touch before the model
+        // actually touches, and the swept detection has margin at the end of the reach.
+        float tipExtend = BladeTipExtend * (b.max.z - y0);
+        box.center = new Vector3(b.center.x, b.center.y, (y0 + b.max.z + tipExtend) * 0.5f);
+        box.size = new Vector3(b.size.x, b.size.y, b.max.z - y0 + tipExtend);
         box.enabled = false;   // HitDetector arms it on the active frames
         var det = weapon.GetComponent(RuntimeType("HitDetector"));
         if (det == null) det = Undo.AddComponent(weapon.gameObject, RuntimeType("HitDetector"));

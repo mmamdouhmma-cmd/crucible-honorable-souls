@@ -266,7 +266,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: React_Right
-  m_Speed: 1
+  m_Speed: 2.814815
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -2574073432674217641}
@@ -652,7 +652,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: React_Front
-  m_Speed: 1
+  m_Speed: 1.9259261
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1064447511853331429}
@@ -1044,7 +1044,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: React_Left
-  m_Speed: 1
+  m_Speed: 2.6666667
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 2123287798988331797}

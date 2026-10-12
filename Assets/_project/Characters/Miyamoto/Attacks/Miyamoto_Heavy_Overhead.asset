@@ -25,7 +25,7 @@ MonoBehaviour:
   attackType: 2
   comesFrom: 0
   hitSide: 0
-  hitstunFrames: 12
+  hitstunFrames: 10
   hitboxRange: 2.8
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 0.8, y: 1.6, z: 1}
