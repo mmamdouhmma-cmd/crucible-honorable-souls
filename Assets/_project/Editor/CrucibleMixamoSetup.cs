@@ -56,8 +56,8 @@ public static class CrucibleMixamoSetup
         ("React_Front",                  "GreatSwordPack", "great sword impact",        false),
         ("React_Left",                   "GreatSwordPack", "great sword impact (2)",    false),
         ("React_Right",                  "GreatSwordPack", "great sword impact (3)",    false),
-        ("Block_Hold",                   "GreatSwordPack", "great sword blocking",      true),
-        ("Block_Impact",                 "GreatSwordPack", "great sword blocking (2)",  false),
+        ("Block_Hold",                   "GreatSwordPack", "great sword blocking (2)",  true),    // the static guard; "great sword blocking" is the raise and looped visibly
+        ("Block_Impact",                 "AxePack",        "standing block react large", false),  // jolt that settles back into the guard (the sword pack has none)
         ("Dash_Forward",                 "AxePack2H", "standing walk forward",           false),
         ("Dash_Back",                    "AxePack2H", "standing walk back",              false),
         ("Dash_Left",                    "AxePack2H", "standing walk left",              false),
