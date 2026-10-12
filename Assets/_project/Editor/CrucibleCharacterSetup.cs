@@ -216,11 +216,29 @@ public static class CrucibleCharacterSetup
         var rightHand = rootAnim.GetBoneTransform(HumanBodyBones.RightHand);
         socket.rotation = rightHand != null ? rightHand.rotation : weapon.transform.rotation;
 
+        // elbow hint: left of and behind the chest (root-local; root scale ~3-4) so the left arm bends outward
+        var hint = player.transform.Find("LeftElbowHint");
+        if (hint == null)
+        {
+            var hgo = new GameObject("LeftElbowHint");
+            Undo.RegisterCreatedObjectUndo(hgo, "elbow hint");
+            hint = hgo.transform; hint.SetParent(player.transform, false);
+        }
+        hint.localPosition = new Vector3(-0.35f, 0.42f, -0.25f);   // root faces +z, so -x is the fighter's left; raised to chest, behind
+
         var grip = player.GetComponent(RuntimeType("TwoHandGrip"));
         if (grip == null) grip = Undo.AddComponent(player, RuntimeType("TwoHandGrip"));
         var sg = new SerializedObject(grip);
         sg.FindProperty("leftGrip").objectReferenceValue = socket;
+        sg.FindProperty("leftElbowHint").objectReferenceValue = hint;
         sg.ApplyModifiedProperties();
+
+        // weapon aim toward the opponent during strikes
+        var aim = player.GetComponent(RuntimeType("WeaponAim"));
+        if (aim == null) aim = Undo.AddComponent(player, RuntimeType("WeaponAim"));
+        var sa = new SerializedObject(aim);
+        sa.FindProperty("weapon").objectReferenceValue = weapon.transform;
+        sa.ApplyModifiedProperties();
         Debug.Log($"{charName}: blade box on {weapon.name} z {y0:F4}..{b.max.z:F4} (mesh local), LeftGrip at y {gripY:F4} (mesh units), TwoHandGrip + IK pass set");
     }
 

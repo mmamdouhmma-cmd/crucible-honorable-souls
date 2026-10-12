@@ -26,8 +26,12 @@ public static class CrucibleTripoArenas
         if (name == null)
         {
             foreach (var go in GameObject.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None).Where(g => (g.name.StartsWith("AlQuds_Arena") || g.name == "Arena_AlQuds") && g.scene.IsValid()))
+            {
                 go.SetActive(true);
-            Debug.Log("Al-Quds arena back on.");
+                AddBoundsRect(go, 29f, 19f);   // courtyard is 64 x 44; keep fighters off the arcade and the steps
+            }
+            if (ground != null) ground.SetActive(true);
+            Debug.Log("Al-Quds arena back on (with boundary walls).");
             return;
         }
         if (ground != null && ground.activeSelf) { Undo.RecordObject(ground, "arena"); ground.SetActive(false); }
@@ -75,12 +79,86 @@ public static class CrucibleTripoArenas
             Debug.LogWarning($"{name}: no flat floor found; left with its lowest point on y = 0");
         GameObjectUtility.SetStaticEditorFlags(inst, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ReflectionProbeStatic);
 
+        // invisible boundary ring at the edge of the flat floor so fighters stay on it
+        AddBoundsRing(inst, FloorRadius(inst, floorY));
+
         // material
         string matDir = $"{Root}/{name}";
         var mat = BuildMaterial($"{Root}/{name}/{name}.fbm", name.ToLower(), $"{matDir}/{name}.mat");
         foreach (var r in rends) { Undo.RecordObject(r, "arena material"); r.sharedMaterial = mat; }
         UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(inst.scene);
         Debug.Log($"{name} placed: scale {scale:F2}, {ArenaWidth} wide, floor at the centre found at local y {floorY:F2} and moved to y = 0 (arena y = {inst.transform.position.y:F2}).");
+    }
+
+    /// <summary>Radius (from the world origin) that still contains 85% of the flat floor's area at floorY (post-move, floor is at 0).</summary>
+    static float FloorRadius(GameObject inst, float floorYBeforeMove)
+    {
+        var samples = new System.Collections.Generic.List<(float r, float a)>();
+        foreach (var mf in inst.GetComponentsInChildren<MeshFilter>(true))
+        {
+            var mesh = mf.sharedMesh; if (mesh == null || !mesh.isReadable) continue;
+            var v = mesh.vertices; var tris = mesh.triangles; var m = mf.transform.localToWorldMatrix;
+            for (int i = 0; i + 2 < tris.Length; i += 3)
+            {
+                Vector3 a = m.MultiplyPoint3x4(v[tris[i]]), b = m.MultiplyPoint3x4(v[tris[i + 1]]), c = m.MultiplyPoint3x4(v[tris[i + 2]]);
+                Vector3 n = Vector3.Cross(b - a, c - a); float area = n.magnitude * 0.5f;
+                if (area < 1e-6f || n.y / n.magnitude < 0.9f) continue;
+                float y = (a.y + b.y + c.y) / 3f;
+                if (Mathf.Abs(y) > 0.3f) continue;                 // the floor sits at y = 0 after the move
+                Vector3 ctr = (a + b + c) / 3f;
+                samples.Add((new Vector2(ctr.x, ctr.z).magnitude, area));
+            }
+        }
+        if (samples.Count == 0) return 20f;
+        samples.Sort((p, q) => p.r.CompareTo(q.r));
+        float total = samples.Sum(s => s.a), acc = 0f;
+        foreach (var s in samples) { acc += s.a; if (acc >= total * 0.85f) return s.r; }
+        return samples[samples.Count - 1].r;
+    }
+
+    /// <summary>Ring of thin, tall, invisible box colliders around the fight floor (child "Bounds").</summary>
+    public static void AddBoundsRing(GameObject parent, float radius, int segments = 28, float height = 8f)
+    {
+        var old = parent.transform.Find("Bounds");
+        if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
+        var root = new GameObject("Bounds");
+        Undo.RegisterCreatedObjectUndo(root, "bounds");
+        root.transform.SetParent(parent.transform, true);
+        root.transform.position = Vector3.zero; root.transform.rotation = Quaternion.identity; root.transform.localScale = Vector3.one;
+        float seg = 2f * Mathf.PI * radius / segments;
+        for (int i = 0; i < segments; i++)
+        {
+            float ang = i * 2f * Mathf.PI / segments;
+            var go = new GameObject($"Bound_{i:00}");
+            go.transform.SetParent(root.transform, false);
+            go.transform.position = new Vector3(Mathf.Cos(ang) * radius, height * 0.5f, Mathf.Sin(ang) * radius);
+            go.transform.rotation = Quaternion.LookRotation(new Vector3(-Mathf.Cos(ang), 0f, -Mathf.Sin(ang)));
+            var bc = go.AddComponent<BoxCollider>();
+            bc.size = new Vector3(seg * 1.15f, height, 0.5f);
+        }
+        root.transform.SetParent(parent.transform, true);
+        Debug.Log($"bounds ring: radius {radius:F1}, {segments} segments");
+    }
+
+    /// <summary>Rectangle of four invisible walls (child "Bounds") for the Al-Quds courtyard.</summary>
+    public static void AddBoundsRect(GameObject parent, float halfX, float halfZ, float height = 8f)
+    {
+        var old = parent.transform.Find("Bounds");
+        if (old != null) Undo.DestroyObjectImmediate(old.gameObject);
+        var root = new GameObject("Bounds");
+        Undo.RegisterCreatedObjectUndo(root, "bounds");
+        root.transform.SetParent(parent.transform, true);
+        root.transform.position = Vector3.zero; root.transform.rotation = Quaternion.identity; root.transform.localScale = Vector3.one;
+        var walls = new[] { (new Vector3(halfX, 0, 0), new Vector3(0.5f, height, halfZ * 2)), (new Vector3(-halfX, 0, 0), new Vector3(0.5f, height, halfZ * 2)),
+                            (new Vector3(0, 0, halfZ), new Vector3(halfX * 2, height, 0.5f)), (new Vector3(0, 0, -halfZ), new Vector3(halfX * 2, height, 0.5f)) };
+        int i = 0;
+        foreach (var (pos, size) in walls)
+        {
+            var go = new GameObject($"Bound_{i++}");
+            go.transform.SetParent(root.transform, false);
+            go.transform.position = pos + Vector3.up * height * 0.5f;
+            go.AddComponent<BoxCollider>().size = size;
+        }
     }
 
     /// <summary>World height of the largest flat upward-facing area (0.25-unit bins, area-weighted).</summary>

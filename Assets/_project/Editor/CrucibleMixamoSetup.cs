@@ -29,8 +29,8 @@ public static class CrucibleMixamoSetup
         ("Bjorn_Walk_Forward",           "AxePack2H", "standing walk forward",           true),
         ("Bjorn_Walk_Back",              "AxePack2H", "standing walk back",              true),
         ("Bjorn_Light_Slash",            "AxePack", "standing melee attack horizontal",  false),
-        ("Bjorn_Medium_SpinningSlash",   "AxePack", "standing melee attack 360 high",    false),
-        ("Bjorn_Heavy_OverheadDoubleAxe","AxePack", "standing melee attack downward",    false),
+        ("Bjorn_Medium_SpinningSlash",   "AxePack2H", "standing melee attack 360 high",  false),   // arms re-posed: axe extended at chest, body spins
+        ("Bjorn_Heavy_OverheadDoubleAxe","AxePack2H", "standing melee attack downward",  false),   // yawed 25 deg right so the chop lands on the centre line
         ("React_Front",                  "AxePack", "standing react large gut",          false),
         ("React_Left",                   "AxePack", "standing react large from left",    false),
         ("React_Right",                  "AxePack", "standing react large from right",   false),
