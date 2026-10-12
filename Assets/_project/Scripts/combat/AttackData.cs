@@ -39,6 +39,9 @@ public enum AttackOrigin
 /// Which side the defender is struck from, seen from the defender. Authored per attack
 /// and used to pick the get-hit animation. Straight covers overheads and thrusts.
 /// </summary>
+/// <summary>How the weapon aim may correct a strike: see AttackData.aimMode.</summary>
+public enum AimMode { Full, YawOnly, Off }
+
 public enum HitSide
 {
     Straight,
@@ -115,6 +118,15 @@ public class AttackData : ScriptableObject
     [Tooltip("Width (X) and height (Y) of the hitbox in world units. Its depth comes from Hitbox Range, so Z is ignored.")]
     [SerializeField] private Vector3 hitboxSize = new Vector3(1f, 1f, 1f);
 
+    [Header("Aim")]
+    [Tooltip("How WeaponAim corrects the blade during this attack. Full: point the blade at the opponent's chest (thrusts, " +
+             "level cuts). YawOnly: only turn it left/right onto the centre line, keep the clip's pitch (overheads, chops: " +
+             "a vertical cut must stay vertical). Off: leave the clip alone (spins).")]
+    [SerializeField] private AimMode aimMode = AimMode.Full;
+
+    [Tooltip("Largest aim correction in degrees for this attack. -1 = the WeaponAim component's own cap.")]
+    [SerializeField] private float aimMaxAngle = -1f;
+
     [Header("Lunge")]
     [Tooltip("During the startup the attacker steps toward the opponent until they are this far apart (centre to centre, " +
              "world units), so the strike reaches whatever the clip does. -1 = BalanceConfig.ATTACK_LUNGE_STOP.")]
@@ -173,6 +185,10 @@ public class AttackData : ScriptableObject
 
     /// <summary>Local-space size of the hitbox.</summary>
     public Vector3 HitboxSize => hitboxSize;
+
+    public AimMode AimMode => aimMode;
+    /// <summary>Aim cap for this attack, or -1 to use the component's.</summary>
+    public float AimMaxAngle => aimMaxAngle;
 
     /// <summary>Centre-to-centre distance the lunge closes to (world units).</summary>
     public float LungeStopDistance => lungeStopDistance < 0f ? BalanceConfig.ATTACK_LUNGE_STOP : lungeStopDistance;

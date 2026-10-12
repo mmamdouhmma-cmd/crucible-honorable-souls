@@ -305,8 +305,9 @@ public class Fighter : MonoBehaviour
 
     /// <summary>Slides the fighter along the clash knockback for its duration.</summary>
     private bool lungeStarted;
-private float lungeSpeed;   // world units per second along the ground toward the opponent
-private float lungeLeft;    // distance still to cover
+private float lungeTotal;    // distance the lunge covers in all
+private float lungeCovered;  // distance moved so far
+private float lungeDuration; // seconds: startup + half the active window, eased out
 
 private bool InAttackStartup()
 {
@@ -328,29 +329,32 @@ private void HandleAttackLunge()
         return;
     }
     AttackData a = combatSystem.CurrentAttack;
-    float startup = a.StartupFrames * BalanceConfig.FRAME_TIME;
     if (!lungeStarted)
     {
         lungeStarted = true;
         Vector3 gap = opponent.transform.position - transform.position;
         gap.y = 0f;
         float dist = gap.magnitude;
-        lungeLeft = Mathf.Clamp(dist - a.LungeStopDistance, 0f, a.LungeMaxDistance);
-        lungeSpeed = startup > 1e-4f ? lungeLeft / startup : lungeLeft * 60f;
-        if (debugLogs && lungeLeft > 0.01f)
-            Debug.Log($"P{playerNumber}: {a.AttackName} lunge {lungeLeft:0.00} units (gap {dist:0.00} -> {a.LungeStopDistance:0.00}) over {a.StartupFrames} f");
+        lungeTotal = Mathf.Clamp(dist - a.LungeStopDistance, 0f, a.LungeMaxDistance);
+        lungeCovered = 0f;
+        lungeDuration = (a.StartupFrames + a.ActiveFrames * 0.5f) * BalanceConfig.FRAME_TIME;
+        lungeTotal = Mathf.Min(lungeTotal, BalanceConfig.ATTACK_LUNGE_MAX_SPEED * lungeDuration);
+        if (debugLogs && lungeTotal > 0.01f)
+            Debug.Log($"P{playerNumber}: {a.AttackName} lunge {lungeTotal:0.00} units (gap {dist:0.00} -> {a.LungeStopDistance:0.00}) over {lungeDuration:0.00}s");
     }
-    if (lungeLeft <= 0f || IsInHitstun) return;
-    if (combatSystem.AttackTime > startup + BalanceConfig.FRAME_TIME) return; // only through the startup
+    if (lungeTotal <= 0f || lungeCovered >= lungeTotal || IsInHitstun) return;
     Vector3 toOpp = opponent.transform.position - transform.position;
     toOpp.y = 0f;
     if (toOpp.sqrMagnitude < 1e-4f) return;
-    float step = Mathf.Min(lungeLeft, lungeSpeed * Time.deltaTime);
+    // Ease-out: fast off the mark, settling into the strike (quadratic), so it reads as a step, not a slide.
+    float u = lungeDuration > 1e-4f ? Mathf.Clamp01(combatSystem.AttackTime / lungeDuration) : 1f;
+    float wanted = lungeTotal * (1f - (1f - u) * (1f - u));
+    float step = wanted - lungeCovered;
     // Never closer than the stop distance even if the opponent walked in
     step = Mathf.Min(step, Mathf.Max(0f, toOpp.magnitude - a.LungeStopDistance));
-    if (step <= 0f) { lungeLeft = 0f; return; }
+    if (step <= 0f) return;
     transform.position += toOpp.normalized * step;
-    lungeLeft -= step;
+    lungeCovered += step;
 }
 
 private void HandleKnockback()

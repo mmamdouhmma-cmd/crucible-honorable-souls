@@ -1,9 +1,9 @@
 {
- "_comment": "source frame (30 fps) where the weapon TIP crosses the opponent's centre line in front, measured with BladeTrace at 8% speed on 2026-10-12; CrucibleMixamoSetup re-cuts each window around it",
+ "_comment": "source frame (30 fps) where the weapon TIP crosses the opponent's centre line in front, measured with BladeTrace at 8% speed (2026-10-12); CrucibleMixamoSetup re-cuts each window around it. An object form adds the playback speed: {\"contact\": f, \"speed\": s}",
  "Bjorn_Light_Slash": 28.7,
  "Bjorn_Medium_SpinningSlash": 23.4,
- "Bjorn_Heavy_OverheadDoubleAxe": 27.0,
+ "Bjorn_Heavy_OverheadDoubleAxe": 21.5,
  "Miyamoto_Light_Thrust": 28.1,
  "Miyamoto_Medium_SideSlash": 21.3,
- "Miyamoto_Heavy_Overhead": 36.2
+ "Miyamoto_Heavy_Overhead": {"contact": 36.2, "speed": 2.0}
 }

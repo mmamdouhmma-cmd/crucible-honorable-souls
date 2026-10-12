@@ -17,8 +17,10 @@ public static class BalanceConfig
     // ATTACK LUNGE: during an attack's startup the fighter closes toward the opponent so the blade lands
     // at ATTACK_LUNGE_STOP (centre to centre, world units) instead of relying on the stock swing's reach.
     // Never more than ATTACK_LUNGE_MAX units per attack. AttackData can override both per move.
-    public const float ATTACK_LUNGE_MAX = 1.5f;
+    public const float ATTACK_LUNGE_MAX = 0.9f;
     public const float ATTACK_LUNGE_STOP = 1.7f;
+    // Average lunge speed cap (units/s): a short-startup light steps less than a heavy, instead of jumping.
+    public const float ATTACK_LUNGE_MAX_SPEED = 4f;
     public const float STAMINA_RECOVERY_PER_SECOND = 15f;          // default; each Fighter can override it in the Inspector
     public const float DEFAULT_HEALTH_REGEN_PER_SECOND = 1f;       // default; each Fighter can override it in the Inspector
     public const float DEFAULT_HEALTH_REGEN_DELAY = 3f;            // seconds after a hit before regen resumes; per-Fighter override

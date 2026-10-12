@@ -90,13 +90,33 @@ public class WeaponAim : MonoBehaviour
             target = new Vector3(opponent.transform.position.x, Mathf.Lerp(b.min.y, b.max.y, targetHeight), opponent.transform.position.z);
         }
         else target = opponent.transform.position + Vector3.up * 1.5f;
+        var atk = combat.CurrentAttack;
+        AimMode mode = atk != null ? atk.AimMode : AimMode.Full;
+        if (mode == AimMode.Off) return;
+        float cap = atk != null && atk.AimMaxAngle >= 0f ? atk.AimMaxAngle : maxAngle;
         Vector3 grip = weapon.position;
         Vector3 current = weapon.TransformDirection(bladeAxisLocal).normalized;
         Vector3 desired = (target - grip).normalized;
-        float ang = Vector3.Angle(current, desired);
-        if (ang < 0.5f) return;
-        float applied = Mathf.Min(ang, maxAngle) * w;
-        Quaternion rot = Quaternion.AngleAxis(applied, Vector3.Cross(current, desired).normalized);
+        float ang, applied;
+        Quaternion rot;
+        if (mode == AimMode.YawOnly)
+        {
+            // Turn the blade about the vertical axis only, so a chop stays a chop but lands on the centre line.
+            Vector3 c = current; c.y = 0f;
+            Vector3 d = desired; d.y = 0f;
+            if (c.sqrMagnitude < 1e-4f || d.sqrMagnitude < 1e-4f) return;
+            ang = Vector3.SignedAngle(c.normalized, d.normalized, Vector3.up);
+            if (Mathf.Abs(ang) < 0.5f) return;
+            applied = Mathf.Clamp(ang, -cap, cap) * w;
+            rot = Quaternion.AngleAxis(applied, Vector3.up);
+        }
+        else
+        {
+            ang = Vector3.Angle(current, desired);
+            if (ang < 0.5f) return;
+            applied = Mathf.Min(ang, cap) * w;
+            rot = Quaternion.AngleAxis(applied, Vector3.Cross(current, desired).normalized);
+        }
         weapon.rotation = rot * weapon.rotation;
         if (debugLogs) Debug.Log($"{name} aim: off by {ang:F0} deg, applied {applied:F0} (w {w:F2})");
     }

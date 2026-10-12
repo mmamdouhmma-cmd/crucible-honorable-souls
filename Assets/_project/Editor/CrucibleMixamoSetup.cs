@@ -30,7 +30,7 @@ public static class CrucibleMixamoSetup
         ("Bjorn_Walk_Back",              "AxePack2H", "standing walk back",              true),
         ("Bjorn_Light_Slash",            "AxePack", "standing melee attack horizontal",  false),
         ("Bjorn_Medium_SpinningSlash",   "AxePack2H", "standing melee attack 360 high",  false),   // arms re-posed: axe extended at chest, body spins
-        ("Bjorn_Heavy_OverheadDoubleAxe","AxePack2H", "standing melee attack downward",  false),   // yawed 25 deg right so the chop lands on the centre line
+        ("Bjorn_Heavy_OverheadDoubleAxe","GreatSwordPack", "great sword slash",       false),   // two-handed overhead that comes down in front; the axe pack's chop bottoms out by the left hip
         ("React_Front",                  "AxePack", "standing react large gut",          false),
         ("React_Left",                   "AxePack", "standing react large from left",    false),
         ("React_Right",                  "AxePack", "standing react large from right",   false),
@@ -95,7 +95,7 @@ public static class CrucibleMixamoSetup
             float contact = ContactFrame(m.state);
             if (!float.IsNaN(contact))
             {
-                len = Mathf.Max(ContactSpeed * total * 0.5f, 6f);   // source frames: speed x total/60 s x 30 fps
+                len = Mathf.Max(ContactSpeedFor(m.state) * total * 0.5f, 6f);   // source frames: speed x total/60 s x 30 fps
                 start = contact - hitFrac * len;
             }
             if (start < first) start = first;
@@ -108,12 +108,22 @@ public static class CrucibleMixamoSetup
 
     const float ContactSpeed = 1.8f;   // playback speed used for contact-calibrated windows
 
-    static float ContactFrame(string state)
+    // swing_contacts.json entries are either  "State": 28.7  or  "State": {"contact": 36.2, "speed": 2.0}
+    static float ContactFrame(string state) => ContactField(state, "contact", float.NaN);
+    static float ContactSpeedFor(string state) => ContactField(state, "speed", ContactSpeed);
+
+    static float ContactField(string state, string field, float fallback)
     {
         string p = $"{MixamoDir}/swing_contacts.json";
-        if (!File.Exists(p)) return float.NaN;
-        var mm = System.Text.RegularExpressions.Regex.Match(File.ReadAllText(p), "\"" + System.Text.RegularExpressions.Regex.Escape(state) + "\"\\s*:\\s*(-?[0-9.]+)");
-        return mm.Success ? float.Parse(mm.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : float.NaN;
+        if (!File.Exists(p)) return fallback;
+        string text = File.ReadAllText(p);
+        string key = "\"" + System.Text.RegularExpressions.Regex.Escape(state) + "\"\\s*:\\s*";
+        var num = System.Text.RegularExpressions.Regex.Match(text, key + "(-?[0-9.]+)");
+        if (num.Success) return field == "contact" ? float.Parse(num.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : fallback;
+        var obj = System.Text.RegularExpressions.Regex.Match(text, key + "\\{([^}]*)\\}");
+        if (!obj.Success) return fallback;
+        var f = System.Text.RegularExpressions.Regex.Match(obj.Groups[1].Value, "\"" + field + "\"\\s*:\\s*(-?[0-9.]+)");
+        return f.Success ? float.Parse(f.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : fallback;
     }
 
     [MenuItem("Crucible/Animation/Use Mixamo packs")]

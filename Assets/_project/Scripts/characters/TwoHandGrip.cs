@@ -22,7 +22,7 @@ public class TwoHandGrip : MonoBehaviour
     [Header("Strike reach")]
     [Tooltip("During an attack, pull the weapon hand toward the opponent so the blade's middle reaches their chest, " +
              "whatever the stock swing does. 0 = off. The weapon aim then points the blade; together every strike is central.")]
-    [Range(0f, 1f)] [SerializeField] private float strikeReachWeight = 1f;
+    [Range(0f, 1f)] [SerializeField] private float strikeReachWeight = 0f;
     [Tooltip("Fraction of the blade length placed past the target point (0.5 = the blade's middle lands on the chest).")]
     [Range(0f, 1f)] [SerializeField] private float bladeOverlap = 0.5f;
     [Tooltip("Height on the opponent's body the strike reaches for (fraction of body height).")]
