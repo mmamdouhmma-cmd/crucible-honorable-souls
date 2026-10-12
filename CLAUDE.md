@@ -209,3 +209,4 @@ where the `.rsp` files are built from the csproj's `DefineConstants`, `HintPath`
   - **Bjorn spin** measured in game: hip yaw completes to within ~15° of forward by the exit (the clip itself settles at −10°); it was never a 270° reset in this build. `BladeTrace` now logs `stateT` and `hipYaw`.
   - `scratchpad clip_curves.py` (Blender headless): per-frame hip yaw + right-hand fwd/right/up/speed for any Mixamo FBX; used to pick clips.
   - Verified at 2.4 units, 8% speed: all six HIT, feet on the floor.
+- (2026-10-12, eighth pass) User: the spin dealt damage on the press, before the axe came round. `Bjorn_Medium_SpinningSlash` contact moved from the first pass (23.4) to the sweep after the rotation (38.0) and the AttackData re-cut 28/5/12 (45 f, hit at 68%) so the window still starts at the wind-up (10.6–51.1). Traced: the hit lands ~0.45–0.55 s after the press with the hips ~275° round, at both 2.0 and 2.4 units.
