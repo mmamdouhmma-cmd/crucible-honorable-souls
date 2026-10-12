@@ -32,6 +32,22 @@ public class InputManager : MonoBehaviour
     private InputData player1Input;
     private InputData player2Input;
     private bool p1PadFlickHeld, p2PadFlickHeld;
+    private bool ai1, ai2;
+    private InputData aiInput1, aiInput2;
+
+    /// <summary>Hand a player over to the AI (its snapshot replaces the human one) or back.</summary>
+    public void SetAi(int player, bool on)
+    {
+        if (player == 1) { ai1 = on; aiInput1 = new InputData(); } else { ai2 = on; aiInput2 = new InputData(); }
+    }
+
+    /// <summary>The AI's snapshot for this frame; consumed on the next read so pressed flags fire once.</summary>
+    public void SetAiInput(int player, InputData data)
+    {
+        if (player == 1) aiInput1 = data; else aiInput2 = data;
+    }
+
+    public bool IsAi(int player) => player == 1 ? ai1 : ai2;
 
     private void Awake()
     {
@@ -58,8 +74,10 @@ public class InputManager : MonoBehaviour
             player2Input = new InputData();
             return;
         }
-        player1Input = Read(1, ref p1PadFlickHeld);
-        player2Input = Read(2, ref p2PadFlickHeld);
+        player1Input = ai1 ? aiInput1 : Read(1, ref p1PadFlickHeld);
+        player2Input = ai2 ? aiInput2 : Read(2, ref p2PadFlickHeld);
+        if (ai1) aiInput1 = new InputData();
+        if (ai2) aiInput2 = new InputData();
 
         if (debugLogs)
         {

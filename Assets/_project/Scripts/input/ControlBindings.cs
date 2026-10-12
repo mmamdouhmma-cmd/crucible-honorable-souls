@@ -117,7 +117,9 @@ public class ControlBindings
     {
         var all = Gamepad.all;
         if (all.Count == 0) return null;
-        int index = player == firstPadPlayer ? 0 : 1;
+        int first = firstPadPlayer;
+        if (InputManager.Instance != null && InputManager.Instance.IsAi(first)) first = first == 1 ? 2 : 1;
+        int index = player == first ? 0 : 1;
         return index < all.Count ? all[index] : null;
     }
 

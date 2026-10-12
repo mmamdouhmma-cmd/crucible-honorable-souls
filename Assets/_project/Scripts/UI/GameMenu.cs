@@ -17,7 +17,7 @@ using UnityEngine.UI;
 /// </summary>
 public class GameMenu : MonoBehaviour
 {
-    enum Screen { None, Main, Pause, Settings, Controls, Help, MatchOver }
+    enum Screen { None, Main, Pause, Settings, Controls, Help, MatchOver, AiSelect }
 
     [Serializable]
     class SettingsData
@@ -53,7 +53,17 @@ public class GameMenu : MonoBehaviour
     Screen screen = Screen.None;
     Screen previous = Screen.Main;
     bool inMatch;
+    bool vsAi;
+    AiDifficulty aiDifficulty = AiDifficulty.Moderate;
     float savedTimeScale = 1f;
+
+    void SetAi(bool on)
+    {
+        var ai = AiController.Instance != null ? AiController.Instance : GetComponent<AiController>();
+        if (ai == null && on) ai = gameObject.AddComponent<AiController>();
+        if (ai == null) return;
+        if (on) ai.Activate(aiDifficulty, 2); else ai.Deactivate();
+    }
 
     Fighter[] fighters = new Fighter[0];
     Vector3[] spawnPos;
@@ -122,6 +132,7 @@ public class GameMenu : MonoBehaviour
     public void StartMatch()
     {
         for (int i = 0; i < fighters.Length; i++) fighters[i].ResetForMatch(spawnPos[i], spawnRot[i]);
+        SetAi(vsAi);
         inMatch = true;
         FreezeFighters(false);
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
@@ -147,6 +158,7 @@ public class GameMenu : MonoBehaviour
     void EndMatchToMenu()
     {
         inMatch = false;
+        SetAi(false);
         Time.timeScale = GameSpeed();
         for (int i = 0; i < fighters.Length; i++) fighters[i].ResetForMatch(spawnPos[i], spawnRot[i]);
         FreezeFighters(true);
@@ -245,15 +257,24 @@ public class GameMenu : MonoBehaviour
         {
             case Screen.Main:
                 title.text = "CRUCIBLE"; subtitle.text = "Honorable Souls";
-                items.Add(new Item { label = "Local Play", confirm = StartMatch });
+                items.Add(new Item { label = "Local Play", confirm = () => { vsAi = false; StartMatch(); } });
+                items.Add(new Item { label = "Against AI", confirm = () => Show(Screen.AiSelect) });
                 items.Add(new Item { label = "Controls", confirm = () => Show(Screen.Controls) });
                 items.Add(new Item { label = "Settings", confirm = () => Show(Screen.Settings) });
                 items.Add(new Item { label = "Help", confirm = () => Show(Screen.Help) });
                 items.Add(new Item { label = "Quit", confirm = Quit });
                 footer.text = NavHint();
                 break;
+            case Screen.AiSelect:
+                title.text = "AGAINST AI"; subtitle.text = "You play Player 1 (Bjorn); the AI plays Player 2 (Miyamoto)";
+                items.Add(new Item { label = "Chill", value = () => "slow, sloppy, forgiving", confirm = () => { vsAi = true; aiDifficulty = AiDifficulty.Chill; StartMatch(); } });
+                items.Add(new Item { label = "Moderate", value = () => "reads wind-ups, blocks and dodges half the time", confirm = () => { vsAi = true; aiDifficulty = AiDifficulty.Moderate; StartMatch(); } });
+                items.Add(new Item { label = "Insane", value = () => "reacts in frames, punishes every whiff, counters", confirm = () => { vsAi = true; aiDifficulty = AiDifficulty.Insane; StartMatch(); } });
+                items.Add(new Item { label = "Back", confirm = Back });
+                footer.text = NavHint();
+                break;
             case Screen.Pause:
-                title.text = "PAUSED"; subtitle.text = "";
+                title.text = "PAUSED"; subtitle.text = vsAi ? $"vs AI ({aiDifficulty})" : "";
                 items.Add(new Item { label = "Resume", confirm = Resume });
                 items.Add(new Item { label = "Help", confirm = () => Show(Screen.Help) });
                 items.Add(new Item { label = "Controls", confirm = () => Show(Screen.Controls) });
@@ -262,7 +283,7 @@ public class GameMenu : MonoBehaviour
                 footer.text = NavHint();
                 break;
             case Screen.MatchOver:
-                title.text = winnerNumber > 0 ? $"PLAYER {winnerNumber} WINS" : "DRAW"; subtitle.text = winnerName;
+                title.text = winnerNumber > 0 ? (vsAi ? (winnerNumber == 1 ? "YOU WIN" : "THE AI WINS") : $"PLAYER {winnerNumber} WINS") : "DRAW"; subtitle.text = winnerName;
                 items.Add(new Item { label = "Rematch", confirm = StartMatch });
                 items.Add(new Item { label = "Main Menu", confirm = EndMatchToMenu });
                 footer.text = NavHint();

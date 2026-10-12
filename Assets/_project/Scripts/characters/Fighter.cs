@@ -62,6 +62,8 @@ public class Fighter : MonoBehaviour
     private float dashRightAmount = 0f;   // +1 right, -1 left
     private Vector3 dashStartPosition;    // where the fighter stood when the current dash began
     public bool IsDashing { get { return isDashing; } }
+    /// <summary>True while the counter window after a clean dodge is open.</summary>
+    public bool DashCounterOpen => dashCounterTimer > 0f;
 
     /// <summary>World position this fighter was at when the current dash started (only meaningful while dashing).</summary>
     public Vector3 DashStartPosition => dashStartPosition;

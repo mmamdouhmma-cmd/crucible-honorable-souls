@@ -13,6 +13,9 @@ public static class BalanceConfig
     // authored active window starts and after it ends, because a physical blade is only inside the target for a
     // few frames of a fast swing. One hit per swing still holds; hitstun/damage come from the AttackData.
     public const int WEAPON_ARM_PAD_FRAMES = 5;
+    // Frames longer than this (real seconds) are too coarse for the swept blade test (a thrust can go out and
+    // back inside one frame): on such frames the authored front box judges the active window instead.
+    public const float SLOW_FRAME_SECONDS = 1f / 30f;
 
     // ATTACK LUNGE: during an attack's startup the fighter closes toward the opponent so the blade lands
     // at ATTACK_LUNGE_STOP (centre to centre, world units) instead of relying on the stock swing's reach.

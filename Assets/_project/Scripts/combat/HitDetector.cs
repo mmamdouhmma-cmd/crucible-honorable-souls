@@ -172,6 +172,15 @@ public class HitDetector : MonoBehaviour
         }
     }
 
+    /// <summary>Registers a hit decided outside the physics path (slow-frame fallback). One per swing still holds.</summary>
+    public void ForceHit(Fighter target)
+    {
+        if (hasHit || owner == null || target == null || target == ownerFighter) return;
+        hasHit = true;
+        if (debugLogs) Debug.Log($"Blade hit {target.name} (slow-frame front-box fallback)");
+        owner.OnHit(target);
+    }
+
     /// <summary>Disables the trigger collider so it can no longer register hits.</summary>
     public void Deactivate()
     {

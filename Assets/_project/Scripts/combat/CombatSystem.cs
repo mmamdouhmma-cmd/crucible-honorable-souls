@@ -137,6 +137,20 @@ public class CombatSystem : MonoBehaviour
             return;
         }
 
+        // Slow-frame safety net: when a rendered frame is longer than SLOW_FRAME_SECONDS the blade sweep can
+        // miss a whole thrust, so on those frames the authored front box (fighter space, world units) decides
+        // the authored active window, exactly as the pre-weapon-box system did. Never used at 60 fps.
+        if (hitboxActive && hitDetector != null && hitDetector.FollowWeapon && !hitDetector.HasHit && !swingEvaded &&
+            Time.unscaledDeltaTime > BalanceConfig.SLOW_FRAME_SECONDS && IsInActivePhase())
+        {
+            Fighter opp = fighter != null ? fighter.Opponent : null;
+            if (opp != null && !opp.IsDashing && IsWithinReach(currentAttack, opp.transform.position, opp.BodyRadius))
+            {
+                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: slow frame ({Time.unscaledDeltaTime * 1000f:0} ms) - front box judged {currentAttack.AttackName}");
+                hitDetector.ForceHit(opp);
+            }
+        }
+
         if (hitboxActive && currentAttackTime >= activeEnd)
         {
             bool touched = hitDetector != null && hitDetector.HasHit;

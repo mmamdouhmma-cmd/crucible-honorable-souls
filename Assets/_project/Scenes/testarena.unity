@@ -2690,6 +2690,7 @@ GameObject:
   - component: {fileID: 1348053406}
   - component: {fileID: 1348053407}
   - component: {fileID: 1348053408}
+  - component: {fileID: 1348053409}
   m_Layer: 0
   m_Name: GameMangers
   m_TagString: Untagged
@@ -2752,6 +2753,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 110730a6f3951f7478dc9ec89dcaf8f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameMenu
+--- !u!114 &1348053409
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1348053404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ebdbb4cefb248cc429e6921c8ec8e5f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AiController
+  playerNumber: 2
+  difficulty: 1
+  debugLogs: 0
 --- !u!1 &1416354506 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2550463727306718371, guid: b1adfbeb5d86b314baa0724e899c0fce, type: 3}
