@@ -27,6 +27,18 @@ public class HitDetector : MonoBehaviour
     /// <summary>True when the box is the weapon's own blade box rather than the authored front box.</summary>
     public bool FollowWeapon { get => followWeapon; set => followWeapon = value; }
 
+    [Tooltip("Weapon boxes only: radius of the swept capsule between the blade's position last frame and now, " +
+             "so a fast swing cannot pass through the opponent between two physics steps. World units.")]
+    [SerializeField] private float sweepRadius = 0.25f;
+
+    [Tooltip("Weapon boxes only: the blade tip must move at least this fast (world units per second) for a touch " +
+             "to count, so a weapon resting against the opponent in the guard does not 'hit' the moment it arms.")]
+    [SerializeField] private float minBladeSpeed = 3f;
+
+    private Vector3 lastBase, lastTip;
+    private bool hasLast;
+    private float tipSpeed;
+
     private void Awake()
     {
         hitbox = GetComponent<BoxCollider>();
@@ -63,10 +75,62 @@ public class HitDetector : MonoBehaviour
         }
 
         hitbox.enabled = true;
+        hasLast = false;
 
         if (debugLogs)
         {
             Debug.Log($"Hitbox activated ({(attack != null ? attack.AttackName : "<null>")})");
+        }
+    }
+
+    /// <summary>Blade box ends in world space: the box's local extent along its longest axis.</summary>
+    private void BladeSegment(out Vector3 a, out Vector3 b)
+    {
+        Vector3 s = hitbox.size;
+        Vector3 axis = s.x >= s.y && s.x >= s.z ? Vector3.right : (s.y >= s.z ? Vector3.up : Vector3.forward);
+        float half = Mathf.Max(s.x, s.y, s.z) * 0.5f;
+        a = transform.TransformPoint(hitbox.center - axis * half);
+        b = transform.TransformPoint(hitbox.center + axis * half);
+    }
+
+    /// <summary>
+    /// Weapon boxes: on top of the trigger, sweep a capsule from last frame's blade to this frame's blade
+    /// (both ends), so a swing that crosses the opponent between two frames still registers.
+    /// </summary>
+    private void Update()
+    {
+        if (!followWeapon || hitbox == null || !hitbox.enabled || hasHit || owner == null) return;
+        BladeSegment(out Vector3 bse, out Vector3 tip);
+        if (hasLast)
+        {
+            tipSpeed = Time.deltaTime > 1e-5f ? (tip - lastTip).magnitude / Time.deltaTime : 0f;
+            if (tipSpeed >= minBladeSpeed)
+            {
+                TrySweep(lastTip, tip);
+                TrySweep(lastBase, bse);
+                TrySweep((lastBase + lastTip) * 0.5f, (bse + tip) * 0.5f);
+                TrySweep(bse, tip);
+            }
+        }
+        lastBase = bse; lastTip = tip; hasLast = true;
+    }
+
+    private static readonly Collider[] sweepHits = new Collider[16];
+
+    private void TrySweep(Vector3 a, Vector3 b)
+    {
+        if (hasHit) return;
+        int n = Physics.OverlapCapsuleNonAlloc(a, b, sweepRadius, sweepHits, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            var other = sweepHits[i];
+            if (other == null || other.isTrigger) continue;
+            Fighter f = other.GetComponent<Fighter>() ?? other.GetComponentInParent<Fighter>();
+            if (f == null || f == ownerFighter) continue;
+            hasHit = true;
+            if (debugLogs) Debug.Log($"Blade sweep hit {f.name}");
+            owner.OnHit(f);
+            return;
         }
     }
 
@@ -100,6 +164,13 @@ public class HitDetector : MonoBehaviour
         Gizmos.matrix = transform.localToWorldMatrix;
         Gizmos.color = new Color(1f, 0f, 0f, 0.35f);
         Gizmos.DrawCube(hitbox.center, hitbox.size);
+        if (followWeapon && hasLast)
+        {
+            Gizmos.matrix = Matrix4x4.identity;
+            Gizmos.color = new Color(1f, 0.5f, 0f, 0.6f);
+            Gizmos.DrawLine(lastTip, lastBase);
+            Gizmos.DrawWireSphere(lastTip, sweepRadius);
+        }
     }
 
     /// <summary>Disables the trigger collider so it can no longer register hits.</summary>
@@ -118,6 +189,7 @@ public class HitDetector : MonoBehaviour
         if (hasHit) return;
         if (owner == null) return;
         if (other.isTrigger) return; // only bodies can be hit, not the opponent's own hitbox
+        if (followWeapon && tipSpeed < minBladeSpeed) return; // a resting blade does not hit; the sweep handles the swing
 
         Fighter otherFighter = other.GetComponent<Fighter>();
         if (otherFighter == null)

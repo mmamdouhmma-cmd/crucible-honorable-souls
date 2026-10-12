@@ -107,6 +107,16 @@ public class CombatSystem : MonoBehaviour
         float activeEnd = startupEnd + currentAttack.ActiveFrames * BalanceConfig.FRAME_TIME;
         float total = currentAttack.GetTotalDuration();
 
+        // A blade box only hits where the weapon physically is, so it stays armed a few frames either
+        // side of the authored active window (the authored front box was a slab that was always touching).
+        // One hit per swing still holds, and IsInActivePhase keeps reporting the authored window.
+        if (hitDetector != null && hitDetector.FollowWeapon)
+        {
+            float pad = BalanceConfig.WEAPON_ARM_PAD_FRAMES * BalanceConfig.FRAME_TIME;
+            startupEnd = Mathf.Max(0f, startupEnd - pad);
+            activeEnd = Mathf.Min(total, activeEnd + pad);
+        }
+
         // Activate the hitbox once startup is over. This fires even if a slow frame jumped
         // straight past the active window, so an attack can never skip its hitbox.
         if (!hitboxStarted && currentAttackTime >= startupEnd)
@@ -199,6 +209,9 @@ public class CombatSystem : MonoBehaviour
     /// True while <see cref="currentAttackTime"/> falls within the active-frame window
     /// of <see cref="currentAttack"/>.
     /// </summary>
+    /// <summary>Seconds since the current attack started (0 when not attacking).</summary>
+    public float AttackTime => isAttacking ? currentAttackTime : 0f;
+
     public bool IsInActivePhase()
     {
         if (!isAttacking || currentAttack == null) return false;

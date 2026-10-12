@@ -8,6 +8,11 @@ public static class BalanceConfig
 {
     // ==================== STAMINA ====================
     public const int DEFAULT_MAX_STAMINA = 100;
+
+    // Weapon-mounted hit detection (HitDetector.followWeapon): the blade box is armed this many frames before the
+    // authored active window starts and after it ends, because a physical blade is only inside the target for a
+    // few frames of a fast swing. One hit per swing still holds; hitstun/damage come from the AttackData.
+    public const int WEAPON_ARM_PAD_FRAMES = 5;
     public const float STAMINA_RECOVERY_PER_SECOND = 15f;          // default; each Fighter can override it in the Inspector
     public const float DEFAULT_HEALTH_REGEN_PER_SECOND = 1f;       // default; each Fighter can override it in the Inspector
     public const float DEFAULT_HEALTH_REGEN_DELAY = 3f;            // seconds after a hit before regen resumes; per-Fighter override

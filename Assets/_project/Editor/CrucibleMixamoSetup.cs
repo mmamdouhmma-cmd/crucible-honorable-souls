@@ -36,6 +36,11 @@ public static class CrucibleMixamoSetup
         ("React_Right",                  "AxePack", "standing react large from right",   false),
         ("Block_Hold",                   "AxePack", "standing block idle",               true),
         ("Block_Impact",                 "AxePack", "standing block react large",        false),
+        // dashes = one big step: the first stride (half cycle) of the two-handed walks, fitted to the dash time
+        ("Dash_Forward",                 "AxePack2H", "standing walk forward",           false),
+        ("Dash_Back",                    "AxePack2H", "standing walk back",              false),
+        ("Dash_Left",                    "AxePack2H", "standing walk left",              false),
+        ("Dash_Right",                   "AxePack2H", "standing walk right",             false),
     };
     static readonly (string state, string pack, string clip, bool loop)[] P2Map =
     {
@@ -53,6 +58,10 @@ public static class CrucibleMixamoSetup
         ("React_Right",                  "GreatSwordPack", "great sword impact (3)",    false),
         ("Block_Hold",                   "GreatSwordPack", "great sword blocking",      true),
         ("Block_Impact",                 "GreatSwordPack", "great sword blocking (2)",  false),
+        ("Dash_Forward",                 "AxePack2H", "standing walk forward",           false),
+        ("Dash_Back",                    "AxePack2H", "standing walk back",              false),
+        ("Dash_Left",                    "AxePack2H", "standing walk left",              false),
+        ("Dash_Right",                   "AxePack2H", "standing walk right",             false),
     };
 
     // Attack clips are trimmed to their swing core (measured in Blender: Animation/Clips/Mixamo/swing_trims.json,
@@ -93,9 +102,9 @@ public static class CrucibleMixamoSetup
         Trims.Clear();
         ComputeTrims(P1Map, "Assets/_project/Characters/Bjorn/Attacks");
         ComputeTrims(P2Map, "Assets/_project/Characters/Miyamoto/Attacks");
-        ImportPack("AxePack", P1Map); ImportPack("GreatSwordPack", P2Map);
-        Wire(P1Ctrl, P1Map, "Assets/_project/Characters/Bjorn/Attacks");
-        Wire(P2Ctrl, P2Map, "Assets/_project/Characters/Miyamoto/Attacks");
+        ImportAll(P1Map, P2Map);
+        Wire(P1Ctrl, P1Map, "Assets/_project/Characters/Bjorn/Attacks", "Player1");
+        Wire(P2Ctrl, P2Map, "Assets/_project/Characters/Miyamoto/Attacks", "Player2");
         AssetDatabase.SaveAssets();
         Debug.Log("Mixamo packs wired into P1_Bjorn and P2_Miyamoto. Play to check; Dash_* states keep the custom clips.");
     }
@@ -110,7 +119,7 @@ public static class CrucibleMixamoSetup
             {
                 var st = cs.state;
                 string[] candidates = { $"{CustomDir}/{st.name}.fbx", $"{CustomDir}/{prefix}_{st.name}.fbx" };
-                var clip = candidates.Select(LoadClip).FirstOrDefault(c => c != null);
+                var clip = candidates.Select(p => LoadClip(p)).FirstOrDefault(c => c != null);
                 if (clip == null) { Debug.LogWarning($"{st.name}: no custom clip found"); continue; }
                 st.motion = clip; st.speed = 1f;
             }
@@ -120,51 +129,90 @@ public static class CrucibleMixamoSetup
         Debug.Log("Custom clips restored on both controllers.");
     }
 
-    static void ImportPack(string pack, (string state, string pack, string clip, bool loop)[] map)
+
+    static void ImportPack(string pack, (string state, string pack, string clip, bool loop)[] map) { ImportAll(map); }
+
+    // One importer can hold several clips cut from the same take (walk + dash from one walk file, and the same
+    // file mapped under a P1 and a P2 state name), so entries are grouped by file and written together.
+    static void ImportAll(params (string state, string pack, string clip, bool loop)[][] maps)
     {
-        foreach (var m in map)
+        var byFile = new Dictionary<string, List<(string state, bool loop)>>();
+        foreach (var map in maps)
+            foreach (var m in map)
+            {
+                string path = $"{MixamoDir}/{m.pack}/{m.clip}.fbx";
+                if (!byFile.TryGetValue(path, out var list)) byFile[path] = list = new List<(string, bool)>();
+                if (!list.Any(e => e.state == m.state)) list.Add((m.state, m.loop));
+            }
+        foreach (var kv in byFile)
         {
-            string path = $"{MixamoDir}/{m.pack}/{m.clip}.fbx";
+            string path = kv.Key;
             if (!File.Exists(path)) { Debug.LogError($"missing {path}"); continue; }
             var mi = AssetImporter.GetAtPath(path) as ModelImporter;
             bool dirty = false;
             if (mi.animationType != ModelImporterAnimationType.Human) { mi.animationType = ModelImporterAnimationType.Human; dirty = true; }
             if (mi.avatarSetup != ModelImporterAvatarSetup.CreateFromThisModel) { mi.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel; dirty = true; }
             if (mi.materialImportMode != ModelImporterMaterialImportMode.None) { mi.materialImportMode = ModelImporterMaterialImportMode.None; dirty = true; }
-            var clips = mi.defaultClipAnimations;
-            if (clips.Length == 0) { Debug.LogError($"{path}: no takes"); continue; }
-            var c = clips[0];
-            c.name = m.state;
-            c.loopTime = m.loop;
-            c.loopPose = false;
-            c.lockRootRotation = true;      // bake orientation into the pose
-            c.keepOriginalOrientation = false; // based upon body orientation
-            c.lockRootHeightY = true;       // bake Y
-            c.keepOriginalPositionY = true;
-            c.lockRootPositionXZ = false;   // keep XZ as root motion: not applied by the Animator, so in place
-            c.keepOriginalPositionXZ = false;
-            if (Trims.TryGetValue(m.state, out var t)) { c.firstFrame = t.first; c.lastFrame = t.last; }
+            var takes = mi.defaultClipAnimations;
+            if (takes.Length == 0) { Debug.LogError($"{path}: no takes"); continue; }
+            var take = takes[0];
+            var wanted = new List<ModelImporterClipAnimation>();
+            foreach (var (state, loop) in kv.Value)
+            {
+                var c = new ModelImporterClipAnimation();
+                c.takeName = take.takeName;
+                c.name = state;
+                c.firstFrame = take.firstFrame; c.lastFrame = take.lastFrame;
+                c.loopTime = loop;
+                c.loopPose = false;
+                c.lockRootRotation = true;         // bake orientation into the pose
+                c.keepOriginalOrientation = false; // based upon body orientation
+                c.lockRootHeightY = true;          // bake Y
+                c.keepOriginalPositionY = true;
+                c.lockRootPositionXZ = false;      // XZ stays root motion: not applied by the Animator, so in place
+                c.keepOriginalPositionXZ = false;
+                if (Trims.TryGetValue(state, out var t)) { c.firstFrame = t.first; c.lastFrame = t.last; }
+                else if (state.StartsWith("Dash_"))
+                {   // one stride = the first half of the walk cycle
+                    c.lastFrame = take.firstFrame + (take.lastFrame - take.firstFrame) * 0.5f;
+                }
+                wanted.Add(c);
+            }
             var current = mi.clipAnimations;
-            if (current.Length != 1 || current[0].name != c.name || current[0].loopTime != c.loopTime || current[0].lockRootPositionXZ != c.lockRootPositionXZ
-                || current[0].lockRootRotation != c.lockRootRotation || Mathf.Abs(current[0].firstFrame - c.firstFrame) > 0.01f || Mathf.Abs(current[0].lastFrame - c.lastFrame) > 0.01f)
-            { mi.clipAnimations = new[] { c }; dirty = true; }
+            bool same = current.Length == wanted.Count;
+            for (int i = 0; same && i < wanted.Count; i++)
+            {
+                var a = current[i]; var b = wanted[i];
+                same = a.name == b.name && a.loopTime == b.loopTime && a.lockRootPositionXZ == b.lockRootPositionXZ && a.lockRootRotation == b.lockRootRotation
+                    && Mathf.Abs(a.firstFrame - b.firstFrame) < 0.01f && Mathf.Abs(a.lastFrame - b.lastFrame) < 0.01f;
+            }
+            if (!same) { mi.clipAnimations = wanted.ToArray(); dirty = true; }
             if (dirty) mi.SaveAndReimport();
         }
     }
 
-    static void Wire(string ctrlPath, (string state, string pack, string clip, bool loop)[] map, string attackDir)
+    static void Wire(string ctrlPath, (string state, string pack, string clip, bool loop)[] map, string attackDir, string playerName)
     {
         var ac = AssetDatabase.LoadAssetAtPath<AnimatorController>(ctrlPath);
+        float dashDuration = 0.25f;
+        var playerGo = GameObject.Find(playerName);
+        var fighterComp = playerGo != null ? playerGo.GetComponent("Fighter") : null;
+        if (fighterComp != null) { var sf = new SerializedObject(fighterComp); var pd = sf.FindProperty("dashDuration"); if (pd != null) dashDuration = pd.floatValue; }
         var attacks = AssetDatabase.FindAssets("t:AttackData", new[] { attackDir })
             .Select(g => AssetDatabase.LoadAssetAtPath<ScriptableObject>(AssetDatabase.GUIDToAssetPath(g))).ToList();
         foreach (var m in map)
         {
             var cs = ac.layers[0].stateMachine.states.FirstOrDefault(s => s.state.name == m.state);
             if (cs.state == null) { Debug.LogWarning($"{Path.GetFileName(ctrlPath)}: no state {m.state}"); continue; }
-            var clip = LoadClip($"{MixamoDir}/{m.pack}/{m.clip}.fbx");
-            if (clip == null) { Debug.LogError($"{m.clip}: clip failed to import"); continue; }
+            var clip = LoadClip($"{MixamoDir}/{m.pack}/{m.clip}.fbx", m.state);
+            if (clip == null) { Debug.LogError($"{m.clip}: clip {m.state} failed to import"); continue; }
             cs.state.motion = clip;
             cs.state.speed = 1f;
+            if (m.state.StartsWith("Dash_") && clip.length > 0.05f)
+            {
+                cs.state.speed = clip.length / Mathf.Max(dashDuration, 0.05f);
+                Debug.Log($"{m.state}: one stride {clip.length:F2}s fitted to the {dashDuration:F2}s dash, speed x{cs.state.speed:F2}");
+            }
             // attack states: fit the clip to the AttackData frame count
             var atk = attacks.FirstOrDefault(a => a.name == m.state);
             if (atk != null)
@@ -182,9 +230,10 @@ public static class CrucibleMixamoSetup
         EditorUtility.SetDirty(ac);
     }
 
-    static AnimationClip LoadClip(string path)
+    static AnimationClip LoadClip(string path, string name = null)
     {
         if (!File.Exists(path)) return null;
-        return AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().FirstOrDefault(c => !c.name.StartsWith("__preview"));
+        var clips = AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().Where(c => !c.name.StartsWith("__preview")).ToList();
+        return (name != null ? clips.FirstOrDefault(c => c.name == name) : null) ?? clips.FirstOrDefault();
     }
 }
