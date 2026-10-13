@@ -17,7 +17,7 @@ using UnityEngine.UI;
 /// </summary>
 public class GameMenu : MonoBehaviour
 {
-    enum Screen { None, Main, Pause, Settings, Controls, Help, MatchOver, AiSelect }
+    enum Screen { None, Main, Pause, Settings, Controls, Help, MatchOver, AiSelect, Online, OnlineHost, OnlineJoin }
 
     [Serializable]
     class SettingsData
@@ -54,6 +54,9 @@ public class GameMenu : MonoBehaviour
     Screen previous = Screen.Main;
     bool inMatch;
     bool vsAi;
+    NetSession.Role netRole = NetSession.Role.None;
+    float nextOnlineRefresh;
+    NetSession Net { get { if (NetSession.Instance == null) gameObject.AddComponent<NetSession>(); return NetSession.Instance; } }
     AiDifficulty aiDifficulty = AiDifficulty.Moderate;
     float savedTimeScale = 1f;
 
@@ -99,6 +102,30 @@ public class GameMenu : MonoBehaviour
 
     void Start()
     {
+        if (Net != null)
+        {
+            Net.OnStartReceived += () =>
+            {
+                // guest: the host started or restarted the fight
+                netRole = NetSession.Role.Guest;
+                vsAi = false;
+                for (int i = 0; i < fighters.Length; i++) fighters[i].ResetForMatch(spawnPos[i], spawnRot[i]);
+                inMatch = true;
+                FreezeFighters(false);
+                Net.GuestEnterMatch();
+                if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(1);
+                if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
+                Time.timeScale = GameSpeed();
+                Show(Screen.None);
+            };
+            Net.OnPauseReceived += on =>
+            {
+                if (netRole == NetSession.Role.Host) { if (on) Pause(); else Resume(); }
+                else { if (on) PauseLocal(); else ResumeLocal(); }
+            };
+            Net.OnRematchRequested += () => { if (netRole == NetSession.Role.Host && !inMatch) StartMatch(); };
+            Net.OnPeerLeft += () => { if (netRole != NetSession.Role.None) { Net.Leave(); netRole = NetSession.Role.None; EndMatchToMenu(); subtitle.text = "The other player left"; } };
+        }
         ApplySettings();
         FreezeFighters(true);
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
@@ -119,6 +146,15 @@ public class GameMenu : MonoBehaviour
 
         if (capturing) { CaptureRebind(); return; }
 
+        if ((screen == Screen.OnlineHost || screen == Screen.OnlineJoin) && Time.unscaledTime >= nextOnlineRefresh)
+        {
+            nextOnlineRefresh = Time.unscaledTime + 1f;
+            int keep = selected;
+            Show(screen);
+            selected = Mathf.Min(keep, Mathf.Max(0, items.Count - 1));
+            Refresh();
+        }
+
         Vector2 nav = im.MenuNavigate();
         if (nav.y > 0f) MoveSelection(-1);
         else if (nav.y < 0f) MoveSelection(1);
@@ -131,8 +167,11 @@ public class GameMenu : MonoBehaviour
 
     public void StartMatch()
     {
+        if (netRole == NetSession.Role.Guest) { Net?.SendRematchRequest(); return; }
         for (int i = 0; i < fighters.Length; i++) fighters[i].ResetForMatch(spawnPos[i], spawnRot[i]);
         SetAi(vsAi);
+        if (netRole == NetSession.Role.Host) Net?.HostStartMatch();
+        if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(vsAi || netRole != NetSession.Role.None ? 1 : 2);
         inMatch = true;
         FreezeFighters(false);
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
@@ -142,14 +181,30 @@ public class GameMenu : MonoBehaviour
 
     public void Pause()
     {
+        if (netRole == NetSession.Role.Guest) { Net?.SendPause(true); return; }
+        if (netRole == NetSession.Role.Host) Net?.SendPause(true);
+        PauseLocal();
+    }
+
+    public void Resume()
+    {
+        if (netRole == NetSession.Role.Guest) { Net?.SendPause(false); return; }
+        if (netRole == NetSession.Role.Host) Net?.SendPause(false);
+        ResumeLocal();
+    }
+
+    void PauseLocal()
+    {
+        if (TouchControls.Instance != null) TouchControls.Instance.Hide();
         savedTimeScale = Time.timeScale;
         Time.timeScale = 0f;
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
         Show(Screen.Pause);
     }
 
-    public void Resume()
+    void ResumeLocal()
     {
+        if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(netRole != NetSession.Role.None || vsAi ? 1 : 2);
         Time.timeScale = savedTimeScale > 0f ? savedTimeScale : GameSpeed();
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
         Show(Screen.None);
@@ -159,6 +214,8 @@ public class GameMenu : MonoBehaviour
     {
         inMatch = false;
         SetAi(false);
+        if (netRole != NetSession.Role.None) { Net?.GuestLeaveMatch(); Net?.Leave(); netRole = NetSession.Role.None; }
+        if (TouchControls.Instance != null) TouchControls.Instance.Hide();
         Time.timeScale = GameSpeed();
         for (int i = 0; i < fighters.Length; i++) fighters[i].ResetForMatch(spawnPos[i], spawnRot[i]);
         FreezeFighters(true);
@@ -175,6 +232,7 @@ public class GameMenu : MonoBehaviour
             {
                 inMatch = false;
                 FreezeFighters(true);
+                if (TouchControls.Instance != null) TouchControls.Instance.Hide();
                 if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
                 StartCoroutine(ShowMatchOver(f));
                 return;
@@ -259,6 +317,7 @@ public class GameMenu : MonoBehaviour
                 title.text = "CRUCIBLE"; subtitle.text = "Honorable Souls";
                 items.Add(new Item { label = "Local Play", confirm = () => { vsAi = false; StartMatch(); } });
                 items.Add(new Item { label = "Against AI", confirm = () => Show(Screen.AiSelect) });
+                items.Add(new Item { label = "Same WiFi", confirm = () => Show(Screen.Online) });
                 items.Add(new Item { label = "Controls", confirm = () => Show(Screen.Controls) });
                 items.Add(new Item { label = "Settings", confirm = () => Show(Screen.Settings) });
                 items.Add(new Item { label = "Help", confirm = () => Show(Screen.Help) });
@@ -273,8 +332,36 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Back", confirm = Back });
                 footer.text = NavHint();
                 break;
+            case Screen.Online:
+                title.text = "SAME WIFI"; subtitle.text = "Both phones open " + NetSession.LanHint() + " (the PC runs Server/relay.js)";
+                items.Add(new Item { label = "Host a game", value = () => "you are Bjorn", confirm = () =>
+                {
+                    if (Net == null) return;
+                    Net.Host(System.Environment.MachineName.Length > 0 ? System.Environment.MachineName : "room");
+                    Show(Screen.OnlineHost);
+                } });
+                items.Add(new Item { label = "Join a game", value = () => "you are Miyamoto", confirm = () => { if (Net == null) return; Net.BrowseRooms(); Show(Screen.OnlineJoin); } });
+                items.Add(new Item { label = "Back", confirm = Back });
+                footer.text = NavHint();
+                break;
+            case Screen.OnlineHost:
+                title.text = "HOSTING"; subtitle.text = Net != null ? Net.Status : "";
+                items.Add(new Item { label = Net != null && Net.PeerConnected ? "Start the fight" : "Waiting for a player...", confirm = () => { if (Net != null && Net.PeerConnected) { vsAi = false; netRole = NetSession.Role.Host; StartMatch(); } } });
+                items.Add(new Item { label = "Cancel", confirm = () => { Net?.Leave(); netRole = NetSession.Role.None; Show(Screen.Online); } });
+                footer.text = NavHint();
+                break;
+            case Screen.OnlineJoin:
+                title.text = "JOIN A GAME"; subtitle.text = Net != null ? Net.Status : "";
+                if (Net != null)
+                {
+                    if (Net.Rooms.Count == 0) items.Add(new Item { label = "   (no open games yet; the host must press Host a game)", header = true });
+                    foreach (var r in Net.Rooms) { string room = r; items.Add(new Item { label = "Join " + room, confirm = () => Net.Join(room) }); }
+                }
+                items.Add(new Item { label = "Back", confirm = () => { Net?.Leave(); netRole = NetSession.Role.None; Show(Screen.Online); } });
+                footer.text = NavHint();
+                break;
             case Screen.Pause:
-                title.text = "PAUSED"; subtitle.text = vsAi ? $"vs AI ({aiDifficulty})" : "";
+                title.text = "PAUSED"; subtitle.text = vsAi ? $"vs AI ({aiDifficulty})" : (netRole != NetSession.Role.None ? "same WiFi" : "");
                 items.Add(new Item { label = "Resume", confirm = Resume });
                 items.Add(new Item { label = "Help", confirm = () => Show(Screen.Help) });
                 items.Add(new Item { label = "Controls", confirm = () => Show(Screen.Controls) });
@@ -283,7 +370,8 @@ public class GameMenu : MonoBehaviour
                 footer.text = NavHint();
                 break;
             case Screen.MatchOver:
-                title.text = winnerNumber > 0 ? (vsAi ? (winnerNumber == 1 ? "YOU WIN" : "THE AI WINS") : $"PLAYER {winnerNumber} WINS") : "DRAW"; subtitle.text = winnerName;
+                title.text = winnerNumber > 0 ? (vsAi ? (winnerNumber == 1 ? "YOU WIN" : "THE AI WINS") : $"PLAYER {winnerNumber} WINS") : "DRAW";
+                subtitle.text = netRole == NetSession.Role.Guest ? winnerName + "   (you are Player 2)" : winnerName;
                 items.Add(new Item { label = "Rematch", confirm = StartMatch });
                 items.Add(new Item { label = "Main Menu", confirm = EndMatchToMenu });
                 footer.text = NavHint();
@@ -342,7 +430,7 @@ public class GameMenu : MonoBehaviour
         Refresh();
     }
 
-    static string NavHint() => "Arrows / D-pad: navigate    Enter / Cross: select    Esc / Circle: back";
+    static string NavHint() => TouchControls.WantsTouch ? "Tap an item" : "Arrows / D-pad: navigate    Enter / Cross: select    Esc / Circle: back";
 
     string BindingText(int player, GameAction a)
     {

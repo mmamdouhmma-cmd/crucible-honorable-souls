@@ -1,0 +1,9 @@
+{
+  "name": "crucible-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static host + WebSocket relay for the CRUCIBLE web test build (same-WiFi play)",
+  "main": "relay.js",
+  "scripts": { "start": "node relay.js" },
+  "dependencies": { "ws": "^8.18.0" }
+}

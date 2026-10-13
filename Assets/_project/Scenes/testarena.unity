@@ -2691,6 +2691,9 @@ GameObject:
   - component: {fileID: 1348053407}
   - component: {fileID: 1348053408}
   - component: {fileID: 1348053409}
+  - component: {fileID: 1348053411}
+  - component: {fileID: 1348053410}
+  - component: {fileID: 1348053412}
   m_Layer: 0
   m_Name: GameMangers
   m_TagString: Untagged
@@ -2768,6 +2771,51 @@ MonoBehaviour:
   playerNumber: 2
   difficulty: 1
   debugLogs: 0
+--- !u!114 &1348053410
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1348053404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d8e791596a69744f942aa77fdc6cd07, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MobileQuality
+  force: 0
+  renderScale: 0.7
+  shadowDistance: 18
+  postProcessing: 0
+--- !u!114 &1348053411
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1348053404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3e8c1062c582694390b4074b011937f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TouchControls
+  forceShow: 0
+  idleAlpha: 0.35
+  pressedAlpha: 0.75
+--- !u!114 &1348053412
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1348053404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a18b393b6b3c342438a402bf787484b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetSession
+  editorRelayUrl: ws://localhost:8080/ws
+  sendRate: 20
 --- !u!1 &1416354506 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2550463727306718371, guid: b1adfbeb5d86b314baa0724e899c0fce, type: 3}

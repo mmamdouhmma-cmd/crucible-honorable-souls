@@ -120,6 +120,18 @@ public class InputManager : MonoBehaviour
         data.stanceSwitch = Pressed(b, pad, GameAction.Stance);
 
         data.dashDirection = ReadDash(player, b, pad, ref padFlickHeld);
+
+        // on-screen touch buttons (phones / web build)
+        if (TouchControls.Instance != null)
+        {
+            InputData t = TouchControls.Instance.Read(player);
+            if (!Mathf.Approximately(t.moveDirection, 0f)) data.moveDirection = t.moveDirection;
+            data.blockHeld |= t.blockHeld;
+            data.lightAttack |= t.lightAttack;
+            data.mediumAttack |= t.mediumAttack;
+            data.heavyAttack |= t.heavyAttack;
+            if (t.dashDirection != Vector2.zero) data.dashDirection = t.dashDirection;
+        }
         return data;
     }
 
@@ -198,6 +210,7 @@ public class InputManager : MonoBehaviour
     public bool PausePressed()
     {
         if (Input.GetKeyDown(KeyCode.Escape)) return true;
+        if (TouchControls.Instance != null && TouchControls.Instance.PauseTapped()) return true;
         foreach (var g in Gamepad.all) if (g.startButton.wasPressedThisFrame) return true;
         return false;
     }

@@ -86,3 +86,7 @@ ArtSource/Characters/
 # Generated animation masters (anim_rig.py rebuilds them from the body FBX) and Python cache
 ArtSource/Blender/*_AnimMaster.blend
 ArtSource/Blender/__pycache__/
+
+# relay server dependencies
+Server/node_modules/
+Server/relay.log
