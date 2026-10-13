@@ -90,3 +90,5 @@ ArtSource/Blender/__pycache__/
 # relay server dependencies
 Server/node_modules/
 Server/relay.log
+Server/tunnel.log
+Server/cf.log
