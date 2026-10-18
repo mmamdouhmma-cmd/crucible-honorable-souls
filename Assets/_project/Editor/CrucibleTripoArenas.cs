@@ -29,6 +29,7 @@ public static class CrucibleTripoArenas
             {
                 go.SetActive(true);
                 AddBoundsRect(go, 29f, 19f);   // courtyard is 64 x 44; keep fighters off the arcade and the steps
+                SetArenaBounds(go, 1, 29f, new Vector2(29f, 19f));   // 1 = Rect
             }
             if (ground != null) ground.SetActive(true);
             Debug.Log("Al-Quds arena back on (with boundary walls).");
@@ -80,7 +81,9 @@ public static class CrucibleTripoArenas
         GameObjectUtility.SetStaticEditorFlags(inst, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ReflectionProbeStatic);
 
         // invisible boundary ring at the edge of the flat floor so fighters stay on it
-        AddBoundsRing(inst, FloorRadius(inst, floorY));
+        float ringRadius = FloorRadius(inst, floorY);
+        AddBoundsRing(inst, ringRadius);
+        SetArenaBounds(inst, 0, ringRadius, new Vector2(ringRadius, ringRadius));   // 0 = Circle
 
         // material
         string matDir = $"{Root}/{name}";
@@ -117,6 +120,46 @@ public static class CrucibleTripoArenas
     }
 
     /// <summary>Ring of thin, tall, invisible box colliders around the fight floor (child "Bounds").</summary>
+    /// <summary>
+    /// Local scale that cancels out <paramref name="parent"/>'s world scale, so collider sizes set
+    /// underneath are in WORLD units. The Tripo arena roots are scaled by thousands (the FBX is
+    /// tiny), and forcing localScale to one under them is what made every bound wall 7119x too big:
+    /// the ring enclosed the whole level instead of fencing it.
+    /// </summary>
+    static Vector3 InverseScale(Transform parent)
+    {
+        Vector3 s = parent.lossyScale;
+        return new Vector3(
+            Mathf.Approximately(s.x, 0f) ? 1f : 1f / s.x,
+            Mathf.Approximately(s.y, 0f) ? 1f : 1f / s.y,
+            Mathf.Approximately(s.z, 0f) ? 1f : 1f / s.z);
+    }
+
+    /// <summary>
+    /// Adds/updates the <see cref="ArenaBounds"/> that actually keeps the fighters in. The wall
+    /// colliders cannot do it (the fighters' Rigidbodies freeze position X and Z), so every arena
+    /// placement sets this up as well.
+    /// </summary>
+    /// <param name="shape">0 = Circle, 1 = Rect (ArenaBounds.Shape; this assembly cannot reference
+    /// the runtime one, so the component is reached by reflection like every other runtime type here).</param>
+    public static void SetArenaBounds(GameObject parent, int shape, float radius, Vector2 halfExtents)
+    {
+        var t = System.Type.GetType("ArenaBounds, Assembly-CSharp");
+        if (t == null) { Debug.LogWarning("ArenaBounds script not found; fighters will not be fenced in"); return; }
+
+        var ab = parent.GetComponent(t);
+        if (ab == null) ab = Undo.AddComponent(parent, t);
+
+        var so = new SerializedObject(ab);
+        so.FindProperty("shape").enumValueIndex = shape;
+        so.FindProperty("centre").vector3Value = Vector3.zero;
+        so.FindProperty("radius").floatValue = Mathf.Max(1f, radius);
+        so.FindProperty("halfExtents").vector2Value = halfExtents;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(ab);
+        Debug.Log($"arena bounds: shape {(shape == 0 ? "circle" : "rect")} radius {radius:F1} half {halfExtents}");
+    }
+
     public static void AddBoundsRing(GameObject parent, float radius, int segments = 28, float height = 8f)
     {
         var old = parent.transform.Find("Bounds");
@@ -124,7 +167,8 @@ public static class CrucibleTripoArenas
         var root = new GameObject("Bounds");
         Undo.RegisterCreatedObjectUndo(root, "bounds");
         root.transform.SetParent(parent.transform, true);
-        root.transform.position = Vector3.zero; root.transform.rotation = Quaternion.identity; root.transform.localScale = Vector3.one;
+        root.transform.position = Vector3.zero; root.transform.rotation = Quaternion.identity;
+        root.transform.localScale = InverseScale(parent.transform);
         float seg = 2f * Mathf.PI * radius / segments;
         for (int i = 0; i < segments; i++)
         {
@@ -148,7 +192,8 @@ public static class CrucibleTripoArenas
         var root = new GameObject("Bounds");
         Undo.RegisterCreatedObjectUndo(root, "bounds");
         root.transform.SetParent(parent.transform, true);
-        root.transform.position = Vector3.zero; root.transform.rotation = Quaternion.identity; root.transform.localScale = Vector3.one;
+        root.transform.position = Vector3.zero; root.transform.rotation = Quaternion.identity;
+        root.transform.localScale = InverseScale(parent.transform);
         var walls = new[] { (new Vector3(halfX, 0, 0), new Vector3(0.5f, height, halfZ * 2)), (new Vector3(-halfX, 0, 0), new Vector3(0.5f, height, halfZ * 2)),
                             (new Vector3(0, 0, halfZ), new Vector3(halfX * 2, height, 0.5f)), (new Vector3(0, 0, -halfZ), new Vector3(halfX * 2, height, 0.5f)) };
         int i = 0;

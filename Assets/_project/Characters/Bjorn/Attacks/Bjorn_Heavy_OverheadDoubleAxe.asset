@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Bjorn_Heavy_OverheadDoubleAxe
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Overhead Double Axe
-  damage: 16
+  damage: 11
   staminaCost: 20
   armorPierce: 5
   startupFrames: 15
@@ -33,3 +33,7 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: -1
+  comboLinks: []
+  cancelStartFrame: -1
+  cancelEndFrame: -1
+  dodgedRecoveryFrames: -1

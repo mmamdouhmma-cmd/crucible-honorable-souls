@@ -92,7 +92,9 @@ public class AttackData : ScriptableObject
     [SerializeField] private string attackName = "New Attack";
 
     [Header("Damage & Cost")]
-    [Range(10, 50)]
+    // Lower bound is 1, not 10: the 2026-10-18 pass took every attack down 30% and the light
+    // strikes sit at 7, which a Range starting at 10 would silently clamp back up on any edit.
+    [Range(1, 50)]
     [SerializeField] private int damage = 15;
 
     [Range(5, 70)]

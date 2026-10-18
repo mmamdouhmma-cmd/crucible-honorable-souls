@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Bjorn_Heavy_SpinOverhead
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Spinning Overhead
-  damage: 16
+  damage: 11
   staminaCost: 20
   armorPierce: 5
   startupFrames: 30

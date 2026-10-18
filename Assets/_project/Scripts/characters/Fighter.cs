@@ -284,6 +284,7 @@ public class Fighter : MonoBehaviour
         HandleStaminaRecovery();
         HandleBlock();
         HandleCombatInput();
+        ClampToArena();
 
     }
 
@@ -293,6 +294,33 @@ public class Fighter : MonoBehaviour
     /// stamina every frame; when it runs out the guard drops until the bar
     /// recovers above zero.
     /// </summary>
+    /// <summary>
+    /// Keeps this fighter inside the arena, after every move this frame. It has to be done here
+    /// rather than with wall colliders: the Rigidbody freezes position X and Z, so physics cannot
+    /// push the fighter out of anything (see <see cref="ArenaBounds"/>).
+    /// </summary>
+    private void ClampToArena()
+    {
+        if (ArenaBounds.Instance == null) return;
+
+        Vector3 p = transform.position;
+        Vector3 inside = ArenaBounds.Instance.Clamp(p, BodyRadius);
+        if ((inside - p).sqrMagnitude < 1e-6f) return;
+
+        // Match how the movement code writes position (transform only; the Rigidbody follows).
+        transform.position = inside;
+        if (isDashing) dashVelocity = Vector3.zero;   // a dash into the edge stops there
+        knockbackVelocity = Vector3.zero;
+
+        if (ArenaBounds.Instance.DebugLogs && !loggedArenaEdge)
+        {
+            loggedArenaEdge = true;
+            Debug.Log($"P{playerNumber}: held inside the arena edge at {inside}");
+        }
+    }
+
+    private bool loggedArenaEdge = false;
+
     private void HandleBlock()
     {
         bool wasBlocking = isBlocking;

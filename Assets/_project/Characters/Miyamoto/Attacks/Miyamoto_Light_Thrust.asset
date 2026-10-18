@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Miyamoto_Light_Thrust
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Mid Thrust
-  damage: 10
+  damage: 7
   staminaCost: 10
   armorPierce: 0
   startupFrames: 7

@@ -632,3 +632,42 @@ where the `.rsp` files are built from the csproj's `DefineConstants`, `HintPath`
   system for low memory before printing anything. Re-run that script to confirm PARRY, the attacker's
   60 f stun, and the x1.5 counter.
 
+### 2026-10-18 — damage -30%, parry counter 1.35, and the arenas were NOT fenced
+
+- **All attack damage cut 30%** (user's call): Bjorn 10/13/16 -> **7/9/11** (light/medium/heavy),
+  `Bjorn_Heavy_SpinOverhead` 16 -> 11, Miyamoto 10/10/12 -> **7/7/8**. `AttackData.damage` had
+  `[Range(10, 50)]`, which would have silently clamped the new light values back up to 10 on any
+  Inspector edit - the range is now `[Range(1, 50)]`.
+- `PARRY_COUNTER_DAMAGE_MULTIPLIER` **1.5 -> 1.35**, the same as the dash counter.
+- **Combos after a parry or a dash counter already work** (user's question). A counter attack is an
+  ordinary attack, so its `comboLinks` fire as usual, and the timing fits: a parry stuns the
+  attacker 1.0 s and a dodged attacker eats `DODGED_RECOVERY_FRAMES` (0.8 s), while a two-hit
+  string reaches its second contact in ~0.7 s. **Only the first hit carries the counter
+  multiplier** - `BeginAttack` consumes the flag through `ConsumeDashCounter` /
+  `ConsumeParryCounter`, so the string's follow-ups are normal damage (standard counter-hit
+  behaviour, and carrying x1.35 across three hits would give back much of the 30% cut).
+- **The arenas were not fenced at all.** Two independent faults, both fixed:
+  1. **Bound walls were 7119x oversized.** `AddBoundsRing` / `AddBoundsRect` set the `Bounds`
+     child's `localScale = Vector3.one` under an arena root scaled ~7119x (the Tripo FBX is tiny),
+     so wall sizes authored in WORLD units were multiplied by that: each "thin wall" measured
+     3578 x 57250 x 43500 and BOTH fighters stood inside all 28 of them. Fixed with
+     `InverseScale(parent)` (the same divide-the-scale-back-out pattern `HitDetector` uses).
+     NOTE: fixing the scale alone collapses the ring, because each wall's localPosition was
+     authored under the old scale - the ring must be REBUILT (`AddBoundsRing`) after the fix.
+  2. **Wall colliders can never contain these fighters.** Each fighter's Rigidbody constraints are
+     `122` = freeze rotation XYZ **plus freeze position X and Z**; movement is written straight to
+     `transform.position`. PhysX cannot depenetrate a frozen axis, so no wall, however well sized,
+     would stop them. Only Y is physics-driven, which is why the floor works.
+- **`Scripts/core/ArenaBounds.cs` (new)** is therefore the real fence: a Circle or Rect shape that
+  `Fighter.ClampToArena()` applies at the END of `Update`, after every move (walk, dash, lunge,
+  knockback), zeroing dash/knockback velocity at the edge. `ArenaBounds.Instance` is set in
+  `OnEnable`, so whichever arena is active provides the shape. Both placement paths in
+  `CrucibleTripoArenas` now call `SetArenaBounds` alongside the wall ring; because the editor
+  asmdef cannot reference `Assembly-CSharp`, it reaches the component by
+  `Type.GetType("ArenaBounds, Assembly-CSharp")` + `SerializedObject`, like `RuntimeType` elsewhere.
+- Scene now holds: `MedievalFortress` (ACTIVE, circle r 23.55), `DesertArena` (circle r 24.10),
+  `Arena_AlQuds` (rect 29 x 19). **`ForestClearing` still has none** - it gets them when placed
+  through `Crucible > Arena > Tripo`, since its floor radius comes from that placement maths.
+- **Verified in play:** fighters teleported to r=100 and r=60 were both pulled back to exactly
+  r=22.95 (23.55 - 0.6 body radius), logging `held inside the arena edge`.
+
