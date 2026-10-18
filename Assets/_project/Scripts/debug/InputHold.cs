@@ -20,6 +20,9 @@ public class InputHold : MonoBehaviour
     [Tooltip("Buttons held while the timer runs.")]
     public bool block;
 
+    [Tooltip("Parry (Defense) button, written for the first frames after the delay only: it is a press, not a hold.")]
+    public bool parry;
+
     [Tooltip("Game-time seconds left to hold (0 = idle).")]
     public float secondsLeft;
 
@@ -42,10 +45,26 @@ public class InputHold : MonoBehaviour
     {
         player = who;
         block = blockHeld;
+        parry = false;
         secondsLeft = seconds;
         delayLeft = delay;
         if (InputManager.Instance != null) InputManager.Instance.SetAi(player, true);
         Debug.Log($"InputHold: P{player} block={blockHeld} for {seconds:0.00}s, starting in {delay:0.00}s (game time)");
+    }
+
+    /// <summary>
+    /// Taps the PARRY (Defense) button <paramref name="delay"/> game-seconds from now. The press is
+    /// written for a couple of frames only, because Fighter reads it as an edge.
+    /// </summary>
+    public void Parry(int who, float delay = 0f)
+    {
+        player = who;
+        block = false;
+        parry = true;
+        secondsLeft = 0.05f;   // a tap: long enough for the press to be seen, short enough not to repeat
+        delayLeft = delay;
+        if (InputManager.Instance != null) InputManager.Instance.SetAi(player, true);
+        Debug.Log($"InputHold: P{player} PARRY tap in {delay:0.00}s (game time)");
     }
 
     /// <summary>Drops everything and hands the player back to their own controls.</summary>
@@ -54,6 +73,7 @@ public class InputHold : MonoBehaviour
         secondsLeft = 0f;
         delayLeft = 0f;
         block = false;
+        parry = false;
         if (InputManager.Instance != null) InputManager.Instance.SetAi(player, false);
     }
 
@@ -71,7 +91,7 @@ public class InputHold : MonoBehaviour
         }
 
         secondsLeft -= Time.deltaTime;
-        InputManager.Instance.SetAiInput(player, new InputData { blockHeld = block });
+        InputManager.Instance.SetAiInput(player, new InputData { blockHeld = block, defenseButton = parry });
         if (secondsLeft <= 0f) Release();
     }
 }

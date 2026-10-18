@@ -48,7 +48,10 @@ public class Fighter : MonoBehaviour
     private const string ANIM_BLOCKING = "Blocking"; // bool: guard is up (controller holds the block pose)
     private const string ANIM_DASH = "Dash";         // trigger: a dash just started
     private const string ANIM_DASH_DIR = "DashDir";  // int: 0 forward, 1 back, 2 left, 3 right (relative to facing)
+    private const string ANIM_PARRY = "Parry";               // trigger: a parry attempt was thrown
+    private const string ANIM_PARRY_SUCCESS = "ParrySuccess"; // trigger: the parry caught a strike
     private bool animatorHasBlocking;
+    private bool animatorHasParry;
     private bool animatorHasDash;
 
     [Header("Dash")]
@@ -93,6 +96,9 @@ public class Fighter : MonoBehaviour
     [Min(0f)]
     [SerializeField] private float parryWindow = BalanceConfig.PARRY_WINDOW;
 
+    [Tooltip("Frames of recovery after a parry attempt that caught nothing: no blocking, dashing or attacking. This is the risk that makes the timing worth something.")]
+    [SerializeField] private int parryRecoveryFrames = 20;
+
     [Tooltip("Seconds of stun the ATTACKER eats when parried: the swing ends and they cannot act, which is the " +
              "parrier's free punish.")]
     [Min(0f)]
@@ -134,18 +140,29 @@ public class Fighter : MonoBehaviour
     /// <summary>Seconds left for the HUD to show CLASH (0 when none is pending).</summary>
     public float ClashFlashTimeLeft => Mathf.Max(clashFlashTimer, 0f);
 
-    // Parry. blockPressedTime is when the guard button last went DOWN (not while it is held), so a
-    // parry rewards timing the press against the incoming strike rather than sitting on block.
-    private float blockPressedTime = -99f;
-    private bool wasBlockHeld = false;
+    // Parry. It is its own committed action on the Defense button, NOT a well-timed block. Sharing
+    // the block button made it free: press early and you simply blocked, so there was never a
+    // reason not to try. Now a parry has a short active window and, if it catches nothing, a
+    // recovery in which this fighter cannot block, dash or attack.
+    private float parryActiveTimer = 0f;
+    private float parryRecoveryTimer = 0f;
     private float parryCounterTimer = 0f;
     private float parryFlashTimer = 0f;
 
     /// <summary>
-    /// True when an incoming strike should be parried: the guard is genuinely up and went up within
-    /// <see cref="parryWindow"/>. Read by CombatSystem before blocking is considered.
+    /// True while the parry's active window is open, so an incoming strike is deflected. Read by
+    /// CombatSystem before blocking is considered.
     /// </summary>
-    public bool ParryReady => isBlocking && Time.time - blockPressedTime <= parryWindow;
+    public bool ParryReady => parryActiveTimer > 0f;
+
+    /// <summary>
+    /// True while a parry attempt is active OR recovering from catching nothing. Blocking, dashing
+    /// and attacking are all refused throughout: that commitment is what a parry risks.
+    /// </summary>
+    public bool IsParrying => parryActiveTimer > 0f || parryRecoveryTimer > 0f;
+
+    /// <summary>Seconds left of the whiffed-parry recovery (0 when none).</summary>
+    public float ParryRecoveryTimeLeft => Mathf.Max(parryRecoveryTimer, 0f);
 
     /// <summary>Seconds left in the parry-counter window (0 when no counter is ready).</summary>
     public float ParryCounterTimeLeft => Mathf.Max(parryCounterTimer, 0f);
@@ -207,6 +224,7 @@ public class Fighter : MonoBehaviour
         animatorHasHitParams = HasAnimatorParameters(ANIM_HIT_SIDE, ANIM_GET_HIT);
         animatorHasBlocking = HasAnimatorParameters(ANIM_BLOCKING);
         animatorHasDash = HasAnimatorParameters(ANIM_DASH, ANIM_DASH_DIR);
+        animatorHasParry = HasAnimatorParameters(ANIM_PARRY, ANIM_PARRY_SUCCESS);
 
         if (fighterData != null)
         {
@@ -282,6 +300,7 @@ public class Fighter : MonoBehaviour
         HandleMovement();
         HandleAttackLunge();
         HandleStaminaRecovery();
+        HandleParry();
         HandleBlock();
         HandleCombatInput();
         ClampToArena();
@@ -321,16 +340,49 @@ public class Fighter : MonoBehaviour
 
     private bool loggedArenaEdge = false;
 
+    /// <summary>
+    /// The parry, on its own Defense button. A press opens a short active window; catching a strike
+    /// in it parries (see <see cref="NotifyParry"/>), and catching nothing leaves this fighter in
+    /// recovery, unable to block, dash or attack. An attempt cannot be started while attacking,
+    /// dashing or in hitstun.
+    /// </summary>
+    private void HandleParry()
+    {
+        if (parryActiveTimer > 0f)
+        {
+            parryActiveTimer -= Time.deltaTime;
+            if (parryActiveTimer <= 0f)
+            {
+                parryActiveTimer = 0f;
+                parryRecoveryTimer = Mathf.Max(0, parryRecoveryFrames) * BalanceConfig.FRAME_TIME;
+                Debug.Log($"P{playerNumber}: parry caught nothing - open for {parryRecoveryTimer:0.00}s");
+            }
+            return;
+        }
+
+        if (parryRecoveryTimer > 0f)
+        {
+            parryRecoveryTimer = Mathf.Max(0f, parryRecoveryTimer - Time.deltaTime);
+            return;
+        }
+
+        if (!currentInput.defenseButton) return;
+
+        bool attacking = combatSystem != null && combatSystem.IsAttacking;
+        if (attacking || isDashing || (combatSystem != null && combatSystem.IsInHitstun)) return;
+
+        parryActiveTimer = parryWindow;
+        if (animatorHasParry && animator != null) animator.SetTrigger(ANIM_PARRY);
+        Debug.Log($"P{playerNumber}: PARRY attempt - window {parryWindow:0.00}s");
+    }
+
     private void HandleBlock()
     {
         bool wasBlocking = isBlocking;
         bool attacking = combatSystem != null && combatSystem.IsAttacking;
 
-        // The parry window starts on the PRESS, so note the edge before anything can refuse the guard.
-        if (currentInput.blockHeld && !wasBlockHeld) blockPressedTime = Time.time;
-        wasBlockHeld = currentInput.blockHeld;
-
-        isBlocking = currentInput.blockHeld && !isDashing && !attacking && stats.currentStamina > 0;
+        // No blocking during a parry attempt or its recovery - the parry is the commitment.
+        isBlocking = currentInput.blockHeld && !isDashing && !attacking && !IsParrying && stats.currentStamina > 0;
 
         if (isBlocking && stats.DrainStamina(Time.deltaTime, blockStaminaDrainPerSecond))
         {
@@ -377,9 +429,13 @@ public class Fighter : MonoBehaviour
     /// </summary>
     public void NotifyParry()
     {
-        // While Blocking is true the controller takes GetHit to Block_Impact, so this reads as a
-        // guard jolt rather than a flinch.
-        PlayHitAnimation(HitSide.Straight);
+        // The attempt caught a strike, so there is no recovery: being instantly actionable with a
+        // counter window open IS the reward.
+        parryActiveTimer = 0f;
+        parryRecoveryTimer = 0f;
+
+        if (animatorHasParry && animator != null) animator.SetTrigger(ANIM_PARRY_SUCCESS);
+        else PlayHitAnimation(HitSide.Straight);   // no Parry_Success state yet: guard jolt instead
 
         parryCounterTimer = parryCounterWindow;
         parryFlashTimer = BalanceConfig.CLASH_HUD_FLASH_DURATION;
@@ -454,10 +510,10 @@ public void ResetForMatch(Vector3 position, Quaternion rotation)
     knockbackVelocity = Vector3.zero;
     knockbackTimer = 0f;
     isBlocking = false;
-    wasBlockHeld = false;
-    blockPressedTime = -99f;
     parryCounterTimer = 0f;
     parryFlashTimer = 0f;
+    parryActiveTimer = 0f;
+    parryRecoveryTimer = 0f;
     lungeStarted = false;
     if (combatSystem != null) combatSystem.ResetForMatch();
     transform.SetPositionAndRotation(position, rotation);
@@ -744,6 +800,7 @@ private void HandleDash()
     // Can't initiate a new dash if attacking, flinching from a hit, or no input
     if (currentInput.dashDirection == Vector2.zero) return;
     if (combatSystem != null && (combatSystem.IsAttacking || combatSystem.IsInHitstun)) return;
+    if (IsParrying) return;   // a parry attempt is a commitment: no dashing out of it
 
     // Check stamina
     if (Stats == null || !Stats.HasStamina(dashStaminaCost))

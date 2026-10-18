@@ -30,7 +30,7 @@ public class TouchControls : MonoBehaviour
     class PlayerPad
     {
         public RectTransform root;
-        public TouchButton left, right, dashL, dashR, dashIn, dashOut, light, medium, heavy, block;
+        public TouchButton left, right, dashL, dashR, dashIn, dashOut, light, medium, heavy, block, parry;
     }
 
     Canvas canvas;
@@ -141,6 +141,7 @@ public class TouchControls : MonoBehaviour
         if (p == null) return d;
         d.moveDirection = (p.right.held ? 1f : 0f) - (p.left.held ? 1f : 0f);
         d.blockHeld = p.block.held;
+        d.defenseButton = Consume(p.parry);   // a parry is a tap, never a hold
         d.lightAttack = Consume(p.light);
         d.mediumAttack = Consume(p.medium);
         d.heavyAttack = Consume(p.heavy);
@@ -206,6 +207,7 @@ public class TouchControls : MonoBehaviour
             pad.medium = MakeButton(pad.root, "M", 150, 150, new Color(1f, 0.75f, 0.45f));
             pad.heavy = MakeButton(pad.root, "H", 150, 150, new Color(1f, 0.5f, 0.4f));
             pad.block = MakeButton(pad.root, "BLOCK", 190, 110, new Color(0.6f, 0.9f, 0.7f));
+            pad.parry = MakeButton(pad.root, "PARRY", 190, 110, new Color(0.45f, 0.8f, 1f));
             pads[i] = pad;
         }
         pauseButton = MakeButton(go.GetComponent<RectTransform>(), "II", 90, 90, new Color(0.9f, 0.9f, 0.9f));
@@ -279,6 +281,7 @@ public class TouchControls : MonoBehaviour
             Place(p.medium, strikeX, 0f, new Vector2(-dir * 220 * s, 220 * s));
             Place(p.heavy, strikeX, 0f, new Vector2(-dir * 110 * s, 370 * s));
             Place(p.block, strikeX, 0f, new Vector2(-dir * 140 * s, 90 * s + 420 * s));
+            Place(p.parry, strikeX, 0f, new Vector2(-dir * 340 * s, 90 * s + 420 * s));
             foreach (var b in new[] { p.left, p.right, p.dashL, p.dashR, p.dashIn, p.dashOut, p.light, p.medium, p.heavy, p.block })
                 b.image.rectTransform.localScale = Vector3.one * s;
             // the P2 pad labels keep screen semantics (< is screen-left) so no relabeling is needed

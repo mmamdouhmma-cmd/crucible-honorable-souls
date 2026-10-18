@@ -671,3 +671,51 @@ where the `.rsp` files are built from the csproj's `DefineConstants`, `HintPath`
 - **Verified in play:** fighters teleported to r=100 and r=60 were both pulled back to exactly
   r=22.95 (23.55 - 0.6 body radius), logging `held inside the arena edge`.
 
+### 2026-10-18 - parry gets its own button, its own animation, and a real cost
+
+- **User's complaint:** sharing the block button made parrying free - "if you pressed early you still
+  block", so there was never a reason not to try it, and it was too easy.
+- **The parry is now its own committed action on the `Defense` button**, which was already bound and
+  rebindable (`;` P1, `]` P2, **Circle** on the pad) and already read as a one-frame PRESS by
+  `InputManager`. A tap opens `parryWindow` (0.15 s) of active window; a strike landing in it is
+  parried exactly as before (no damage, no stamina, attacker stunned 1.0 s, 0.5 s counter window at
+  x1.35, +15 super). A tap that catches NOTHING leaves `parryRecoveryFrames` (**20 f = 0.33 s**, new
+  serialized field on Fighter) in which the fighter cannot block, dash or attack. A successful parry
+  skips the recovery entirely - being instantly actionable IS the reward.
+- Blocking no longer has anything to do with it: `blockPressedTime` / `wasBlockHeld` are gone,
+  `ParryReady` is just `parryActiveTimer > 0`, and `isBlocking` now also requires `!IsParrying`.
+  `HandleParry()` runs in `Update` immediately BEFORE `HandleBlock()` so a press refuses the guard
+  the same frame. Gates added: `CombatSystem.TryAttack` refuses while `fighter.IsParrying`
+  ("BLOCKED - parry, X s of recovery left"), and `HandleDash` returns early.
+- **Its own animation.** New `Parry` / `ParrySuccess` triggers + `Parry` / `Parry_Success` states on
+  both controllers (Any State -> state, fixed 0.05 s blend, no exit time, back to `<Name>_Idle` at
+  exit 0.85). `Fighter` discovers the parameters like the others (`animatorHasParry`) and falls back
+  to the old guard-jolt `PlayHitAnimation` when a controller lacks them. Clips, via new map entries
+  in `CrucibleMixamoSetup` so `Use Mixamo packs` REPRODUCES them instead of wiping them:
+  `Parry` = `GreatSwordPack/great sword blocking` (the 0.50 s guard-RAISE, which reads as a deflect
+  push - it was rejected as a block HOLD for exactly the reason it suits a parry) and
+  `Parry_Success` = `AxePack/standing block react large`. New `ParryDuration` (0.40 s) fitting rule
+  for any state whose name starts with `Parry` (x1.25 and x3.33 respectively).
+- **Touch pad gained a PARRY button** next to BLOCK (`TouchControls`, `Consume(p.parry)` -> a tap,
+  never a hold), so the phone build can parry. Help screen explains the mechanic and both key
+  summaries now print the parry key.
+- **`InputHold.Parry(player, delay)`** (test-only) taps the Defense button for 0.05 s of game time
+  after a scheduled game-time delay.
+- **VERIFIED in play at 8% speed - the parry branch has now actually executed** (it never had
+  before): `P2: PARRY - counter window 0.50s, +15 super`, `P1: hitstun for 60 frames (1.00s)`, P2
+  took zero damage. Also verified: a parry tapped too early no longer falls back to a block, the
+  strike lands in FULL (6 dmg, no "-50% BLOCKED") - which is the whole point of the change. And the
+  whiff punish, tested deterministically (`scratchpad/parry_gate_test.sh`: force
+  `parryRecoveryTimer` by reflection, then ask the gate in the SAME eval): `IsParrying=True`,
+  `attack allowed=False`, logged `P2: BLOCKED - parry, 0.50s of recovery left`.
+- **Two test-timing traps for the next run of these scripts** (both cost a run, neither was a code
+  fault):
+  - A press scheduled 0.10 s into a light swing is LATE. `WEAPON_ARM_PAD_FRAMES` (5) arms the blade
+    during the startup, so the swept-blade hit can land ~0.02 s after `TryAttack`. Schedule the tap
+    on the SAME frame as the swing (`Parry(2, 0f)` in the same eval).
+  - The 0.33 s recovery expires inside one CLI round trip. Timing-based checks of a sub-second gate
+    are not measurable this way: force the private timer by reflection and ask the gate in the SAME
+    eval instead (`parry_gate_test.sh`).
+- **Known gap: the AI never parries.** `AiController` only ever writes `blockHeld`, so nothing in
+  any profile touches `defenseButton` - it used to parry by accident whenever its block landed in the
+  window, and now it cannot at all. Insane probably should; not done.

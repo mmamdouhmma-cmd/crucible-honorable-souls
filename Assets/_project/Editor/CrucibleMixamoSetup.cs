@@ -40,6 +40,10 @@ public static class CrucibleMixamoSetup
         ("React_Right",                  "AxePack", "standing react large from right",   false),
         ("Block_Hold",                   "AxePack", "standing block idle",               true),
         ("Block_Impact",                 "AxePack", "standing block react large",        false),
+        // parry: its own action on the Defense button, so its own animation. "great sword blocking" is
+        // the guard-RAISE (0.5 s), which reads as a deflect push; the block react is the catch.
+        ("Parry",                        "GreatSwordPack", "great sword blocking",           false),
+        ("Parry_Success",                "AxePack", "standing block react large",            false),
         // dashes = one big step: the first stride (half cycle) of the two-handed walks, fitted to the dash time
         ("Dash_Forward",                 "AxePack2H", "standing walk forward",           false),
         ("Dash_Back",                    "AxePack2H", "standing walk back",              false),
@@ -62,6 +66,8 @@ public static class CrucibleMixamoSetup
         ("React_Right",                  "GreatSwordPack", "great sword impact (3)",    false),
         ("Block_Hold",                   "GreatSwordPack", "great sword blocking (2)",  true),    // the static guard; "great sword blocking" is the raise and looped visibly
         ("Block_Impact",                 "AxePack",        "standing block react large", false),  // jolt that settles back into the guard (the sword pack has none)
+        ("Parry",                        "GreatSwordPack", "great sword blocking",       false),  // the guard-raise, played fast = a deflect
+        ("Parry_Success",                "AxePack",        "standing block react large", false),
         ("Dash_Forward",                 "AxePack2H", "standing walk forward",           false),
         ("Dash_Back",                    "AxePack2H", "standing walk back",              false),
         ("Dash_Left",                    "AxePack2H", "standing walk left",              false),
@@ -112,6 +118,7 @@ public static class CrucibleMixamoSetup
 
     const float ContactSpeed = 1.8f;   // playback speed used for contact-calibrated windows
     const float ReactDuration = 0.45f; // seconds a get-hit flinch takes on screen
+    const float ParryDuration = 0.40f; // seconds a parry attempt / catch takes on screen (window + recovery)
 
     // swing_contacts.json entries are either  "State": 28.7  or  "State": {"contact": 36.2, "speed": 2.0}
     static float ContactFrame(string state) => ContactField(state, "contact", float.NaN);
@@ -249,6 +256,12 @@ public static class CrucibleMixamoSetup
             {
                 cs.state.speed = clip.length / ReactDuration;
                 Debug.Log($"{m.state}: react {clip.length:F2}s fitted to {ReactDuration:F2}s, speed x{cs.state.speed:F2}");
+            }
+            // parry: a deflect is a snap, not a performance - fit it to the action's own length
+            if (m.state.StartsWith("Parry") && clip.length > 0.05f)
+            {
+                cs.state.speed = clip.length / ParryDuration;
+                Debug.Log($"{m.state}: parry {clip.length:F2}s fitted to {ParryDuration:F2}s, speed x{cs.state.speed:F2}");
             }
             if (m.state.StartsWith("Dash_") && clip.length > 0.05f)
             {

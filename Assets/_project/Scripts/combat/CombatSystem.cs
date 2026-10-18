@@ -384,6 +384,7 @@ public class CombatSystem : MonoBehaviour
     }
     if (inHitstun)   { Debug.Log($"P{pn}: BLOCKED - in hitstun"); return false; }
     if (attackLockoutTimer > 0f) { Debug.Log($"P{pn}: BLOCKED - chain lockout, {attackLockoutTimer:0.00}s left"); return false; }
+    if (fighter != null && fighter.IsParrying) { Debug.Log($"P{pn}: BLOCKED - parry, {fighter.ParryRecoveryTimeLeft:0.00}s of recovery left"); return false; }
     if (fighter == null)         { Debug.Log($"P{pn}: BLOCKED - fighter null"); return false; }
     if (fighter.Stats == null)   { Debug.Log($"P{pn}: BLOCKED - Stats null"); return false; }
 
