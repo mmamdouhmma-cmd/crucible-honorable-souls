@@ -828,3 +828,35 @@ User's four items after testing the previous build. All four are done and **play
   trip; check `attackLockoutTimer` by reflection instead). **Known gap: the AI still never parries** -
   `AiController` only ever writes `blockHeld`, and now that the parry has its own button it cannot
   even do it by accident.
+
+### 2026-10-19 (end of session) - scope change: CRUCIBLE Lite, the mobile-first slice
+
+User's call after testing: the game plays well **only on a PS5 pad** - keyboard and touch are not
+fluid - so the next stretch is a LITE slice that can be played with a thumb, and the backlog is
+re-cut around it. ** is the active plan and replaces .
+The next session starts at its Task 1.**
+
+- **Dropped for now:** grabs, low attacks, low block, trips, the tackle. Everything authored so far
+  is a HIGH attack; the  enum stays on  (read by nothing) because the user
+  wants the height concept kept for the long run, so the lite version simply never produces a
+  non-high attack.
+- **In scope:** the three strikes, block, dash + dash counter, parry + parry counter, **6-9 combos
+  per character** (Bjorn has 1 today, Miyamoto 3), **3 specials per character**, **counter-riposte
+  moves with their own animations** after a successful dash or parry, health recovery on defensive
+  success (+2% dodge / +2% parry / +3% counter hit, the user's numbers), the mobile build, and an AI
+  that uses any of it.
+- **The user's stated blocker is animations** ("i cant think of animations now"), so Task 1 is an
+  inventory: ~16 unused attack clips sit in  (AxePack + GreatSwordPack, 98
+  clips, only 20 mapped) - , , ,
+  , two kicks each, , , , the plain thrust. Enough for
+  6 specials, 4 ripostes and the combo enders with nothing filmed. The plan carries a first-pass
+  clip-per-slot proposal to react to.
+- **Seven decisions are queued at the top of the plan** with a recommendation each (special input =
+  one SPECIAL button + direction; specials cost the super bar; **dash by double-tapping a
+  direction** on keyboard/touch; new keyboard defaults with guard and parry on the left hand;
+  health-recovery cap plus switching the hidden passive  off; no combo
+  doubling back; Mixamo rather than filming).
+- Found while planning: the super bar is **fed but never spent and never shown** ( on
+  hit/combo/parry/dash counter, no HUD bar) - specials are what finally give it a purpose. And both
+  fighters have a hidden passive health regen of 1 hp/s, which is why health crept up between test
+  evals.
