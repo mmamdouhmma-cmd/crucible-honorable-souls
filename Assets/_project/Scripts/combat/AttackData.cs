@@ -172,8 +172,10 @@ public class AttackData : ScriptableObject
     [SerializeField] private ComboLink[] comboLinks;
 
     [Range(-1, 60)]
-    [Tooltip("First frame (counted from this attack's start) a follow-up may come out. -1 = the first active frame, " +
-             "which is the usual fighting-game rule: you may cancel from the moment the blade is live.")]
+    [Tooltip("First frame (counted from this attack's start) a follow-up may come out. -1 = the first recovery frame, " +
+             "i.e. as soon as this attack's own active window is over. Authoring an earlier frame is allowed and lets a " +
+             "string continue the moment the blade connects, but the follow-up still waits for a swing that has not " +
+             "touched anything, so the opener never loses its hit.")]
     [SerializeField] private int cancelStartFrame = -1;
 
     [Range(-1, 90)]
@@ -255,8 +257,8 @@ public class AttackData : ScriptableObject
     /// <summary>True if any button continues this attack into something else.</summary>
     public bool HasComboLinks => comboLinks != null && comboLinks.Length > 0;
 
-    /// <summary>First frame a follow-up may come out (defaults to the first active frame).</summary>
-    public int CancelStartFrame => cancelStartFrame < 0 ? startupFrames : cancelStartFrame;
+    /// <summary>First frame a follow-up may come out (defaults to the first recovery frame).</summary>
+    public int CancelStartFrame => cancelStartFrame < 0 ? startupFrames + activeFrames : cancelStartFrame;
 
     /// <summary>Last frame a follow-up may come out (defaults to the end of recovery).</summary>
     public int CancelEndFrame =>

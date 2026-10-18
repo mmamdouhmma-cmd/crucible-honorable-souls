@@ -254,6 +254,15 @@ public class CombatSystem : MonoBehaviour
         int frame = Mathf.FloorToInt(currentAttackTime / BalanceConfig.FRAME_TIME);
         if (frame < currentAttack.CancelStartFrame || frame > currentAttack.CancelEndFrame) return false;
 
+        // Never cancel out of a live hitbox that has not resolved. This runs before the arming and
+        // hit-resolution code further down the same Update, so cancelling inside the active window
+        // of a swing that has not touched anything yet deletes the opener's own hit: the player
+        // presses two buttons and only the second one does damage. Once the swing has connected
+        // (hit, blocked or been dodged) the cancel is free, which is the hit-confirm behaviour
+        // strings want; a whiff simply waits for the active frames to pass.
+        float activeEnd = (currentAttack.StartupFrames + currentAttack.ActiveFrames) * BalanceConfig.FRAME_TIME;
+        if (currentAttackTime < activeEnd && !attackTouched && !swingEvaded) return false;
+
         bool allowed;
         switch (link.requires)
         {

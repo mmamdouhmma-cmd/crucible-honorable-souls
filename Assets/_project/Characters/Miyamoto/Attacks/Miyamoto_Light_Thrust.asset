@@ -33,3 +33,10 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: -1
+  comboLinks:
+  - input: 1
+    followUp: {fileID: 11400000, guid: 0a06abb1bb36c8845887f47a12a09352, type: 2}
+    requires: 0
+  cancelStartFrame: -1
+  cancelEndFrame: -1
+  dodgedRecoveryFrames: -1

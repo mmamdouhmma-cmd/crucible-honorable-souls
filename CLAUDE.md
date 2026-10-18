@@ -557,3 +557,35 @@ where the `.rsp` files are built from the csproj's `DefineConstants`, `HintPath`
   exit blend absorbs. Fitting log: `window 4.2-52.2 for 48 f (hit at 67%)`, clip 1.60s at speed x2.00.
 - Also added to `.gitignore`: `ArtSource/Mocap/models/` (the 30 MB MediaPipe .task, which the notes
   already claimed was ignored but was not) and `Server/cf.prev.log`.
+
+### 2026-10-18 — Miyamoto's three combos (and a cancel-ordering bug)
+
+- User's design (P2 keys: `,` Light, `.` Medium, `/` Heavy): combo 1 `,`->`.`, combo 2 `.`->`,`,
+  combo 3 `.`->`/`. Combos 2 and 3 are **two branches off the same move**, which is what the
+  `ComboLink[]` array is for - the medium reads both buttons and gives a different ender for each.
+- **Pure data, no new content.** The follow-ups are Miyamoto's EXISTING moves, so they reuse the
+  `LightAttack` / `MediumAttack` / `HeavyAttack` triggers and the Any State transitions already in
+  the controller. Links live on `Miyamoto_Light_Thrust` (Medium -> Side Slash) and
+  `Miyamoto_Medium_SideSlash` (Light -> Mid Thrust, Heavy -> Overhead Slash), all
+  `CancelRequirement.Always`, windows left at -1 (the defaults).
+- **Bug the second combo would have exposed: a cancel could delete the opener's own hit.**
+  `TryCancelIntoFollowUp` runs at the top of the phase advance, BEFORE the arming and
+  hit-resolution code further down the same `Update`. So a window that opens during the opener's
+  active frames cancelled the swing before its hitbox resolved - press two buttons, only the
+  second one damages. Bjorn's authored window (frames 8-14) started at his measured contact, so it
+  happened to work. Fixed in two places:
+  - `TryCancelIntoFollowUp` refuses while `currentAttackTime < startup + active` and the swing has
+    not touched anything (`attackTouched` / `swingEvaded` both false). It fires IMMEDIATELY once
+    the blade connects, so hit-confirm cancels still work, and a whiff just waits for the active
+    frames to pass.
+  - `AttackData.CancelStartFrame` default (-1) is now `startupFrames + activeFrames` (the first
+    recovery frame) instead of `startupFrames`.
+- Strings chain both ways (`,`->`.`->`,` and `.`->`,`->`.` are both legal), capped at 3 hits by
+  `MAX_STRING_LENGTH`. Open question for the user: whether a string should be allowed to double
+  back on itself.
+- **Verified in play at 8% speed, 2.2 units:** all three combos land BOTH hits, opener first -
+  `,`->`.` 8+8, `.`->`,` 8+8, `.`->`/` 8+10 (cancels on frames 10 / 14 / 14).
+- **Mocap verdict from the user (2026-10-18): the video animations "wasn't the best for now"** - the
+  Mixamo swings stay. The capture lane and its clips remain in the repo for later.
+- **Next (user): the parrying system.**
+
