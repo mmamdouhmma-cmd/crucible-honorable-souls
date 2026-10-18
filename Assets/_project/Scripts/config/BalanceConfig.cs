@@ -94,6 +94,9 @@ public static class BalanceConfig
     public const float MOVEMENT_INTO_SLASH_BONUS = 1.1f;    // +10%
     public const float MOVEMENT_INTO_THRUST_BONUS = 1.15f;  // +15%
     public const float PARRY_STUN_DURATION = 1.0f;
+    // A parry is harder than a dodge (a 0.15 s press against an incoming strike), so its counter
+    // pays better than DASH_COUNTER_DAMAGE_MULTIPLIER. Serialized per fighter.
+    public const float PARRY_COUNTER_DAMAGE_MULTIPLIER = 1.5f;
     
     // ==================== COMBO MULTIPLIERS ====================
     public const float COMBO_MULTIPLIER_2_HIT = 1.1f;

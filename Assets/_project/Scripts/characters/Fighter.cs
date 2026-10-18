@@ -87,6 +87,29 @@ public class Fighter : MonoBehaviour
     [Min(0f)]
     [SerializeField] private float blockStaminaDrainPerSecond = BalanceConfig.BLOCK_STAMINA_DRAIN_PER_SECOND;
 
+    [Header("Parry")]
+    [Tooltip("Seconds after the guard goes up during which an incoming strike is PARRIED instead of blocked: " +
+             "no damage, no stamina cost, and the attacker is stunned. Timing it beats holding it.")]
+    [Min(0f)]
+    [SerializeField] private float parryWindow = BalanceConfig.PARRY_WINDOW;
+
+    [Tooltip("Seconds of stun the ATTACKER eats when parried: the swing ends and they cannot act, which is the " +
+             "parrier's free punish.")]
+    [Min(0f)]
+    [SerializeField] private float parryStunDuration = BalanceConfig.PARRY_STUN_DURATION;
+
+    [Tooltip("Seconds after a parry during which this fighter's next attack counts as a parry counter.")]
+    [Min(0f)]
+    [SerializeField] private float parryCounterWindow = BalanceConfig.PARRY_COUNTER_WINDOW;
+
+    [Tooltip("Damage multiplier on an attack started inside the parry-counter window.")]
+    [Min(1f)]
+    [SerializeField] private float parryCounterDamageMultiplier = BalanceConfig.PARRY_COUNTER_DAMAGE_MULTIPLIER;
+
+    [Tooltip("Super-bar charge awarded for a parry.")]
+    [Min(0)]
+    [SerializeField] private int parrySuperGain = BalanceConfig.SUPER_GAIN_PARRY;
+
     [Tooltip("If off, stamina does not regenerate while block is held, so a turtling fighter eventually runs dry.")]
     [SerializeField] private bool staminaRecoversWhileBlocking = false;
     private bool isBlocking = false;
@@ -110,6 +133,28 @@ public class Fighter : MonoBehaviour
 
     /// <summary>Seconds left for the HUD to show CLASH (0 when none is pending).</summary>
     public float ClashFlashTimeLeft => Mathf.Max(clashFlashTimer, 0f);
+
+    // Parry. blockPressedTime is when the guard button last went DOWN (not while it is held), so a
+    // parry rewards timing the press against the incoming strike rather than sitting on block.
+    private float blockPressedTime = -99f;
+    private bool wasBlockHeld = false;
+    private float parryCounterTimer = 0f;
+    private float parryFlashTimer = 0f;
+
+    /// <summary>
+    /// True when an incoming strike should be parried: the guard is genuinely up and went up within
+    /// <see cref="parryWindow"/>. Read by CombatSystem before blocking is considered.
+    /// </summary>
+    public bool ParryReady => isBlocking && Time.time - blockPressedTime <= parryWindow;
+
+    /// <summary>Seconds left in the parry-counter window (0 when no counter is ready).</summary>
+    public float ParryCounterTimeLeft => Mathf.Max(parryCounterTimer, 0f);
+
+    /// <summary>Seconds left for the HUD to show PARRY (0 when none is pending).</summary>
+    public float ParryFlashTimeLeft => Mathf.Max(parryFlashTimer, 0f);
+
+    /// <summary>Frames of stun an attacker eats when this fighter parries them.</summary>
+    public int ParryStunFrames => Mathf.Max(1, Mathf.RoundToInt(parryStunDuration / BalanceConfig.FRAME_TIME));
 
     [Header("Recovery")]
     [Tooltip("Stamina regained per second. Set per character.")]
@@ -222,6 +267,14 @@ public class Fighter : MonoBehaviour
         {
             clashFlashTimer -= Time.deltaTime;
         }
+        if (parryCounterTimer > 0f)
+        {
+            parryCounterTimer -= Time.deltaTime;
+        }
+        if (parryFlashTimer > 0f)
+        {
+            parryFlashTimer -= Time.deltaTime;
+        }
 
         HandleFacing();
         HandleKnockback();
@@ -244,6 +297,11 @@ public class Fighter : MonoBehaviour
     {
         bool wasBlocking = isBlocking;
         bool attacking = combatSystem != null && combatSystem.IsAttacking;
+
+        // The parry window starts on the PRESS, so note the edge before anything can refuse the guard.
+        if (currentInput.blockHeld && !wasBlockHeld) blockPressedTime = Time.time;
+        wasBlockHeld = currentInput.blockHeld;
+
         isBlocking = currentInput.blockHeld && !isDashing && !attacking && stats.currentStamina > 0;
 
         if (isBlocking && stats.DrainStamina(Time.deltaTime, blockStaminaDrainPerSecond))
@@ -285,6 +343,52 @@ public class Fighter : MonoBehaviour
     }
 
     /// <summary>
+    /// Called when this fighter PARRIED an incoming strike. No damage and no stamina cost were
+    /// taken; this plays the guard jolt, opens the counter window and charges the super bar.
+    /// The attacker's side is <see cref="NotifyParried"/>.
+    /// </summary>
+    public void NotifyParry()
+    {
+        // While Blocking is true the controller takes GetHit to Block_Impact, so this reads as a
+        // guard jolt rather than a flinch.
+        PlayHitAnimation(HitSide.Straight);
+
+        parryCounterTimer = parryCounterWindow;
+        parryFlashTimer = BalanceConfig.CLASH_HUD_FLASH_DURATION;
+        if (stats != null && parrySuperGain > 0) stats.AddSuperBar(parrySuperGain);
+
+        // A parry is a clean defence, so it deliberately leaves any pending dash counter alone.
+        Debug.Log($"P{playerNumber}: PARRY - counter window {parryCounterWindow:0.00}s, +{parrySuperGain} super");
+    }
+
+    /// <summary>
+    /// Called on the ATTACKER when their strike was parried: the straight stagger plus
+    /// <paramref name="stunFrames"/> of hitstun, which is what leaves them open.
+    /// </summary>
+    public void NotifyParried(int stunFrames)
+    {
+        PlayHitAnimation(HitSide.Straight);
+        if (combatSystem != null) combatSystem.ApplyHitstun(stunFrames);
+
+        dashCounterTimer = 0f;
+        lastDodgeTime = -1f;
+    }
+
+    /// <summary>
+    /// Called when an attack starts. Returns true (and uses up the window) if the attack was
+    /// started inside the counter window opened by a parry.
+    /// </summary>
+    public bool ConsumeParryCounter()
+    {
+        bool ready = parryCounterTimer > 0f;
+        parryCounterTimer = 0f;
+        return ready;
+    }
+
+    /// <summary>Damage multiplier for an attack started inside the parry-counter window.</summary>
+    public float ParryCounterDamageMultiplier => parryCounterDamageMultiplier;
+
+    /// <summary>
     /// Called when this fighter's attack met an equal one. Cancels the swing (done by
     /// <see cref="CombatSystem"/>), plays the straight flinch as a recoil, locks the fighter
     /// for the clash stagger and shoves it <paramref name="awayFromOpponent"/>.
@@ -322,6 +426,10 @@ public void ResetForMatch(Vector3 position, Quaternion rotation)
     knockbackVelocity = Vector3.zero;
     knockbackTimer = 0f;
     isBlocking = false;
+    wasBlockHeld = false;
+    blockPressedTime = -99f;
+    parryCounterTimer = 0f;
+    parryFlashTimer = 0f;
     lungeStarted = false;
     if (combatSystem != null) combatSystem.ResetForMatch();
     transform.SetPositionAndRotation(position, rotation);

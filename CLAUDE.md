@@ -589,3 +589,46 @@ where the `.rsp` files are built from the csproj's `DefineConstants`, `HintPath`
   Mixamo swings stay. The capture lane and its clips remain in the repo for later.
 - **Next (user): the parrying system.**
 
+### 2026-10-18 — parry (built, block path verified, the window itself NOT yet verified)
+
+- Wires up the four constants that existed and were referenced by nothing. **The rule:** a strike is
+  PARRIED when the guard went UP within `parryWindow` (0.15 s) before it lands - `Fighter` records the
+  press EDGE (`blockPressedTime`, set in `HandleBlock` from a false->true `blockHeld`), so timing the
+  press beats holding the guard. Checked in `CombatSystem.ResolveHit` BEFORE the block branch, because
+  a parry is also a block as far as `Fighter.isBlocking` goes.
+- **On a parry:** no damage, no stamina cost; the attacker's swing is `EndAttack("PARRIED")` and they
+  eat `parryStunDuration` (1.0 s = 60 f) of hitstun via `Fighter.NotifyParried` (so no attacking,
+  dashing or walking - the free punish); the parrier gets `parryCounterWindow` (0.5 s) in which their
+  next attack deals **x1.5** (`PARRY_COUNTER_DAMAGE_MULTIPLIER`, new constant - the plan referenced a
+  multiplier but never defined one; it beats the dash counter's x1.35 because a 0.15 s press is harder
+  than a dodge) and **+15 super** via the existing `FighterStats.AddSuperBar`.
+- **All five numbers are serialized on `Fighter`** under a Parry header, as the plan asked:
+  `parryWindow`, `parryStunDuration`, `parryCounterWindow`, `parryCounterDamageMultiplier`,
+  `parrySuperGain`. `CombatSystem` gained `currentAttackIsParryCounter` beside the dash-counter flag,
+  consumed in `BeginAttack` through `Fighter.ConsumeParryCounter()`.
+- **No new clips needed:** the controllers already route `GetHit` -> `Block_Impact` while `Blocking`
+  is true, so `NotifyParry` playing the straight hit animation reads as a guard jolt; the attacker
+  gets the straight react as a stagger. Dedicated `Parry` / `Parry_Success` clips are still wanted.
+  HUD: `PARRY!` (pale blue) over the clash slot and `PARRY COUNTER` beside `COUNTER READY`.
+- **`Scripts/debug/InputHold.cs` (new, test-only).** `InputManager` CONSUMES the AI snapshot every
+  frame (`if (ai2) aiInput2 = new InputData();`) because the AI rewrites it each frame, so a single
+  `SetAiInput` from the console holds a button for ONE frame - that is why the first two parry test
+  runs showed `blocking=False` and full damage on a supposedly held guard. `InputHold.Hold(player,
+  block, seconds, delay)` re-asserts the snapshot every frame, and `delay` schedules the press in
+  GAME time, which a console round trip (~1 s real = 0.08 s game at 8% speed) is far too slow to do:
+  Bjorn's light lands 0.100-0.150 s after the press, so the guard must go up around 0.08 s.
+- **Testing traps found (both cost a full run):**
+  - **Never recompile while the Editor is in play mode.** The domain reload wiped
+    `InputManager.Instance` (a static) while play continued, so every input override silently did
+    nothing and the fighters kept taking unblocked hits. Symptom to look for:
+    `InputManager.Instance == null` in an eval. Stop play, recompile, then play.
+  - An `eval` that throws returns NO result line; re-run it without the `grep` to see
+    "Runtime Error ... Object reference not set".
+- **Verified:** the block path through `InputHold` - a guard held well before the swing gives
+  `4 dmg [BLOCKED -50%, cost 5 stamina]`, i.e. an ordinary block, which is the correct NEGATIVE case
+  (the press was >0.15 s before the hit).
+- **NOT yet verified: the parry itself.** The scheduled-press run
+  (`scratchpad/parry_test3.sh`: swing + `Hold(2, true, 0.30f, 0.08f)` in one eval) was killed by the
+  system for low memory before printing anything. Re-run that script to confirm PARRY, the attacker's
+  60 f stun, and the x1.5 counter.
+

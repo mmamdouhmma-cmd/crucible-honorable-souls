@@ -331,7 +331,12 @@ public class FightHud : MonoBehaviour
         // ----- Status line -----
         string status = "";
         Color statusColor = Color.white;
-        if (bars.fighter.ClashFlashTimeLeft > 0f)
+        if (bars.fighter.ParryFlashTimeLeft > 0f)
+        {
+            status = "PARRY!";
+            statusColor = new Color(0.45f, 0.85f, 1f);
+        }
+        else if (bars.fighter.ClashFlashTimeLeft > 0f)
         {
             status = "CLASH";
             statusColor = new Color(1f, 1f, 1f);
@@ -340,6 +345,11 @@ public class FightHud : MonoBehaviour
         {
             status = "OUT OF STAMINA";
             statusColor = new Color(1f, 0.35f, 0.30f);
+        }
+        else if (bars.fighter.ParryCounterTimeLeft > 0f)
+        {
+            status = "PARRY COUNTER";
+            statusColor = new Color(0.45f, 0.85f, 1f);
         }
         else if (bars.fighter.DashCounterTimeLeft > 0f)
         {

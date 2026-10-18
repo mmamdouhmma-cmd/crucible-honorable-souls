@@ -57,6 +57,7 @@ public class CombatSystem : MonoBehaviour
     private bool hitboxActive;
     private bool hitboxStarted; // the current attack's hitbox has already been activated once
     private bool currentAttackIsDashCounter; // started inside the dash-counter window after a dodge
+    private bool currentAttackIsParryCounter; // started inside the counter window opened by a parry
     private bool swingEvaded;                // the opponent's dash already made this swing miss
     private Fighter reachTarget;             // opponent checked when the hitbox armed (for the gizmo)
     private Vector3 reachTargetPos;          // position that check used
@@ -319,6 +320,11 @@ public class CombatSystem : MonoBehaviour
         if (currentAttackIsDashCounter)
         {
             Debug.Log($"P{fighter.PlayerNumber}: DASH COUNTER - {attack.AttackName} will deal x{BalanceConfig.DASH_COUNTER_DAMAGE_MULTIPLIER} damage");
+        }
+        currentAttackIsParryCounter = fighter.ConsumeParryCounter();
+        if (currentAttackIsParryCounter)
+        {
+            Debug.Log($"P{fighter.PlayerNumber}: PARRY COUNTER - {attack.AttackName} will deal x{fighter.ParryCounterDamageMultiplier} damage");
         }
 
         fighter.Stats.UseStamina(attack.StaminaCost);
@@ -660,9 +666,41 @@ public class CombatSystem : MonoBehaviour
             return;
         }
 
+        // PARRY beats blocking: the guard went up inside the parry window, so this strike does
+        // nothing at all and the attacker is left stunned and open. Checked before the block branch
+        // because a parry IS a block as far as Fighter.isBlocking is concerned.
+        if (target.ParryReady)
+        {
+            string parried = currentAttack.AttackName;
+            int stunFrames = target.ParryStunFrames;
+
+            target.NotifyParry();
+            attackTouched = true;    // the blade was met, so a string may continue (hitstun will stop it)
+            attackHitClean = false;
+
+            if (sparksOnBlock)
+            {
+                Vector3 at = HitEffects.Chest(target) + (fighter.transform.position - target.transform.position).normalized * target.BodyRadius;
+                HitEffects.SpawnSparks(at, Vector3.up + (target.transform.position - fighter.transform.position).normalized, target.BodyRadius);
+            }
+            if (hitStop) HitStop.Request(BalanceConfig.HIT_STOP_FRAMES * BalanceConfig.FRAME_TIME);
+            if (FightCamera.Instance != null) FightCamera.Instance.OnImpact(0, currentAttack.AttackType, true);
+
+            if (debugLogs)
+            {
+                Debug.Log($"P{target.PlayerNumber} PARRIED P{fighter.PlayerNumber}'s {parried} - " +
+                          $"no damage, attacker stunned {stunFrames} f");
+            }
+
+            EndAttack("PARRIED");
+            fighter.NotifyParried(stunFrames);
+            return;
+        }
+
         bool blocked = target.IsBlocking;
         int blockReduction = blocked ? target.BlockDamageReduction : 0;
         float bonus = currentAttackIsDashCounter ? BalanceConfig.DASH_COUNTER_DAMAGE_MULTIPLIER : 1f;
+        if (currentAttackIsParryCounter) bonus *= fighter.ParryCounterDamageMultiplier;
         bool dashedIntoIt = dashOutcome == DashHitOutcome.HitAmplified;
         if (dashedIntoIt)
         {
@@ -915,6 +953,7 @@ public class CombatSystem : MonoBehaviour
         currentAttack = null;
         currentAttackTime = 0f;
         currentAttackIsDashCounter = false;
+        currentAttackIsParryCounter = false;
         chainIdleTimer = 0f; // the chain window starts counting from here
     }
 }
