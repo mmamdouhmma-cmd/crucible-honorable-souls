@@ -719,3 +719,55 @@ where the `.rsp` files are built from the csproj's `DefineConstants`, `HintPath`
 - **Known gap: the AI never parries.** `AiController` only ever writes `blockHeld`, so nothing in
   any profile touches `defenseButton` - it used to parry by accident whenever its block landed in the
   window, and now it cannot at all. Insane probably should; not done.
+
+### 2026-10-19 - parry back on the guard, parry/dash effects, combo lockout, death animation
+
+User's call after testing the dedicated parry button: put the parry back on the **block button** with
+different timing; add an effect after a successful parry and dash; stop combo and single-attack
+spam; double the parry animation speed and make it editable from the component; add a death
+animation. **All five are built and compile clean. NONE of it is play-verified** - the verification
+run (`scratchpad/round2_test.sh`, four cases) was killed by the system for low memory before it
+printed anything, and was not restarted.
+
+- **Parry is back on the block press edge** (`blockPressedTime`, the pre-2026-10-18 rule). The
+  dedicated-button version is fully reverted: no `Defense`-button path, no `Parry` attempt state, no
+  `IsParrying`, no whiff recovery, no attack/dash/block gates. What replaces the risk, since an
+  early press on a shared button costs nothing:
+  - `parryWindow` **0.15 -> 0.12 s** (`BalanceConfig.PARRY_WINDOW`, and both scene Fighters were
+    re-serialized - changing the const does NOT touch an already-serialized component).
+  - **`parryRearmTime` (0.6 s, new serialized field):** one press arms ONE parry window. A press
+    within the rearm still raises the guard but cannot parry (`blockPressedTime = -99`), so
+    mashing block does not fish for free parries. A successful parry also burns the arm.
+- **Effects.** `sparksOnParry` (new on CombatSystem, default true) - the parry spark used to ride on
+  `sparksOnBlock`, which is off by design, so it never showed. `dustEffects` now defaults true and
+  is on for both fighters, which is the dash dust (push-off + landing, already in `Fighter`).
+- **Anti-spam, the combo case.** `BalanceConfig.STRING_LOCKOUT` (**1.5 s**, new) applies when a
+  STRING finishes its last move: a combo must not be a way to swing more often than a single attack,
+  which is what made Miyamoto's two-way links spammable. `ATTACK_CHAIN_LOCKOUT` **0.8 -> 1.5 s** for
+  the same-attack repeat limit (the spammable J). Both are overridable per fighter via serialized
+  `stringLockout` / `sameAttackLockout` on CombatSystem (0 = fall through to BalanceConfig), and the
+  two take `Mathf.Max` so the longer wins. Implementation note: `EndAttack` clears `stringDepth`, so
+  the depth is captured into `endedDepth` before the call.
+- **Parry animation speed is editable and doubled.** `Parry_Success` is fitted to `ParryDuration`
+  (0.40 s, x3.33) AND its speed multiplier now reads a new **`ParrySpeed`** float parameter on both
+  controllers (default 2), which `Fighter.parryAnimSpeed` (new serialized field, default 2) sets when
+  firing the trigger. Net **0.20 s** on screen; set `parryAnimSpeed` to 1 for the old speed.
+  `CrucibleMixamoSetup.Wire` re-applies both the fit and the parameter, so a re-import keeps it.
+- **Death animation.** `Death` trigger + state on both controllers (Any State -> Death, 0.10 s fixed
+  blend, no exit - a corpse stays down), clips `GreatSwordPack/two handed sword death` (Bjorn, 2.40 s)
+  and `two handed sword death (2)` (Miyamoto, 2.50 s), both map entries so they survive a re-import.
+  `CombatSystem` calls `target.NotifyDeath()` **instead of** `NotifyHit` when `TakeDamage` leaves the
+  target at zero, so the killing blow plays the death rather than a flinch. `Fighter.NotifyDeath`
+  drops the guard, clears dash/knockback velocity and sets `IsDead`; `ResetForMatch` clears it.
+  This works with the existing KO path because `GameMenu.FreezeFighters` only disables the `Fighter`
+  component - the Animator keeps running, so the clip plays under the KO screen (which appears 1.6 s
+  later, while the death clip is ~2.4 s).
+- **Editor-script gotcha that cost a job run:** patching `CrucibleMixamoSetup` and immediately
+  running `UseMixamo()` through `eval --detach` runs the STALE assembly (symptoms: `no state Parry`
+  warnings and the old fitting log). Always `unity command recompile` and wait for `completed`
+  before invoking an editor method you just edited.
+- **Still to verify in play when memory allows** (`scratchpad/round2_test.sh`): (1) a block press
+  timed into a swing parries at 0.12 s and sparks; (2) a re-press inside 0.6 s blocks instead;
+  (3) a finished 2-hit string refuses the next attack for 1.5 s; (4) lethal damage enters the Death
+  state with the death clip rather than a React. The AI still never parries (`AiController` writes
+  `blockHeld`, so it can now parry by accident again, as it did before the dedicated button).

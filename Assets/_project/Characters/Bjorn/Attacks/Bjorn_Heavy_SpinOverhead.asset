@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Spinning Overhead
   damage: 11
-  staminaCost: 20
+  staminaCost: 19
   armorPierce: 5
   startupFrames: 30
   activeFrames: 4

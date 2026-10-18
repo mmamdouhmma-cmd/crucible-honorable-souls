@@ -497,8 +497,11 @@ MonoBehaviour:
   bloodColor: {r: 0.42, g: 0.015, b: 0.02, a: 1}
   hitStop: 1
   sparksOnBlock: 0
+  sparksOnParry: 1
   bladeTrail: 0
   debugLogs: 1
+  stringLockout: 0
+  sameAttackLockout: 0
 --- !u!114 &126681666
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -525,16 +528,18 @@ MonoBehaviour:
   combatSystem: {fileID: 126681665}
   dashDistance: 2
   dashDuration: 0.35
-  dashStaminaCost: 25
-  blockDamageReduction: 50
-  blockStaminaDrainPerSecond: 4
-  parryWindow: 0.15
+  dashStaminaCost: 16
+  blockDamageReduction: 80
+  blockStaminaDrainPerSecond: 3
+  parryWindow: 0.12
+  parryRearmTime: 0.6
+  parryAnimSpeed: 2
   parryStunDuration: 1
-  parryCounterWindow: 0.5
+  parryCounterWindow: 1
   parryCounterDamageMultiplier: 1.5
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 15
+  staminaRecoveryPerSecond: 20
   healthRegenPerSecond: 1
   healthRegenDelay: 3
   debugLogs: 1
@@ -4249,6 +4254,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::InputHold
   player: 2
   block: 0
+  parry: 0
   secondsLeft: 0
   delayLeft: 0
 --- !u!1 &1348276768
@@ -5774,8 +5780,11 @@ MonoBehaviour:
   bloodColor: {r: 0.42, g: 0.015, b: 0.02, a: 1}
   hitStop: 1
   sparksOnBlock: 0
+  sparksOnParry: 1
   bladeTrail: 0
   debugLogs: 1
+  stringLockout: 0
+  sameAttackLockout: 0
 --- !u!114 &1967802158
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5802,12 +5811,14 @@ MonoBehaviour:
   combatSystem: {fileID: 1967802157}
   dashDistance: 2
   dashDuration: 0.25
-  dashStaminaCost: 20
+  dashStaminaCost: 12
   blockDamageReduction: 50
   blockStaminaDrainPerSecond: 4
-  parryWindow: 0.15
+  parryWindow: 0.12
+  parryRearmTime: 0.6
+  parryAnimSpeed: 2
   parryStunDuration: 1
-  parryCounterWindow: 0.5
+  parryCounterWindow: 1
   parryCounterDamageMultiplier: 1.5
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0

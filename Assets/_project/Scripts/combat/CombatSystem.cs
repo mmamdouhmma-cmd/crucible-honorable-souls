@@ -46,6 +46,9 @@ public class CombatSystem : MonoBehaviour
     [SerializeField] private bool hitStop = true;
     [Tooltip("Sparks when this fighter's strike is blocked or clashes.")]
     [SerializeField] private bool sparksOnBlock = false;
+
+    [Tooltip("Spark burst when this fighter PARRIES a strike. Separate from sparksOnBlock, which is off by design: a parry is the one moment that always deserves a flash.")]
+    [SerializeField] private bool sparksOnParry = true;
     [Tooltip("Blade trail while the hitbox is live (needs a WeaponTrail on the fighter; added automatically).")]
     [SerializeField] private bool bladeTrail = false;
     private WeaponTrail weaponTrail;
@@ -80,6 +83,16 @@ public class CombatSystem : MonoBehaviour
     private bool attackTouched;        // this swing hit or was blocked
     private bool attackHitClean;       // this swing hit unblocked
     private int stringDepth;           // links taken without returning to neutral (0 = a fresh swing)
+
+    [Header("Anti-spam")]
+    [Tooltip("Seconds with no attacking after a STRING finishes its last move (0 = use BalanceConfig.STRING_LOCKOUT).")]
+    [SerializeField] private float stringLockout = 0f;
+
+    [Tooltip("Seconds with no attacking after the same attack is thrown back to back to the limit (0 = use BalanceConfig.ATTACK_CHAIN_LOCKOUT).")]
+    [SerializeField] private float sameAttackLockout = 0f;
+
+    private float StringLockout => stringLockout > 0f ? stringLockout : BalanceConfig.STRING_LOCKOUT;
+    private float SameAttackLockout => sameAttackLockout > 0f ? sameAttackLockout : BalanceConfig.ATTACK_CHAIN_LOCKOUT;
 
     private void Awake()
     {
@@ -222,14 +235,25 @@ public class CombatSystem : MonoBehaviour
 
         if (currentAttackTime >= total)
         {
+            int endedDepth = stringDepth;   // EndAttack clears it, and the lockout below needs it
             EndAttack();
+
+            // A string that ran to the end of its last move costs a beat, however it was built: a
+            // combo is not a way to attack more often than a single swing. Checked before the repeat
+            // limiter so the longer of the two wins.
+            if (endedDepth > 0)
+            {
+                attackLockoutTimer = Mathf.Max(attackLockoutTimer, StringLockout);
+                chainCount = 0;
+                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {endedDepth + 1}-hit string finished - locked out for {StringLockout:0.00}s");
+            }
 
             // Hit the repeat limit on a swing that ran its course: no more attacks for a beat.
             if (chainCount >= BalanceConfig.SAME_ATTACK_CHAIN_LIMIT)
             {
-                attackLockoutTimer = BalanceConfig.ATTACK_CHAIN_LOCKOUT;
+                attackLockoutTimer = Mathf.Max(attackLockoutTimer, SameAttackLockout);
                 chainCount = 0;
-                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {BalanceConfig.SAME_ATTACK_CHAIN_LIMIT}x {chainType} in a row - locked out for {BalanceConfig.ATTACK_CHAIN_LOCKOUT:0.00}s");
+                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {BalanceConfig.SAME_ATTACK_CHAIN_LIMIT}x {chainType} in a row - locked out for {SameAttackLockout:0.00}s");
             }
         }
     }
@@ -384,7 +408,6 @@ public class CombatSystem : MonoBehaviour
     }
     if (inHitstun)   { Debug.Log($"P{pn}: BLOCKED - in hitstun"); return false; }
     if (attackLockoutTimer > 0f) { Debug.Log($"P{pn}: BLOCKED - chain lockout, {attackLockoutTimer:0.00}s left"); return false; }
-    if (fighter != null && fighter.IsParrying) { Debug.Log($"P{pn}: BLOCKED - parry, {fighter.ParryRecoveryTimeLeft:0.00}s of recovery left"); return false; }
     if (fighter == null)         { Debug.Log($"P{pn}: BLOCKED - fighter null"); return false; }
     if (fighter.Stats == null)   { Debug.Log($"P{pn}: BLOCKED - Stats null"); return false; }
 
@@ -679,8 +702,10 @@ public class CombatSystem : MonoBehaviour
             attackTouched = true;    // the blade was met, so a string may continue (hitstun will stop it)
             attackHitClean = false;
 
-            if (sparksOnBlock)
+            if (sparksOnParry)
             {
+                // A parry is the one moment that always deserves a spark, so this is its own toggle
+                // rather than riding on sparksOnBlock (which is off by design).
                 Vector3 at = HitEffects.Chest(target) + (fighter.transform.position - target.transform.position).normalized * target.BodyRadius;
                 HitEffects.SpawnSparks(at, Vector3.up + (target.transform.position - fighter.transform.position).normalized, target.BodyRadius);
             }
@@ -717,7 +742,8 @@ public class CombatSystem : MonoBehaviour
             bonus);
 
         target.Stats.TakeDamage(finalDamage);
-        target.NotifyHit(currentAttack.HitSide, currentAttack.HitstunFrames);
+        if (!target.Stats.IsAlive()) target.NotifyDeath();   // death animation instead of a flinch
+        else target.NotifyHit(currentAttack.HitSide, currentAttack.HitstunFrames);
 
         // Remembered for string links that must be earned by connecting.
         attackTouched = true;

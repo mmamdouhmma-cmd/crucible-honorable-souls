@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Overhead Slash
   damage: 8
-  staminaCost: 17
+  staminaCost: 19
   armorPierce: 0
   startupFrames: 30
   activeFrames: 4

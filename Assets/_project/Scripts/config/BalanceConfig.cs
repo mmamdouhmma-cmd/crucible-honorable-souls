@@ -45,7 +45,7 @@ public static class BalanceConfig
     public const int BLOCK_SPECIAL_STAMINA = 25;
 
     // ==================== COMBAT TIMING ====================
-    public const float PARRY_WINDOW = 0.15f;        // 9 frames at 60fps
+    public const float PARRY_WINDOW = 0.12f;        // 9 frames at 60fps
     public const float DASH_IFRAME_DURATION = 0.15f;
     public const float DASH_COUNTER_WINDOW = 0.5f;  // time after a dodge-dash to start a counter attack
     // Extra recovery (facing locked, no walking, no new attack) for an attack that was dodged by a dash:
@@ -62,7 +62,14 @@ public static class BalanceConfig
     // A different attack, or a gap longer than ATTACK_CHAIN_WINDOW after the previous attack ended,
     // starts a fresh chain and is free to swing.
     public const int SAME_ATTACK_CHAIN_LIMIT = 2;
-    public const float ATTACK_CHAIN_LOCKOUT = 0.8f;   // seconds locked out of every attack after the last repeat
+    public const float ATTACK_CHAIN_LOCKOUT = 1.5f;
+
+    /// <summary>
+    /// Seconds a fighter cannot attack after finishing a STRING (combo). A combo must not be a way
+    /// to swing more often than single attacks do - that is what made the two-way Miyamoto links
+    /// spammable.
+    /// </summary>
+    public const float STRING_LOCKOUT = 1.5f;   // seconds locked out of every attack after the last repeat
     public const float ATTACK_CHAIN_WINDOW = 0.6f;    // gap after an attack ends that still counts as the same chain
 
     // ---- Strings (combos) ----

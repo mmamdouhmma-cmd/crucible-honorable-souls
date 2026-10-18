@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Overhead Double Axe
   damage: 11
-  staminaCost: 20
+  staminaCost: 17
   armorPierce: 5
   startupFrames: 15
   activeFrames: 5
