@@ -451,9 +451,10 @@ public class GameMenu : MonoBehaviour
         yield return "steps forward a little to reach its target.";
         yield return "";
         yield return "BLOCK   Hold Block to absorb a hit for stamina. Holding drains stamina; an empty bar breaks the guard.";
-        yield return "PARRY   Tap Parry just as a strike lands to deflect it: no damage, no stamina, and the attacker is";
-        yield return "        stunned long enough to punish. It is its own button and a commitment - a parry that catches";
-        yield return "        nothing leaves you unable to block, dash or attack for a third of a second.";
+        yield return "PARRY   Tap Parry just as a strike lands to deflect it: no damage, no stamina lost, and the attacker";
+        yield return "        is stunned long enough to punish, with half a second to counter for +35% damage. It is its";
+        yield return "        own button, never the guard: it costs a little stamina and about a second before you can";
+        yield return "        try again, so read the swing rather than tapping it on every one.";
         yield return "DASH    Dash key + direction, or flick the right stick. A dash timed against a strike dodges it.";
         yield return "        A side dash circles your opponent so you stay in range. After a clean dodge you have";
         yield return "        half a second to counter for +35% damage, and the attacker who missed is stuck recovering.";

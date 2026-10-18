@@ -3,7 +3,8 @@ using UnityEngine;
 /// <summary>
 /// One-shot combat effects built from code (no prefabs to maintain). Blood is the only effect on
 /// by default: a spray of velocity-stretched droplets from the wound plus a splat that lands on the
-/// ground and fades. Sparks and dust are kept for later but nothing calls them unless enabled.
+/// ground and fades. Sparks fire on a parry (and on a block when that toggle is on) and dust on every
+/// dash, loudest when a dash dodges a strike.
 /// Sizes and speeds scale with the fighter's body radius so they read the same on a 3x and a 4x character.
 /// </summary>
 public static class HitEffects
@@ -78,35 +79,73 @@ public static class HitEffects
         fade.fade = 4f;
     }
 
-    /// <summary>Metal-on-metal sparks (not used by default).</summary>
-    public static void SpawnSparks(Vector3 point, Vector3 direction, float bodyRadius)
+    /// <summary>
+    /// Metal-on-metal sparks. <paramref name="strength"/> scales the whole burst: the particle count
+    /// grows with it and the size, speed and lifetime with its square root, so a loud flash reads as
+    /// a bigger shower rather than a handful of giant dots. 1 = the old burst.
+    /// </summary>
+    public static void SpawnSparks(Vector3 point, Vector3 direction, float bodyRadius, float strength = 1f)
     {
+        float s = Mathf.Max(0.1f, strength);
+        float scale = Mathf.Sqrt(s);
         float r = Mathf.Max(bodyRadius, 0.2f);
         if (direction.sqrMagnitude < 0.0001f) direction = Vector3.up;
-        ParticleSystem ps = NewSystem("Sparks", point, Quaternion.LookRotation(direction.normalized), new Color(1f, 0.85f, 0.45f), 0.8f, VfxMaterials.SoftDot(), true);
+        ParticleSystem ps = NewSystem("Sparks", point, Quaternion.LookRotation(direction.normalized), new Color(1f, 0.85f, 0.45f), 0.8f * scale, VfxMaterials.SoftDot(), true);
         ParticleSystem.MainModule main = ps.main;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(0.12f, 0.35f);
-        main.startSpeed = new ParticleSystem.MinMaxCurve(r * 8f, r * 18f);
-        main.startSize = new ParticleSystem.MinMaxCurve(r * 0.03f, r * 0.08f);
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.12f * scale, 0.35f * scale);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(r * 8f * scale, r * 18f * scale);
+        main.startSize = new ParticleSystem.MinMaxCurve(r * 0.03f * scale, r * 0.08f * scale);
         main.gravityModifier = 1.5f;
-        Burst(ps, 24, 40, 0f);
+        main.maxParticles = Mathf.Max(160, Mathf.RoundToInt(60 * s));
+        Burst(ps, Mathf.RoundToInt(24 * s), Mathf.RoundToInt(40 * s), 0f);
         Cone(ps, 55f, r * 0.05f);
         Stretch(ps, 0.08f, 2f);
         ps.Play();
     }
 
-    /// <summary>Dust kicked up at <paramref name="point"/> (not used by default).</summary>
+    /// <summary>
+    /// A parry's flash: the spark shower plus a short-lived ring of brighter, slower embers that
+    /// hang where the blades met, so the deflection reads even when the camera is moving.
+    /// </summary>
+    public static void SpawnParryFlash(Vector3 point, Vector3 direction, float bodyRadius, float strength)
+    {
+        float s = Mathf.Max(0.1f, strength);
+        SpawnSparks(point, direction, bodyRadius, s);
+
+        float r = Mathf.Max(bodyRadius, 0.2f);
+        ParticleSystem ps = NewSystem("ParryFlash", point, Quaternion.LookRotation(Vector3.up), new Color(1f, 0.95f, 0.75f), 0.7f, VfxMaterials.SoftDot(), true);
+        ParticleSystem.MainModule main = ps.main;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.1f, 0.25f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(r * 1.5f * s, r * 4f * s);
+        main.startSize = new ParticleSystem.MinMaxCurve(r * 0.1f * s, r * 0.22f * s);
+        main.gravityModifier = 0.1f;
+        Burst(ps, Mathf.RoundToInt(8 * s), Mathf.RoundToInt(14 * s), 0f);
+        ParticleSystem.ShapeModule shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Sphere;
+        shape.radius = r * 0.12f;
+        ps.Play();
+    }
+
+    /// <summary>
+    /// Dust kicked up at <paramref name="point"/>. <paramref name="strength"/> 1 is the ordinary
+    /// dash push-off; above that the cloud gets more grains, a wider spread and more opacity (speed
+    /// and size grow with the square root so a big puff billows instead of shooting outward).
+    /// </summary>
     public static void SpawnDust(Vector3 point, float bodyRadius, float strength = 1f)
     {
+        float s = Mathf.Max(0.1f, strength);
+        float scale = Mathf.Sqrt(s);
         float r = Mathf.Max(bodyRadius, 0.2f);
-        ParticleSystem ps = NewSystem("Dust", point, Quaternion.LookRotation(Vector3.up), new Color(0.72f, 0.62f, 0.48f, 0.45f), 1.6f, VfxMaterials.SoftDot());
+        float alpha = Mathf.Clamp(0.45f * Mathf.Lerp(1f, 1.6f, Mathf.Clamp01(s - 1f)), 0.1f, 0.8f);
+        ParticleSystem ps = NewSystem("Dust", point, Quaternion.LookRotation(Vector3.up), new Color(0.72f, 0.62f, 0.48f, alpha), 1.6f + 0.4f * (scale - 1f), VfxMaterials.SoftDot());
         ParticleSystem.MainModule main = ps.main;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(0.5f, 1.0f);
-        main.startSpeed = new ParticleSystem.MinMaxCurve(r * 1.2f * strength, r * 3f * strength);
-        main.startSize = new ParticleSystem.MinMaxCurve(r * 0.6f, r * 1.3f);
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.5f * scale, 1.0f * scale);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(r * 1.2f * scale, r * 3f * scale);
+        main.startSize = new ParticleSystem.MinMaxCurve(r * 0.6f * scale, r * 1.3f * scale);
         main.gravityModifier = 0.25f;
-        Burst(ps, Mathf.RoundToInt(10 * strength), Mathf.RoundToInt(18 * strength), 0f);
-        Cone(ps, 70f, r * 0.5f);
+        main.maxParticles = Mathf.Max(160, Mathf.RoundToInt(40 * s));
+        Burst(ps, Mathf.RoundToInt(10 * s), Mathf.RoundToInt(18 * s), 0f);
+        Cone(ps, Mathf.Min(85f, 70f + 8f * (s - 1f)), r * 0.5f * scale);
         ps.Play();
     }
 

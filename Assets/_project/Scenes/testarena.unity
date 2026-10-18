@@ -412,7 +412,7 @@ Transform:
   m_GameObject: {fileID: 126681661}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -0.1673007, y: 0.24, z: -0.2054563}
+  m_LocalPosition: {x: -0.21720314, y: 0.24, z: -0.20857522}
   m_LocalScale: {x: 4, y: 4, z: 4}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -498,6 +498,7 @@ MonoBehaviour:
   hitStop: 1
   sparksOnBlock: 0
   sparksOnParry: 1
+  parrySparkStrength: 3
   bladeTrail: 0
   debugLogs: 1
   stringLockout: 0
@@ -532,7 +533,8 @@ MonoBehaviour:
   blockDamageReduction: 80
   blockStaminaDrainPerSecond: 3
   parryWindow: 0.12
-  parryRearmTime: 0.6
+  parryCooldown: 1
+  parryStaminaCost: 8
   parryAnimSpeed: 2
   parryStunDuration: 1
   parryCounterWindow: 1
@@ -546,6 +548,8 @@ MonoBehaviour:
   turnSpeed: 650
   dodgeTurnSpeed: 1700
   dustEffects: 1
+  dodgeDustStrength: 3
+  idleStateName: 
   fighterRadius: 0.8
 --- !u!136 &126681667
 CapsuleCollider:
@@ -5699,7 +5703,7 @@ Transform:
   m_GameObject: {fileID: 1967802153}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 2.028415, y: 0.75, z: -0.06822406}
+  m_LocalPosition: {x: 2.0783176, y: 0.75, z: -0.06510514}
   m_LocalScale: {x: 3, y: 3, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -5781,6 +5785,7 @@ MonoBehaviour:
   hitStop: 1
   sparksOnBlock: 0
   sparksOnParry: 1
+  parrySparkStrength: 3
   bladeTrail: 0
   debugLogs: 1
   stringLockout: 0
@@ -5800,7 +5805,7 @@ MonoBehaviour:
   fighterData: {fileID: 11400000, guid: 7ce73d0fe1979bb4d9d923b132921cfb, type: 2}
   playerNumber: 2
   stats:
-    currentHealth: 0
+    currentHealth: 4
     maxHealth: 0
     currentStamina: 0
     maxStamina: 0
@@ -5815,7 +5820,8 @@ MonoBehaviour:
   blockDamageReduction: 50
   blockStaminaDrainPerSecond: 4
   parryWindow: 0.12
-  parryRearmTime: 0.6
+  parryCooldown: 1
+  parryStaminaCost: 8
   parryAnimSpeed: 2
   parryStunDuration: 1
   parryCounterWindow: 1
@@ -5829,6 +5835,8 @@ MonoBehaviour:
   turnSpeed: 720
   dodgeTurnSpeed: 2250
   dustEffects: 1
+  dodgeDustStrength: 3
+  idleStateName: 
   fighterRadius: 0.8
 --- !u!54 &1967802159
 Rigidbody:

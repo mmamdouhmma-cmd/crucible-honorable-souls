@@ -771,3 +771,60 @@ printed anything, and was not restarted.
   (3) a finished 2-hit string refuses the next attack for 1.5 s; (4) lethal damage enters the Death
   state with the death clip rather than a React. The AI still never parries (`AiController` writes
   `blockHeld`, so it can now parry by accident again, as it did before the dedicated button).
+
+### 2026-10-19 - parry on its own button (cooldown, not lockout), death recoverable, louder effects
+
+User's four items after testing the previous build. All four are done and **play-verified this time**
+(the previous session's verification run never printed).
+
+- **CRITICAL, fixed: a dead fighter stayed dead forever.** The `Death` state is deliberately a dead
+  end (`Any State -> Death`, `m_Transitions: []`, so a corpse stays down), and `ResetForMatch` never
+  touched the animator - so a rematch or a brand new match reset health, position and every flag but
+  left the state machine lying on the floor. `Fighter.ResetAnimator()` (called from `ResetForMatch`)
+  now **resets every trigger parameter** (a queued `Death` or `GetHit` would re-fire and drop the
+  fighter straight back down), then `animator.Play(idleStateHash, 0, 0f)` + `Update(0f)`.
+  `ResolveIdleState()` finds the state once in `Awake` from, in order, the new serialized
+  `idleStateName`, `<FighterData.FighterName>_Idle`, `<asset name>_Idle`, `Idle`; if none exists it
+  falls back to `animator.Rebind()`. Also: a dead fighter no longer walks or swings - `Update`
+  returns early while `isDead` (zeroing dash/knockback and `MoveSpeed`) and `TryAttack` refuses.
+  Verified end to end: a real killing blow -> `clip=Death`, `isDead=True`, Fighter frozen by the KO
+  screen -> `StartMatch` -> `P1 clip=Bjorn_Idle`, `P2 clip=Miyamoto_Idle`, hp 100, `isDead=False`,
+  feet at y 0.24 / 0.75, and both stay standing on later frames.
+- **Parry moved to its own button again (user's choice), but light.** On the block press edge it fired
+  by luck: pressing guard as the strike arrives IS the natural reaction, and an early press cost
+  nothing, so every block was a free lottery ticket. Now it is the **Defense** button
+  (`;` P1, `]` P2, **Circle** on the pad, all rebindable) and **blocking never parries anything**.
+  The cost is deliberately not the old recovery lockout the user rejected: a press spends
+  `parryStaminaCost` (8) and starts `parryCooldown` (1.0 s) before another attempt, and that is all -
+  a parry that catches nothing leaves the fighter free to block, dash or swing at once. Attempts are
+  refused while attacking, dashing or in hitstun. `parryRearmTime` / `blockPressedTime` /
+  `wasBlockHeld` are gone; `ParryReady` is just `parryActiveTimer > 0`, and `ParryCooldownTimeLeft`
+  is public for the HUD. Reward is unchanged (no damage, attacker stunned 1.0 s, counter window at
+  x1.35, +15 super). No attempt animation: there is no commitment to show, and the controllers only
+  have `Parry_Success`.
+  Verified at 8% speed, 2.2 units: tap on the swing frame -> `P2: PARRY attempt - window 0.12s, 8
+  stamina, 1.00s cooldown` -> `P2: PARRY` -> `P1: hitstun for 60 frames`, 0 damage. Second tap inside
+  the cooldown -> `P2: no parry - 1.98s of cooldown left` and the strike lands in FULL (6). Guard
+  held through a swing -> `3 dmg [BLOCKED -50%]`, never a parry.
+- **Parry flash is much bigger.** `HitEffects.SpawnSparks` takes a `strength` (count scales with it,
+  size/speed/lifetime with its square root) and new `SpawnParryFlash` adds a ring of slow bright
+  embers where the blades met. `CombatSystem.parrySparkStrength` (serialized, 3) drives it:
+  72-120 sparks instead of 24-40, plus 24-42 embers.
+- **Dash dust much louder on a successful dodge.** `Fighter.NotifyEvaded` (which fires the moment a
+  dash is judged to have made a strike miss, on both evade paths, guarded against a double spawn)
+  throws a puff at `dodgeDustStrength` (serialized, 3) instead of nothing: 30-54 grains against the
+  ordinary dash's 10-18, 85 deg spread, bigger, longer-lived and more opaque. `SpawnDust` scales the
+  same way sparks do, so the push-off (1) and landing (0.8) puffs look as they did.
+- Scene re-serialized for the new fields (`parryCooldown` 1, `parryStaminaCost` 8, `parryWindow` 0.12,
+  `dodgeDustStrength` 3, `parrySparkStrength` 3, `dustEffects` on both fighters); the stale
+  `parryRearmTime` key is gone. Help screen text rewritten for the new parry.
+- **Test recipe note:** play mode starts on the MAIN MENU, where `GameMenu.FreezeFighters` disables
+  every `Fighter` component and `InputManager.InputEnabled` is false - so an input-driven test
+  (parry, block, walking) does nothing until the match starts, while a direct `CombatSystem.TryAttack`
+  still works and lands hits. That mismatch ate the first parry run. Start the match first:
+  `typeof(GameMenu).GetMethod("StartMatch", NonPublic|Instance).Invoke(menu, null)`.
+- Still unverified from the previous session: the 1.5 s `STRING_LOCKOUT` after a finished combo
+  (the string takes ~10 s of real time to play at the 8% test speed, which outruns the CLI round
+  trip; check `attackLockoutTimer` by reflection instead). **Known gap: the AI still never parries** -
+  `AiController` only ever writes `blockHeld`, and now that the parry has its own button it cannot
+  even do it by accident.

@@ -98,9 +98,14 @@ public class Fighter : MonoBehaviour
     [Min(0f)]
     [SerializeField] private float parryWindow = BalanceConfig.PARRY_WINDOW;
 
-    [Tooltip("Seconds before the guard can parry again. Raising the guard opens one parry window; " +
-             "another press cannot parry until this has passed, so mashing block does not fish for free parries.")]
-    [SerializeField] private float parryRearmTime = 0.6f;
+    [Tooltip("Seconds before another parry can be attempted. This cooldown is the parry's whole cost on top of the stamina: " +
+             "there is no recovery lockout, so a miss never freezes the fighter - it just cannot be tried again straight away.")]
+    [Min(0f)]
+    [SerializeField] private float parryCooldown = 1f;
+
+    [Tooltip("Stamina spent on every parry attempt, hit or miss. Keeps tapping parry on every swing from being free.")]
+    [Min(0)]
+    [SerializeField] private int parryStaminaCost = 8;
 
     [Tooltip("Playback speed of the Parry_Success animation. 2 = double speed. Needs the 'ParrySpeed' float parameter on the controller.")]
     [SerializeField] private float parryAnimSpeed = 2f;
@@ -146,22 +151,25 @@ public class Fighter : MonoBehaviour
     /// <summary>Seconds left for the HUD to show CLASH (0 when none is pending).</summary>
     public float ClashFlashTimeLeft => Mathf.Max(clashFlashTimer, 0f);
 
-    // Parry. On the BLOCK button, judged on the press EDGE: a strike is parried only when the guard
-    // went up within parryWindow before it landed, so timing the press beats sitting on block. What
-    // keeps it honest is parryRearmTime - one press arms one window, and mashing block cannot fish
-    // for another until it has passed.
-    private float blockPressedTime = -99f;
-    private bool wasBlockHeld = false;
-    private float parryArmedTime = -99f;   // when the last parry-capable press happened
+    // Parry. Its own action on the Defense button (Circle on the pad), never the block button:
+    // sharing block made it a lottery, because pressing guard as the strike arrives is the natural
+    // reaction, so parries happened by luck. A press opens a short active window and costs stamina
+    // plus parryCooldown before another can be tried. There is deliberately NO recovery lockout -
+    // a miss does not freeze the fighter, it just cannot be repeated at once. Blocking is untouched
+    // and never parries anything.
+    private float parryActiveTimer = 0f;
+    private float parryCooldownTimer = 0f;
     private float parryCounterTimer = 0f;
     private float parryFlashTimer = 0f;
 
     /// <summary>
-    /// True when an incoming strike should be parried: the guard is genuinely up and the press that
-    /// raised it was a parry-capable one within <see cref="parryWindow"/>. Read by CombatSystem
-    /// before blocking is considered.
+    /// True while the parry's active window is open, so an incoming strike is deflected. Read by
+    /// CombatSystem before blocking is considered.
     /// </summary>
-    public bool ParryReady => isBlocking && Time.time - blockPressedTime <= parryWindow;
+    public bool ParryReady => parryActiveTimer > 0f;
+
+    /// <summary>Seconds left of the parry cooldown (0 when a parry can be attempted).</summary>
+    public float ParryCooldownTimeLeft => Mathf.Max(parryCooldownTimer, 0f);
 
     /// <summary>Seconds left in the parry-counter window (0 when no counter is ready).</summary>
     public float ParryCounterTimeLeft => Mathf.Max(parryCounterTimer, 0f);
@@ -200,6 +208,15 @@ public class Fighter : MonoBehaviour
     [Header("Effects")]
     [Tooltip("Dust puffs on dash push-off and landing. Off: blood is the only effect in the fight.")]
     [SerializeField] private bool dustEffects = true;
+
+    [Tooltip("Dust strength for the puff thrown when a dash makes an attack MISS. Louder than the ordinary dash dust (1) so a successful dodge reads at a glance.")]
+    [Range(1f, 6f)]
+    [SerializeField] private float dodgeDustStrength = 3f;
+
+    [Tooltip("Animator state to snap back to on a rematch. Blank: worked out from the FighterData name (e.g. Bjorn_Idle), then plain Idle.")]
+    [SerializeField] private string idleStateName = "";
+    private int idleStateHash;                 // resolved in Awake; 0 = fall back to Animator.Rebind()
+    private float lastDodgeDustTime = -99f;    // both evade paths can fire in the same frame
     private const float FACING_FLIP_DEAD_ZONE = 0.1f; // min left/right gap before input sides swap
     private Fighter opponent;
     private Transform cameraTransform;
@@ -229,6 +246,7 @@ public class Fighter : MonoBehaviour
         animatorHasDash = HasAnimatorParameters(ANIM_DASH, ANIM_DASH_DIR);
         animatorHasParry = HasAnimatorParameters(ANIM_PARRY_SUCCESS);
         animatorHasDeath = HasAnimatorParameters(ANIM_DEATH);
+        ResolveIdleState();
 
         if (fighterData != null)
         {
@@ -281,6 +299,16 @@ public class Fighter : MonoBehaviour
         // Hit-stop: hold still (movement, dash, timers) while the impact freeze runs.
         if (HitStop.IsActive) return;
 
+        // Dead: no input, no sliding corpse. The Animator keeps running, so the death clip plays
+        // out under the KO screen; ResetForMatch is what puts this fighter back on their feet.
+        if (isDead)
+        {
+            dashVelocity = Vector3.zero;
+            knockbackVelocity = Vector3.zero;
+            if (animator != null && animator.runtimeAnimatorController != null) animator.SetFloat("MoveSpeed", 0f);
+            return;
+        }
+
         if (dashCounterTimer > 0f)
         {
             dashCounterTimer -= Time.deltaTime;
@@ -304,6 +332,7 @@ public class Fighter : MonoBehaviour
         HandleMovement();
         HandleAttackLunge();
         HandleStaminaRecovery();
+        HandleParry();
         HandleBlock();
         HandleCombatInput();
         ClampToArena();
@@ -343,27 +372,48 @@ public class Fighter : MonoBehaviour
 
     private bool loggedArenaEdge = false;
 
+    /// <summary>
+    /// The parry, on its own Defense button. A press opens <see cref="parryWindow"/> of active
+    /// window in which an incoming strike is deflected (see <see cref="NotifyParry"/>). It costs
+    /// stamina and <see cref="parryCooldown"/> seconds before the next attempt, and nothing else:
+    /// a parry that catches nothing leaves the fighter free to block, dash or swing immediately.
+    /// An attempt is refused while attacking, dashing or in hitstun.
+    /// </summary>
+    private void HandleParry()
+    {
+        if (parryCooldownTimer > 0f) parryCooldownTimer = Mathf.Max(0f, parryCooldownTimer - Time.deltaTime);
+        if (parryActiveTimer > 0f)
+        {
+            parryActiveTimer = Mathf.Max(0f, parryActiveTimer - Time.deltaTime);
+            return;
+        }
+
+        if (!currentInput.defenseButton) return;
+
+        bool busy = combatSystem != null && (combatSystem.IsAttacking || combatSystem.IsInHitstun);
+        if (busy || isDashing) return;
+
+        if (parryCooldownTimer > 0f)
+        {
+            if (debugLogs) Debug.Log($"P{playerNumber}: no parry - {parryCooldownTimer:0.00}s of cooldown left");
+            return;
+        }
+        if (parryStaminaCost > 0 && (stats == null || !stats.HasStamina(parryStaminaCost)))
+        {
+            if (debugLogs) Debug.Log($"P{playerNumber}: no parry - needs {parryStaminaCost} stamina");
+            return;
+        }
+
+        if (parryStaminaCost > 0) stats.UseStamina(parryStaminaCost);
+        parryActiveTimer = parryWindow;
+        parryCooldownTimer = parryCooldown;
+        Debug.Log($"P{playerNumber}: PARRY attempt - window {parryWindow:0.00}s, {parryStaminaCost} stamina, {parryCooldown:0.00}s cooldown");
+    }
+
     private void HandleBlock()
     {
         bool wasBlocking = isBlocking;
         bool attacking = combatSystem != null && combatSystem.IsAttacking;
-
-        // The parry window opens on the PRESS, so note the edge before anything can refuse the guard.
-        // A press within parryRearmTime of the last parry-capable one raises the guard but cannot
-        // parry: that is what stops block-mashing from fishing.
-        if (currentInput.blockHeld && !wasBlockHeld)
-        {
-            if (Time.time - parryArmedTime >= parryRearmTime)
-            {
-                blockPressedTime = Time.time;
-                parryArmedTime = Time.time;
-            }
-            else
-            {
-                blockPressedTime = -99f;   // too soon after the last attempt: an ordinary guard only
-            }
-        }
-        wasBlockHeld = currentInput.blockHeld;
 
         isBlocking = currentInput.blockHeld && !isDashing && !attacking && stats.currentStamina > 0;
 
@@ -412,9 +462,9 @@ public class Fighter : MonoBehaviour
     /// </summary>
     public void NotifyParry()
     {
-        // The guard that parried cannot immediately parry again - it has done its job.
-        parryArmedTime = Time.time;
-        blockPressedTime = -99f;
+        // The window has done its job. The cooldown set when the attempt started stands, so the
+        // reward is being instantly actionable with a counter open, not a free second attempt.
+        parryActiveTimer = 0f;
 
         if (animatorHasParry && animator != null)
         {
@@ -519,21 +569,69 @@ public void ResetForMatch(Vector3 position, Quaternion rotation)
     isBlocking = false;
     parryCounterTimer = 0f;
     parryFlashTimer = 0f;
-    blockPressedTime = -99f;
-    wasBlockHeld = false;
-    parryArmedTime = -99f;
+    parryActiveTimer = 0f;
+    parryCooldownTimer = 0f;
     isDead = false;
+    lastDodgeDustTime = -99f;
     lungeStarted = false;
     if (combatSystem != null) combatSystem.ResetForMatch();
     transform.SetPositionAndRotation(position, rotation);
     if (rb != null) { rb.position = position; rb.rotation = rotation; rb.linearVelocity = Vector3.zero; }
     Physics.SyncTransforms();
     facingRight = (playerNumber == 1);
-    if (animator != null && animator.runtimeAnimatorController != null)
+    ResetAnimator();
+}
+
+/// <summary>
+/// Puts the state machine back on the idle. This is not optional housekeeping: the Death state is
+/// deliberately a dead end (Any State -> Death with no exit transition) so a corpse stays down,
+/// which means nothing would ever leave it again - without this a rematch, or a whole new match,
+/// started with a fighter lying on the floor.
+/// </summary>
+private void ResetAnimator()
+{
+    if (animator == null || animator.runtimeAnimatorController == null) return;
+
+    // Clear every queued trigger first. A Death or GetHit trigger still sitting in the queue would
+    // fire again on the next frame and drop the fighter straight back down.
+    AnimatorControllerParameter[] parameters = animator.parameters;
+    for (int i = 0; i < parameters.Length; i++)
     {
-        animator.SetFloat("MoveSpeed", 0f);
-        if (animatorHasBlocking) animator.SetBool(ANIM_BLOCKING, false);
+        if (parameters[i].type == AnimatorControllerParameterType.Trigger) animator.ResetTrigger(parameters[i].name);
     }
+
+    animator.SetFloat("MoveSpeed", 0f);
+    if (animatorHasBlocking) animator.SetBool(ANIM_BLOCKING, false);
+
+    if (idleStateHash != 0) animator.Play(idleStateHash, 0, 0f);
+    else animator.Rebind();          // no idle state on this controller: full reset to the layer default
+    animator.Update(0f);             // apply it now, so nobody sees a frame of the old pose
+}
+
+/// <summary>Finds the idle state once, by name, for <see cref="ResetAnimator"/>.</summary>
+private void ResolveIdleState()
+{
+    idleStateHash = 0;
+    if (animator == null || animator.runtimeAnimatorController == null) return;
+
+    string[] candidates =
+    {
+        idleStateName,
+        fighterData != null ? fighterData.FighterName + "_Idle" : null,
+        fighterData != null ? fighterData.name + "_Idle" : null,
+        "Idle"
+    };
+    for (int i = 0; i < candidates.Length; i++)
+    {
+        if (string.IsNullOrEmpty(candidates[i])) continue;
+        int hash = Animator.StringToHash(candidates[i]);
+        if (!animator.HasState(0, hash)) continue;
+        idleStateHash = hash;
+        if (debugLogs) Debug.Log($"P{playerNumber}: match reset will return to the '{candidates[i]}' state");
+        return;
+    }
+    Debug.LogWarning($"Fighter on {name}: no idle animator state found (tried the FighterData name and 'Idle'); " +
+                     "a match reset will fall back to Animator.Rebind(). Set idleStateName if the state has another name.");
 }
 
 private bool InAttackStartup()
@@ -901,6 +999,14 @@ public DashHitOutcome ResolveDashAgainst(AttackOrigin origin)
 public void NotifyEvaded(bool counterAllowed)
 {
     if (counterAllowed) dodgedAttackThisDash = true;
+
+    // A loud puff at the feet the moment the strike is judged to have missed. Both evade paths
+    // (hitbox arming and trigger contact) can report the same dodge, hence the short guard.
+    if (dustEffects && Time.time - lastDodgeDustTime > 0.15f)
+    {
+        lastDodgeDustTime = Time.time;
+        HitEffects.SpawnDust(FeetPosition(), BodyRadius, Mathf.Max(1f, dodgeDustStrength));
+    }
 }
 
 /// <summary>Human-readable dash direction for logs, e.g. "forward-left".</summary>

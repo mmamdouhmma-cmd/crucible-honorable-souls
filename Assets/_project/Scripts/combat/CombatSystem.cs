@@ -49,6 +49,10 @@ public class CombatSystem : MonoBehaviour
 
     [Tooltip("Spark burst when this fighter PARRIES a strike. Separate from sparksOnBlock, which is off by design: a parry is the one moment that always deserves a flash.")]
     [SerializeField] private bool sparksOnParry = true;
+
+    [Tooltip("Size of the parry flash. 1 = the ordinary block spark; higher adds particles, spread and a ring of embers where the blades met.")]
+    [Range(1f, 5f)]
+    [SerializeField] private float parrySparkStrength = 3f;
     [Tooltip("Blade trail while the hitbox is live (needs a WeaponTrail on the fighter; added automatically).")]
     [SerializeField] private bool bladeTrail = false;
     private WeaponTrail weaponTrail;
@@ -406,6 +410,7 @@ public class CombatSystem : MonoBehaviour
         Debug.Log($"P{pn}: buffered {attackType} for {BalanceConfig.INPUT_BUFFER_FRAMES} f - mid-attack");
         return false;
     }
+    if (fighter != null && fighter.IsDead) { Debug.Log($"P{pn}: BLOCKED - dead"); return false; }
     if (inHitstun)   { Debug.Log($"P{pn}: BLOCKED - in hitstun"); return false; }
     if (attackLockoutTimer > 0f) { Debug.Log($"P{pn}: BLOCKED - chain lockout, {attackLockoutTimer:0.00}s left"); return false; }
     if (fighter == null)         { Debug.Log($"P{pn}: BLOCKED - fighter null"); return false; }
@@ -707,7 +712,8 @@ public class CombatSystem : MonoBehaviour
                 // A parry is the one moment that always deserves a spark, so this is its own toggle
                 // rather than riding on sparksOnBlock (which is off by design).
                 Vector3 at = HitEffects.Chest(target) + (fighter.transform.position - target.transform.position).normalized * target.BodyRadius;
-                HitEffects.SpawnSparks(at, Vector3.up + (target.transform.position - fighter.transform.position).normalized, target.BodyRadius);
+                HitEffects.SpawnParryFlash(at, Vector3.up + (target.transform.position - fighter.transform.position).normalized,
+                                           target.BodyRadius, Mathf.Max(1f, parrySparkStrength));
             }
             if (hitStop) HitStop.Request(BalanceConfig.HIT_STOP_FRAMES * BalanceConfig.FRAME_TIME);
             if (FightCamera.Instance != null) FightCamera.Instance.OnImpact(0, currentAttack.AttackType, true);
