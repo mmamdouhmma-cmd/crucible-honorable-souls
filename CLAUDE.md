@@ -833,11 +833,11 @@ User's four items after testing the previous build. All four are done and **play
 
 User's call after testing: the game plays well **only on a PS5 pad** - keyboard and touch are not
 fluid - so the next stretch is a LITE slice that can be played with a thumb, and the backlog is
-re-cut around it. ** is the active plan and replaces .
+re-cut around it. **`Design/Plan_LiteMobile.md` is the active plan and replaces `Plan_2Weeks.md`.
 The next session starts at its Task 1.**
 
 - **Dropped for now:** grabs, low attacks, low block, trips, the tackle. Everything authored so far
-  is a HIGH attack; the  enum stays on  (read by nothing) because the user
+  is a HIGH attack; the `AttackHeight` enum stays on `AttackData` (read by nothing) because the user
   wants the height concept kept for the long run, so the lite version simply never produces a
   non-high attack.
 - **In scope:** the three strikes, block, dash + dash counter, parry + parry counter, **6-9 combos
@@ -846,17 +846,17 @@ The next session starts at its Task 1.**
   success (+2% dodge / +2% parry / +3% counter hit, the user's numbers), the mobile build, and an AI
   that uses any of it.
 - **The user's stated blocker is animations** ("i cant think of animations now"), so Task 1 is an
-  inventory: ~16 unused attack clips sit in  (AxePack + GreatSwordPack, 98
-  clips, only 20 mapped) - , , ,
-  , two kicks each, , , , the plain thrust. Enough for
+  inventory: ~16 unused attack clips sit in `Animation/Clips/Mixamo` (AxePack + GreatSwordPack, 98
+  clips, only 20 mapped) - `combo attack ver. 1/2/3`, `slash (2)/(4)/(5)`, `slide attack`,
+  `run jump attack`, two kicks each, `backhand`, `downward`, `360 low`, the plain thrust. Enough for
   6 specials, 4 ripostes and the combo enders with nothing filmed. The plan carries a first-pass
   clip-per-slot proposal to react to.
 - **Seven decisions are queued at the top of the plan** with a recommendation each (special input =
   one SPECIAL button + direction; specials cost the super bar; **dash by double-tapping a
   direction** on keyboard/touch; new keyboard defaults with guard and parry on the left hand;
-  health-recovery cap plus switching the hidden passive  off; no combo
+  health-recovery cap plus switching the hidden passive `healthRegenPerSecond = 1` off; no combo
   doubling back; Mixamo rather than filming).
-- Found while planning: the super bar is **fed but never spent and never shown** ( on
+- Found while planning: the super bar is **fed but never spent and never shown** (`AddSuperBar` on
   hit/combo/parry/dash counter, no HUD bar) - specials are what finally give it a purpose. And both
   fighters have a hidden passive health regen of 1 hp/s, which is why health crept up between test
   evals.
