@@ -258,6 +258,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 274db55609b9f9644927d6d3dce64d65, type: 2}
   hitDetector: {fileID: 1167820291}
   hitInterruptsAttack: 1
+  dodgedRecoveryFrames: -1
   bloodOnHit: 1
   bloodColor: {r: 0.42, g: 0.015, b: 0.02, a: 1}
   hitStop: 1
@@ -289,18 +290,18 @@ MonoBehaviour:
     signatureUsed: 0
   combatSystem: {fileID: 126681665}
   dashDistance: 2
-  dashDuration: 0.25
+  dashDuration: 0.35
   dashStaminaCost: 25
   blockDamageReduction: 50
   blockStaminaDrainPerSecond: 4
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 10
+  staminaRecoveryPerSecond: 15
   healthRegenPerSecond: 1
   healthRegenDelay: 3
   debugLogs: 1
-  turnSpeed: 720
-  dodgeTurnSpeed: 2000
-  dustEffects: 0
+  turnSpeed: 650
+  dodgeTurnSpeed: 1700
+  dustEffects: 1
   fighterRadius: 0.8
 --- !u!136 &126681667
 CapsuleCollider:
@@ -347,6 +348,7 @@ MonoBehaviour:
   targetHeight: 0.55
   maxArmExtension: 0.95
   reachFadeOut: 0.12
+  offHandPalmLocal: {x: -0.0001, y: 0.0005, z: 0}
 --- !u!114 &126681669
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -364,6 +366,19 @@ MonoBehaviour:
   weight: 1
   targetHeight: 0.55
   fadeOut: 0.12
+  carryPose: 0
+  carryAlongHands: 1
+  carryDirection: {x: 0.35, y: 0.93, z: 0.08}
+  carryWeight: 1
+  carryMaxAngle: 140
+  carryExtraTilt: 0
+  carryForwardTilt: 0
+  alignWrists: 0
+  fistGripAxisRight: {x: -0.295, y: 0, z: 0.955}
+  fistGripAxisLeft: {x: -0.295, y: 0, z: 0.955}
+  wristAlignWeight: 1
+  wristMaxAngle: 70
+  haftAxisLocal: {x: 0, y: 0, z: 1}
   debugLogs: 0
 --- !u!1 &213367686
 GameObject:
@@ -606,6 +621,8 @@ MonoBehaviour:
   player2: {fileID: 0}
   followSharpness: 8
   passThroughDistance: 1.5
+  maxSideSwing: 70
+  sideStickiness: 0.2
   zoomOutPerUnit: 0.5
   maxZoomOut: 10
   shakePerTenDamage: 0.12
@@ -2379,6 +2396,34 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -6332887545038559709, guid: 01a476671f3e8634ba0593f932de176e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.0001
+      objectReference: {fileID: 0}
+    - target: {fileID: -6332887545038559709, guid: 01a476671f3e8634ba0593f932de176e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.0005
+      objectReference: {fileID: 0}
+    - target: {fileID: -6332887545038559709, guid: 01a476671f3e8634ba0593f932de176e, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -6332887545038559709, guid: 01a476671f3e8634ba0593f932de176e, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.98888654
+      objectReference: {fileID: 0}
+    - target: {fileID: -6332887545038559709, guid: 01a476671f3e8634ba0593f932de176e, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -6332887545038559709, guid: 01a476671f3e8634ba0593f932de176e, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.14867242
+      objectReference: {fileID: 0}
+    - target: {fileID: -6332887545038559709, guid: 01a476671f3e8634ba0593f932de176e, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: -2828622688763928194, guid: 01a476671f3e8634ba0593f932de176e, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -3625,6 +3670,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 59eefb855bbf3024492f010d1b55e2d4, type: 2}
   hitDetector: {fileID: 1994759405}
   hitInterruptsAttack: 1
+  dodgedRecoveryFrames: -1
   bloodOnHit: 1
   bloodColor: {r: 0.42, g: 0.015, b: 0.02, a: 1}
   hitStop: 1
@@ -3657,17 +3703,17 @@ MonoBehaviour:
   combatSystem: {fileID: 1967802157}
   dashDistance: 2
   dashDuration: 0.25
-  dashStaminaCost: 25
+  dashStaminaCost: 20
   blockDamageReduction: 50
   blockStaminaDrainPerSecond: 4
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 13
+  staminaRecoveryPerSecond: 18
   healthRegenPerSecond: 1
   healthRegenDelay: 3
   debugLogs: 1
   turnSpeed: 720
-  dodgeTurnSpeed: 2000
-  dustEffects: 0
+  dodgeTurnSpeed: 2250
+  dustEffects: 1
   fighterRadius: 0.8
 --- !u!54 &1967802159
 Rigidbody:
@@ -3718,6 +3764,7 @@ MonoBehaviour:
   targetHeight: 0.55
   maxArmExtension: 0.95
   reachFadeOut: 0.12
+  offHandPalmLocal: {x: -0.0001, y: 0.0005, z: 0}
 --- !u!114 &1967802161
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3735,6 +3782,19 @@ MonoBehaviour:
   weight: 1
   targetHeight: 0.55
   fadeOut: 0.12
+  carryPose: 0
+  carryAlongHands: 1
+  carryDirection: {x: 0.35, y: 0.92, z: 0.1}
+  carryWeight: 1
+  carryMaxAngle: 140
+  carryExtraTilt: 0
+  carryForwardTilt: 0
+  alignWrists: 0
+  fistGripAxisRight: {x: -0.295, y: 0, z: 0.955}
+  fistGripAxisLeft: {x: -0.295, y: 0, z: 0.955}
+  wristAlignWeight: 1
+  wristMaxAngle: 70
+  haftAxisLocal: {x: 0, y: 0, z: 1}
   debugLogs: 0
 --- !u!1001 &1984838858
 PrefabInstance:

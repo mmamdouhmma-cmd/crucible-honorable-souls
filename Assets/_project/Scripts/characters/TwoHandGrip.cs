@@ -44,6 +44,16 @@ public class TwoHandGrip : MonoBehaviour
     /// <summary>Debug: last distance from the animated left hand to the socket before IK was applied.</summary>
     public float LastPreIkDistance { get; private set; }
 
+    /// <summary>The off hand as the CLIP poses it, before this IK pulls it onto the grip. WeaponAim's carry
+    /// reads it so that "haft along the hand line" cannot chase its own IK (the weapon moves the hand, the
+    /// hand moves the weapon: a 15 deg tilt came out as 53 deg).</summary>
+    public Vector3 PreIkOffHand { get; private set; }
+    public bool HasPreIkOffHand { get; private set; }
+    private Transform offHandBone;
+    [Tooltip("Where the haft sits in the OFF hand's own bone space (the palm), in the hand bone's local " +
+             "units. The right hand's weapon mount is at (0.0001, 0.0005, 0); the left is its mirror.")]
+    [SerializeField] private Vector3 offHandPalmLocal = Vector3.zero;
+
     private void Awake()
     {
         animator = GetComponent<Animator>();
@@ -132,9 +142,20 @@ public class TwoHandGrip : MonoBehaviour
         StrikeReach();
         if (leftGrip == null) return;
         IkCalls++;
-        LastPreIkDistance = (animator.GetIKPosition(AvatarIKGoal.LeftHand) - leftGrip.position).magnitude;
+        // The BONE inside the IK pass is the clip's pose; GetIKPosition would hand back last frame's goal
+        // (the grip socket), which is the very thing the carry must not feed on.
+        if (offHandBone == null) offHandBone = animator.GetBoneTransform(HumanBodyBones.LeftHand);
+        if (offHandBone != null) { PreIkOffHand = offHandBone.position; HasPreIkOffHand = true; }
+        LastPreIkDistance = (PreIkOffHand - leftGrip.position).magnitude;
+        // Aim the PALM at the haft, not the wrist joint. The IK goal is the hand BONE, which sits at the
+        // wrist; putting that on the haft centreline leaves the shaft running through the side of the hand
+        // (the baked fist then grips air next to it). The weapon mount tells us where the right hand holds
+        // the haft in its own bone space - the off hand is the mirror of that.
+        Vector3 goal = leftGrip.position;
+        if (offHandBone != null && offHandPalmLocal.sqrMagnitude > 1e-12f)
+            goal -= offHandBone.TransformVector(offHandPalmLocal);
         animator.SetIKPositionWeight(AvatarIKGoal.LeftHand, positionWeight);
-        animator.SetIKPosition(AvatarIKGoal.LeftHand, leftGrip.position);
+        animator.SetIKPosition(AvatarIKGoal.LeftHand, goal);
         animator.SetIKRotationWeight(AvatarIKGoal.LeftHand, rotationWeight);
         animator.SetIKRotation(AvatarIKGoal.LeftHand, leftGrip.rotation);
         if (leftElbowHint != null)

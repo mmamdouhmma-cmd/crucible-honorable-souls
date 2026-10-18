@@ -26,6 +26,7 @@ public class GameMenu : MonoBehaviour
         public float gameSpeed = 0.85f;
         public bool blood = true;
         public int padPlayer = 2;
+        public int touchButtons = 0;   // 0 auto (touch devices only), 1 always on, 2 off
     }
 
     class Item
@@ -285,6 +286,7 @@ public class GameMenu : MonoBehaviour
     void ApplySettings()
     {
         AudioListener.volume = Mathf.Clamp01(settings.volume);
+        TouchControls.SetMode(settings.touchButtons);
         var dts = GetComponent<DebugTimeScale>();
         if (dts != null) { dts.timeScale = GameSpeed(); dts.enabled = true; }
         if (screen == Screen.None || !inMatch) Time.timeScale = GameSpeed();
@@ -385,6 +387,10 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Blood", value = () => settings.blood ? "On" : "Off",
                     adjust = d => { settings.blood = !settings.blood; ApplySettings(); SaveSettings(); },
                     confirm = () => { settings.blood = !settings.blood; ApplySettings(); SaveSettings(); Refresh(); } });
+                items.Add(new Item { label = "On-screen buttons",
+                    value = () => settings.touchButtons == 1 ? "Always" : settings.touchButtons == 2 ? "Off" : "Auto (phones)",
+                    adjust = d => { settings.touchButtons = (settings.touchButtons + (d > 0 ? 1 : 2)) % 3; ApplySettings(); SaveSettings(); },
+                    confirm = () => { settings.touchButtons = (settings.touchButtons + 1) % 3; ApplySettings(); SaveSettings(); Refresh(); } });
                 items.Add(new Item { label = "Controller drives", value = () => settings.padPlayer == 1 ? "Player 1" : "Player 2",
                     adjust = d => { settings.padPlayer = settings.padPlayer == 1 ? 2 : 1; ApplySettings(); SaveSettings(); },
                     confirm = () => { settings.padPlayer = settings.padPlayer == 1 ? 2 : 1; ApplySettings(); SaveSettings(); Refresh(); } });

@@ -39,10 +39,64 @@ public class TouchControls : MonoBehaviour
     TouchButton pauseButton;
     bool twoPlayers;
     bool visible;
+    bool matchRunning;   // a fight is on screen, so the pad belongs up if this is a touch device
 
+    /// <summary>
+    /// What Settings says about the on-screen pad: 0 = auto (touch devices only), 1 = always on,
+    /// 2 = always off. The auto check can only guess from the browser, so the player gets the last word.
+    /// </summary>
+    public static int Mode { get; private set; }
+
+    /// <summary>Settings changed the pad mode: remember it and bring the layer in line immediately.</summary>
+    public static void SetMode(int mode)
+    {
+        Mode = Mathf.Clamp(mode, 0, 2);
+        if (Instance != null) Instance.ApplyVisibility();
+    }
+
+    void ApplyVisibility() => SetVisible(matchRunning && WantsTouch);
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [System.Runtime.InteropServices.DllImport("__Internal")]
+    private static extern int CrucibleIsTouchDevice();
+#endif
+
+    // -1 not worked out yet, 0 desktop, 1 touch device. Settled once per run, and flipped to 1 if a
+    // real finger ever lands (a touchscreen laptop, or a browser whose user agent we did not match).
+    static int touchDevice = -1;
+
+    /// <summary>
+    /// True only where the on-screen pad belongs: a phone or tablet (including a touch browser in the
+    /// web build), or when <see cref="forceShow"/> is on for mouse testing. A desktop browser running
+    /// the WebGL build gets no buttons: it has a keyboard.
+    /// </summary>
     public static bool WantsTouch =>
-        Application.isMobilePlatform || Application.platform == RuntimePlatform.WebGLPlayer ||
-        (Instance != null && Instance.forceShow);
+        Mode == 1 || (Mode != 2 && ((Instance != null && Instance.forceShow) || IsTouchDevice));
+
+    static bool IsTouchDevice
+    {
+        get
+        {
+            if (touchDevice < 0)
+            {
+                touchDevice = Detect() ? 1 : 0;
+                Debug.Log($"TouchControls: touch device = {touchDevice == 1} (mode {Mode})");
+            }
+            return touchDevice == 1;
+        }
+    }
+
+    static bool Detect()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // Ask the page, because the WebGL player itself cannot tell a phone from a PC.
+        try { return CrucibleIsTouchDevice() == 1; }
+        catch (System.Exception) { return Application.isMobilePlatform; }
+#else
+        return Application.isMobilePlatform || SystemInfo.deviceType == DeviceType.Handheld;
+#endif
+    }
+
 
     void Awake()
     {
@@ -56,12 +110,13 @@ public class TouchControls : MonoBehaviour
     /// <summary>Show the layer for a fight. <paramref name="players"/> = 1 (vs AI / online) or 2 (local on one device).</summary>
     public void ShowForMatch(int players)
     {
+        matchRunning = true;
         twoPlayers = players == 2;
         Layout();
         SetVisible(WantsTouch);
     }
 
-    public void Hide() => SetVisible(false);
+    public void Hide() { matchRunning = false; SetVisible(false); }
 
     void SetVisible(bool on)
     {
@@ -100,7 +155,16 @@ public class TouchControls : MonoBehaviour
 
     void Update()
     {
+        // A finger on a device we called a desktop (touchscreen laptop, unmatched user agent):
+        // believe the finger and bring the pad up for the rest of the run.
+        if (touchDevice != 1 && Input.touchCount > 0)
+        {
+            touchDevice = 1;
+            ApplyVisibility();
+        }
+
         if (!visible) return;
+
         foreach (var p in pads)
         {
             if (p == null) continue;

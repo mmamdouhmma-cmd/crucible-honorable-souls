@@ -173,6 +173,19 @@ public static class CrucibleCharacterSetup
         { "Miyamoto_Katana", (0.24f, 0.04f) },   // blade starts past the tsuba; left hand near the kashira (0.023/0.57 up from the butt)
     };
 
+    /// <summary>
+    /// How the weapon sits in the right hand, overriding the mount baked by attach_weapons.py: rightGripFrac
+    /// is where the hand holds the haft, cantEuler the local rotation under the hand bone. EMPTY for now -
+    /// the 2026-10-17 axe-guard mount was dropped when the guard went back to being filmed (see CLAUDE.md).
+    /// </summary>
+    static readonly System.Collections.Generic.Dictionary<string, (float rightGripFrac, Vector3 cantEuler)> WeaponMount =
+        new System.Collections.Generic.Dictionary<string, (float, Vector3)>
+    {
+    };
+
+    /// <summary>Where the hand grips, in R_Hand local units (the palm point attach_weapons.py mounts to).</summary>
+    static readonly Vector3 HandGripPoint = new Vector3(0.0001f, 0.0005f, 0f);
+
     static void SetupWeapon(GameObject player, GameObject inst, string charName, Animator rootAnim)
     {
         var weapon = inst.GetComponentsInChildren<MeshRenderer>(true).FirstOrDefault(r => WeaponSpec.Keys.Any(k => r.name.StartsWith(k)));
@@ -217,6 +230,18 @@ public static class CrucibleCharacterSetup
             socket = go.transform;
             socket.SetParent(weapon.transform, false);
         }
+        // guard mount: slide the weapon along its own haft to the solved grip and cant it onto the guard diagonal
+        var mountKey = WeaponMount.Keys.FirstOrDefault(k => weapon.name.StartsWith(k));
+        if (mountKey != null)
+        {
+            var m = WeaponMount[mountKey];
+            var wt = weapon.transform;
+            Undo.RecordObject(wt, "guard mount");
+            wt.localRotation = Quaternion.Euler(m.cantEuler);
+            float zGrip = b.min.z + m.rightGripFrac * b.size.z;
+            wt.localPosition = HandGripPoint - wt.localRotation * new Vector3(b.center.x, b.center.y, zGrip);
+        }
+
         float gripY = b.min.z + spec.leftGripFrac * b.size.z;
         socket.localPosition = new Vector3(b.center.x, b.center.y, gripY);
         var rightHand = rootAnim.GetBoneTransform(HumanBodyBones.RightHand);

@@ -20,6 +20,45 @@ public class WeaponAim : MonoBehaviour
     [Range(0f, 1f)] [SerializeField] private float targetHeight = 0.55f;
     [Tooltip("Fade length in seconds after the active window ends.")]
     [SerializeField] private float fadeOut = 0.12f;
+
+    [Header("Carry (while not attacking)")]
+    [Tooltip("Hold the weapon on a fixed guard line while idle/walking. The Mixamo carry's WRIST rotates " +
+             "through the cycle, and the weapon is parented to it, so without this the haft swings off the " +
+             "guard on its own (head drifting behind the shoulder, butt poking out in front).")]
+    [SerializeField] private bool carryPose = false;
+    [Tooltip("Lay the haft along the line between the two hands, so a two-handed grip always has BOTH " +
+             "hands on it whatever the clip is doing. Falls back to carryDirection if there is no left hand.")]
+    [SerializeField] private bool carryAlongHands = true;
+    [Tooltip("Guard line from the grip toward the blade, in fighter space (x right, y up, z forward), used " +
+             "when carryAlongHands is off. Bjorn's axe guard: butt at the left hip, head over the right shoulder.")]
+    [SerializeField] private Vector3 carryDirection = new Vector3(0.35f, 0.92f, 0.1f);
+    [Range(0f, 1f)] [SerializeField] private float carryWeight = 1f;
+    [Tooltip("Largest correction the carry may apply, degrees.")]
+    [Range(0f, 180f)] [SerializeField] private float carryMaxAngle = 140f;
+    [Tooltip("Extra lean added to the carry line, degrees, positive = blade leans further to the fighter's " +
+             "right (butt swings toward the left hip). The hand line alone is as upright as the clip's arms.")]
+    [Range(-60f, 60f)] [SerializeField] private float carryExtraTilt = 0f;
+    [Tooltip("Extra lean added to the carry line, degrees, positive = blade leans FORWARD over the front " +
+             "foot (butt swings back).")]
+    [Range(-60f, 60f)] [SerializeField] private float carryForwardTilt = 0f;
+
+    [Header("Wrists")]
+    [Tooltip("Turn each hand so the fist baked around the haft actually lines up with it. The fists were " +
+             "baked in Blender around the weapon's ORIGINAL mount axis, so re-mounting the axe left the " +
+             "hands gripping air.")]
+    [SerializeField] private bool alignWrists = false;
+    [Tooltip("Direction the right fist grips along, in RIGHT HAND bone space (the original mount's haft axis).")]
+    [SerializeField] private Vector3 fistGripAxisRight = new Vector3(-0.295f, 0f, 0.955f);
+    [Tooltip("Direction the left fist grips along, in LEFT HAND bone space.")]
+    [SerializeField] private Vector3 fistGripAxisLeft = new Vector3(-0.295f, 0f, 0.955f);
+    [Range(0f, 1f)] [SerializeField] private float wristAlignWeight = 1f;
+    [Tooltip("Largest wrist correction, degrees - past this the wrist starts to look broken.")]
+    [Range(0f, 120f)] [SerializeField] private float wristMaxAngle = 70f;
+
+    [Tooltip("Weapon-local axis running from the butt to the head. The weapon meshes keep Blender axes, " +
+             "where Z is the handle axis (see CrucibleCharacterSetup) - the blade box's longest axis is no " +
+             "use here because an axe head is widest ACROSS the haft.")]
+    [SerializeField] private Vector3 haftAxisLocal = Vector3.forward;
     [SerializeField] private bool debugLogs = false;
 
     private CombatSystem combat;
@@ -29,12 +68,19 @@ public class WeaponAim : MonoBehaviour
     // The weapon is a static child of the hand bone: the Animator never rewrites its local rotation, so any
     // aim applied one frame would stay. Remember the rest orientation and restore it before each aim.
     private Quaternion restLocalRotation;
+    private Vector3 restLocalPosition;
     private bool hasRest;
+    // The weapon origin is not always the grip (Bjorn's axe is mounted part-way up the haft), so every
+    // rotation pivots about the hand bone instead of the weapon's own origin.
+    private Transform handBone;
+    private Transform offHandBone;
+    private TwoHandGrip twoHandGrip;
 
     private void Awake()
     {
         combat = GetComponent<CombatSystem>();
         me = GetComponent<Fighter>();
+        twoHandGrip = GetComponent<TwoHandGrip>();
         if (weapon == null)
         {
             foreach (var hd in GetComponentsInChildren<HitDetector>(true))
@@ -42,7 +88,7 @@ public class WeaponAim : MonoBehaviour
         }
         if (weapon != null)
         {
-            restLocalRotation = weapon.localRotation; hasRest = true;
+            restLocalRotation = weapon.localRotation; restLocalPosition = weapon.localPosition; hasRest = true;
             var box = weapon.GetComponent<BoxCollider>();
             if (box != null)
             {
@@ -52,10 +98,40 @@ public class WeaponAim : MonoBehaviour
         }
     }
 
+    /// <summary>Rotates the weapon about a world pivot, carrying its position round with it.</summary>
+    private void RotateAbout(Vector3 pivot, Quaternion rot)
+    {
+        weapon.rotation = rot * weapon.rotation;
+        weapon.position = pivot + rot * (weapon.position - pivot);
+    }
+
+    private Vector3 Pivot => handBone != null ? handBone.position : weapon.position;
+
+    /// <summary>Rolls a hand so the axis its fist was baked around points along the haft.</summary>
+    private void AlignWrist(Transform hand, Vector3 gripAxisLocal, Vector3 haftDir, float w)
+    {
+        if (hand == null || w <= 1e-3f || gripAxisLocal.sqrMagnitude < 1e-6f) return;
+        Vector3 cur = hand.TransformDirection(gripAxisLocal.normalized).normalized;
+        float ang = Vector3.Angle(cur, haftDir);
+        if (ang < 0.5f) return;
+        var axis = Vector3.Cross(cur, haftDir);
+        if (axis.sqrMagnitude < 1e-6f) return;
+        hand.rotation = Quaternion.AngleAxis(Mathf.Min(ang, wristMaxAngle) * w, axis.normalized) * hand.rotation;
+    }
+
     private void LateUpdate()
     {
         if (weapon == null || combat == null) return;
-        if (hasRest) weapon.localRotation = restLocalRotation;   // undo last frame's aim before computing this one
+        if (handBone == null)
+        {
+            var anim = GetComponentInChildren<Animator>();
+            if (anim != null && anim.isHuman)
+            {
+                handBone = anim.GetBoneTransform(HumanBodyBones.RightHand);
+                offHandBone = anim.GetBoneTransform(HumanBodyBones.LeftHand);
+            }
+        }
+        if (hasRest) { weapon.localRotation = restLocalRotation; weapon.localPosition = restLocalPosition; }
         if (opponent == null)
         {
             foreach (var f in FindObjectsByType<Fighter>(FindObjectsSortMode.None)) if (f != me) { opponent = f; break; }
@@ -79,6 +155,49 @@ public class WeaponAim : MonoBehaviour
             w = fadeTimer;
         }
         w *= weight;
+
+        // Guard carry: whatever the clip's wrist is doing, put the haft back on the guard line. Fades out
+        // as an attack's aim weight comes up, so the swing animation is never fought.
+        if (carryPose && carryWeight > 1e-3f && w < 1f)
+        {
+            float cw = (1f - w) * carryWeight;
+            Vector3 des = transform.TransformDirection(carryDirection.normalized);
+            if (carryAlongHands && handBone != null && offHandBone != null)
+            {
+                // Butt-to-head runs from the off hand up through the gripping hand: both hands end up on
+                // the haft however the clip moves them, which a fixed line cannot promise.
+                // The off hand as the CLIP poses it, never the one this carry has already moved: the grip IK
+                // pulls the hand onto the haft and the haft follows the hands, so reading the settled hand
+                // feeds that loop back on itself (with a wide grip it walked both hands onto one side of the
+                // body). Clip -> haft -> IK, one way only.
+                Vector3 off = twoHandGrip != null && twoHandGrip.HasPreIkOffHand
+                    ? twoHandGrip.PreIkOffHand : offHandBone.position;
+                Vector3 line = handBone.position - off;
+                if (line.sqrMagnitude > 1e-6f) des = line.normalized;
+            }
+            if (Mathf.Abs(carryExtraTilt) > 0.01f)
+                des = Quaternion.AngleAxis(-carryExtraTilt * cw, transform.forward) * des;
+            if (Mathf.Abs(carryForwardTilt) > 0.01f)
+                des = Quaternion.AngleAxis(carryForwardTilt * cw, transform.right) * des;
+
+            // Wrists first: they turn the hands only (bone origins do not move, so the carry line is the
+            // same), and the weapon's world pose is rebuilt from the line right after.
+            if (alignWrists && wristAlignWeight > 1e-3f)
+            {
+                AlignWrist(handBone, fistGripAxisRight, des, cw * wristAlignWeight);
+                AlignWrist(offHandBone, fistGripAxisLeft, des, cw * wristAlignWeight);
+            }
+
+            Vector3 cur = weapon.TransformDirection(haftAxisLocal).normalized;
+            float ca = Vector3.Angle(cur, des);
+            if (ca > 0.5f)
+            {
+                var axis = Vector3.Cross(cur, des);
+                if (axis.sqrMagnitude > 1e-6f)
+                    RotateAbout(Pivot, Quaternion.AngleAxis(Mathf.Min(ca, carryMaxAngle) * cw, axis.normalized));
+            }
+        }
+
         if (w <= 1e-3f) return;
 
         // Aim at the visible body, not the physics capsule (that one is 2.1 x root scale tall, well above the head).
@@ -117,7 +236,7 @@ public class WeaponAim : MonoBehaviour
             applied = Mathf.Min(ang, cap) * w;
             rot = Quaternion.AngleAxis(applied, Vector3.Cross(current, desired).normalized);
         }
-        weapon.rotation = rot * weapon.rotation;
+        RotateAbout(weapon.position, rot);   // the mount puts the origin at the hand, so this is the grip
         if (debugLogs) Debug.Log($"{name} aim: off by {ang:F0} deg, applied {applied:F0} (w {w:F2})");
     }
 }

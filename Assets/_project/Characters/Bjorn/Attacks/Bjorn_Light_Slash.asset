@@ -18,7 +18,7 @@ MonoBehaviour:
   armorPierce: 0
   startupFrames: 6
   activeFrames: 3
-  recoveryFrames: 8
+  recoveryFrames: 7
   animationClip: {fileID: -203655887218126122, guid: bada7b5cebbadbc41b96764c55fe3b7b, type: 3}
   animatorTriggerName: LightAttack
   attackHeight: 1
@@ -33,3 +33,10 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: -1
+  comboLinks:
+  - input: 2
+    followUp: {fileID: 11400000, guid: 9c0ea5ba0b3b51247af6c241b84a221c, type: 2}
+    requires: 0
+  cancelStartFrame: 8
+  cancelEndFrame: 14
+  dodgedRecoveryFrames: -1

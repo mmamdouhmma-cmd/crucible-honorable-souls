@@ -92,3 +92,9 @@ Server/node_modules/
 Server/relay.log
 Server/tunnel.log
 Server/cf.log
+
+# Mocap source videos (large) and the extracted landmark JSON
+ArtSource/Mocap/raw/
+ArtSource/Mocap/landmarks/
+ArtSource/Mocap/models/
+Server/cf.prev.log

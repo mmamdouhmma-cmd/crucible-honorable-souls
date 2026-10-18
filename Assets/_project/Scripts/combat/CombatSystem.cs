@@ -32,6 +32,12 @@ public class CombatSystem : MonoBehaviour
              "If off, the attack keeps going under the flinch animation.")]
     [SerializeField] private bool hitInterruptsAttack = true;
 
+    [Header("Punishment")]
+    [Tooltip("Extra recovery frames (60fps) after this fighter's attack is dodged by a dash: facing locked, " +
+             "no walking, no new attack, so the dodger gets a free counter. -1 = BalanceConfig.DODGED_RECOVERY_FRAMES. " +
+             "An AttackData can override it per move.")]
+    [SerializeField] private int dodgedRecoveryFrames = -1;
+
     [Header("Hit feel")]
     [Tooltip("Spawn a blood burst on the target when this fighter's strike lands unblocked.")]
     [SerializeField] private bool bloodOnHit = true;
@@ -54,6 +60,25 @@ public class CombatSystem : MonoBehaviour
     private bool swingEvaded;                // the opponent's dash already made this swing miss
     private Fighter reachTarget;             // opponent checked when the hitbox armed (for the gizmo)
     private Vector3 reachTargetPos;          // position that check used
+
+    // Same-attack chain limiter (BalanceConfig.SAME_ATTACK_CHAIN_LIMIT / ATTACK_CHAIN_LOCKOUT /
+    // ATTACK_CHAIN_WINDOW): counts how many times the same attack has been thrown back to back and
+    // locks every attack out for a beat once the limit is reached.
+    private AttackType chainType;      // attack the current chain is made of
+    private int chainCount;            // repeats of chainType back to back (0 = no chain running)
+    private float chainIdleTimer;      // seconds since the last attack ended (chain expires past ATTACK_CHAIN_WINDOW)
+    private float attackLockoutTimer;  // seconds left of the post-chain lockout
+
+    // Strings. A press that arrives while this fighter is busy is remembered for
+    // BalanceConfig.INPUT_BUFFER_FRAMES and comes out on the first frame it is legal - the
+    // "dial a combo" behaviour every fighting game has, so a follow-up pressed a few frames
+    // early still lands instead of being eaten.
+    private AttackType bufferedInput;
+    private bool hasBufferedInput;
+    private float bufferTimer;
+    private bool attackTouched;        // this swing hit or was blocked
+    private bool attackHitClean;       // this swing hit unblocked
+    private int stringDepth;           // links taken without returning to neutral (0 = a fresh swing)
 
     private void Awake()
     {
@@ -88,6 +113,27 @@ public class CombatSystem : MonoBehaviour
         if (animator != null) animator.speed = frozen ? 0f : 1f;
         if (frozen) return;
 
+        // Post-chain lockout and chain expiry. Both run while idle, so they tick before the
+        // "not attacking" return below.
+        if (attackLockoutTimer > 0f)
+        {
+            attackLockoutTimer -= Time.deltaTime;
+            if (attackLockoutTimer <= 0f)
+            {
+                attackLockoutTimer = 0f;
+                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: chain lockout OVER");
+            }
+        }
+
+        if (!isAttacking && chainCount > 0)
+        {
+            chainIdleTimer += Time.deltaTime;
+            if (chainIdleTimer >= BalanceConfig.ATTACK_CHAIN_WINDOW)
+            {
+                chainCount = 0;
+            }
+        }
+
         if (inHitstun)
         {
             hitstunTimer -= Time.deltaTime;
@@ -99,9 +145,18 @@ public class CombatSystem : MonoBehaviour
             }
         }
 
+        if (bufferTimer > 0f)
+        {
+            bufferTimer -= Time.deltaTime;
+            if (bufferTimer <= 0f) { bufferTimer = 0f; hasBufferedInput = false; }
+        }
+
         if (!isAttacking || currentAttack == null) return;
 
         currentAttackTime += Time.deltaTime;
+
+        // A buffered press inside the cancel window drops the rest of the recovery.
+        if (hasBufferedInput && TryCancelIntoFollowUp()) return;
 
         float startupEnd = currentAttack.StartupFrames * BalanceConfig.FRAME_TIME;
         float activeEnd = startupEnd + currentAttack.ActiveFrames * BalanceConfig.FRAME_TIME;
@@ -167,6 +222,14 @@ public class CombatSystem : MonoBehaviour
         if (currentAttackTime >= total)
         {
             EndAttack();
+
+            // Hit the repeat limit on a swing that ran its course: no more attacks for a beat.
+            if (chainCount >= BalanceConfig.SAME_ATTACK_CHAIN_LIMIT)
+            {
+                attackLockoutTimer = BalanceConfig.ATTACK_CHAIN_LOCKOUT;
+                chainCount = 0;
+                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {BalanceConfig.SAME_ATTACK_CHAIN_LIMIT}x {chainType} in a row - locked out for {BalanceConfig.ATTACK_CHAIN_LOCKOUT:0.00}s");
+            }
         }
     }
 
@@ -176,13 +239,136 @@ public class CombatSystem : MonoBehaviour
     /// is configured. On success the animator trigger fires and the active-phase
     /// hitbox will be raised by <see cref="Update"/>.
     /// </summary>
+    /// <summary>
+    /// Fires the buffered button as a string follow-up if the current attack links it and the
+    /// playhead is inside the cancel window. Returns true when a follow-up started, in which case
+    /// the caller must not touch the old attack's state again this frame.
+    /// </summary>
+    private bool TryCancelIntoFollowUp()
+    {
+        if (currentAttack == null || !currentAttack.HasComboLinks) return false;
+
+        var link = currentAttack.FindLink(bufferedInput);
+        if (link == null) return false;
+
+        int frame = Mathf.FloorToInt(currentAttackTime / BalanceConfig.FRAME_TIME);
+        if (frame < currentAttack.CancelStartFrame || frame > currentAttack.CancelEndFrame) return false;
+
+        bool allowed;
+        switch (link.requires)
+        {
+            case CancelRequirement.HitOnly:    allowed = attackHitClean; break;
+            case CancelRequirement.HitOrBlock: allowed = attackTouched;  break;
+            default:                           allowed = true;           break;
+        }
+        if (!allowed) return false;
+
+        if (stringDepth + 1 >= BalanceConfig.MAX_STRING_LENGTH)
+        {
+            if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: string capped at {BalanceConfig.MAX_STRING_LENGTH} hits");
+            return false;
+        }
+
+        if (fighter == null || fighter.Stats == null) return false;
+        if (!fighter.Stats.HasStamina(link.followUp.StaminaCost)) return false;
+
+        string from = currentAttack.AttackName;
+        int window0 = currentAttack.CancelStartFrame, window1 = currentAttack.CancelEndFrame;
+        int depth = stringDepth + 1;
+        EndAttack("CANCELLED into the string");
+        BeginAttack(link.followUp, depth);
+        hasBufferedInput = false;
+        bufferTimer = 0f;
+
+        if (debugLogs)
+        {
+            Debug.Log($"P{fighter.PlayerNumber}: {from} -> {link.followUp.AttackName} " +
+                      $"(cancelled on frame {frame}, window {window0}-{window1}, hit {depth + 1} of the string)");
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Puts an attack into motion: stamina, timers, chain bookkeeping and the animator trigger.
+    /// Shared by <see cref="TryAttack"/> and the string cancel, so a follow-up behaves exactly
+    /// like a normal swing once it is out.
+    /// </summary>
+    private void BeginAttack(AttackData attack, int depth)
+    {
+        isAttacking = true;
+        currentAttack = attack;
+        currentAttackTime = 0f;
+        hitboxActive = false;
+        hitboxStarted = false;
+        swingEvaded = false;
+        evadedExtraRecovery = 0f;
+        reachTarget = null;
+        attackTouched = false;
+        attackHitClean = false;
+        stringDepth = depth;
+        currentAttackIsDashCounter = fighter.ConsumeDashCounter();
+        if (currentAttackIsDashCounter)
+        {
+            Debug.Log($"P{fighter.PlayerNumber}: DASH COUNTER - {attack.AttackName} will deal x{BalanceConfig.DASH_COUNTER_DAMAGE_MULTIPLIER} damage");
+        }
+
+        fighter.Stats.UseStamina(attack.StaminaCost);
+
+        // Count this swing against the same-attack chain. A different attack, or too long a gap
+        // after the previous one ended, starts over - so a string, being different attacks by
+        // definition, never trips the anti-spam lockout.
+        if (chainCount > 0 && attack.AttackType == chainType && chainIdleTimer < BalanceConfig.ATTACK_CHAIN_WINDOW)
+        {
+            chainCount++;
+        }
+        else
+        {
+            chainType = attack.AttackType;
+            chainCount = 1;
+        }
+        chainIdleTimer = 0f;
+
+        if (animator != null && !string.IsNullOrEmpty(attack.AnimatorTriggerName))
+        {
+            animator.SetTrigger(attack.AnimatorTriggerName);
+        }
+    }
+
+    /// <summary>Remembers a press that cannot come out yet (see the buffer fields).</summary>
+    private void BufferInput(AttackType attackType)
+    {
+        bufferedInput = attackType;
+        hasBufferedInput = true;
+        float hold = BalanceConfig.INPUT_BUFFER_FRAMES * BalanceConfig.FRAME_TIME;
+
+        // Dial-a-combo: when the button genuinely continues this string, hold it until the cancel
+        // window has passed rather than for the flat buffer. Otherwise a player who taps the
+        // follow-up straight after the opener - which is how everyone plays strings - would have it
+        // expire a frame or two before the window even opens.
+        if (currentAttack != null && currentAttack.FindLink(attackType) != null)
+        {
+            float windowEnd = (currentAttack.CancelEndFrame + 1) * BalanceConfig.FRAME_TIME;
+            hold = Mathf.Max(hold, windowEnd - currentAttackTime);
+        }
+        bufferTimer = hold;
+    }
+
    public bool TryAttack(AttackType attackType)
 {
     int pn = fighter != null ? fighter.PlayerNumber : 0;
     Debug.Log($"P{pn}: TryAttack({attackType}) called");
 
-    if (isAttacking) { Debug.Log($"P{pn}: BLOCKED - already attacking"); return false; }
+    if (isAttacking)
+    {
+        // A mid-attack press is not thrown away: if this attack links the button the cancel comes
+        // out now or on the first legal frame, and if it does not the buffer just expires.
+        BufferInput(attackType);
+        if (TryCancelIntoFollowUp()) return true;
+        Debug.Log($"P{pn}: buffered {attackType} for {BalanceConfig.INPUT_BUFFER_FRAMES} f - mid-attack");
+        return false;
+    }
     if (inHitstun)   { Debug.Log($"P{pn}: BLOCKED - in hitstun"); return false; }
+    if (attackLockoutTimer > 0f) { Debug.Log($"P{pn}: BLOCKED - chain lockout, {attackLockoutTimer:0.00}s left"); return false; }
     if (fighter == null)         { Debug.Log($"P{pn}: BLOCKED - fighter null"); return false; }
     if (fighter.Stats == null)   { Debug.Log($"P{pn}: BLOCKED - Stats null"); return false; }
 
@@ -195,26 +381,9 @@ public class CombatSystem : MonoBehaviour
         return false;
     }
 
-    isAttacking = true;
-    currentAttack = found;
-    currentAttackTime = 0f;
-    hitboxActive = false;
-    hitboxStarted = false;
-    swingEvaded = false;
-    evadedExtraRecovery = 0f;
-    reachTarget = null;
-    currentAttackIsDashCounter = fighter.ConsumeDashCounter();
-    if (currentAttackIsDashCounter)
-    {
-        Debug.Log($"P{pn}: DASH COUNTER - {found.AttackName} will deal x{BalanceConfig.DASH_COUNTER_DAMAGE_MULTIPLIER} damage");
-    }
-
-    fighter.Stats.UseStamina(found.StaminaCost);
-
-    if (animator != null && !string.IsNullOrEmpty(found.AnimatorTriggerName))
-    {
-        animator.SetTrigger(found.AnimatorTriggerName);
-    }
+    BeginAttack(found, 0);
+    hasBufferedInput = false;
+    bufferTimer = 0f;
 
     if (debugLogs) Debug.Log($"P{pn}: {found.AttackName} STARTED");
     return true;
@@ -257,6 +426,7 @@ public class CombatSystem : MonoBehaviour
         float seconds = Mathf.Max(frames, 1) * BalanceConfig.FRAME_TIME;
         hitstunTimer = Mathf.Max(hitstunTimer, seconds);
         inHitstun = true;
+        chainCount = 0; // a flinch breaks the chain; no lockout on top of the hitstun
 
         if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: hitstun for {frames} frames ({seconds:0.00}s)");
     }
@@ -281,13 +451,25 @@ public class CombatSystem : MonoBehaviour
     // recovery (no turning, no walking) so a well-timed dash leaves them open to the counter.
     private float evadedExtraRecovery;
 
+    /// <summary>
+    /// How long a dodged attack stays open, in frames: the attack's own override first, then this
+    /// component's setting, then <see cref="BalanceConfig.DODGED_RECOVERY_FRAMES"/>.
+    /// </summary>
+    private int DodgedRecoveryFramesFor(AttackData attack)
+    {
+        if (attack != null && attack.DodgedRecoveryFrames >= 0) return attack.DodgedRecoveryFrames;
+        if (dodgedRecoveryFrames >= 0) return dodgedRecoveryFrames;
+        return BalanceConfig.DODGED_RECOVERY_FRAMES;
+    }
+
     private void MarkEvaded()
     {
         swingEvaded = true;
         if (evadedExtraRecovery <= 0f)
         {
-            evadedExtraRecovery = BalanceConfig.DODGED_RECOVERY_FRAMES * BalanceConfig.FRAME_TIME;
-            if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {currentAttack.AttackName} was DODGED - +{BalanceConfig.DODGED_RECOVERY_FRAMES} f recovery");
+            int frames = DodgedRecoveryFramesFor(currentAttack);
+            evadedExtraRecovery = frames * BalanceConfig.FRAME_TIME;
+            if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {currentAttack.AttackName} was DODGED - +{frames} f recovery ({frames * BalanceConfig.FRAME_TIME:F2}s open)");
         }
     }
 
@@ -295,9 +477,16 @@ public class CombatSystem : MonoBehaviour
     public void ResetForMatch()
     {
         if (isAttacking) EndAttack("match reset");
+        chainCount = 0;
+        attackLockoutTimer = 0f;
         inHitstun = false;
         hitstunTimer = 0f;
         evadedExtraRecovery = 0f;
+        hasBufferedInput = false;
+        bufferTimer = 0f;
+        stringDepth = 0;
+        attackTouched = false;
+        attackHitClean = false;
         pendingHits.Clear();
     }
 
@@ -481,6 +670,10 @@ public class CombatSystem : MonoBehaviour
 
         target.Stats.TakeDamage(finalDamage);
         target.NotifyHit(currentAttack.HitSide, currentAttack.HitstunFrames);
+
+        // Remembered for string links that must be earned by connecting.
+        attackTouched = true;
+        attackHitClean = !blocked;
 
         if (!blocked && finalDamage > 0 && bloodOnHit)
         {
@@ -713,5 +906,6 @@ public class CombatSystem : MonoBehaviour
         currentAttack = null;
         currentAttackTime = 0f;
         currentAttackIsDashCounter = false;
+        chainIdleTimer = 0f; // the chain window starts counting from here
     }
 }

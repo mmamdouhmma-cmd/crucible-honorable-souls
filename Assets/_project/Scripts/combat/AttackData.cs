@@ -42,6 +42,37 @@ public enum AttackOrigin
 /// <summary>How the weapon aim may correct a strike: see AttackData.aimMode.</summary>
 public enum AimMode { Full, YawOnly, Off }
 
+/// <summary>
+/// What a string link needs from the previous hit before it may be cancelled into.
+/// Fighting-game convention (MK-style): plain strings continue whether or not the hit
+/// connects, while the bigger enders are earned by connecting first.
+/// </summary>
+public enum CancelRequirement
+{
+    Always,       // the string continues even on a whiff
+    HitOrBlock,   // the blade must have touched the opponent (guard counts)
+    HitOnly       // only an unblocked hit opens it
+}
+
+/// <summary>
+/// One branch of a string: which button continues it, and the move that comes out.
+/// The follow-up is a normal <see cref="AttackData"/>, so it carries its own frame data,
+/// hitbox and animator trigger - and can define links of its own, which is what makes
+/// a chain of any length.
+/// </summary>
+[System.Serializable]
+public class ComboLink
+{
+    [Tooltip("Button that continues the string.")]
+    public AttackType input = AttackType.Heavy;
+
+    [Tooltip("Move that comes out instead of this attack's recovery.")]
+    public AttackData followUp;
+
+    [Tooltip("What the previous hit must have done before this branch opens.")]
+    public CancelRequirement requires = CancelRequirement.Always;
+}
+
 public enum HitSide
 {
     Straight,
@@ -135,6 +166,25 @@ public class AttackData : ScriptableObject
     [Tooltip("Farthest the attacker may travel during the lunge, world units. 0 = no lunge, -1 = BalanceConfig.ATTACK_LUNGE_MAX.")]
     [SerializeField] private float lungeMaxDistance = -1f;
 
+    [Header("Combo (strings)")]
+    [Tooltip("Branches off this attack. Pressing a listed button inside the cancel window drops the rest " +
+             "of this attack's recovery and starts the follow-up, so the two read as one action.")]
+    [SerializeField] private ComboLink[] comboLinks;
+
+    [Range(-1, 60)]
+    [Tooltip("First frame (counted from this attack's start) a follow-up may come out. -1 = the first active frame, " +
+             "which is the usual fighting-game rule: you may cancel from the moment the blade is live.")]
+    [SerializeField] private int cancelStartFrame = -1;
+
+    [Range(-1, 90)]
+    [Tooltip("Last frame a follow-up may come out. -1 = the final recovery frame.")]
+    [SerializeField] private int cancelEndFrame = -1;
+
+    [Header("Punishment")]
+    [Tooltip("Extra recovery frames (60fps) when this attack is dodged by a dash: the attacker is left open, " +
+             "facing locked and unable to walk, so the dodger can counter. -1 = the CombatSystem's own setting.")]
+    [SerializeField] private int dodgedRecoveryFrames = -1;
+
     /// <summary>Display name for logs/UI (e.g. "Axe Slash").</summary>
     public string AttackName => attackName;
 
@@ -195,6 +245,33 @@ public class AttackData : ScriptableObject
 
     /// <summary>Longest lunge this attack may make (world units, 0 = none).</summary>
     public float LungeMaxDistance => lungeMaxDistance < 0f ? BalanceConfig.ATTACK_LUNGE_MAX : lungeMaxDistance;
+
+    /// <summary>Extra recovery frames when this attack is dodged, or -1 to use the CombatSystem's setting.</summary>
+    public int DodgedRecoveryFrames => dodgedRecoveryFrames;
+
+    /// <summary>Branches off this attack (may be empty).</summary>
+    public ComboLink[] ComboLinks => comboLinks;
+
+    /// <summary>True if any button continues this attack into something else.</summary>
+    public bool HasComboLinks => comboLinks != null && comboLinks.Length > 0;
+
+    /// <summary>First frame a follow-up may come out (defaults to the first active frame).</summary>
+    public int CancelStartFrame => cancelStartFrame < 0 ? startupFrames : cancelStartFrame;
+
+    /// <summary>Last frame a follow-up may come out (defaults to the end of recovery).</summary>
+    public int CancelEndFrame =>
+        cancelEndFrame < 0 ? startupFrames + activeFrames + recoveryFrames : cancelEndFrame;
+
+    /// <summary>The branch this button opens, or null if the button does not continue this string.</summary>
+    public ComboLink FindLink(AttackType input)
+    {
+        if (comboLinks == null) return null;
+        foreach (var link in comboLinks)
+        {
+            if (link != null && link.followUp != null && link.input == input) return link;
+        }
+        return null;
+    }
 
     /// <summary>
     /// Total attack duration in seconds (startup + active + recovery, at 60fps).

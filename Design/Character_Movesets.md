@@ -62,7 +62,10 @@ ANIM: the axe goes up over the right shoulder with both hands (a readable wind),
       Reach 3.4, tall narrow box.
 ```
 
-## LOW ATTACKS (L2 + button)
+## LOW / TRIP ATTACKS (L2 + button)
+
+These are **strikes**, not grabs: one hitbox, no hold, no paired animation. The ones marked
+`knockdown` put the opponent on the ground and send them through `Knockdown` → `Getup`.
 
 ```
 LOW LIGHT · L2+□ — "Shin Hook"
@@ -80,6 +83,12 @@ DMG 17 | STA 18 | 18/5/20 [43] | PIERCE 10 | KB 0.9 | HITSTUN 24
 HIT Straight | EVADE Back | PROPERTIES: low, knockdown
 ANIM: drops to the right knee, the axe sweeps a full low circle right-to-left at ankle height, rises on
       the recovery. Reach 3.8, wide flat box.
+
+TACKLE · L2+↓+△ — "Shield Wall Breaker"
+DMG 12 | STA 55 | 12/6/24 | KB 2.0 | moves 2.5, interrupts attacks, knockdown, target invulnerable on standup
+HIT Straight | EVADE Left, Right | PROPERTIES: mid, trip, no grab state
+ANIM: axe held across the chest like a bar, full sprint tackle, both go down, Bjorn rolls up first.
+      A STRIKE that knocks down — the victim just plays Knockdown, nothing is held.
 ```
 
 ## UPPERCUTS (↓ + button)
@@ -104,7 +113,10 @@ ANIM: squat, then a jumping rising cut; feet leave the ground for 6 frames, the 
       the head, heavy landing with a stagger step.
 ```
 
-## SPECIAL ATTACKS — default (L1 + button)
+## SPECIAL ATTACKS — default (L1 + button)  ·  PARKED (2026-10-17)
+
+Designed but not planned for the current pass - the user dropped these three from the
+fortnight on 2026-10-17. Kept here for a later one.
 
 ```
 LIGHT SPECIAL · L1+□ — "Haft Strike"
@@ -150,26 +162,36 @@ FORWARD / CHARGED · L1+→
   △ "Ragnarök Spin"     DMG 9×3 | 16/(4+4+4)/24 | charged, multi-hit, moves 1.0, three turning cuts on the long haft
 ```
 
-## GRAPPLING
+## GRABS (R1) — grab first, then branch
+
+A grab is a real grab: it connects, the opponent is **held** (both fighters locked, paired
+animation, victim mashing to break), and only then does the attacker choose how it ends. The
+two grab moves per character are the two **branches** off one grab connect, not two separate
+grabs — one connect clip, one hold loop, two finishes.
 
 ```
-OFFENSIVE THROW · R1 — "Hook and Haul"
-DMG 14 | STA 14 | 8/2/20 | KB 2.0 | knockdown
-ANIM: the beard goes over the opponent's shoulder and hooks the neck; Bjorn pivots and hauls them past
-      him onto the ground with both hands. Grab range 1.8.
+GRAB CONNECT · R1 — "Beard Hook"
+STA 10 | 8/2/20 | grab range 1.8 | PROPERTIES: not a strike (no hitbox), whiffs are punishable
+ANIM: the beard goes over the opponent's shoulder and hooks the neck, Bjorn hauls them in close
+      and plants his feet. On connect both fighters enter the HELD state: root motion locked,
+      relative offset held by the attacker, hits ignored by both.
+HELD: victim mashes to break (GRAB_BREAK_WINDOW); on a break both are pushed apart and the
+      attacker takes the longer recovery.
 
-DEFENSIVE THROW · R1+← — "Viking Toss"
-DMG 10 | STA 12 | 6/2/22 | KB 2.5 | knockdown, counter-throw (only from block or parry)
-ANIM: the haft catches the incoming arm, a step through and a hip throw over the haft.
+  BRANCH A · GRAB STRIKES · □ / ✕ while held — "Butt Ring Hammer"
+  DMG 6+6+8 (20) | STA 6 per strike | each strike extends the hold ~16 f, 3 max
+  ANIM: knee into the body, then the butt ring of the haft down on the head twice, the last one
+        shoves them off. Victim stays standing and staggers away (no knockdown).
 
-TACKLE · L2+↓+△ — "Shield Wall Breaker"
-DMG 12 | STA 55 | 12/6/24 | KB 2.0 | moves 2.5, interrupts attacks, knockdown, target invulnerable on standup
-ANIM: axe held across the chest like a bar, full sprint tackle, both go down, Bjorn rolls up first.
-
-TAKEDOWN · L2+↓+✕+□ — "Ground and Pound"
-DMG 6+6+8 (20) | STA 30 | 10/—/30 | knockdown
-ANIM: leg trip with the haft into a mount, two strikes with the butt ring, then a push off.
+  BRANCH B · TAKEDOWN · △ / ↓ while held — "Hook and Haul"
+  DMG 14 | STA 14 | KB 2.0 | knockdown
+  ANIM: Bjorn pivots and hauls them past him onto the ground with both hands; victim lands on
+        the back into Knockdown → Getup.
 ```
+
+Later (not in the first pass): `DEFENSIVE THROW · R1+←` — "Viking Toss", DMG 10, counter-throw
+only out of a block or a parry; the haft catches the incoming arm, step through, hip throw over
+the haft.
 
 ## SIGNATURE · L1+L2+R1+R2 — "Ironside's Wrath"
 
@@ -219,7 +241,10 @@ ANIM: blade raised straight above the head, a single vertical cut that stops at 
       navel; rear foot comes up to meet the front. Reach 2.8, tall narrow box.
 ```
 
-## LOW ATTACKS (L2 + button)
+## LOW / TRIP ATTACKS (L2 + button)
+
+Strikes, not grabs — one hitbox, no hold. `knockdown` sends the victim through
+`Knockdown` → `Getup`.
 
 ```
 LOW LIGHT · L2+□ — "Ashi Giri"
@@ -238,6 +263,12 @@ DMG 15 | STA 16 | 17/4/20 [41] | PIERCE 10 | KB 0.9 | HITSTUN 24
 HIT Straight | EVADE Back | PROPERTIES: low, knockdown
 ANIM: drops to a deep crouch and cuts down-and-across at the knees in one motion, the
       blade finishing behind him. Reach 3.0, flat wide box.
+
+TACKLE · L2+↓+△ — "Irimi"
+DMG 10 | STA 50 | 10/5/22 | KB 1.8 | moves 2.5, interrupts attacks, knockdown, target invulnerable on standup
+HIT Straight | EVADE Left, Right | PROPERTIES: mid, trip, no grab state
+ANIM: blade held vertical in the right hand, left shoulder entry into the chest. A STRIKE that
+      knocks down — the victim plays Knockdown, nothing is held.
 ```
 
 ## UPPERCUTS (↓ + button)
@@ -261,7 +292,10 @@ ANIM: crouching rising cut that continues over the head into a one-footed stance
       body fully extended. The finish pose holds 4 frames before recovery.
 ```
 
-## SPECIAL ATTACKS — default (L1 + button)
+## SPECIAL ATTACKS — default (L1 + button)  ·  PARKED (2026-10-17)
+
+Designed but not planned for the current pass - the user dropped these three from the
+fortnight on 2026-10-17. Kept here for a later one.
 
 ```
 LIGHT SPECIAL · L1+□ — "Nukitsuke"
@@ -309,27 +343,33 @@ FORWARD / CHARGED · L1+→
   △ "Ichi no Tachi"     DMG 18→24 | 16/4/22 | charged, armor on release, one decisive horizontal cut, pierce 25 fully charged
 ```
 
-## GRAPPLING
+## GRABS (R1) — grab first, then branch
+
+Same structure as Bjorn: one connect, a held state, two finishes.
 
 ```
-OFFENSIVE THROW · R1 — "Tsuka-ate"
-DMG 12 | STA 12 | 8/2/18 | KB 1.8 | knockdown
-ANIM: pommel strike to the face, then the lead foot sweeps the opponent's lead leg.
-      Grab range 1.5.
+GRAB CONNECT · R1 — "Kumi-uchi"
+STA 10 | 8/2/18 | grab range 1.5 | PROPERTIES: not a strike (no hitbox), whiffs are punishable
+ANIM: left hand seizes the opponent's weapon arm at the wrist, blade kept vertical in the right
+      hand, he steps off-line and holds them bent forward. On connect both enter the HELD state:
+      root motion locked, offset held by the attacker, hits ignored by both.
+HELD: victim mashes to break (GRAB_BREAK_WINDOW); on a break both are pushed apart and the
+      attacker takes the longer recovery.
 
-DEFENSIVE THROW · R1+← — "Irimi Nage"
-DMG 9 | STA 11 | 6/2/20 | KB 2.5 | knockdown, counter-throw (from block or parry)
-ANIM: enters past the attacking arm, hand to the chin, drops them backward over his leg.
+  BRANCH A · GRAB STRIKES · □ / ✕ while held — "Tsuka-ate"
+  DMG 5+5+8 (18) | STA 6 per strike | each strike extends the hold ~16 f, 3 max
+  ANIM: pommel into the face, knee to the ribs, then a pommel shove that breaks the grip.
+        Victim staggers away standing (no knockdown).
 
-TACKLE · L2+↓+△ — "Irimi"
-DMG 10 | STA 50 | 10/5/22 | KB 1.8 | moves 2.5, interrupts attacks, knockdown, target invulnerable on standup
-ANIM: blade held vertical in the right hand, left shoulder entry into the chest.
-
-TAKEDOWN · L2+↓+✕+□ — "Kote Gaeshi"
-DMG 8+10 (18) | STA 28 | 10/—/28 | knockdown
-ANIM: wrist lock on the weapon hand, turn-out that drops them face down, knee to the
-      back, blade point to the neck (held 6 frames), release.
+  BRANCH B · TAKEDOWN · △ / ↓ while held — "Kote Gaeshi"
+  DMG 8+10 (18) | STA 28 | knockdown
+  ANIM: wrist lock on the weapon hand, turn-out that drops them face down, knee to the back,
+        blade point to the neck (held 6 frames), release into Knockdown → Getup.
 ```
+
+Later (not in the first pass): `DEFENSIVE THROW · R1+←` — "Irimi Nage", DMG 9, counter-throw out
+of a block or a parry; enters past the attacking arm, hand to the chin, drops them backward over
+his leg.
 
 ## SIGNATURE · L1+L2+R1+R2 — "Niten Ichi" (Two Heavens as One)
 

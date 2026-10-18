@@ -230,3 +230,301 @@ where the `.rsp` files are built from the csproj's `DefineConstants`, `HintPath`
   - Known gaps for the test: guest sees no blood/hit effects (CombatSystem off on the guest), hit reactions on the guest come only from the animator state sync, no reconnection, no lobby names beyond the PC's machine name.
 - **Hosting the test build (2026-10-13, final):** the router isolates its WiFi clients (the PC on 5 GHz "3nza" never saw a packet from the phones; Windows Firewall already allows Node), so LAN play through the router does not work there. Working routes: (1) **Cloudflare quick tunnel** (`cloudflared` installed via winget at `C:\Program Files (x86)\cloudflared\`): `Server/start-online.cmd` opens the relay and the tunnel in two console windows and the tunnel window prints the public `https://<words>.trycloudflare.com` link, which works from any network (the "Same WiFi" menu is really "online through this PC"); `Server/status.cmd` reports both and the last link. The link changes on every tunnel restart; a fixed address needs a free Cloudflare account + named tunnel. (2) The PC's **mobile hotspot** (turned on this session: SSID "MMAMDOUH 9448", password in Windows Settings > Mobile hotspot) at `http://192.168.137.1:8080/`. localtunnel (`npx localtunnel`) was tried first and died within minutes: do not use it. `WebSocketClient.PageUrl` derives ws/wss from the page URL, so the same build works on any of these routes.
 - **Next session:** special strikes + combos (see the 2026-10-13 plan above); shrink the web build (only the active arena in the scene); confirm the phone test results from the user (touch feel, frame rate, online latency); blood/hit effects on the guest.
+
+### 2026-10-17 — spam limiter, touch pad gating, camera home side, headless builds
+
+- **Frame data tuned by the user** before this session (in the working tree): Bjorn light recovery 8→7, medium startup 28→23, heavy damage 18→16; Miyamoto light 11→10 dmg / recovery 10→6, medium 14→10 dmg / recovery 12→8, heavy 18→12 dmg / recovery 14→12. Scene: `dashDuration` 0.25→0.35, stamina regen 10/13→15/18, `dashStaminaCost` 25→20, turn speeds re-tuned, `dustEffects` back on. Combos are still **timing off the end of the animation** — there is no cancel-window system yet.
+- **Same-attack chain limit** (anti-spam, `CombatSystem` + `BalanceConfig`): the same attack can be thrown `SAME_ATTACK_CHAIN_LIMIT` (2) times in a row; when the second one finishes its recovery every attack is locked out for `ATTACK_CHAIN_LOCKOUT` (0.8 s, user asked for 0.66–1 s). A different attack resets the chain, as does a gap longer than `ATTACK_CHAIN_WINDOW` (0.6 s) after an attack ends. Getting hit clears the chain, so a flinch never stacks a lockout on top of hitstun. Fields `chainType` / `chainCount` / `chainIdleTimer` / `attackLockoutTimer`; logs `2x Light in a row - locked out for 0.80s` and `BLOCKED - chain lockout, 0.52s left`. Alternating buttons is still uncapped by design.
+- **Touch pad only on touch devices**: `TouchControls.WantsTouch` was `isMobilePlatform || platform == WebGLPlayer`, so every PC browser got the pad. New `Plugins/WebGL/DeviceBridge.jslib` → `CrucibleIsTouchDevice()` asks the page: a phone/tablet user agent, or `maxTouchPoints > 1` with a coarse pointer and **no** fine pointer (catches iPadOS Safari, which claims to be a Mac; a Windows touchscreen laptop reports a fine pointer and counts as desktop). Result cached in `touchDevice`, logged as `TouchControls: touch device = …`. A real finger on a device called desktop flips it on for the rest of the run. **Settings > On-screen buttons: Auto (phones) / Always / Off** (`SettingsData.touchButtons`, `TouchControls.SetMode`, applied live so it can be changed from the pause menu).
+- **Camera stays on its home side** (`FightCamera`): the old rule only blocked an instant 180° flip, so orbiting side-dashes rotated the fighters' line a few degrees at a time and walked the view round to the far side of the arena. `homeSide` is remembered at `Start`; each frame the perpendicular on that half is chosen and the swing is clamped to `maxSideSwing` (70°), with `sideStickiness` (0.2) holding the current choice when the pair lines up with the camera and both perpendiculars are equally far from home. Both serialized.
+- **Builds without opening the Editor**: `"C:/Program Files/Unity/Hub/Editor/6000.4.4f1/Editor/Unity.exe" -quit -batchmode -nographics -projectPath "<project>" -executeMethod CrucibleBuild.BuildWebGL -logFile <log>` — 6–14 min with a warm `Library/Bee` cache (the 23 min figure was from the Editor). Needs no Editor instance, and fails if one holds `Temp/UnityLockfile`. Compile-check first with the Roslyn trick: the `.rsp` files build straight from `Assembly-CSharp.csproj` / `Assembly-CSharp-Editor.csproj` (`DefineConstants` → `-define:`, `HintPath` → `-r:`, `Compile Include` → file list; the editor assembly also needs `-r:` on the runtime DLL).
+- **Cache-bust** (`CrucibleBuild.CacheBust`, runs after a successful build): stamps `?v=<yyyyMMddHHmm>` on the loader/data/framework/wasm URLs in `index.html`. Unity's `dataCaching` keys the 224 MB data file on its URL, so without this a tester who reloads keeps playing the build they first opened however hard they refresh — that is why a PC screenshot still showed the touch pad after the gating shipped.
+- **Quick tunnels drop without warning**: mid-session cloudflared logged `Unauthorized: Tunnel not found` and retried forever while the relay stayed healthy on `localhost:8080`. Restarting gives a **new** URL every time (this session used two). Check with `Server/status.cmd`, or `netstat -an | grep :8080` + `tasklist | grep cloudflared`. A fixed address needs `cloudflared tunnel login` (browser, user must do it) + a named tunnel — offered, not yet done.
+- Server was started and then **stopped** at the end of the session; nothing is listening now.
+- **Next session:** special strikes + combos with real cancel windows and input buffering (the chain limiter is the anti-spam floor they sit on); decide whether alternating-button spam needs a global minimum gap; consider gating `MobileQuality` by the same touch check so PC browsers stop getting phone visuals; shrink the web build (only the active arena); phone feedback (touch feel, frame rate, online latency); blood/hit effects on the guest.
+
+### 2026-10-17 — axe guard attempt, REVERTED (the idle is being filmed instead)
+
+- **User's ask was** rear hand high on the haft, lead hand at the bottom, axe canted so the handle
+  points at the left hip and the blade sits above the right shoulder. **Outcome: reverted** - the
+  user will film an idle and the guard will be rebuilt from the capture. Everything below is why,
+  so the next attempt does not repeat it.
+- **A mount tweak can never do it.** In the `AxePack2H` carry both hands sit at belly height ~0.5
+  world units apart; that diagonal needs ~1.2 units between the grips. The haft lies on the line
+  between the hands, so grip spread and axe angle are ONE parameter, not two.
+- **`ArtSource/Blender/mixamo_guard2h.py`** (kept, unused): generalises `mixamo_carry2h.py` to
+  grid-solve a constant rotation offset for BOTH arms so each hand lands on its own target
+  (hips + fwd/up/side, metres). Wide works: `0.14 0.32 0.38 0.10 -0.16 -0.14` put the right hand
+  at x 0.51 (was 0.13), hands 0.76 units apart. **High does not**: asking for the right hand at
+  shoulder height (up 0.46) ran the search to its grid limits and lifted BOTH arms overhead.
+- **Two real bugs found and fixed on the way (kept):**
+  - `WeaponAim` rotations pivot about the hand bone, not the weapon origin, so a weapon that is not
+    mounted at its origin still rotates about the grip. The attack aim deliberately still pivots
+    about `weapon.position` (the stock mount puts the origin at the hand) so strike behaviour is
+    unchanged.
+  - `TwoHandGrip` can aim the PALM at the haft instead of the wrist bone (`offHandPalmLocal`,
+    default zero = old behaviour). With it on, the right palm sat 0.006 from the haft instead of
+    0.15 - the IK goal is the hand bone, which is at the wrist, so the shaft ran through the side
+    of the hand and the baked fist gripped air.
+- **The carry pass** (`WeaponAim.carryPose` + `carryAlongHands` + `carryExtraTilt` /
+  `carryForwardTilt` / `alignWrists`) is in the code but OFF in the scene. It holds the haft on a
+  guard line while not attacking, because the weapon is parented to the wrist and the Mixamo
+  carry's wrist ROTATES through the cycle (measured: head 0.19 behind the body, butt 0.78 in front
+  of the hip). `carryAlongHands` must read the off hand as the CLIP poses it
+  (`TwoHandGrip.PreIkOffHand`): reading the settled hand feeds the grip IK back into the thing that
+  moves it, and at a 0.76-unit spread that loop walked both hands onto one side of the body.
+  `GetIKPosition` inside `OnAnimatorIK` returns last frame's GOAL, not the animated pose - read the
+  bone.
+- **Reverted to:** Bjorn's idle/walks/dashes back on `AxePack2H`, `AxeGuard/` clips deleted, weapon
+  mount back to the FBX values (localPos (0.0001, 0.0005, 0), euler (0, 342.9, 0)), `LeftGrip`
+  socket back to 50%, `WeaponSpec` leftGripFrac 0.50, `WeaponMount` table emptied, carry and wrist
+  alignment off. Verified after the revert: Bjorn_Idle plays, light slash lands 8 dmg at 2.45 units.
+
+### 2026-10-17 — two-week plan agreed
+
+- `Design/Plan_2Weeks.md` is the plan for 2026-10-17 → 2026-10-31, in the user's order:
+  video-driven animation, specials, combos, dash counter (0.8 s open window), parry, low
+  attacks/trips, low block, two grabs each. Deltas from the user's order: the dash-counter
+  number moves to day 1, an attack router + input buffer goes in before the specials, and
+  parry is built in the same pass as the dash counter (shared counter plumbing).
+- Specials scope for the fortnight (user's choice): **4 per character** (three `L1 + button`
+  defaults + one directional), not the 15 in `Character_Movesets.md`.
+- Animation lane: the user films himself (T-pose hold, then the move, white wall, 3/4 angle)
+  and the capture is converted to clips — MediaPipe Pose in a separate Python 3.12 process
+  (Blender's bundled Python is 3.13, no mediapipe wheel) → landmarks JSON → the existing IK
+  controls in the anim masters → `bake_and_export()`. Rokoko Video free tier is the fallback.
+  The first test clip is the gate for the whole lane.
+- Placeholders found that this plan wires up: `BalanceConfig.PARRY_WINDOW` /
+  `PARRY_STUN_DURATION` / `PARRY_COUNTER_WINDOW` / `SUPER_GAIN_PARRY` and the `AttackHeight`
+  enum on `AttackData` all exist and are referenced by nothing yet.
+- **Design call from the user (2026-10-17):** the L2 "low/trip" family is **strikes**, so the
+  tackle belongs there (one clip + a `Knockdown` reaction, nothing held) and moved out of
+  GRAPPLING in `Design/Character_Movesets.md`. A **grab** is a real grab: connect → both
+  fighters HELD (paired animation, mash to break) → branch into **strikes** (□/✕, up to 3) or a
+  **takedown** (△/↓, knockdown). The "2 grabs per character" are those two branches off one
+  connect, so per character it is one connect clip + a hold loop + two finishes + the victim
+  side. Bjorn: "Beard Hook" → Butt Ring Hammer / Hook and Haul. Miyamoto: "Kumi-uchi" →
+  Tsuka-ate / Kote Gaeshi. The defensive counter-throws are listed as a later pass.
+- **Day 1 done:** `DODGED_RECOVERY_FRAMES` 18 → **48 (0.8 s)**, with
+  `CombatSystem.dodgedRecoveryFrames` and `AttackData.dodgedRecoveryFrames` as overrides
+  (-1 = fall through to the next level); the dodged log now prints the seconds. Compiles clean.
+- **Mocap toolchain installed:** Python 3.12.10 at
+  `%LOCALAPPDATA%\Programs\Python\Python312\python.exe` (winget, user scope) with mediapipe
+  1.1.1, opencv-python 5.0.0, numpy 2.5.4. **mediapipe 1.x has no `mp.solutions`** — it is the
+  Tasks API only, so `ArtSource/Mocap/models/pose_landmarker_heavy.task` (30 MB, from the
+  mediapipe-models bucket) is required and git-ignored by folder.
+  `ArtSource/Mocap/pose_extract.py <video> <out.json>` (run with `-I`) writes per-frame world
+  landmarks plus a calibration block: it finds the held T-pose by scoring arms-level-and-spread,
+  averages that hold, and reports the performer's limb lengths and shoulder-line yaw. Videos go
+  in `ArtSource/Mocap/raw/`, JSON in `ArtSource/Mocap/landmarks/` (both git-ignored).
+  Smoke-tested on a 30 fps video built from `unity_play_1.png`: pose found in 10/10 frames.
+- **Mocap pipeline built and smoke-tested end to end (2026-10-17).** One command:
+  `ArtSource/Mocap/video_to_clip.sh <video> <ClipName> <Character> [--frames N] [--trim A:B]`
+  → `Assets/_project/Animation/Clips/Custom/<ClipName>.fbx` + a filmstrip in
+  `ArtSource/Characters/Renders/mocap/`. Recording recipe and the flag list in
+  `ArtSource/Mocap/README.md`.
+  - `ArtSource/Blender/video_mocap.py` keys the landmarks onto `<Char>_AnimMaster.blend`. It
+    drives limbs by **direction**, taking the length from the rig (`rig_limb * performer
+    extension fraction`), so IK targets are always reachable and nothing skates. Keys hip height
+    + body yaw, spine, neck, head and the IK hands/feet; hand and foot ROTATION stay at rest
+    (single-camera capture has no reliable wrist orientation — the weapon is aimed afterwards).
+    Clips are in place: MediaPipe world landmarks are hip-origin, which suits this project.
+  - It lifts the `Rig` helper class out of `author_clips.py` at run time (slices the source
+    between `def action_fcurves` and `# ---- clip registry`) instead of copying it, so the pose
+    conventions have one source of truth.
+  - `bake_and_export` begins with `bpy.ops.object.select_all`, whose poll needs OBJECT mode, so
+    switch out of POSE mode before calling it.
+  - **Legs gate:** MediaPipe invents joints that are out of frame rather than failing, and an
+    invented leg folds the fighter up. `pose_extract.py` reports tracking per body group and
+    warns under 0.5; `video_mocap.py --legs auto` (default) then leaves the feet in the rest
+    stance. Confirmed on a deliberately bad input: body stays standing, legs intact.
+  - Axis convention confirmed against the data, not assumed: MediaPipe world landmarks have
+    **y DOWN**, same sign as the image landmarks (checked nose vs hip in both).
+- **Scope change (user, 2026-10-17, same day):** the three `L1 + button` specials per character
+  (Haft Strike / Hewing Charge / Blood Eagle and the Miyamoto equivalents) are **parked** — they
+  were never part of the user's plan. Marked PARKED in `Design/Character_Movesets.md`, dropped
+  from `Design/Plan_2Weeks.md`. In their place: one captured signature strike on the existing
+  **heavy** button (J/K/L = Light/Medium/Heavy on the keyboard), Bjorn's being `Mountain Breaker`.
+  Open decision noted in the plan: its authored frame data (22/5/26, 22 dmg, unblockable) is a
+  special's, which is a lot for a plain heavy (current heavy 15/5/15 for 16).
+- **First capture set being filmed:** `bjorn_light.mp4` (J), `bjorn_heavy.mp4` (Mountain Breaker,
+  L) and `bjorn_combo.mp4` (the two chained in one continuous action, no reset to guard). The
+  combo take is the reference for the cancel-window transition — it becomes either a dedicated
+  `Bjorn_Heavy_FromLight` clip or the blend timing out of the light's recovery.
+- **Capture workflow for repeats from several angles (2026-10-17):** the user films the T-pose
+  once in its own video, then one video per move with the move repeated a few times from
+  different angles, slowly. Pipeline changes for that:
+  - `video_to_clip.sh --tpose <video>` extracts once to `landmarks/_tpose.json`, and every later
+    clip passes it as `--calib` automatically. Only LIMB LENGTHS come from it (rotation
+    invariant), so the angle the T-pose was filmed at does not matter.
+  - `pose_extract.py` segments the video into **takes** by hand speed and prints
+    `--trim START:END` for each; `video_to_clip.sh … --reuse` re-keys from the existing
+    landmarks so trying another take costs no MediaPipe pass.
+  - **Facing now comes from the take, not the calibration:** `video_mocap.py --face take`
+    (default) averages the HIP line over the opening frames of the trimmed take (hips stay
+    square; shoulders are bladed in a guard) and that is also the zero of the body yaw. So each
+    repetition can face any direction and still exports facing +X — but a take must start from
+    the idle, not mid-swing. `--face tpose` is the old behaviour.
+- **First real capture (2026-10-17, user's four videos in `ArtSource/Mocap/raw/`):** `T_pose.mov`
+  tracked 103/103 frames (arms 0.99, torso 1.00, legs 0.94, 3.4 s hold); `bjorn_light.mp4.mov`
+  1193 frames, 100% detected, arms 0.91 / legs 0.87, **7 takes** auto-found. Take 3
+  (`--trim 501:546`, a 3/4 angle) is the one used. Working command:
+  `video_to_clip.sh raw/bjorn_light.mp4.mov Bjorn_Light_Slash_Mocap Bjorn --frames 17
+  --trim 501:546 --grip rl --reuse`.
+- **Weapon swing solved from the two-hand line (new in `video_mocap.py`).** One camera gives no
+  wrist orientation, so the first clip had Bjorn *carrying* the axe level through the swing. On a
+  two-handed grip the shaft IS the line between the wrists, and both are tracked: `R_Hand` has a
+  COPY_ROTATION from `IK_R_Hand` and the weapon is bone-parented to `R_Hand`, so putting
+  `shaft_rest.rotation_difference(L_wrist - R_wrist)` on that control swings it. `rotation_
+  difference` is the minimal arc, so the authored edge alignment is left alone (twist about the
+  shaft is not knowable from one camera).
+  **`--grip rl` for this user:** he grips right-hand-nearest-the-head, the opposite of the rig's
+  own layout (left grip 61% up the haft), so the default `lr` pointed the axe backwards.
+- **Captures export as `<Clip>_Mocap.fbx`**, not over the hand-keyed clip of the same name - the
+  first run overwrote `Bjorn_Light_Slash.fbx` (restored from git). The attack states point at the
+  Mixamo clips anyway, so a capture only reaches the game when a controller state is re-pointed.
+
+### 2026-10-18 — mocap clips in game: spine doubling, trim = swing only
+
+- **The captures are wired into Bjorn's controller**: `Bjorn_Light_Slash` -> `Bjorn_Light_Slash_Mocap.fbx`,
+  `Bjorn_Heavy_OverheadDoubleAxe` -> `Bjorn_Heavy_Mocap_t6.fbx`, both at **state speed 1.0** (the
+  clips are keyed to the AttackData frame count, so they need no fitting; Mixamo clips run x1.8).
+  This is a manual override - running `Crucible > Animation > Use Mixamo packs` puts the Mixamo
+  swings back. Light lands 8 dmg, heavy 14, so the hit path is unaffected.
+- **Mocap FBX files import as Generic with no avatar** unless told otherwise: set
+  `animationType = Human`, `avatarSetup = CreateFromThisModel`, then run
+  `Crucible > Debug > Fix clip human bone maps` for the explicit 22-bone map. Without this a
+  capture never retargets.
+- **Spine lean was applied TWICE** (the first-pass clips' "hunchback" look): `Rig.spine()` keys
+  Spine01 AND Spine02 and `video_mocap.py` passed each the full measured torso angle, so the
+  40 deg clamp meant up to 80 deg of fold; `Rig.neck()` has the same two-bone shape. Fixed with
+  `SPINE_BONES` / `NECK_BONES` divisors. Lean/side are now also measured RELATIVE to the
+  performer's own standing attitude over the take's opening frames (`POSTURE_KEEP` 0.35), since
+  the capture is filmed in a living room, not in a guard.
+- **A trim must be the SWING, nothing else.** The light take was trimmed 501:546 but the cut is
+  only frames 502-513 - the other 33 frames are the performer settling, and retiming stretched
+  that pause across the attack window: in game the right hand dropped to (0.09, 1.48) and sat
+  there from t=0.25 to 0.63. Re-trimmed 501:515 the hand now travels
+  (0.73, 2.11, 0.56) -> (0.04, 1.48, 0.28) monotonically across the clip. Find the window by
+  wrist speed in the landmarks JSON (`frames[i].world[15/16]`, per-frame distance): the core is
+  where speed >= ~30% of peak, and anything flat on either side is not the move. The heavy take's
+  chop is frames 557-566 of the 534:594 trim (tight trim 552:572 NOT yet re-keyed).
+- **Unity's Humanoid muscle clamps straighten extreme spine bends**, so a capture reads more
+  folded in the Blender filmstrip than in game (measured: head 0.91 above the hips in the swing,
+  same as the idle). Judge a clip in play mode, not from the filmstrip.
+- **Stepping a clip for inspection**: in play, `dts.enabled = false`, `Time.timeScale = 0`,
+  `animator.speed = 0`, then `Play(state, 0, t)` + two `Update(0f)` calls and capture. At the
+  normal 0.85 time scale an attack finishes inside one CLI round-trip, so frame-by-frame checks
+  are impossible otherwise.
+- (2026-10-18, heavy pass) `Bjorn_Heavy_Mocap_t6` re-keyed from the tight window
+  (`--trim 552:572`, 21 source frames -> 35): the axe now goes properly overhead (axe head reaches
+  y 3.7 in fighter space, hand y 2.4 -> 2.6) and comes down in front to y 1.9 / z 1.1. Lands 14 dmg
+  at 2.45 units. Two things it still shows: the last third of the clip is STATIC (the take's
+  follow-through was outside the trim, so the recovery frames hold the end pose), and the blade
+  bottoms out at **68%** of the clip while the authored active window is 43-57% (frames 15-20 of
+  35) - it only lands because `WEAPON_ARM_PAD_FRAMES` (5) pads the arming window. To put the
+  contact inside the window, shift the trim ~3 source frames later (`552:572` -> `554:575`) rather
+  than re-cutting the user's frame data.
+- **Attack blend-in was 0.030 s on every Any State -> attack transition**, which snaps from the
+  guard (axe across the belly, left foot lead) to a captured first frame with the axe already up:
+  that is the "awkward start" the user reported. Now fixed-duration per weight on both
+  controllers: Light 0.06 s (only 6 startup frames to hide it in), Medium/Heavy 0.12 s. Nothing in
+  `CrucibleMixamoSetup` touches transitions, so these survive a re-import; they live in the
+  controller assets.
+- **Filming note for the capture lane:** start each take from the GUARD, not a neutral stand - then
+  the clip's first frame already matches the idle and there is no pose jump to hide.
+- **Clips can and should start from the performer's GUARD** (user's question, 2026-10-18). Two
+  pieces make it work, both already in the pipeline:
+  - The trim starts inside the guard HOLD, not at the first motion. Find it in the landmarks by
+    wrist height above the hips: Bjorn's heavy take holds dead still at R +0.34 / L +0.05 for
+    frames 512-526, the raise starts at 527, the chop is 561-566 and it settles by 572.
+  - `--contact-at <clip frame>` (already in `video_mocap.py`) then bends the retime around the
+    weapon-TIP speed peak instead of resampling uniformly: pre-contact source is squeezed into
+    [0, contact], post-contact spread over the rest. Without it a guard-start trim puts 70% of the
+    clip in the wind-up and the blade lands late.
+  - `Bjorn_Heavy_Mocap_t6` is now `--trim 523:585 --contact-at 17.5` (heavy is 15/5/15, so contact
+    = startup + active/2): 63 source frames -> 35, contact at clip frame 18, inside the authored
+    active window. Still HITs for 14 at 2.45 units.
+  - **Cost to know when filming:** his raise-and-hold was 34 source frames against a 5-frame chop,
+    so the wind-up is compressed ~2.5x on playback. Perform the wind-up in rough proportion to the
+    strike and do not hold at the top, and the retime barely distorts.
+  - The remaining start mismatch is `Bjorn_Idle` (Mixamo carry, hands at belly height, R(0.05, 1.48,
+    0.42)) vs the captured guard (R(0.38, 1.93, 0.62)). It closes when the IDLE is captured too.
+
+### 2026-10-18 — the combo capture: light -> 360 overhead
+
+- **Design (user, 2026-10-18):** the combo is the light attack followed by a **360 overhead**
+  INSTEAD of recovering, if Heavy (L) is pressed before the light's animation finishes. So the
+  follow-up is a spinning overhead, not the standalone chop, and it needs its own clip.
+- **The combo take holds it all** (`bjorn_combo.mp4.mov`, take 5). Measured from the landmarks
+  (blade tip = R wrist + (R-L) normalised x 0.70, the same construction `video_mocap.py` uses):
+  | source frames | what |
+  |---|---|
+  | 459-461 | strike 1, tip speed 1.21/1.23 per frame, tip +0.57 -> +0.04 (the light cut) |
+  | 450-467 | the SPIN - hips sweep +252 deg, overlapping the light's follow-through |
+  | 469-479 | hold at the top (11 frames) |
+  | 483-484 | strike 2, tip 1.02/1.05, +1.18 -> -0.77 (the overhead) |
+  The two blade contacts are 0.78 s apart, but 11 of those frames are the hold; strip it and the
+  natural chain is ~0.42 s - which is what the engine already does with NO cancel system (the
+  light's 8 remaining frames + the heavy's 18 frames to contact). **The cancel window is not
+  there to make combos faster, it is there so the follow-up can start before the light's recovery
+  ends so the two read as one action.**
+- **Two bugs the spin exposed:**
+  - `video_mocap.py` wrapped body yaw into (-180, 180] every frame, so a 252 deg sweep became
+    -108 deg and would have spun him the wrong way. Now accumulated frame to frame (`prev_raw_yaw`).
+  - The clip importer deletes rotation: `keepOriginalOrientation: false` (= Root Transform
+    Rotation *Based Upon: Body Orientation*, the project default and correct for cuts and walks)
+    re-zeroes the body facing every frame. The first spin export measured **-10 deg** of rotation.
+    A spinning clip needs **Bake Into Pose + Based Upon Original**
+    (`lockRootRotation = keepOriginalOrientation = true`), same as the Mixamo spin. After that the
+    clip carries **234 deg** in game, concentrated in the first 40%.
+- **Clips cut (both from the combo take, so the chain is one continuous performance):**
+  `Bjorn_Light_FromCombo` (`--trim 437:463 --frames 16 --contact-at 7.5`, contact at clip frame 8)
+  and `Bjorn_Heavy_FromLight` (`--trim 448:492 --frames 35 --contact-at 17.5`, contact at 18,
+  carries the spin). Both are states on `P1_Bjorn` with **no transitions** - unreachable until the
+  cancel router exists.
+- **Splicing across two videos does not work:** `Bjorn_Heavy_FromLight` against the standalone
+  light's end pose is a 0.61/0.79 hand gap, against the combo's own light 0.38/0.27. Measured per
+  light frame, the follow-up's first frame fits the light at **frame 8-10 of 16** best
+  (R 0.11 at frame 8, growing to 0.38 by frame 16) - i.e. the cancel wants to fire at or just
+  after the light's CONTACT, which is also what the design says.
+- **Cancel window this implies: light frames 8-12 of 16** (contact to mid-recovery), tightest at 8.
+
+### 2026-10-18 — combo strings the standard way (MK-style), first one working
+
+- User asked for it "the recommended way, like MK1": authored STRINGS with per-move cancel windows
+  and an input buffer, not a hardcoded light->heavy transition.
+- **`AttackData`**: `ComboLink[] comboLinks` (button -> follow-up `AttackData` -> requirement),
+  `cancelStartFrame` / `cancelEndFrame` (-1 = first active frame / end of recovery), and
+  `CancelRequirement` = `Always` (MK strings continue on a whiff) | `HitOrBlock` | `HitOnly`.
+  `FindLink(AttackType)` / `HasComboLinks` / `CancelStartFrame` / `CancelEndFrame` are the API.
+  The follow-up being a full AttackData means it carries its own frame data, hitbox, aim mode and
+  animator trigger AND can define links of its own - that is what gives chains of any length.
+- **`CombatSystem`**: `BeginAttack(attack, depth)` extracted from `TryAttack` so a cancel starts a
+  move exactly like a fresh press (stamina, dash-counter, chain bookkeeping, trigger).
+  `TryCancelIntoFollowUp()` runs at the top of the phase advance: inside the window, with the
+  requirement met and `stringDepth + 1 < MAX_STRING_LENGTH`, it `EndAttack("CANCELLED into the
+  string")` and begins the follow-up, dropping the rest of the recovery. `attackTouched` /
+  `attackHitClean` are set where damage is applied, for the earned links.
+- **Input buffer**: a mid-attack press is buffered (`INPUT_BUFFER_FRAMES` 8) instead of being
+  dropped, and comes out on the first legal frame. For a press that IS a link the hold extends to
+  the end of the cancel window (dial-a-combo) - otherwise tapping the follow-up straight after the
+  opener expires a frame or two before the window opens, which is how everyone actually plays.
+- **`BalanceConfig`**: `INPUT_BUFFER_FRAMES = 8`, `MAX_STRING_LENGTH = 3`.
+- **Bjorn's first string**: `Bjorn_Light_Slash` (6/3/7) links Heavy -> **`Bjorn_Heavy_SpinOverhead`**
+  (new asset: 15/5/15, 16 dmg, trigger `HeavyFromLight`, **aimMode Off** - a spin must not be
+  aim-corrected), window **frames 8-14**, requires Always. The follow-up is deliberately NOT in the
+  fighter's `attacks` array, so a fresh L press still gives the normal heavy.
+  Controller: `HeavyFromLight` trigger + `Bjorn_Light_Slash -> Bjorn_Heavy_FromLight`, **no exit
+  time**, fixed 0.08 s blend (the cancel decides the timing, not the clip), and the follow-up
+  returns to `Bjorn_Idle` at exit 0.9.
+- **Verified in play at 8% speed**: `Slash HIT 8` -> `Slash -> Spinning Overhead (cancelled on
+  frame 8, window 8-14)` -> `Spinning Overhead HIT 14`, 22 damage from one dialled L->H. At the
+  Editor's ~4 fps under the CLI the OPENER whiffs (its 3 active frames fall between rendered
+  frames) - test strings at `DebugTimeScale.timeScale = 0.08`, set through the component's public
+  `timeScale` field (writing every float field on it does not work; `Apply()` re-asserts it).
+- Strings never trip the anti-spam lockout: each link is a different `AttackType`, which resets the
+  chain by the existing rule.
+- Not done yet: Miyamoto has no string data (no captures for him), the AI does not know about
+  strings (it presses buttons, so it can fire them by accident but never on purpose), and no UI
+  shows a string is available.

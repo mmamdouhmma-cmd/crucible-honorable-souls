@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: Miyamoto_Light_Thrust
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Mid Thrust
-  damage: 11
+  damage: 10
   staminaCost: 10
   armorPierce: 0
   startupFrames: 7
   activeFrames: 3
-  recoveryFrames: 10
+  recoveryFrames: 6
   animationClip: {fileID: -203655887218126122, guid: 3d3b606c4d2454f4ca3fea5db63d0d97, type: 3}
   animatorTriggerName: LightAttack
   attackHeight: 1

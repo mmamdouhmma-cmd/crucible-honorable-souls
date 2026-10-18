@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: Miyamoto_Medium_SideSlash
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Side Slash
-  damage: 14
+  damage: 10
   staminaCost: 12
   armorPierce: 0
   startupFrames: 10
   activeFrames: 4
-  recoveryFrames: 12
+  recoveryFrames: 8
   animationClip: {fileID: -203655887218126122, guid: 2de9179e990a1a345b11117e930a2952, type: 3}
   animatorTriggerName: MediumAttack
   attackHeight: 1

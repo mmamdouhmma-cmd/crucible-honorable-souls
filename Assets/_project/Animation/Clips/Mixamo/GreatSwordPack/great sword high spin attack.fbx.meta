@@ -34,8 +34,8 @@ ModelImporter:
       name: Miyamoto_Heavy_Overhead
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 4.2
-      lastFrame: 52.2
+      firstFrame: 4.2000003
+      lastFrame: 50.2
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

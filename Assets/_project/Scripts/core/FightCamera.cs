@@ -26,6 +26,17 @@ public class FightCamera : MonoBehaviour
     [Tooltip("Camera stops re-angling while the fighters are closer than this, " +
              "so a dash through the opponent swaps screen sides instead of spinning the camera.")]
     [SerializeField] private float passThroughDistance = 1.5f;
+    [Tooltip("The camera keeps to the side of the arena the scene starts it on: it never swings further " +
+             "than this many degrees away from that home side, so orbiting dashes cannot carry the view " +
+             "round behind the fight. Dashes still swing it up to this much.")]
+    [Range(0f, 90f)]
+    [SerializeField] private float maxSideSwing = 70f;
+
+    [Tooltip("How square the fighters' line has to be to the home side before the camera is allowed to " +
+             "pick the other perpendicular. Keeps the view from flip-flopping when they line up with the camera.")]
+    [Range(0f, 0.5f)]
+    [SerializeField] private float sideStickiness = 0.2f;
+
 
     [Header("Zoom")]
     [Tooltip("Extra camera distance per unit the fighters move apart beyond their starting gap.")]
@@ -52,6 +63,7 @@ public class FightCamera : MonoBehaviour
     private Quaternion localRotation; // camera rotation relative to the pair at start
     private float startSeparation;
     private Vector3 sideDirection;    // ground direction from the midpoint toward the camera
+    private Vector3 homeSide;         // the side the scene set the camera up on; the view stays within maxSideSwing of it
     private bool initialized;
 
     private Camera cam;
@@ -112,6 +124,7 @@ public class FightCamera : MonoBehaviour
         localOffset = Quaternion.Inverse(frame) * (transform.position - midpoint);
         localRotation = Quaternion.Inverse(frame) * transform.rotation;
 
+        homeSide = sideDirection;
         initialized = true;
     }
 
@@ -186,13 +199,25 @@ public class FightCamera : MonoBehaviour
 
         if (separation > passThroughDistance)
         {
-            Vector3 side = Vector3.Cross(Vector3.up, toPlayer2 / separation);
+            Vector3 perpendicular = Vector3.Cross(Vector3.up, toPlayer2 / separation);
 
-            // Stay on the side of the fight the camera is already on.
-            if (Vector3.Dot(side, sideDirection) < 0f)
+            // Pick the perpendicular that keeps the camera on its home half of the arena, so a long
+            // run of orbiting dashes cannot walk the view around to the far side. Near the boundary
+            // (the fighters' line pointing almost at the camera) the two choices are equally far from
+            // home, so keep the one we are already using instead of flip-flopping between them.
+            float homeDot = Vector3.Dot(perpendicular, homeSide);
+            Vector3 side = Mathf.Abs(homeDot) < sideStickiness
+                ? (Vector3.Dot(perpendicular, sideDirection) < 0f ? -perpendicular : perpendicular)
+                : (homeDot < 0f ? -perpendicular : perpendicular);
+
+            // Dashes still swing the view, but only this far off the home side.
+            float swing = Vector3.SignedAngle(homeSide, side, Vector3.up);
+            float clamped = Mathf.Clamp(swing, -maxSideSwing, maxSideSwing);
+            if (!Mathf.Approximately(swing, clamped))
             {
-                side = -side;
+                side = Quaternion.AngleAxis(clamped, Vector3.up) * homeSide;
             }
+
             sideDirection = side;
         }
 

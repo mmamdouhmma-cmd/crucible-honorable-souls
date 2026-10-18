@@ -48,9 +48,32 @@ public static class BalanceConfig
     public const float PARRY_WINDOW = 0.15f;        // 9 frames at 60fps
     public const float DASH_IFRAME_DURATION = 0.15f;
     public const float DASH_COUNTER_WINDOW = 0.5f;  // time after a dodge-dash to start a counter attack
-    public const int DODGED_RECOVERY_FRAMES = 18;     // extra recovery (facing locked, no walking) for an attack that was dodged
+    // Extra recovery (facing locked, no walking, no new attack) for an attack that was dodged by a dash:
+    // 48 frames = 0.8s of counter window. Overridable per fighter (CombatSystem.dodgedRecoveryFrames)
+    // and per move (AttackData.dodgedRecoveryFrames).
+    public const int DODGED_RECOVERY_FRAMES = 48;
     public const float PARRY_COUNTER_WINDOW = 0.5f;
     public const float COMBO_INPUT_WINDOW = 0.5f;
+
+    // ==================== ATTACK CHAIN LIMIT (anti-spam) ====================
+    // The same attack can be thrown at most SAME_ATTACK_CHAIN_LIMIT times in a row. After the last
+    // repeat lands the fighter cannot start ANY attack for ATTACK_CHAIN_LOCKOUT seconds, so a button
+    // cannot be machine-gunned: two swings, then a commitment gap the opponent can punish.
+    // A different attack, or a gap longer than ATTACK_CHAIN_WINDOW after the previous attack ended,
+    // starts a fresh chain and is free to swing.
+    public const int SAME_ATTACK_CHAIN_LIMIT = 2;
+    public const float ATTACK_CHAIN_LOCKOUT = 0.8f;   // seconds locked out of every attack after the last repeat
+    public const float ATTACK_CHAIN_WINDOW = 0.6f;    // gap after an attack ends that still counts as the same chain
+
+    // ---- Strings (combos) ----
+    // A press that arrives while the fighter is mid-attack is held for this long and comes out on
+    // the first frame the cancel window allows, so a follow-up pressed slightly early is not eaten.
+    // Fighting games sit around 6-10 frames; wider feels loose and starts firing moves the player
+    // has stopped wanting.
+    public const int INPUT_BUFFER_FRAMES = 8;
+
+    // Hits in one string before it must return to neutral, counting the opener.
+    public const int MAX_STRING_LENGTH = 3;
     
     // ==================== CLASH (both attacks connect on the same frame) ====================
     // Equal weight: no damage, both fighters are shoved apart and staggered.

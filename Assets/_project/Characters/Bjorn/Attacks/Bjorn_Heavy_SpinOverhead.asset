@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
+  m_Name: Bjorn_Heavy_SpinOverhead
+  m_EditorClassIdentifier: Assembly-CSharp::AttackData
+  attackName: Spinning Overhead
+  damage: 16
+  staminaCost: 20
+  armorPierce: 5
+  startupFrames: 15
+  activeFrames: 5
+  recoveryFrames: 15
+  animationClip: {fileID: -203655887218126122, guid: f56c48a57b22e754fa2567b293436be2, type: 3}
+  animatorTriggerName: HeavyFromLight
+  attackHeight: 0
+  attackType: 2
+  comesFrom: 0
+  hitSide: 0
+  hitstunFrames: 10
+  hitboxRange: 3.2
+  hitboxOffset: {x: 0, y: 1, z: 0}
+  hitboxSize: {x: 0.9, y: 1.6, z: 1}
+  aimMode: 2
+  aimMaxAngle: -1
+  lungeStopDistance: -1
+  lungeMaxDistance: -1
+  comboLinks: []
+  cancelStartFrame: -1
+  cancelEndFrame: -1
+  dodgedRecoveryFrames: -1

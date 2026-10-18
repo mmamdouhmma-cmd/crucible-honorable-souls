@@ -16,7 +16,7 @@ MonoBehaviour:
   damage: 13
   staminaCost: 18
   armorPierce: 2
-  startupFrames: 28
+  startupFrames: 23
   activeFrames: 5
   recoveryFrames: 12
   animationClip: {fileID: -203655887218126122, guid: eb004d33400bbe6418d3c34ff1214435, type: 3}
