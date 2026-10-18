@@ -31,6 +31,10 @@ public static class CrucibleMixamoSetup
         ("Bjorn_Light_Slash",            "AxePack", "standing melee attack horizontal",  false),
         ("Bjorn_Medium_SpinningSlash",   "AxePack2H", "standing melee attack 360 high",  false),   // arms re-posed: axe extended at chest, body spins
         ("Bjorn_Heavy_OverheadDoubleAxe","GreatSwordPack", "great sword slash",       false),   // two-handed overhead that comes down in front; the axe pack's chop bottoms out by the left hip
+        // The string ender (Light -> this on Heavy, see AttackData.comboLinks). Deliberately the SAME clip as
+        // Miyamoto's heavy - the 360 spin - so the combo finishes on a spinning strike; its own trim window is
+        // cut from the same file under this state's name.
+        ("Bjorn_Heavy_SpinOverhead",     "GreatSwordPack", "great sword high spin attack", false),
         ("React_Front",                  "AxePack", "standing react large gut",          false),
         ("React_Left",                   "AxePack", "standing react large from left",    false),
         ("React_Right",                  "AxePack", "standing react large from right",   false),

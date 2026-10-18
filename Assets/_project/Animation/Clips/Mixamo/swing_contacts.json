@@ -5,5 +5,6 @@
  "Bjorn_Heavy_OverheadDoubleAxe": 21.5,
  "Miyamoto_Light_Thrust": 28.1,
  "Miyamoto_Medium_SideSlash": 21.3,
+ "Bjorn_Heavy_SpinOverhead": {"contact": 36.2, "speed": 2.0},
  "Miyamoto_Heavy_Overhead": {"contact": 36.2, "speed": 2.0}
 }

@@ -528,3 +528,32 @@ where the `.rsp` files are built from the csproj's `DefineConstants`, `HintPath`
 - Not done yet: Miyamoto has no string data (no captures for him), the AI does not know about
   strings (it presses buttons, so it can fire them by accident but never on purpose), and no UI
   shows a string is available.
+
+### 2026-10-18 — back to the Mixamo swings; the combo built from Mixamo clips
+
+- User's call: keep the Mixamo attacks for now (the captures stay in the project, unused), and make
+  the combo **Mixamo light slash -> the same spinning clip as Miyamoto's heavy**.
+- `Crucible > Animation > Use Mixamo packs` re-pointed Bjorn's light/medium/heavy, so the mocap
+  overrides of the 2026-10-18 entry above are no longer live. `Bjorn_Light_Slash_Mocap`,
+  `Bjorn_Heavy_Mocap_t6`, `Bjorn_Light_FromCombo`, `Bjorn_Heavy_FromLight` and `Bjorn_Idle_Mocap`
+  are all still in `Animation/Clips/Custom` and committed; re-point a state to bring one back.
+- **The string's ender is now a map entry, not a manual override.** The follow-up STATE was renamed
+  `Bjorn_Heavy_FromLight` -> **`Bjorn_Heavy_SpinOverhead`** to match its AttackData, because
+  `CrucibleMixamoSetup` keys everything off *state name == AttackData asset name*
+  (`ComputeTrims` / `Wire` both look the attack up by the state's name). So the combo now survives
+  `Use Mixamo packs` instead of being wiped by it - that was one of the listed gaps.
+  New P1Map entry + `swing_contacts.json` entry, both pointing at
+  `GreatSwordPack/great sword high spin attack` with contact 36.2 at speed 2.0, the same numbers
+  Miyamoto's heavy uses (`ImportAll` groups by file, so one FBX carries a trim per state name).
+- **`Bjorn_Heavy_SpinOverhead` frame data 15/5/15 -> 30/4/14** (16 dmg, aim Off). It has to match
+  Miyamoto's heavy for the shared clip to fit: the contact maths cuts the window as
+  `start = contact - hitFrac * speed * total / 2`, so at 35 frames the window opens at source
+  frame 18.7 and eats most of the spin's wind-up, while at 48 frames it opens at 4.2 and the whole
+  360 plays before the cut. Cost: ~0.5 s from the cancel to the ender's contact (the filmed combo
+  was 0.42 s stripped of its hold), and the ender is punishable on a whiff.
+- **Verified in play at 8% speed, 2.45 units:** `Slash HIT 8` -> `cancelled on frame 8, window 8-14`
+  -> `Spinning Overhead HIT 14`. Spin measured in game (hip yaw in fighter space, unwrapped):
+  35 -> -1 -> -80 -> -221 -> -298 -> -344 -> -313, a full turn with ~12 deg residual that the
+  exit blend absorbs. Fitting log: `window 4.2-52.2 for 48 f (hit at 67%)`, clip 1.60s at speed x2.00.
+- Also added to `.gitignore`: `ArtSource/Mocap/models/` (the 30 MB MediaPipe .task, which the notes
+  already claimed was ignored but was not) and `Server/cf.prev.log`.
