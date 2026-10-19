@@ -203,7 +203,23 @@ Small and self-contained, because the modifier already reaches the fighter.
 
 ---
 
-## Task 4 — combos, 6–9 per character, normals into specials
+## Task 4 — combos, 6–9 per character, normals into specials — DONE 2026-10-20
+
+> **10 strings per character** (14 counting the two-hit prefixes), all in the three authored
+> shapes, plus the Moves screen. Built as DATA on the existing cancel system: no new clips, no
+> new assets, no new animator states.
+>
+> Two rules had to be added for the shapes to actually hold, because links live on an attack and
+> know nothing about where in a string that attack is:
+> - `ComboLink.openerOnly` — a plain normal-into-normal link is offered only from the string's
+>   FIRST move. Without it a mid-string normal offers its own continuation, which gives three
+>   normals in a row and lets strings double back on themselves. **That answers the question the
+>   plan left open: a string cannot repeat a normal, and `normal -> normal -> normal` is gone.**
+> - **One special per string** (`CombatSystem.stringUsedSpecial`). Without it `special -> normal`
+>   reached the normal's own special link, so one chain could spend two specials (~86 stamina).
+>
+> `STRING_LOCKOUT` is finally verified: `2-hit string finished - locked out for 1.50s`.
+
 
 The user's shape for a string:
 

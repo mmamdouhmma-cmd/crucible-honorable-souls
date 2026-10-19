@@ -23,6 +23,7 @@ MonoBehaviour:
   animatorTriggerName: MediumAttack
   attackHeight: 1
   attackType: 1
+  specialButton: 0
   comesFrom: 2
   hitSide: 1
   hitstunFrames: 8
@@ -35,11 +36,20 @@ MonoBehaviour:
   lungeMaxDistance: -1
   comboLinks:
   - input: 0
+    withSpecialModifier: 0
     followUp: {fileID: 11400000, guid: 7df999fcd74e5634389e113ca6902ecb, type: 2}
     requires: 0
+    openerOnly: 1
   - input: 2
+    withSpecialModifier: 0
     followUp: {fileID: 11400000, guid: 59eefb855bbf3024492f010d1b55e2d4, type: 2}
     requires: 0
+    openerOnly: 1
+  - input: 0
+    withSpecialModifier: 1
+    followUp: {fileID: 11400000, guid: de8540860d824981bc232738d2a31024, type: 2}
+    requires: 1
+    openerOnly: 0
   cancelStartFrame: -1
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1

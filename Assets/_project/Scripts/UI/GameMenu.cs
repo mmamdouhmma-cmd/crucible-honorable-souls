@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -17,7 +18,7 @@ using UnityEngine.UI;
 /// </summary>
 public class GameMenu : MonoBehaviour
 {
-    enum Screen { None, Main, Pause, Settings, Controls, Help, MatchOver, AiSelect, Online, OnlineHost, OnlineJoin }
+    enum Screen { None, Main, Pause, Settings, Controls, Help, Moves, MatchOver, AiSelect, Online, OnlineHost, OnlineJoin }
 
     [Serializable]
     class SettingsData
@@ -322,6 +323,7 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Same WiFi", confirm = () => Show(Screen.Online) });
                 items.Add(new Item { label = "Controls", confirm = () => Show(Screen.Controls) });
                 items.Add(new Item { label = "Settings", confirm = () => Show(Screen.Settings) });
+                items.Add(new Item { label = "Moves", confirm = () => Show(Screen.Moves) });
                 items.Add(new Item { label = "Help", confirm = () => Show(Screen.Help) });
                 items.Add(new Item { label = "Quit", confirm = Quit });
                 footer.text = NavHint();
@@ -365,6 +367,7 @@ public class GameMenu : MonoBehaviour
             case Screen.Pause:
                 title.text = "PAUSED"; subtitle.text = vsAi ? $"vs AI ({aiDifficulty})" : (netRole != NetSession.Role.None ? "same WiFi" : "");
                 items.Add(new Item { label = "Resume", confirm = Resume });
+                items.Add(new Item { label = "Moves", confirm = () => Show(Screen.Moves) });
                 items.Add(new Item { label = "Help", confirm = () => Show(Screen.Help) });
                 items.Add(new Item { label = "Controls", confirm = () => Show(Screen.Controls) });
                 items.Add(new Item { label = "Settings", confirm = () => Show(Screen.Settings) });
@@ -425,6 +428,23 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Back", confirm = Back });
                 footer.text = "Dash: hold the dash key + a direction (P1 also 7 8 9 / 4 6 / 1 2 3), or flick the right stick    " + NavHint();
                 break;
+            case Screen.Moves:
+            {
+                int pages = Mathf.Max(1, MovesRoster().Count * 2);
+                movesPage = ((movesPage % pages) + pages) % pages;
+                title.text = "MOVES"; subtitle.text = "read from the live attack data, so this list cannot go stale";
+                if (pages > 1)
+                    items.Add(new Item
+                    {
+                        label = "Showing",
+                        value = () => MovesPageName(movesPage),
+                        adjust = d => { int n = Mathf.Max(1, MovesRoster().Count * 2); movesPage = (movesPage + (d > 0 ? 1 : n - 1)) % n; Refresh(); }
+                    });
+                foreach (string line in MoveLines(movesPage)) items.Add(new Item { label = line, header = true });
+                items.Add(new Item { label = "Back", confirm = Back });
+                footer.text = NavHint();
+                break;
+            }
             case Screen.Help:
                 title.text = "HOW TO FIGHT"; subtitle.text = "";
                 foreach (string line in HelpLines()) items.Add(new Item { label = line, header = true });
@@ -442,6 +462,128 @@ public class GameMenu : MonoBehaviour
     {
         var b = InputManager.Instance.Bindings.Player(player);
         return $"{ControlBindings.KeyLabel(b.Key(a)),-10}   {ControlBindings.PadLabel(b.Pad(a))}";
+    }
+
+    int movesPage;   // fighter * 2 + (0 = its moves, 1 = its strings)
+
+    /// <summary>Fighters the move list can page through, in player order.</summary>
+    List<(string name, CombatSystem combat, int player)> MovesRoster()
+    {
+        var roster = new List<(string, CombatSystem, int)>();
+        foreach (var fighter in UnityEngine.Object.FindObjectsByType<Fighter>(FindObjectsInactive.Include)
+                                .OrderBy(f => f.PlayerNumber))
+        {
+            var combat = fighter.GetComponent<CombatSystem>();
+            if (combat == null) continue;
+            // Both fighters currently share one FighterData ("test Fighter"), so that name tells
+            // the two apart for nobody. The identity this project really uses is the attack asset
+            // prefix (Bjorn_Light_Slash -> Bjorn), which also keys the animator states and clip maps.
+            string name = CharacterName(combat) ??
+                          (fighter.fighterData != null ? fighter.fighterData.FighterName : fighter.name);
+            roster.Add((name, combat, fighter.PlayerNumber));
+        }
+        return roster;
+    }
+
+    string MovesPageName(int page)
+    {
+        var roster = MovesRoster();
+        if (roster.Count == 0) return "-";
+        var entry = roster[Mathf.Clamp(page / 2, 0, roster.Count - 1)];
+        return entry.name + (page % 2 == 0 ? " - moves" : " - strings");
+    }
+
+    /// <summary>
+    /// One page of the move list, walked from the live <see cref="AttackData"/> every time the
+    /// screen opens. Only the LONGEST form of each string is listed - a two-hit that can be
+    /// extended is shown as the three-hit, since stopping early is always allowed. Mirrors the two
+    /// engine rules a walk has to know about: a link marked openerOnly is offered only from the
+    /// string's first move, and a string carries at most one special.
+    /// </summary>
+    IEnumerable<string> MoveLines(int page)
+    {
+        var roster = MovesRoster();
+        if (roster.Count == 0) { yield return "No fighters in the scene."; yield break; }
+        var entry = roster[Mathf.Clamp(page / 2, 0, roster.Count - 1)];
+        var b = InputManager.Instance != null ? InputManager.Instance.Bindings : ControlBindings.Defaults();
+        var keys = b.Player(entry.player);
+
+        if (page % 2 == 0)
+        {
+            yield return $"{entry.name.ToUpper()}   (Player {entry.player})   damage / stamina / startup-active-recovery";
+            yield return "";
+            foreach (var attack in Library(entry.combat))
+                yield return $"   {Press(keys, attack),-14} {attack.AttackName,-21} {attack.Damage,2} dmg   " +
+                             $"{attack.StaminaCost,2} stam   {attack.StartupFrames}/{attack.ActiveFrames}/{attack.RecoveryFrames}";
+            yield return "";
+            yield return "   A special costs about two and a half times the stamina of the strike it shares a button with.";
+            yield break;
+        }
+
+        var strings = new List<(string buttons, string names)>();
+        foreach (var opener in Library(entry.combat))
+            WalkMoves(opener, keys, Press(keys, opener), opener.AttackName, 0, opener.IsSpecial, strings);
+        yield return $"{entry.name.ToUpper()}   (Player {entry.player})   {strings.Count} strings";
+        yield return "";
+        foreach (var line in strings)
+            yield return $"   {line.buttons,-30} {line.names}";
+        yield return "";
+        yield return "   Press the next button before the move finishes; stopping early is always allowed.";
+    }
+
+    /// <summary>
+    /// Collects only the strings that cannot be continued any further, so each branch is listed
+    /// once at full length instead of once per prefix.
+    /// </summary>
+    void WalkMoves(AttackData attack, ControlBindings.PlayerBindings keys, string buttons, string names,
+                   int depth, bool usedSpecial, List<(string, string)> into)
+    {
+        bool extended = false;
+        if (attack != null && attack.ComboLinks != null && depth + 2 <= BalanceConfig.MAX_STRING_LENGTH)
+        {
+            foreach (var link in attack.ComboLinks)
+            {
+                if (link == null || link.followUp == null) continue;
+                if (link.openerOnly && depth > 0) continue;
+                if (usedSpecial && link.followUp.IsSpecial) continue;
+                extended = true;
+                WalkMoves(link.followUp, keys,
+                          buttons + " > " + PressLabel(keys, link.input, link.withSpecialModifier),
+                          names + " > " + link.followUp.AttackName,
+                          depth + 1, usedSpecial || link.followUp.IsSpecial, into);
+            }
+        }
+        if (!extended && depth > 0) into.Add((buttons, names));
+    }
+
+    static string CharacterName(CombatSystem combat)
+    {
+        foreach (var attack in Library(combat))
+        {
+            int cut = attack.name.IndexOf('_');
+            if (cut > 0) return attack.name.Substring(0, cut);
+        }
+        return null;
+    }
+
+    static IEnumerable<AttackData> Library(CombatSystem combat)
+    {
+        foreach (var a in combat.Attacks ?? new AttackData[0]) if (a != null) yield return a;
+        foreach (var a in combat.Specials ?? new AttackData[0]) if (a != null) yield return a;
+    }
+
+    static string Press(ControlBindings.PlayerBindings keys, AttackData attack) =>
+        PressLabel(keys, attack.IsSpecial ? attack.SpecialButton : attack.AttackType, attack.IsSpecial);
+
+    static string PressLabel(ControlBindings.PlayerBindings keys, AttackType button, bool special)
+    {
+        GameAction action = button == AttackType.Light ? GameAction.Light
+                          : button == AttackType.Medium ? GameAction.Medium : GameAction.Heavy;
+        string key = ControlBindings.KeyLabel(keys.Key(action));
+        // Bracketed, because Player 2's strikes are punctuation (, . /) and the modifier is a
+        // two-word key: without them a string reads as ",  >  .  >  R Ctrl+," and nobody can
+        // tell where one press ends and the next begins.
+        return special ? $"[{ControlBindings.KeyLabel(keys.Key(GameAction.Special))} + {key}]" : $"[{key}]";
     }
 
     IEnumerable<string> HelpLines()

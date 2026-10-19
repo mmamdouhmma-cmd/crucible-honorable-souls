@@ -888,6 +888,75 @@ fired, animated from their own state, cost the authored stamina and landed.
   `ComboLink.withSpecialModifier` from Task 2, and `TryCancelIntoFollowUp` already stamina-checks a
   follow-up, so a special ender fails on an empty bar.
 
+### 2026-10-20 - Lite Task 4: the combo strings and the move list
+
+**10 strings per character** (14 counting the two-hit prefixes of the three-hit ones), in the user's
+three shapes, plus a Moves screen. All **play-verified**. Pure data on the cancel system built in
+October: no new clips, no new assets, no new animator states.
+
+- **`Editor/CrucibleCombos.cs` (new)** holds the tables. `Crucible > Combat > Wire combo strings`
+  writes every `comboLinks` array from them; `Report combo strings` walks the live assets and prints
+  every string they reach. Re-runnable and REPLACES the links it owns, so changing a string means
+  editing a row there and re-running the menu item - not hand-editing GUIDs into `.asset` YAML.
+- **Bjorn**: Light opens with three branches (`Heavy` keeps the filmed light -> 360 overhead ender,
+  `Medium`, `SP+Medium`); Medium and Heavy open with one normal and one special each; each special
+  links back to a normal. **Miyamoto**: the three plain links verified on 2026-10-18 are kept, and
+  each normal gains a special branch (`SP+Heavy` Iaijutsu off the light, `SP+Light` Nukitsuke off the
+  medium, `SP+Medium` Nito Cross off the heavy).
+- **Special enders require `HitOrBlock`**: a whiffed light must not buy a free special. Plain
+  normal-into-normal links stay `Always` (MK strings continue on a whiff), and the cancel already
+  fires the instant a blade connects, so a hit-confirmed ender still feels immediate.
+
+**Two rules the shapes needed, because a link lives on an attack and knows nothing about where in a
+string that attack is:**
+- **`ComboLink.openerOnly`** (new field, honoured by `AttackData.FindLink(input, special, depth)`):
+  a plain normal-into-normal link is offered only when that attack OPENED the string. Without it a
+  mid-string normal offers its own continuation - three normals in a row, and strings that double
+  back on themselves. **This settles the open question in the plan: a string cannot repeat a normal.**
+  The input buffer's dial-a-combo hold is depth-aware for the same reason.
+- **One special per string** (`CombatSystem.stringUsedSpecial`, set in `BeginAttack`, where depth 0
+  starts the count over). Without it `special -> normal` reached that normal's own special link, so a
+  single chain could spend two specials (~86 stamina) for three big hits. If the refused press has a
+  PLAIN branch on the same button it is used instead; otherwise the press is dropped from the buffer
+  rather than re-tested (and re-logged) on every frame of the cancel window. The string-length cap
+  now drops its press the same way.
+- `Bjorn_Light_Slash`'s authored cancel window **8-14 -> the defaults (-1)**. It was authored when
+  the light was 6/3/7; at today's 10/4/8 it ENDED on the first recovery frame, leaving a one-frame
+  window on a whiff. The default (first recovery frame to the end) is the uniform rule, and the
+  hit-confirm path still fires it at contact.
+
+- **Moves screen** (`GameMenu`, pause menu and main menu): built from the live `AttackData` every
+  time it opens, so it cannot go stale. Pages through *fighter x (moves | strings)* with left/right,
+  because one fighter's moves AND strings together overflow the panel - verified by capture, not
+  assumed. Each move shows damage / stamina / frame data; each string shows the buttons in that
+  player's own bindings and the move names. Only the LONGEST form of a string is listed (a two-hit
+  that extends is shown as the three-hit, since stopping early is always allowed), which is what
+  makes 10 lines fit. Presses are bracketed - `[,] > [.] > [R Ctrl + ,]` - because Player 2's
+  strikes are punctuation and the modifier is a two-word key.
+- The move list names each fighter from its attack-asset prefix (`Bjorn_Light_Slash` -> Bjorn).
+  **Both fighters still share one `FighterData` called "test Fighter"**, so the HUD shows that name
+  for both players; `Design/Character_Stats.md` has real per-character stats, and giving each
+  fighter its own asset is a design pass, not this one.
+
+**Verified in play** (2.2 units): `Light -> SP+Medium` 19 dmg and `Medium -> SP+Heavy` 22 dmg as
+two-hit strings; `Light -> Medium -> SP+Heavy` reached **depth 2 with Blood Eagle** out;
+`Medium -> SP+Light` on Miyamoto 18 dmg with `lockout=0.85s` of the string lockout still running;
+`Light -> Medium -> Light` **refused** (openerOnly); `SP+Light -> Light` cancelled correctly and the
+second special was **refused** with `a string carries only one special`; and
+`2-hit string finished - locked out for 1.50s` confirms `STRING_LOCKOUT`, which had never been
+play-tested.
+
+**Testing trap worth more than the task: every test billed as "8% speed" since the menus landed has
+actually run at 0.85.** `DebugTimeScale.LateUpdate` only applies its value when `Time.timeScale` is
+~1, and `GameMenu` puts the Settings game speed (0.85) there at match start, so the component is
+inert for the rest of the match - and `GameMenu.ApplySettings` also overwrites
+`DebugTimeScale.timeScale` itself, so setting that field before `StartMatch` is thrown away twice
+over. **Set `Time.timeScale` directly, after `StartMatch`.** Nothing re-asserts it during a running
+match. The earlier tests were still valid (they measured damage and state, not timing), but this is
+why a move always finished inside one CLI round trip. At a real 0.05 the Editor's ~17 fps gives
+about 0.05 game-seconds per real second, which is slow enough to dial a three-hit string across
+three round trips.
+
 ### 2026-10-19 (counters checked after a user report)
 
 User report: "parry and dash counters are no longer multiplies". **Both multipliers are in fact

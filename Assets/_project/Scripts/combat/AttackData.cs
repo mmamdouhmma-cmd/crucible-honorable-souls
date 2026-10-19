@@ -76,6 +76,13 @@ public class ComboLink
 
     [Tooltip("What the previous hit must have done before this branch opens.")]
     public CancelRequirement requires = CancelRequirement.Always;
+
+    [Tooltip("Only offer this branch when this attack OPENED the string (depth 0). The authored " +
+             "shapes are normal -> special, normal -> normal -> special and special -> normal, so " +
+             "the plain normal-into-normal links are opener-only: without this a mid-string normal " +
+             "would offer its own continuation and give three normals in a row, and strings could " +
+             "double back on themselves.")]
+    public bool openerOnly = false;
 }
 
 public enum HitSide
@@ -288,13 +295,14 @@ public class AttackData : ScriptableObject
     /// A press that carries the special modifier prefers a modifier link and falls back to a plain
     /// one, so a player holding the modifier through a string still gets its ordinary follow-ups.
     /// </summary>
-    public ComboLink FindLink(AttackType input, bool special = false)
+    public ComboLink FindLink(AttackType input, bool special = false, int depth = 0)
     {
         if (comboLinks == null) return null;
         ComboLink plain = null;
         foreach (var link in comboLinks)
         {
             if (link == null || link.followUp == null || link.input != input) continue;
+            if (link.openerOnly && depth > 0) continue;
             if (link.withSpecialModifier)
             {
                 if (special) return link;

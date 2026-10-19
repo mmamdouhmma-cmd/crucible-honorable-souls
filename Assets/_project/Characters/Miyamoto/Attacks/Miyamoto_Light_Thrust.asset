@@ -23,6 +23,7 @@ MonoBehaviour:
   animatorTriggerName: LightAttack
   attackHeight: 1
   attackType: 0
+  specialButton: 0
   comesFrom: 3
   hitSide: 0
   hitstunFrames: 7
@@ -35,8 +36,15 @@ MonoBehaviour:
   lungeMaxDistance: -1
   comboLinks:
   - input: 1
+    withSpecialModifier: 0
     followUp: {fileID: 11400000, guid: 0a06abb1bb36c8845887f47a12a09352, type: 2}
     requires: 0
+    openerOnly: 1
+  - input: 2
+    withSpecialModifier: 1
+    followUp: {fileID: 11400000, guid: a2a907a1624a488aaa07cf400baeb419, type: 2}
+    requires: 1
+    openerOnly: 0
   cancelStartFrame: -1
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1

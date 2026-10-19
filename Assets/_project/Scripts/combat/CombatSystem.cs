@@ -93,7 +93,14 @@ public class CombatSystem : MonoBehaviour
     private float bufferTimer;
     private bool attackTouched;        // this swing hit or was blocked
     private bool attackHitClean;       // this swing hit unblocked
+    /// <summary>The moves a plain button press can produce. Read-only; the move list reads this.</summary>
+    public AttackData[] Attacks => attacks;
+
+    /// <summary>The moves the special modifier produces, keyed by AttackData.specialButton.</summary>
+    public AttackData[] Specials => specials;
+
     private int stringDepth;           // links taken without returning to neutral (0 = a fresh swing)
+    private bool stringUsedSpecial;    // a string carries at most ONE special, and it ends there
 
     [Header("Anti-spam")]
     [Tooltip("Seconds with no attacking after a STRING finishes its last move (0 = use BalanceConfig.STRING_LOCKOUT).")]
@@ -299,7 +306,7 @@ public class CombatSystem : MonoBehaviour
     {
         if (currentAttack == null || !currentAttack.HasComboLinks) return false;
 
-        var link = currentAttack.FindLink(bufferedInput, bufferedSpecial);
+        var link = currentAttack.FindLink(bufferedInput, bufferedSpecial, stringDepth);
         if (link == null) return false;
 
         int frame = Mathf.FloorToInt(currentAttackTime / BalanceConfig.FRAME_TIME);
@@ -323,9 +330,33 @@ public class CombatSystem : MonoBehaviour
         }
         if (!allowed) return false;
 
+        // At most one special per string, which is what the authored shapes say: normal -> special,
+        // normal -> normal -> special, special -> normal. Without this a special that opens a string
+        // reaches a normal whose own special link fires, so one input chain could spend two specials
+        // (~86 stamina) for three big hits.
+        if (stringUsedSpecial && link.followUp.IsSpecial)
+        {
+            // FindLink prefers the modifier branch, so the same button may still have a plain one
+            // that is perfectly legal here; only give up when it does not.
+            var plain = currentAttack.FindLink(bufferedInput, false, stringDepth);
+            if (plain == null || plain.followUp == null || plain.followUp.IsSpecial)
+            {
+                // Drop the press rather than hold it: it can never come out, and a held buffer
+                // would re-test (and re-log) it on every frame of the cancel window.
+                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: no {link.followUp.AttackName} - a string carries only one special");
+                hasBufferedInput = false;
+                bufferTimer = 0f;
+                return false;
+            }
+            link = plain;
+        }
+
         if (stringDepth + 1 >= BalanceConfig.MAX_STRING_LENGTH)
         {
+            // Likewise final: nothing can continue a string that is already at full length.
             if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: string capped at {BalanceConfig.MAX_STRING_LENGTH} hits");
+            hasBufferedInput = false;
+            bufferTimer = 0f;
             return false;
         }
 
@@ -366,6 +397,8 @@ public class CombatSystem : MonoBehaviour
         attackTouched = false;
         attackHitClean = false;
         stringDepth = depth;
+        // A fresh swing starts the count over; a link inherits what the string has already spent.
+        stringUsedSpecial = (depth > 0 && stringUsedSpecial) || attack.IsSpecial;
         currentAttackIsDashCounter = fighter.ConsumeDashCounter();
         if (currentAttackIsDashCounter)
         {
@@ -411,7 +444,7 @@ public class CombatSystem : MonoBehaviour
         // window has passed rather than for the flat buffer. Otherwise a player who taps the
         // follow-up straight after the opener - which is how everyone plays strings - would have it
         // expire a frame or two before the window even opens.
-        if (currentAttack != null && currentAttack.FindLink(attackType, special) != null)
+        if (currentAttack != null && currentAttack.FindLink(attackType, special, stringDepth) != null)
         {
             float windowEnd = (currentAttack.CancelEndFrame + 1) * BalanceConfig.FRAME_TIME;
             hold = Mathf.Max(hold, windowEnd - currentAttackTime);

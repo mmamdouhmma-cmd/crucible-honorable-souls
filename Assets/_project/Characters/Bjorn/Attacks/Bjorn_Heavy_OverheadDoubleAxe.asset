@@ -23,6 +23,7 @@ MonoBehaviour:
   animatorTriggerName: HeavyAttack
   attackHeight: 0
   attackType: 2
+  specialButton: 0
   comesFrom: 0
   hitSide: 0
   hitstunFrames: 10
@@ -33,7 +34,17 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: -1
-  comboLinks: []
+  comboLinks:
+  - input: 1
+    withSpecialModifier: 0
+    followUp: {fileID: 11400000, guid: 84bf61f1bdfbde54eafd80c5ae020a74, type: 2}
+    requires: 0
+    openerOnly: 1
+  - input: 0
+    withSpecialModifier: 1
+    followUp: {fileID: 11400000, guid: 0560a43455c345f09dfaa84e8a2b1f91, type: 2}
+    requires: 1
+    openerOnly: 0
   cancelStartFrame: -1
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1

@@ -28,13 +28,18 @@ MonoBehaviour:
   hitSide: 0
   hitstunFrames: 14
   hitboxRange: 3.2
-  hitboxOffset: {x: 0, y: 1.0, z: 0}
-  hitboxSize: {x: 0.9, y: 1.8, z: 1.0}
+  hitboxOffset: {x: 0, y: 1, z: 0}
+  hitboxSize: {x: 0.9, y: 1.8, z: 1}
   aimMode: 1
   aimMaxAngle: -1
   lungeStopDistance: 1.7
   lungeMaxDistance: 2.2
-  comboLinks: []
+  comboLinks:
+  - input: 0
+    withSpecialModifier: 0
+    followUp: {fileID: 11400000, guid: 8c9ba608a0256324ebd4f6583e66badb, type: 2}
+    requires: 0
+    openerOnly: 1
   cancelStartFrame: -1
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1
