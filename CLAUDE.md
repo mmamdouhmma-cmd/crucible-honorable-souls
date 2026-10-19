@@ -829,6 +829,55 @@ User's four items after testing the previous build. All four are done and **play
   `AiController` only ever writes `blockHeld`, and now that the parry has its own button it cannot
   even do it by accident.
 
+### 2026-10-19 (counters checked after a user report)
+
+User report: "parry and dash counters are no longer multiplies". **Both multipliers are in fact
+working** - measured, not assumed - but one window was too short to reach in play, and that is
+fixed.
+
+- **Parry counter: working.** The user's own console shows it repeatedly:
+  `P2: PARRY COUNTER - Mid Thrust will deal x1.5 damage` -> `for 9 dmg` where a normal Mid Thrust
+  is 6. Note the SCENE is serialized at `parryCounterDamageMultiplier` **1.5** and
+  `parryCounterWindow` **1.0 s**, not the 1.35 / 0.5 s in `BalanceConfig` - the 2026-10-18 change
+  to 1.35 edited the const only, and a serialized component keeps its own value. Left as-is
+  (it is a balance number the user may have chosen); worth settling deliberately.
+- **Dash counter: working, but the window was unreachable.** `DASH_COUNTER_WINDOW` **0.5 -> 0.8 s**
+  to match `DODGED_RECOVERY_FRAMES` (48 f = 0.8 s). The dodged ATTACKER is held open for 0.8 s
+  while the DODGER had only 0.5 s to start the punish, so the window shut before the opening it
+  exists for. The 2-week plan's day-1 item ("dash counter 0.8 s open window") had only moved the
+  attacker's number. It is a const with no serialized override, so the change takes effect with
+  no scene edit.
+- **A new dash wipes the window** (`Fighter.cs`, START THE DASH zeroes `dashCounterTimer`). Correct
+  as design - dashing again is choosing not to counter - but it is what made the first test read
+  `counterOpen=False` right after a successful dodge.
+- **Verified in play** (timescale 0.3, 2.26 units): `P2 EVADED P1's Overhead Double Axe (dashed
+  right vs Overhead, judged as the blade arrived)`, `brushed P2 but was already dodged` (no
+  damage), `P2: DODGE - dash counter window open`, then
+  `P2: DASH COUNTER - Mid Thrust will deal x1.35 damage` -> `for 8 dmg [DASH COUNTER x1.35]`.
+- **The specials were never broken either:** the user's log shows
+  `P1: TryAttack(Light + SPECIAL) called` -> `no special on Light - throwing the normal instead`.
+  The modifier reaches the combat system; the `specials` arrays are empty until Task 3 authors the
+  assets, and the fall-through to the normal is deliberate.
+
+**Testing lessons (all cost a run):**
+- `InputHold` durations must be long enough in RENDERED frames, not game seconds. The Editor runs
+  ~4 fps under the CLI, so at `timeScale` 0.08 a 0.10 s hold is ~1 frame: `InputManager` consumes
+  the AI snapshot every frame, so the hold must span several frames or it is released before the
+  manager ever hands it to the Fighter. `InputHold.Dash(player, dir, seconds, delay)` is new
+  (x = forward/back, y = sidestep, matching `InputData.dashDirection`).
+- **0.08 is too slow for a dodge test.** `Time.maximumDeltaTime` lets one rendered frame advance
+  ~6 game frames, so an attack's whole startup can pass between frames and the dash never overlaps
+  the arming. **timescale 0.3** resolves both, and the reliable staging is: hold the dash for
+  several seconds in one eval (it re-triggers, so the fighter is dashing almost continuously), then
+  swing into it from the next eval.
+- A sub-second window cannot be observed across a CLI round trip: open it by reflection and attack
+  in the SAME eval.
+- The `eval_file` harness reports a **compile error as "Unreachable code detected"**. Two hit this
+  session: `InputManager.InputEnabled` is an INSTANCE property (not static), and `FighterStats` has
+  no `staminaRegenRate`. If that message appears, suspect a bad member reference, not dead code.
+- Repeated dashes drift the gap (the side dash arcs), so re-place the fighters in the same eval as
+  the swing or the attack starts out of reach.
+
 ### 2026-10-19 (end of session) - scope change: CRUCIBLE Lite, the mobile-first slice
 
 User's call after testing: the game plays well **only on a PS5 pad** - keyboard and touch are not

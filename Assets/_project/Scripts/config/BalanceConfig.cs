@@ -47,7 +47,11 @@ public static class BalanceConfig
     // ==================== COMBAT TIMING ====================
     public const float PARRY_WINDOW = 0.12f;        // 9 frames at 60fps
     public const float DASH_IFRAME_DURATION = 0.15f;
-    public const float DASH_COUNTER_WINDOW = 0.5f;  // time after a dodge-dash to start a counter attack
+    // Time after a dodge-dash in which the counter attack must be STARTED. Matched to
+    // DODGED_RECOVERY_FRAMES (0.8s): the dodged attacker is held open for 0.8s, so a shorter
+    // window here closed before the punish it exists to allow - which is why a dodge rarely
+    // produced a counter in play even though the multiplier worked.
+    public const float DASH_COUNTER_WINDOW = 0.8f;
     // Extra recovery (facing locked, no walking, no new attack) for an attack that was dodged by a dash:
     // 48 frames = 0.8s of counter window. Overridable per fighter (CombatSystem.dodgedRecoveryFrames)
     // and per move (AttackData.dodgedRecoveryFrames).

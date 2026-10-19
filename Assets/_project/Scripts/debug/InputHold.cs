@@ -23,6 +23,9 @@ public class InputHold : MonoBehaviour
     [Tooltip("Parry (Defense) button, written for the first frames after the delay only: it is a press, not a hold.")]
     public bool parry;
 
+    [Tooltip("Dash direction written while the timer runs (zero = no dash). x = right, y = forward.")]
+    public Vector2 dash;
+
     [Tooltip("Game-time seconds left to hold (0 = idle).")]
     public float secondsLeft;
 
@@ -46,6 +49,7 @@ public class InputHold : MonoBehaviour
         player = who;
         block = blockHeld;
         parry = false;
+        dash = Vector2.zero;
         secondsLeft = seconds;
         delayLeft = delay;
         if (InputManager.Instance != null) InputManager.Instance.SetAi(player, true);
@@ -61,10 +65,28 @@ public class InputHold : MonoBehaviour
         player = who;
         block = false;
         parry = true;
+        dash = Vector2.zero;
         secondsLeft = 0.05f;   // a tap: long enough for the press to be seen, short enough not to repeat
         delayLeft = delay;
         if (InputManager.Instance != null) InputManager.Instance.SetAi(player, true);
         Debug.Log($"InputHold: P{player} PARRY tap in {delay:0.00}s (game time)");
+    }
+
+    /// <summary>
+    /// Dashes <paramref name="direction"/> (x = right, y = forward, fighter-relative)
+    /// <paramref name="delay"/> game-seconds from now. Written for a couple of frames: Fighter
+    /// starts the dash on the press and runs it on its own timer from there.
+    /// </summary>
+    public void Dash(int who, Vector2 direction, float seconds = 0.3f, float delay = 0f)
+    {
+        player = who;
+        block = false;
+        parry = false;
+        dash = direction;
+        secondsLeft = seconds;
+        delayLeft = delay;
+        if (InputManager.Instance != null) InputManager.Instance.SetAi(player, true);
+        Debug.Log($"InputHold: P{player} DASH {direction} for {seconds:0.00}s in {delay:0.00}s (game time)");
     }
 
     /// <summary>Drops everything and hands the player back to their own controls.</summary>
@@ -74,6 +96,7 @@ public class InputHold : MonoBehaviour
         delayLeft = 0f;
         block = false;
         parry = false;
+        dash = Vector2.zero;
         if (InputManager.Instance != null) InputManager.Instance.SetAi(player, false);
     }
 
@@ -91,7 +114,12 @@ public class InputHold : MonoBehaviour
         }
 
         secondsLeft -= Time.deltaTime;
-        InputManager.Instance.SetAiInput(player, new InputData { blockHeld = block, defenseButton = parry });
+        InputManager.Instance.SetAiInput(player, new InputData
+        {
+            blockHeld = block,
+            defenseButton = parry,
+            dashDirection = dash
+        });
         if (secondsLeft <= 0f) Release();
     }
 }
