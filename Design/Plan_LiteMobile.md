@@ -50,16 +50,20 @@ the hidden passive regen off at the same time matters — today both fighters qu
 
 ---
 
-## Task 1 — cast the animations from the Mixamo pool — MEASURED 2026-10-19, awaiting confirmation
+## Task 1 — cast the animations from the Mixamo pool — DONE 2026-10-19
 
-> **Done:** `Design/Anim_Inventory.md` holds all 32 clips measured, with a recommended clip for each
-> of the 6 specials and 4 ripostes, and the corrections the measurements forced on the proposal
-> below (there is **no thrust** in either pack; `great sword attack` never extends past its own
-> guard; the two `impact` clips are flinches, not attacks; the advancing clips' root motion is
-> thrown away so an advancing special needs a big `lungeMaxDistance`, not root motion; Bjorn's
-> `Haft Strike` and `Blood Eagle` have no clip at all and need re-designing). **`Nitō Cross` is
-> answered: `great sword slash (4)`**, a full-turn rising cut, which keeps it a katana move.
-> What is still needed is the user picking or swapping each slot.
+> `Design/Anim_Inventory.md` holds all 32 clips measured and the agreed clip for each of the 6
+> specials and 4 ripostes — **the user accepted all ten on 2026-10-19**, so the casting is settled.
+> What the measurements forced on the proposal below: there is **no plain thrust** in either pack;
+> the two `impact` clips are flinches, not attacks; the advancing clips' root motion is thrown away,
+> so an advancing special needs a big `lungeMaxDistance` rather than root motion; and Bjorn's
+> `Haft Strike` and `Blood Eagle` have no matching clip — **they keep their names** and are played
+> by a reverse horizontal and a leaping chop. **`Nitō Cross` → `great sword slash (4)`** (full-turn
+> rising cut, no wakizashi needed). **`Iaijutsu` → `great sword attack` as a DOUBLE THRUST**, the
+> one clip in either pack with two separate forward pushes.
+>
+> Carried into Task 3: whether the double thrust deals damage once (on the deeper second push) or
+> becomes an auto-linked two-move string — `ComboLink` would need to fire without a button press.
 
 The user's blocker is animations, and the answer is that the project already owns far more than it
 uses: **98 clips in the two Mixamo packs, only 20 of them mapped.**
@@ -112,8 +116,8 @@ button, so they are revived and they are the shortlist to confirm:
 | | Bjorn | Miyamoto |
 |---|---|---|
 | SP + Light | **Haft Strike** - haft butt punch into a short cut, 14 dmg, 8/6/14, reach 3.0 | **Nukitsuke** - quick-draw horizontal cut with a sliding step, 10 dmg, 9/3/14 |
-| SP + Medium | **Hewing Charge** - three driving steps into a horizontal cut, 16 dmg, 14/6/18 | **Nitō Cross** - scissor cut, 15 dmg, 12/6/16 |
-| SP + Heavy | **Blood Eagle** - spike driven in and ripped back, 24 dmg, 20/6/22 | **Iaijutsu** - stillness, then one draw-cut, 20 dmg, 18/4/18 |
+| SP + Medium | **Hewing Charge** - three driving steps into a horizontal cut, 16 dmg, 14/6/18 | **Nitō Cross** - scissor cut, 15 dmg, 12/6/16 → **re-cast as a full-turn rising cut** |
+| SP + Heavy | **Blood Eagle** - spike driven in and ripped back, 24 dmg, 20/6/22 → **played by a leaping chop, name kept** | **Iaijutsu** - stillness, then one draw-cut, 20 dmg, 18/4/18 → **re-cast as a DOUBLE THRUST** |
 
 Three things to settle when confirming them:
 

@@ -943,10 +943,26 @@ is wired into the game.
   `great sword slash (4)`, a full-turn rising cut, keeps it a katana move and sidesteps the
   unmodelled wakizashi. `Iaijutsu` has a tempting literal fit in `draw a great sword 1` (15 f, fast
   upward draw) but its hands are 0.81 apart around a scabbard the model does not have.
-- Recommended: Bjorn backhand / 360 low / run jump attack, dash riposte `combo attack ver. 3`
+- **User's decisions, same day (Task 1 CLOSED):** all ten recommended clips **accepted as cast**;
+  **Blood Eagle and Haft Strike keep their names** and are played by the leaping chop and the
+  reverse horizontal (the names stop being literal until the animation pass); and **Iaijutsu becomes
+  a DOUBLE THRUST**. That last one sent me back to the data: `great sword attack` drives forward
+  **twice** - f12-17 takes the tip 0.77 m forward, f18-23 retracts, f24-36 drives 1.03 m - so the
+  earlier "no committed strike" verdict was the single-arc test cancelling the two pushes against
+  each other. It needs `WeaponAim` **Full** (the blade sits 0.70-0.83 m to the fighter's LEFT the
+  whole clip and never crosses the centre line, which is why no crossing was found) and a lunge for
+  reach (furthest tip extension is 0.97 m, about where the guard already sits). **Two HITS needs a
+  system lite does not have** - multi-hit is deferred and the engine is one hit per swing - so in
+  Task 3 it either deals damage on the deeper second push with the first as a feint, or becomes an
+  **auto-linked two-move string**, which needs `ComboLink` to fire without a button press.
+  `great sword jump attack` (727 deg double-spin leap) goes into reserve.
+- Recommended and accepted: Bjorn backhand / 360 low / run jump attack, dash riposte `combo attack ver. 3`
   (fastest tip + tightest core in either pack), parry riposte `kick ver. 2` (shortest clip, furthest
   foot). Miyamoto `slash (5)` / `slash (4)` / `jump attack` (727 deg double spin), dash riposte
   `great sword kick` (spinning, furthest foot, ends square), parry riposte `kick (2)` (front push
-  kick, contact at 0.88 of the clip so it needs a tight trim). All four of Bjorn's picks are
-  one-handed clips leaning on `TwoHandGrip`'s IK; run `mixamo_carry2h.py` into `AxePack2H/` if a
-  left arm stretches.
+  kick, contact at 0.88 of the clip so it needs a tight trim). Miyamoto SP+Light `slash (5)`,
+  SP+Medium `slash (4)`, SP+Heavy `great sword attack` (the double thrust). All four of Bjorn's
+  picks are one-handed clips leaning on `TwoHandGrip`'s IK; run `mixamo_carry2h.py` into
+  `AxePack2H/` if a left arm stretches.
+- **Next: Task 2**, the special-attack input layer (`SP + Light/Medium/Heavy`; `InputData.specialModifier`
+  already exists and is read by `InputManager` but used by nothing), then Task 3 wires these clips in.

@@ -7,6 +7,19 @@ swaps; nothing here is wired into the game yet.
 Measured 2026-10-19 on 32 clips (the 26 unused candidates plus the 6 already in the game as
 calibration references).
 
+## Confirmed by the user, 2026-10-19
+
+- **All ten recommended clips accepted as cast** (the table under *Recommended casting*), each still
+  to have its contact calibrated in game before it is called done.
+- **Blood Eagle and Haft Strike keep their names**, played by the leaping chop and the reverse
+  horizontal. The names stop being literal descriptions until the animation pass.
+- **Iaijutsu becomes a double thrust**, from `great sword attack` — the one clip that can show one.
+  This replaces the `jump attack` recommendation for Miyamoto's SP + Heavy, which goes into reserve.
+
+Task 1 is therefore closed; the casting is agreed for all 6 specials and both ripostes per
+character. Open question carried into Task 3: whether the double thrust deals damage once (on the
+second push) or becomes an auto-linked two-move string.
+
 ## How it was measured
 
 `ArtSource/Blender/clip_curves.py` (rebuilt this session — the old one lived in a scratchpad and was
@@ -133,25 +146,53 @@ diagonal-down cuts and a 360 spin.
 |---|---|---|
 | **SP + Light** | `GreatSwordPack/great sword slash (5)` | 44 frames, and a rising reverse cut is a silhouette he has none of. Fits **Nukitsuke** (quick rising draw-cut) better than anything else in the pack |
 | **SP + Medium** | `GreatSwordPack/great sword slash (4)` | full-turn rising cut, 55 f. **This is the answer to the Nitō Cross problem** — it keeps the move a katana move instead of needing the unmodelled wakizashi |
-| **SP + Heavy** | `GreatSwordPack/great sword jump attack` | 727° double-spin leaping cut, ends square, 66 f. Reads as a signature-grade move, and is half the length of `slash (2)` which is the only comparable clip |
+| **SP + Heavy** | `GreatSwordPack/great sword attack` — **Iaijutsu as a DOUBLE THRUST** (user's call, 2026-10-19) | the one clip in either pack with two separate forward pushes: f12→17 drives the tip 0.77 m forward, f18→23 retracts, f24→36 drives 1.03 m. See the caveats below |
+| SP + Heavy runner-up | `GreatSwordPack/great sword jump attack` | 727° double-spin leaping cut, ends square, 66 f. Was the recommendation until the double thrust was chosen; keep it in reserve |
 | **Dash riposte** | `GreatSwordPack/great sword kick` | spinning kick, 46 f, furthest foot in either pack, comes full circle and finishes square — a dodge-and-whirl counter |
 | **Parry riposte** | `GreatSwordPack/great sword kick (2)` | front push kick, 52 f. Distinct from the spinning one. Contact at 0.88 of the clip, so it must be trimmed tight |
 | combo enders spare | `great sword slash (2)`, `great sword slide attack` | both spin and advance; good enders, too long for openers |
 
-**Iaijutsu** (SP + Heavy as authored: stillness, then one draw-cut) has a tempting fit in
-`draw a great sword 1` — 15 frames, 0.676 tip, a genuine fast upward draw. Two reasons it is not the
-recommendation: its hands are 0.81 apart (a draw pose — the left hand grips a scabbard that does not
-exist in the model, the katana is mounted in the right hand only), and the move as written needs a
-stillness-then-strike structure the frame data does not currently express. Worth a look if the user
-wants Iaijutsu kept literally.
+### Iaijutsu is a double thrust (decided 2026-10-19)
+
+The user's call: try it as a double thrust rather than a draw-cut. `great sword attack` is the only
+clip in either pack that can show one, and the full frame dump confirms the shape:
+
+| | frames | tip forward |
+|---|---|---|
+| windup | f1 → f11 | 0.95 back to −0.47 (blade drawn back past the hip) |
+| **push 1** | f12 → f17 | −0.42 → **+0.35** (0.77 m of drive) |
+| retract | f18 → f23 | back to −0.09 |
+| **push 2** | f24 → f36 | −0.06 → **+0.97** (1.03 m, the committed one) |
+
+This also corrects the earlier verdict in this document that the clip has "no committed strike": it
+does, twice — the single-arc test missed it because the two pushes cancel out over the core window.
+
+Three things it needs, all of them Task 3 work:
+
+- **`WeaponAim` must be `Full`.** The blade sits 0.70–0.83 m to the fighter's **left** for the whole
+  clip and never crosses the centre line, which is why the contact finder found no crossing. Aim
+  yaws it onto the target — exactly the job it was added for.
+- **It needs a lunge for reach.** The tip's furthest extension is 0.97 m from the hips, which is
+  about where the guard already sits; the thrust's forward reach has to come from
+  `AttackData.lungeMaxDistance`, not from the arms.
+- **Two *hits* needs a system lite does not have.** Multi-hit is deferred, and the engine is one hit
+  per swing by design. So either the move deals its damage on one push (recommend the second, deeper
+  one, with the first reading as a feint) or it becomes an **auto-linked two-move string** — which
+  the combo system is one small change away from, since `ComboLink` currently requires a button
+  press to fire. Decide this in game, in Task 3.
+
+The literal draw-cut reading is parked, not lost: `draw a great sword 1` is 15 frames with a 0.676
+tip, a genuinely fast upward draw. It was rejected because its hands are 0.81 apart around a
+scabbard the model does not have (the katana is mounted in the right hand only).
 
 ## Gaps and corrections to the plan
 
-1. **`great sword attack` is not a thrust.** The plan and the 2026-10-12 notes list it as "the plain
-   thrust alternative". Measured, the tip winds back and to the left and returns, never reaching
-   further forward than its own start pose (peak fwd extent equals the guard). **Neither pack
-   contains a thrust.** Miyamoto's light is called `Miyamoto_Light_Thrust` and is played by a
-   diagonal cut, which is already the case today.
+1. **`great sword attack` is a DOUBLE push, not a single thrust.** The plan and the 2026-10-12 notes
+   list it as "the plain thrust alternative". It drives forward twice (f12–17 and f24–36, 0.77 m then
+   1.03 m) with a retraction between, and the whole motion stays 0.7–0.8 m off to the fighter's left.
+   It is now cast as Miyamoto's Iaijutsu double thrust — see above. **No clip in either pack is a
+   plain single thrust**, so Miyamoto's `Miyamoto_Light_Thrust` stays played by a diagonal cut, as
+   it is today.
 2. **`great sword impact (4)` and `(5)` are flinches, not attacks** (peak tip speed 0.05 and 0.08 —
    essentially static). The plan listed them among the unused attack-shaped clips. They are useful
    later as extra hit reactions or the knockdown that the parked low/trip family will want.
@@ -164,9 +205,11 @@ wants Iaijutsu kept literally.
    should be given a large lunge (the defaults are `ATTACK_LUNGE_MAX` 0.9 at 4 u/s) instead.
 4. **Two of Bjorn's authored specials have no clip at all.** `Haft Strike` is a haft-butt punch and
    `Blood Eagle` is a spike driven in and ripped back; the axe pack has neither, and nothing can be
-   trimmed into them. The recommendations above substitute a reverse horizontal and a leaping chop,
-   so **those two moves need renaming or re-designing** to match what the animation can show. (The
-   user already has a name for a leaping chop from the mocap session: *Mountain Breaker*.)
+   trimmed into them. The recommendations above substitute a reverse horizontal and a leaping chop.
+   **Decided 2026-10-19: both keep their names** — Blood Eagle stays Blood Eagle and is played by
+   the leaping chop (`run jump attack`), Haft Strike stays Haft Strike and is played by the reverse
+   horizontal (`attack backhand`). The names are no longer literal descriptions of the animation;
+   a purpose-made clip can make them literal again in the animation pass.
 5. **Bjorn's picks are one-handed clips.** All four AxePack recommendations have the hands 0.69–1.08
    apart, where his axe is two-handed. His light already runs a raw one-handed clip and
    `TwoHandGrip`'s IK pulls the left hand onto the haft each frame, so this is expected to work —
