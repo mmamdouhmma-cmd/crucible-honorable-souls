@@ -860,3 +860,28 @@ The next session starts at its Task 1.**
   hit/combo/parry/dash counter, no HUD bar) - specials are what finally give it a purpose. And both
   fighters have a hidden passive health regen of 1 hp/s, which is why health crept up between test
   evals.
+
+- **Decisions confirmed the same evening (2026-10-19), and the plan rewritten around them:**
+  - **Specials: modifier button + attack button, no direction** — `SP + Light/Medium/Heavy` gives the
+    three. `InputData.specialModifier` (L1 / `U`) already exists and is read by `InputManager` but
+    used by nothing, which is exactly this. The moves themselves get confirmed next session.
+  - **A special costs STAMINA, not super: 2.5x the matching normal** (light 15 → 38, medium 17 → 43,
+    heavy 17–19 → 43–48 of a 100 bar, about 2.5 s of regen), plus a new `SPECIAL_LOCKOUT` (start
+    1.0 s) before the next attack, applied through the existing `attackLockoutTimer`.
+  - **The super bar is for SIGNATURE moves**, which come after the specials, combos and the animation
+    pass. Nothing in lite spends it. `FighterStats.CanUseSignature()` / `signatureUsed` already
+    exist — and that method also demands FULL stamina, which now fights the specials' 2.5x cost, so
+    that condition needs revisiting in the signature pass.
+  - **Dash unchanged** (no double-tap, no touch relayout); its counter ANIMATION is the only dash work.
+  - **Keyboard defaults unchanged** — the in-game Controls menu is considered enough.
+  - **Combos mix normals and specials**, in the user's shapes: `normal` → `special`,
+    `normal` → `normal` → `special`, and `special` → `normal`. `MAX_STRING_LENGTH = 3` already fits
+    all three, and `TryCancelIntoFollowUp` already stamina-checks a follow-up, so an ender can fail
+    on an empty bar. **Specials therefore have to be built BEFORE the combos**, which reordered the
+    tasks.
+  - **Mixamo until every system is finished**, then a pass of purpose-made animations.
+  - **Health recovery** +2% dodge / +2% parry / +3% counter hit, with `HEAL_CAP_PER_ROUND` present but
+    **0 (off)** until it is seen to be abusable, and the hidden passive `healthRegenPerSecond` turned
+    off so the recovery is the only heal in the fight.
+  - The only control change left in the plan is the touch `SP` button, which has to LATCH for ~1 s:
+    a modifier is a hold, and a thumb cannot hold two buttons at once.
