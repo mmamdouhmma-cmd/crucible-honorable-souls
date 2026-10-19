@@ -176,7 +176,20 @@ Small and self-contained, because the modifier already reaches the fighter.
 
 ---
 
-## Task 3 — 3 specials per character
+## Task 3 — 3 specials per character — DONE 2026-10-19
+
+> All six authored and play-verified. `SP + Light/Medium/Heavy` throws Bjorn's **Haft Strike /
+> Hewing Charge / Blood Eagle** and Miyamoto's **Nukitsuke / Nito Cross / Iaijutsu**, each on the
+> clip cast in Task 1, at 14/15/16 damage for 38/43/48 stamina, with its own animator state,
+> trigger and contact-calibrated window. A plain press still gives the normal.
+>
+> **Iaijutsu's double thrust deals damage ONCE**, on the deeper second push: the frame data is
+> 34/4/8, so the first push (source f12-17) is startup and reads as a feint. A genuine two-hit
+> version needs `ComboLink` to fire with no button press, which is deferred.
+>
+> Still to eyeball in the game: whether each silhouette reads, and the spinning `Nito Cross`
+> contact, whose measured frame was unreliable (seeded at 27 with the whole turn in the window).
+
 
 - Three `AttackData` assets each, frame data slower and stronger than the heavy — **start from
   18/5/20 for 14–16 damage**. (The parked moveset sheet authored these as 22/5/26 for 22 and

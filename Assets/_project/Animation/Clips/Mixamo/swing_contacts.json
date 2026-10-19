@@ -5,6 +5,36 @@
  "Bjorn_Heavy_OverheadDoubleAxe": 21.5,
  "Miyamoto_Light_Thrust": 28.1,
  "Miyamoto_Medium_SideSlash": 21.3,
- "Bjorn_Heavy_SpinOverhead": {"contact": 36.2, "speed": 2.0},
- "Miyamoto_Heavy_Overhead": {"contact": 36.2, "speed": 2.0}
+ "Bjorn_Heavy_SpinOverhead": {
+  "contact": 36.2,
+  "speed": 2.0
+ },
+ "Miyamoto_Heavy_Overhead": {
+  "contact": 36.2,
+  "speed": 2.0
+ },
+ "Bjorn_Special_HaftStrike": {
+  "contact": 30.0,
+  "speed": 2.0
+ },
+ "Bjorn_Special_HewingCharge": {
+  "contact": 31.7,
+  "speed": 2.0
+ },
+ "Bjorn_Special_BloodEagle": {
+  "contact": 52.0,
+  "speed": 2.2
+ },
+ "Miyamoto_Special_Nukitsuke": {
+  "contact": 12.2,
+  "speed": 1.0
+ },
+ "Miyamoto_Special_NitoCross": {
+  "contact": 27.0,
+  "speed": 2.4
+ },
+ "Miyamoto_Special_Iaijutsu": {
+  "contact": 32.0,
+  "speed": 1.3
+ }
 }

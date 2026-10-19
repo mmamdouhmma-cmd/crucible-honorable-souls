@@ -490,6 +490,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8c9ba608a0256324ebd4f6583e66badb, type: 2}
   - {fileID: 11400000, guid: 84bf61f1bdfbde54eafd80c5ae020a74, type: 2}
   - {fileID: 11400000, guid: 274db55609b9f9644927d6d3dce64d65, type: 2}
+  specials:
+  - {fileID: 11400000, guid: 0560a43455c345f09dfaa84e8a2b1f91, type: 2}
+  - {fileID: 11400000, guid: a811c441b00a4b339b183af4dbdbdf66, type: 2}
+  - {fileID: 11400000, guid: 7cbc45a825ee413a941f97b2a44d4159, type: 2}
   hitDetector: {fileID: 1167820291}
   hitInterruptsAttack: 1
   dodgedRecoveryFrames: -1
@@ -503,6 +507,7 @@ MonoBehaviour:
   debugLogs: 1
   stringLockout: 0
   sameAttackLockout: 0
+  specialLockout: 0
 --- !u!114 &126681666
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4230,6 +4235,7 @@ MonoBehaviour:
   forceShow: 0
   idleAlpha: 0.35
   pressedAlpha: 0.75
+  specialLatchSeconds: 1
 --- !u!114 &1348053412
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4259,6 +4265,7 @@ MonoBehaviour:
   player: 2
   block: 0
   parry: 0
+  dash: {x: 0, y: 0}
   secondsLeft: 0
   delayLeft: 0
 --- !u!1 &1348276768
@@ -5777,6 +5784,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7df999fcd74e5634389e113ca6902ecb, type: 2}
   - {fileID: 11400000, guid: 0a06abb1bb36c8845887f47a12a09352, type: 2}
   - {fileID: 11400000, guid: 59eefb855bbf3024492f010d1b55e2d4, type: 2}
+  specials:
+  - {fileID: 11400000, guid: de8540860d824981bc232738d2a31024, type: 2}
+  - {fileID: 11400000, guid: b95c194576804c7386930ce839c17af3, type: 2}
+  - {fileID: 11400000, guid: a2a907a1624a488aaa07cf400baeb419, type: 2}
   hitDetector: {fileID: 1994759405}
   hitInterruptsAttack: 1
   dodgedRecoveryFrames: -1
@@ -5790,6 +5801,7 @@ MonoBehaviour:
   debugLogs: 1
   stringLockout: 0
   sameAttackLockout: 0
+  specialLockout: 0
 --- !u!114 &1967802158
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5817,8 +5829,8 @@ MonoBehaviour:
   dashDistance: 2
   dashDuration: 0.25
   dashStaminaCost: 12
-  blockDamageReduction: 50
-  blockStaminaDrainPerSecond: 4
+  blockDamageReduction: 60
+  blockStaminaDrainPerSecond: 3
   parryWindow: 0.12
   parryCooldown: 1
   parryStaminaCost: 8

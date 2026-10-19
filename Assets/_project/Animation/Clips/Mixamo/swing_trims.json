@@ -106,5 +106,41 @@
   "core_start": 1,
   "core_end": 27,
   "peak_speed_m_per_frame": 0.0293
+ },
+ "standing melee attack 360 low": {
+  "first": 1,
+  "last": 70,
+  "fps": 30,
+  "peak": 29,
+  "core_start": 23,
+  "core_end": 34,
+  "peak_speed_m_per_frame": 0.2256
+ },
+ "standing melee run jump attack": {
+  "first": 1,
+  "last": 111,
+  "fps": 30,
+  "peak": 52,
+  "core_start": 47,
+  "core_end": 54,
+  "peak_speed_m_per_frame": 0.417
+ },
+ "great sword slash (4)": {
+  "first": 1,
+  "last": 55,
+  "fps": 30,
+  "peak": 11,
+  "core_start": 4,
+  "core_end": 14,
+  "peak_speed_m_per_frame": 0.2548
+ },
+ "great sword slash (5)": {
+  "first": 1,
+  "last": 44,
+  "fps": 30,
+  "peak": 19,
+  "core_start": 3,
+  "core_end": 25,
+  "peak_speed_m_per_frame": 0.0864
  }
 }

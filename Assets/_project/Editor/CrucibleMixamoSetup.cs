@@ -35,6 +35,11 @@ public static class CrucibleMixamoSetup
         // Miyamoto's heavy - the 360 spin - so the combo finishes on a spinning strike; its own trim window is
         // cut from the same file under this state's name.
         ("Bjorn_Heavy_SpinOverhead",     "GreatSwordPack", "great sword high spin attack", false),
+        // SPECIALS (SP + button). Cast from the measured pool in Design/Anim_Inventory.md; each one's
+        // window is re-cut around its swing_contacts.json entry, like every other attack state.
+        ("Bjorn_Special_HaftStrike",     "AxePack", "standing melee attack backhand",    false),   // big reverse horizontal, winds 245 deg and returns square
+        ("Bjorn_Special_HewingCharge",   "AxePack", "standing melee attack 360 low",     false),   // the low twin of his medium: same full turn, tip 0.98 lower
+        ("Bjorn_Special_BloodEagle",     "AxePack", "standing melee run jump attack",    false),   // leaping chop; its 3.64 m of root motion is discarded, so the AttackData lunges instead
         ("React_Front",                  "AxePack", "standing react large gut",          false),
         ("React_Left",                   "AxePack", "standing react large from left",    false),
         ("React_Right",                  "AxePack", "standing react large from right",   false),
@@ -61,6 +66,10 @@ public static class CrucibleMixamoSetup
         ("Miyamoto_Light_Thrust",        "GreatSwordPack", "great sword slash (3)",     false),
         ("Miyamoto_Medium_SideSlash",    "GreatSwordPack", "great sword slash",         false),
         ("Miyamoto_Heavy_Overhead",      "GreatSwordPack", "great sword high spin attack", false),
+        // SPECIALS (SP + button)
+        ("Miyamoto_Special_Nukitsuke",   "GreatSwordPack", "great sword slash (5)",     false),   // rising reverse cut: a silhouette none of his normals have
+        ("Miyamoto_Special_NitoCross",   "GreatSwordPack", "great sword slash (4)",     false),   // full-turn rising cut - keeps Nito Cross a katana move (no wakizashi exists)
+        ("Miyamoto_Special_Iaijutsu",    "GreatSwordPack", "great sword attack",        false),   // the DOUBLE THRUST: f12-17 pushes, f18-23 retracts, f24-36 drives deeper
         ("React_Front",                  "GreatSwordPack", "great sword impact",        false),
         ("React_Left",                   "GreatSwordPack", "great sword impact (2)",    false),
         ("React_Right",                  "GreatSwordPack", "great sword impact (3)",    false),

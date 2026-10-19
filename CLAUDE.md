@@ -829,6 +829,65 @@ User's four items after testing the previous build. All four are done and **play
   `AiController` only ever writes `blockHeld`, and now that the parry has its own button it cannot
   even do it by accident.
 
+### 2026-10-19 - Lite Task 3: the six specials
+
+`SP + Light/Medium/Heavy` now throws a real move for each fighter. All six **play-verified**:
+fired, animated from their own state, cost the authored stamina and landed.
+
+| slot | asset | clip | frames | dmg | stam | aim | lunge |
+|---|---|---|---|---|---|---|---|
+| Bjorn SP+L | `Bjorn_Special_HaftStrike` | AxePack `attack backhand` | 18/5/20 | 14 | 38 | Full | - |
+| Bjorn SP+M | `Bjorn_Special_HewingCharge` | AxePack `attack 360 low` | 22/5/22 | 15 | 43 | YawOnly | - |
+| Bjorn SP+H | `Bjorn_Special_BloodEagle` | AxePack `run jump attack` | 24/5/24 | 16 | 48 | YawOnly | max 2.2 |
+| Miya SP+L | `Miyamoto_Special_Nukitsuke` | GSP `slash (5)` | 18/5/20 | 14 | 38 | Full | - |
+| Miya SP+M | `Miyamoto_Special_NitoCross` | GSP `slash (4)` | 20/5/22 | 15 | 43 | Off | max 1.2 |
+| Miya SP+H | `Miyamoto_Special_Iaijutsu` | GSP `great sword attack` | 34/4/8 | 16 | 48 | Full | max 1.4 |
+
+- **Stamina is the 2.5x rule** (light 15 -> 38, medium 17 -> 43, heavy 19 -> 48) and each one ends in
+  the 1.0 s `SPECIAL_LOCKOUT` from Task 2. Damage sits at the top of the planned 14-16 band, so a
+  special is worth about two lights for ~2.5x the bar.
+- **Hit sides and evade directions are deliberately NOT copies of the normals.** Haft Strike is
+  `AttackerLeft` where both Bjorn normals are `AttackerRight`, so the special is dodged by the
+  opposite sidestep - the reverse-horizontal silhouette and the dodge rule agree.
+- **`Iaijutsu` damages ONCE, on the second push.** `great sword attack` drives forward twice
+  (f12-17, retract, f24-36); the frame data is **34/4/8** so the first push is STARTUP - a feint with
+  no hitbox - and the hit lands at 78% of the window, inside the deeper second drive. A true two-hit
+  version needs `ComboLink` to fire without a press; deferred, and recorded in the plan.
+- **How each window was fitted** (the arithmetic, since it is not obvious): `CrucibleMixamoSetup`
+  cuts the source clip to `len = speed * total / 2` source frames and puts the contact at
+  `hitFrac = (startup + active/2) / total` through it. So the frame data, the `swing_contacts.json`
+  speed and the clip's own length are ONE calculation - change the frame data and the window moves.
+  Worked examples: Nukitsuke's contact is at source frame 12.2 with the clip starting at 1, so
+  **speed 1.0** keeps the window (2.0-23.5) inside the clip; at the usual 2.0 it would have clamped
+  to the clip start and shown the blade crossing 20% before the damage frame. Nito Cross uses
+  **speed 2.4** so the window is the whole 55-frame clip and the full turn plays, the same trick both
+  heavies use.
+- **`swing_trims.json`** gained the 4 clips that had never been analysed
+  (`attack 360 low`, `run jump attack`, `slash (4)`, `slash (5)`), generated from
+  `ArtSource/Blender/clip_curves.json` - so Task 1's measurements feed the importer directly.
+- **`Editor/CrucibleSpecialStates.cs` (new)** - `Crucible > Animation > Wire special states`. Finds
+  every `AttackData` of type Special in a character's folder and ensures its trigger parameter, a
+  state named exactly after the asset, `Any State -> state` on that trigger (0.12 s fixed blend, no
+  exit time) and a return to the guard at exit 0.9. Re-runnable, adds only what is missing. It must
+  run BEFORE `Use Mixamo packs`, which only re-points states that already exist. Triggers are
+  `SpecialLight` / `SpecialMedium` / `SpecialHeavy` on both controllers.
+- Map entries added to `CrucibleMixamoSetup` P1Map/P2Map, so `Use Mixamo packs` reproduces all six
+  instead of wiping them. Scene `CombatSystem.specials` arrays filled (ordered Light/Medium/Heavy)
+  and saved.
+- **Verified in play at 2.2 units:** each `SP + button` produced its own asset, type Special, with
+  stamina 100 -> 62 / 57 / 52 and 12 / 13 / 14 damage landed (after the defender's armour), on both
+  fighters; every special state carries its own trimmed clip at the fitted speed; and all six plain
+  presses still give the normals.
+- **Editor-script note:** `Assets/_project/Editor/*.cs` belong to the **`Crucible.Editor` asmdef**,
+  not `Assembly-CSharp-Editor`, so the Roslyn check's editor `.rsp` does not cover them - compile
+  those with `unity command recompile` instead. Also: a sub-second move finishes inside one CLI
+  round trip even at 8% time scale, so "what is the animator playing" cannot be read in a following
+  eval - read the controller asset (state -> motion -> speed) instead, which is timing-free.
+- **Next: Task 4**, the combos - 6-9 per character in the user's three shapes (`normal -> special`,
+  `normal -> normal -> special`, `special -> normal`). The plumbing is already there:
+  `ComboLink.withSpecialModifier` from Task 2, and `TryCancelIntoFollowUp` already stamina-checks a
+  follow-up, so a special ender fails on an empty bar.
+
 ### 2026-10-19 (counters checked after a user report)
 
 User report: "parry and dash counters are no longer multiplies". **Both multipliers are in fact
