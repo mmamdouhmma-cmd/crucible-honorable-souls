@@ -30,8 +30,13 @@ public class TouchControls : MonoBehaviour
     class PlayerPad
     {
         public RectTransform root;
-        public TouchButton left, right, dashL, dashR, dashIn, dashOut, light, medium, heavy, block, parry;
+        public TouchButton left, right, dashL, dashR, dashIn, dashOut, light, medium, heavy, block, parry, special;
+        public float specialUntil;   // the SP latch expires at this unscaled time (0 = not armed)
     }
+
+    [Tooltip("Seconds the touch SP button stays armed after a tap. The special modifier is a HOLD on a " +
+             "pad, and a thumb cannot hold it and press a strike at the same time, so on touch it latches.")]
+    [Range(0.3f, 3f)] public float specialLatchSeconds = 1f;
 
     Canvas canvas;
     Font font;
@@ -145,6 +150,12 @@ public class TouchControls : MonoBehaviour
         d.lightAttack = Consume(p.light);
         d.mediumAttack = Consume(p.medium);
         d.heavyAttack = Consume(p.heavy);
+
+        // SP latches: a tap arms the modifier for specialLatchSeconds, and the next strike spends it.
+        if (Consume(p.special)) p.specialUntil = Time.unscaledTime + specialLatchSeconds;
+        bool armed = Time.unscaledTime < p.specialUntil;
+        d.specialModifier = armed;
+        if (armed && (d.lightAttack || d.mediumAttack || d.heavyAttack)) p.specialUntil = 0f;
         if (Consume(p.dashL)) d.dashDirection = Vector2.left;
         else if (Consume(p.dashR)) d.dashDirection = Vector2.right;
         else if (Consume(p.dashIn)) d.dashDirection = Vector2.up;
@@ -153,6 +164,13 @@ public class TouchControls : MonoBehaviour
     }
 
     static bool Consume(TouchButton b) { bool t = b.tapped; b.tapped = false; return t; }
+
+    /// <summary>Every button on a pad except SP, which has its own lit state.</summary>
+    static TouchButton[] Buttons(PlayerPad p) => new[]
+    {
+        p.left, p.right, p.dashL, p.dashR, p.dashIn, p.dashOut,
+        p.light, p.medium, p.heavy, p.block, p.parry
+    };
 
     void Update()
     {
@@ -169,9 +187,18 @@ public class TouchControls : MonoBehaviour
         foreach (var p in pads)
         {
             if (p == null) continue;
-            foreach (var b in new[] { p.left, p.right, p.dashL, p.dashR, p.dashIn, p.dashOut, p.light, p.medium, p.heavy, p.block })
+            foreach (var b in Buttons(p))
             {
                 var c = b.image.color; c.a = b.held ? pressedAlpha : idleAlpha; b.image.color = c;
+            }
+            // SP stays lit for as long as it is armed, so you can see the next strike will be special.
+            if (p.special != null)
+            {
+                bool armed = Time.unscaledTime < p.specialUntil;
+                var c = p.special.image.color;
+                c.a = armed ? 1f : (p.special.held ? pressedAlpha : idleAlpha);
+                p.special.image.color = c;
+                p.special.label.color = armed ? new Color(0.05f, 0.05f, 0.05f, 1f) : new Color(0.1f, 0.1f, 0.1f, 0.9f);
             }
         }
     }
@@ -208,6 +235,7 @@ public class TouchControls : MonoBehaviour
             pad.heavy = MakeButton(pad.root, "H", 150, 150, new Color(1f, 0.5f, 0.4f));
             pad.block = MakeButton(pad.root, "BLOCK", 190, 110, new Color(0.6f, 0.9f, 0.7f));
             pad.parry = MakeButton(pad.root, "PARRY", 190, 110, new Color(0.45f, 0.8f, 1f));
+            pad.special = MakeButton(pad.root, "SP", 110, 110, new Color(0.85f, 0.6f, 1f));
             pads[i] = pad;
         }
         pauseButton = MakeButton(go.GetComponent<RectTransform>(), "II", 90, 90, new Color(0.9f, 0.9f, 0.9f));
@@ -282,8 +310,11 @@ public class TouchControls : MonoBehaviour
             Place(p.heavy, strikeX, 0f, new Vector2(-dir * 110 * s, 370 * s));
             Place(p.block, strikeX, 0f, new Vector2(-dir * 140 * s, 90 * s + 420 * s));
             Place(p.parry, strikeX, 0f, new Vector2(-dir * 340 * s, 90 * s + 420 * s));
-            foreach (var b in new[] { p.left, p.right, p.dashL, p.dashR, p.dashIn, p.dashOut, p.light, p.medium, p.heavy, p.block })
+            // SP sits inboard of the strikes, under the same thumb: tap it, then tap a strike.
+            Place(p.special, strikeX, 0f, new Vector2(-dir * 470 * s, 300 * s));
+            foreach (var b in Buttons(p))
                 b.image.rectTransform.localScale = Vector3.one * s;
+            p.special.image.rectTransform.localScale = Vector3.one * s;
             // the P2 pad labels keep screen semantics (< is screen-left) so no relabeling is needed
         }
     }

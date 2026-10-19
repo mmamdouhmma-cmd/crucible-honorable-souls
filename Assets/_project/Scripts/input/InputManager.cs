@@ -130,6 +130,8 @@ public class InputManager : MonoBehaviour
             data.lightAttack |= t.lightAttack;
             data.mediumAttack |= t.mediumAttack;
             data.heavyAttack |= t.heavyAttack;
+            data.defenseButton |= t.defenseButton;
+            data.specialModifier |= t.specialModifier;
             if (t.dashDirection != Vector2.zero) data.dashDirection = t.dashDirection;
         }
         return data;

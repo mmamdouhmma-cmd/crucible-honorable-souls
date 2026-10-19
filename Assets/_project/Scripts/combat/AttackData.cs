@@ -66,6 +66,11 @@ public class ComboLink
     [Tooltip("Button that continues the string.")]
     public AttackType input = AttackType.Heavy;
 
+    [Tooltip("The button must be pressed WITH the special modifier held. Leave off for a plain press. " +
+             "A press that carries the modifier still falls back to a plain link if no modifier link " +
+             "matches, so holding the modifier through a string never swallows its follow-ups.")]
+    public bool withSpecialModifier = false;
+
     [Tooltip("Move that comes out instead of this attack's recovery.")]
     public AttackData followUp;
 
@@ -124,6 +129,12 @@ public class AttackData : ScriptableObject
     [Header("Classification")]
     [SerializeField] private AttackHeight attackHeight = AttackHeight.Mid;
     [SerializeField] private AttackType attackType = AttackType.Light;
+
+    [Tooltip("SPECIALS ONLY: which attack button throws this one while the special modifier is held " +
+             "(L1 on the pad, U on the keyboard). AttackType stays Special, so the clash weights and " +
+             "the anti-spam chain rules keep working; this is the second key that tells the three apart. " +
+             "Ignored unless Attack Type is Special.")]
+    [SerializeField] private AttackType specialButton = AttackType.Light;
 
     [Header("Dodge Rules")]
     [Tooltip("Where the strike comes from, from the attacker's point of view. Decides which dash directions evade it, " +
@@ -222,6 +233,12 @@ public class AttackData : ScriptableObject
     /// <summary>Tier — maps to button input.</summary>
     public AttackType AttackType => attackType;
 
+    /// <summary>Which attack button throws this special while the modifier is held (specials only).</summary>
+    public AttackType SpecialButton => specialButton;
+
+    /// <summary>True if this move is thrown with the special modifier held.</summary>
+    public bool IsSpecial => attackType == AttackType.Special;
+
     /// <summary>Where the strike comes from (attacker's view) — drives dash evasion.</summary>
     public AttackOrigin ComesFrom => comesFrom;
 
@@ -266,15 +283,28 @@ public class AttackData : ScriptableObject
     public int CancelEndFrame =>
         cancelEndFrame < 0 ? startupFrames + activeFrames + recoveryFrames : cancelEndFrame;
 
-    /// <summary>The branch this button opens, or null if the button does not continue this string.</summary>
-    public ComboLink FindLink(AttackType input)
+    /// <summary>
+    /// The branch this press opens, or null if the press does not continue this string.
+    /// A press that carries the special modifier prefers a modifier link and falls back to a plain
+    /// one, so a player holding the modifier through a string still gets its ordinary follow-ups.
+    /// </summary>
+    public ComboLink FindLink(AttackType input, bool special = false)
     {
         if (comboLinks == null) return null;
+        ComboLink plain = null;
         foreach (var link in comboLinks)
         {
-            if (link != null && link.followUp != null && link.input == input) return link;
+            if (link == null || link.followUp == null || link.input != input) continue;
+            if (link.withSpecialModifier)
+            {
+                if (special) return link;
+            }
+            else if (plain == null)
+            {
+                plain = link;
+            }
         }
-        return null;
+        return plain;
     }
 
     /// <summary>

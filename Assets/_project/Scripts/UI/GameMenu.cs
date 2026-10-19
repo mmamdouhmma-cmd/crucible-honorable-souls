@@ -459,18 +459,25 @@ public class GameMenu : MonoBehaviour
         yield return "        A side dash circles your opponent so you stay in range. After a clean dodge you have";
         yield return "        half a second to counter for +35% damage, and the attacker who missed is stuck recovering.";
         yield return "CLASH   Two strikes of equal weight meeting cancel each other. The heavier strike wins otherwise.";
+        yield return "SPECIAL Hold the Special modifier and press a strike for that character's special version of it:";
+        yield return "        three per fighter, one on each button. They hit harder and reach further, cost about two";
+        yield return "        and a half times the stamina, and leave a beat afterwards in which you cannot attack, so";
+        yield return "        a whiffed special is punished. On a phone, tap SP once and it stays lit for your next strike.";
         yield return "KO      Empty your opponent's health bar.";
         yield return "";
         var b = InputManager.Instance != null ? InputManager.Instance.Bindings : ControlBindings.Defaults();
         yield return $"P1 keyboard:  move {ControlBindings.KeyLabel(b.p1.Key(GameAction.MoveLeft))}/{ControlBindings.KeyLabel(b.p1.Key(GameAction.MoveRight))}   " +
                      $"light {ControlBindings.KeyLabel(b.p1.Key(GameAction.Light))}  medium {ControlBindings.KeyLabel(b.p1.Key(GameAction.Medium))}  heavy {ControlBindings.KeyLabel(b.p1.Key(GameAction.Heavy))}   " +
-                     $"block {ControlBindings.KeyLabel(b.p1.Key(GameAction.Block))}  parry {ControlBindings.KeyLabel(b.p1.Key(GameAction.Defense))}   dash {ControlBindings.KeyLabel(b.p1.Key(GameAction.Dash))}";
+                     $"block {ControlBindings.KeyLabel(b.p1.Key(GameAction.Block))}  parry {ControlBindings.KeyLabel(b.p1.Key(GameAction.Defense))}   " +
+                     $"special {ControlBindings.KeyLabel(b.p1.Key(GameAction.Special))}+strike   dash {ControlBindings.KeyLabel(b.p1.Key(GameAction.Dash))}";
         yield return $"P2 keyboard:  move {ControlBindings.KeyLabel(b.p2.Key(GameAction.MoveLeft))}/{ControlBindings.KeyLabel(b.p2.Key(GameAction.MoveRight))}   " +
                      $"light {ControlBindings.KeyLabel(b.p2.Key(GameAction.Light))}  medium {ControlBindings.KeyLabel(b.p2.Key(GameAction.Medium))}  heavy {ControlBindings.KeyLabel(b.p2.Key(GameAction.Heavy))}   " +
-                     $"block {ControlBindings.KeyLabel(b.p2.Key(GameAction.Block))}  parry {ControlBindings.KeyLabel(b.p2.Key(GameAction.Defense))}   dash {ControlBindings.KeyLabel(b.p2.Key(GameAction.Dash))}";
+                     $"block {ControlBindings.KeyLabel(b.p2.Key(GameAction.Block))}  parry {ControlBindings.KeyLabel(b.p2.Key(GameAction.Defense))}   " +
+                     $"special {ControlBindings.KeyLabel(b.p2.Key(GameAction.Special))}+strike   dash {ControlBindings.KeyLabel(b.p2.Key(GameAction.Dash))}";
         var pp = b.Player(b.firstPadPlayer);
         yield return $"Controller (Player {b.firstPadPlayer}):  move stick/d-pad   light {ControlBindings.PadLabel(pp.Pad(GameAction.Light))}  medium {ControlBindings.PadLabel(pp.Pad(GameAction.Medium))}  " +
-                     $"heavy {ControlBindings.PadLabel(pp.Pad(GameAction.Heavy))}   block {ControlBindings.PadLabel(pp.Pad(GameAction.Block))}  parry {ControlBindings.PadLabel(pp.Pad(GameAction.Defense))}   dash: flick right stick   pause: Options";
+                     $"heavy {ControlBindings.PadLabel(pp.Pad(GameAction.Heavy))}   block {ControlBindings.PadLabel(pp.Pad(GameAction.Block))}  parry {ControlBindings.PadLabel(pp.Pad(GameAction.Defense))}   " +
+                     $"special {ControlBindings.PadLabel(pp.Pad(GameAction.Special))}+strike   dash: flick right stick   pause: Options";
         yield return "";
     }
 

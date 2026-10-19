@@ -23,6 +23,12 @@ public class CombatSystem : MonoBehaviour
     [Tooltip("Attacks available to this fighter. First match by AttackType wins.")]
     [SerializeField] private AttackData[] attacks;
 
+    [Tooltip("Specials, thrown with the special modifier held (L1 on the pad, U on the keyboard). " +
+             "Kept apart from the normals so a plain press can never produce one: the button is read " +
+             "from each asset's Special Button. String follow-ups are not listed here either - they " +
+             "hang off their opener's Combo Links.")]
+    [SerializeField] private AttackData[] specials;
+
     [Header("Hitbox")]
     [Tooltip("Hit detector on a child object that this combat system drives.")]
     [SerializeField] private HitDetector hitDetector;
@@ -82,6 +88,7 @@ public class CombatSystem : MonoBehaviour
     // "dial a combo" behaviour every fighting game has, so a follow-up pressed a few frames
     // early still lands instead of being eaten.
     private AttackType bufferedInput;
+    private bool bufferedSpecial;      // the buffered press carried the special modifier
     private bool hasBufferedInput;
     private float bufferTimer;
     private bool attackTouched;        // this swing hit or was blocked
@@ -95,8 +102,12 @@ public class CombatSystem : MonoBehaviour
     [Tooltip("Seconds with no attacking after the same attack is thrown back to back to the limit (0 = use BalanceConfig.ATTACK_CHAIN_LOCKOUT).")]
     [SerializeField] private float sameAttackLockout = 0f;
 
+    [Tooltip("Seconds with no attacking after a SPECIAL runs its course (0 = use BalanceConfig.SPECIAL_LOCKOUT).")]
+    [SerializeField] private float specialLockout = 0f;
+
     private float StringLockout => stringLockout > 0f ? stringLockout : BalanceConfig.STRING_LOCKOUT;
     private float SameAttackLockout => sameAttackLockout > 0f ? sameAttackLockout : BalanceConfig.ATTACK_CHAIN_LOCKOUT;
+    private float SpecialLockout => specialLockout > 0f ? specialLockout : BalanceConfig.SPECIAL_LOCKOUT;
 
     private void Awake()
     {
@@ -240,7 +251,18 @@ public class CombatSystem : MonoBehaviour
         if (currentAttackTime >= total)
         {
             int endedDepth = stringDepth;   // EndAttack clears it, and the lockout below needs it
+            bool endedSpecial = currentAttack.IsSpecial;
             EndAttack();
+
+            // A special is the most expensive thing a fighter can throw, so it costs a beat after it
+            // as well as the stamina: that is what makes a whiffed one punishable instead of simply
+            // repeatable while the bar lasts.
+            if (endedSpecial)
+            {
+                attackLockoutTimer = Mathf.Max(attackLockoutTimer, SpecialLockout);
+                chainCount = 0;
+                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: special finished - locked out for {SpecialLockout:0.00}s");
+            }
 
             // A string that ran to the end of its last move costs a beat, however it was built: a
             // combo is not a way to attack more often than a single swing. Checked before the repeat
@@ -277,7 +299,7 @@ public class CombatSystem : MonoBehaviour
     {
         if (currentAttack == null || !currentAttack.HasComboLinks) return false;
 
-        var link = currentAttack.FindLink(bufferedInput);
+        var link = currentAttack.FindLink(bufferedInput, bufferedSpecial);
         if (link == null) return false;
 
         int frame = Mathf.FloorToInt(currentAttackTime / BalanceConfig.FRAME_TIME);
@@ -378,9 +400,10 @@ public class CombatSystem : MonoBehaviour
     }
 
     /// <summary>Remembers a press that cannot come out yet (see the buffer fields).</summary>
-    private void BufferInput(AttackType attackType)
+    private void BufferInput(AttackType attackType, bool special)
     {
         bufferedInput = attackType;
+        bufferedSpecial = special;
         hasBufferedInput = true;
         float hold = BalanceConfig.INPUT_BUFFER_FRAMES * BalanceConfig.FRAME_TIME;
 
@@ -388,7 +411,7 @@ public class CombatSystem : MonoBehaviour
         // window has passed rather than for the flat buffer. Otherwise a player who taps the
         // follow-up straight after the opener - which is how everyone plays strings - would have it
         // expire a frame or two before the window even opens.
-        if (currentAttack != null && currentAttack.FindLink(attackType) != null)
+        if (currentAttack != null && currentAttack.FindLink(attackType, special) != null)
         {
             float windowEnd = (currentAttack.CancelEndFrame + 1) * BalanceConfig.FRAME_TIME;
             hold = Mathf.Max(hold, windowEnd - currentAttackTime);
@@ -396,16 +419,16 @@ public class CombatSystem : MonoBehaviour
         bufferTimer = hold;
     }
 
-   public bool TryAttack(AttackType attackType)
+   public bool TryAttack(AttackType attackType, bool special = false)
 {
     int pn = fighter != null ? fighter.PlayerNumber : 0;
-    Debug.Log($"P{pn}: TryAttack({attackType}) called");
+    Debug.Log($"P{pn}: TryAttack({attackType}{(special ? " + SPECIAL" : "")}) called");
 
     if (isAttacking)
     {
         // A mid-attack press is not thrown away: if this attack links the button the cancel comes
         // out now or on the first legal frame, and if it does not the buffer just expires.
-        BufferInput(attackType);
+        BufferInput(attackType, special);
         if (TryCancelIntoFollowUp()) return true;
         Debug.Log($"P{pn}: buffered {attackType} for {BalanceConfig.INPUT_BUFFER_FRAMES} f - mid-attack");
         return false;
@@ -416,8 +439,22 @@ public class CombatSystem : MonoBehaviour
     if (fighter == null)         { Debug.Log($"P{pn}: BLOCKED - fighter null"); return false; }
     if (fighter.Stats == null)   { Debug.Log($"P{pn}: BLOCKED - Stats null"); return false; }
 
-    AttackData found = FindAttack(attackType);
-    if (found == null) { Debug.Log($"P{pn}: BLOCKED - no AttackData for {attackType}. attacks.Length={(attacks==null?-1:attacks.Length)}"); return false; }
+    AttackData found = FindAttack(attackType, special);
+
+    // The modifier is held, but this fighter has no special on that button: fall through to the
+    // normal rather than eating the press. A player holding the modifier should still be able to
+    // fight, and it keeps every character playable before all three specials are authored.
+    if (found == null && special)
+    {
+        found = FindAttack(attackType, false);
+        if (found != null) Debug.Log($"P{pn}: no special on {attackType} - throwing the normal instead");
+    }
+    if (found == null)
+    {
+        int n = special ? (specials == null ? -1 : specials.Length) : (attacks == null ? -1 : attacks.Length);
+        Debug.Log($"P{pn}: BLOCKED - no AttackData for {attackType}{(special ? " + SPECIAL" : "")}. library length={n}");
+        return false;
+    }
 
     if (!fighter.Stats.HasStamina(found.StaminaCost))
     {
@@ -956,15 +993,22 @@ public class CombatSystem : MonoBehaviour
         }
     }
 
-    private AttackData FindAttack(AttackType attackType)
+    /// <summary>
+    /// The move a press produces. A plain press matches the normals by <see cref="AttackType"/>;
+    /// a press with the special modifier held matches the specials by their Special Button, since
+    /// all three share <see cref="AttackType.Special"/>.
+    /// </summary>
+    private AttackData FindAttack(AttackType attackType, bool special)
     {
-        if (attacks == null) return null;
-        for (int i = 0; i < attacks.Length; i++)
+        AttackData[] library = special ? specials : attacks;
+        if (library == null) return null;
+        for (int i = 0; i < library.Length; i++)
         {
-            if (attacks[i] != null && attacks[i].AttackType == attackType)
-            {
-                return attacks[i];
-            }
+            if (library[i] == null) continue;
+            bool match = special
+                ? library[i].IsSpecial && library[i].SpecialButton == attackType
+                : library[i].AttackType == attackType;
+            if (match) return library[i];
         }
         return null;
     }

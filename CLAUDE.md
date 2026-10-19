@@ -964,5 +964,55 @@ is wired into the game.
   SP+Medium `slash (4)`, SP+Heavy `great sword attack` (the double thrust). All four of Bjorn's
   picks are one-handed clips leaning on `TwoHandGrip`'s IK; run `mixamo_carry2h.py` into
   `AxePack2H/` if a left arm stretches.
-- **Next: Task 2**, the special-attack input layer (`SP + Light/Medium/Heavy`; `InputData.specialModifier`
-  already exists and is read by `InputManager` but used by nothing), then Task 3 wires these clips in.
+### 2026-10-19 (later still) - Lite Task 2: the special-attack input layer
+
+`SP + Light/Medium/Heavy` now throws specials. Built and **play-verified**; the clips and the six
+real assets are Task 3, so nothing is authored yet.
+
+- **Two keys, one enum.** `AttackType.Special` is a single value but there are three specials, so
+  `AttackData.specialButton` (Light/Medium/Heavy) is the second key and `CombatSystem.specials` is a
+  separate serialized library beside `attacks`. `FindAttack(button, special)` searches one or the
+  other, so **a plain press can never produce a special** and a special never shadows a normal.
+  `AttackType` stays `Special`, which keeps the clash weights and the anti-spam chain rules working.
+- `TryAttack(AttackType, bool special = false)` - the default keeps every existing caller (the AI,
+  the tests) compiling unchanged. `Fighter.HandleCombatInput` reads `currentInput.specialModifier`
+  on the frame the attack button is pressed (the modifier is a HOLD).
+- **Fall-through:** the modifier held on a button with no special throws the NORMAL instead of eating
+  the press (`no special on <button> - throwing the normal instead`), so every character stays
+  playable before all three are authored and holding L1 never bricks the buttons.
+- **Cost and lockout:** stamina comes from the asset (2.5x the matching normal per the user's rule),
+  plus `BalanceConfig.SPECIAL_LOCKOUT` = **1.0 s** applied through the existing `attackLockoutTimer`
+  when a special runs its course, overridable per fighter via serialized `specialLockout`
+  (0 = fall through). `Mathf.Max` with the string/chain lockouts, so the longest wins.
+- **Combo links can require the modifier:** new `ComboLink.withSpecialModifier`, and the buffer
+  remembers whether the press carried it (`bufferedSpecial`). `FindLink(button, special)` prefers a
+  modifier link and **falls back to a plain one**, so a player who holds the modifier through a
+  string still gets its ordinary follow-ups. Existing links are unaffected (the flag defaults false).
+  This is what Task 4's `normal -> special` combos will hang off.
+- **Touch:** an `SP` button inboard of the strikes that **latches** for `specialLatchSeconds` (1 s)
+  on a tap and lights up while armed, because a modifier is a hold and a thumb cannot do both. The
+  next strike spends the latch. **Not verified - the CLI cannot press it.**
+- **Two bugs found and fixed on the way:** (1) the touch **PARRY** button has never worked -
+  `TouchControls.Read` has set `defenseButton` since the parry session but `InputManager` never
+  merged it into the snapshot; (2) the net protocol (`I ...`) carried neither `specialModifier` nor
+  `defenseButton`, so an **online guest could not throw a special or parry at all**. Both now cross
+  the wire as fields 8 and 9, guarded by `p.Length` so a shorter line from an older build still parses.
+- Help screen gained a SPECIAL entry and all three control summaries print the modifier key. The
+  Controls menu already iterates every `GameAction`, so Special was already rebindable.
+- **Play-verified** (stand-in special injected by reflection, no asset committed): `SP+Light` →
+  `TEST Special (Light) STARTED`, type Special, stamina 100→62; `P1 ... HIT P2 for 12 dmg`;
+  `special finished - locked out for 10.00s` (the override raised to 10 s on purpose - see below);
+  plain `Light` → `Slash STARTED` (the normal); `SP+Medium` → `no special on Medium - throwing the
+  normal instead` → `Spinning Slash STARTED`.
+- **Testing notes:** `GameMenu.StartMatch` is **public** now, so the session log's instruction to
+  reach it with `GetMethod(..., NonPublic|Instance)` returns null - call it directly. The 1.0 s
+  special lockout is shorter than a CLI round trip and cannot be caught by polling: raise the
+  serialized `specialLockout` to ~10 s for the probe, or read the console log line. `eval_file`
+  takes `--file`, rejects a top-level `using` (fully-qualify `System.Reflection.BindingFlags`), and
+  trips on ambiguous `Object` (use `UnityEngine.Object`); `DebugTimeScale.Apply` is private, so set
+  `timeScale` and let its `LateUpdate` re-assert it. `console --tail N` returns full stack traces -
+  filter hard.
+- **Next: Task 3**, the six special `AttackData` assets from the agreed clips (frame data from
+  18/5/20 for 14-16 damage), each with a `swing_contacts.json` entry, a `WeaponAim` mode, lunge
+  tuning, a `CrucibleMixamoSetup` map entry and an animator trigger + Any State -> state whose name
+  matches the asset.

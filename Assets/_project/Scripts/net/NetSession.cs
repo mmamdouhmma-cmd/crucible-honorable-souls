@@ -191,6 +191,7 @@ public class NetSession : MonoBehaviour
             {
                 InputManager.Instance.SetAiInput(2, guestInput);
                 guestInput.lightAttack = guestInput.mediumAttack = guestInput.heavyAttack = false;
+                guestInput.defenseButton = false;   // a press fires once; the modifier is a hold and persists
                 guestInput.dashDirection = Vector2.zero;
             }
             if (Time.unscaledTime >= nextSend)
@@ -206,9 +207,10 @@ public class NetSession : MonoBehaviour
             if (im != null && im.InputEnabled)
             {
                 InputData d = im.GetPlayer1Input();
-                Send(string.Format(CultureInfo.InvariantCulture, "I {0} {1} {2} {3} {4} {5:0.##} {6:0.##}",
+                Send(string.Format(CultureInfo.InvariantCulture, "I {0} {1} {2} {3} {4} {5:0.##} {6:0.##} {7} {8}",
                     d.moveDirection, d.blockHeld ? 1 : 0, d.lightAttack ? 1 : 0, d.mediumAttack ? 1 : 0, d.heavyAttack ? 1 : 0,
-                    d.dashDirection.x, d.dashDirection.y));
+                    d.dashDirection.x, d.dashDirection.y,
+                    d.specialModifier ? 1 : 0, d.defenseButton ? 1 : 0));
             }
             // smooth toward the host's positions
             for (int i = 0; i < fighters.Length; i++)
@@ -263,6 +265,10 @@ public class NetSession : MonoBehaviour
                     guestInput.heavyAttack |= p[5] == "1";
                     var dash = new Vector2(F(p[6]), F(p[7]));
                     if (dash != Vector2.zero) guestInput.dashDirection = dash;
+                    // Added after the first test build, so an older guest simply sends a shorter line:
+                    // the modifier is a hold (assign), the parry is a press (latch until consumed).
+                    if (p.Length >= 9) guestInput.specialModifier = p[8] == "1";
+                    if (p.Length >= 10) guestInput.defenseButton |= p[9] == "1";
                     guestInputFresh = true;
                 }
             }

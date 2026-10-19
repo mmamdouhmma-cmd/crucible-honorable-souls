@@ -757,23 +757,28 @@ private void HandleKnockback()
     }
 
     /// <summary>
-    /// Routes attack-button presses to <see cref="CombatSystem.TryAttack"/>.
+    /// Routes attack-button presses to <see cref="CombatSystem.TryAttack"/>. The special modifier
+    /// (L1 on the pad, U on the keyboard, the latching SP button on touch) is a HOLD, so it is read
+    /// on the frame the attack button is pressed: modifier + button picks a special, the bare button
+    /// picks the normal.
     /// </summary>
     private void HandleCombatInput()
     {
         if (combatSystem == null) return;
 
+        bool special = currentInput.specialModifier;
+
         if (currentInput.lightAttack)
         {
-            combatSystem.TryAttack(AttackType.Light);
+            combatSystem.TryAttack(AttackType.Light, special);
         }
         else if (currentInput.mediumAttack)
         {
-            combatSystem.TryAttack(AttackType.Medium);
+            combatSystem.TryAttack(AttackType.Medium, special);
         }
         else if (currentInput.heavyAttack)
         {
-            combatSystem.TryAttack(AttackType.Heavy);
+            combatSystem.TryAttack(AttackType.Heavy, special);
         }
     }
 

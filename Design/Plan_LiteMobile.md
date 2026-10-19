@@ -137,7 +137,21 @@ and all damage was cut 30% on 2026-10-18 after these were written.
 
 ---
 
-## Task 2 — the special-attack input layer
+## Task 2 — the special-attack input layer — DONE 2026-10-19
+
+> Built and play-verified. `SP + button` routes to a separate `specials` library keyed by a new
+> `AttackData.specialButton`, costs the authored stamina, and locks attacking out for
+> `BalanceConfig.SPECIAL_LOCKOUT` (1.0 s, serialized per fighter) once the special runs its course.
+> Verified in play with a stand-in special: `SP+Light` came out as the Special and spent 38 stamina,
+> a plain `Light` still gave the normal, `SP+Medium` with no medium special fell through to the
+> normal, and the console logged `special finished - locked out for ...`.
+>
+> Two bugs fixed in passing: the touch **PARRY** button has never worked (`TouchControls` set
+> `defenseButton` but `InputManager` never merged it), and the net protocol carried neither the
+> modifier nor the parry, so an online guest could do neither. Both now cross the wire.
+>
+> Still unverified: the touch **SP** latch, which needs a real finger (the CLI cannot press it).
+> The AI still never holds the modifier, so it cannot throw a special — that is Task 7.
 
 Small and self-contained, because the modifier already reaches the fighter.
 

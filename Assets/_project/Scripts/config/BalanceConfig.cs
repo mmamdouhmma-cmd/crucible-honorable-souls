@@ -72,6 +72,13 @@ public static class BalanceConfig
     public const float STRING_LOCKOUT = 1.5f;   // seconds locked out of every attack after the last repeat
     public const float ATTACK_CHAIN_WINDOW = 0.6f;    // gap after an attack ends that still counts as the same chain
 
+    /// <summary>
+    /// Seconds a fighter cannot attack after a SPECIAL runs its course. A special already costs
+    /// 2.5x the stamina of the matching normal; the lockout is what stops it being opened with
+    /// every time the bar allows, and leaves the beat that makes a whiffed one punishable.
+    /// </summary>
+    public const float SPECIAL_LOCKOUT = 1.0f;
+
     // ---- Strings (combos) ----
     // A press that arrives while the fighter is mid-attack is held for this long and comes out on
     // the first frame the cancel window allows, so a follow-up pressed slightly early is not eaten.
