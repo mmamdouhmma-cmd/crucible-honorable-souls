@@ -1,5 +1,10 @@
 # Two-week plan — 2026-10-17 → 2026-10-31
 
+> **SUPERSEDED on 2026-10-19 by `Design/Plan_LiteMobile.md`.** The user re-cut the scope after
+> testing: grabs, low attacks, low block, trips and the tackle are out for now, and the slice is
+> mobile-first. Read the lite plan, not this one. Kept for the design reasoning in items 5 and 6,
+> which still applies whenever heights and grabs come back.
+
 Agreed with the user on 2026-10-17. Their order, with three deltas marked **[delta]**.
 
 Target: **specials, combos, dash counter, parry, lows + trips, low block, 2 grabs each** —

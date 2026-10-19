@@ -113,10 +113,22 @@ ANIM: squat, then a jumping rising cut; feet leave the ground for 6 frames, the 
       the head, heavy landing with a stagger step.
 ```
 
-## SPECIAL ATTACKS — default (L1 + button)  ·  PARKED (2026-10-17)
+## SPECIAL ATTACKS — default (L1 + button)  ·  **REVIVED 2026-10-19**
 
-Designed but not planned for the current pass - the user dropped these three from the
-fortnight on 2026-10-17. Kept here for a later one.
+Back in scope, and these three ARE the lite slice's specials: on 2026-10-19 the user confirmed
+the input as **modifier button + attack button, no direction**, which is exactly the L1 + button
+written here. To be confirmed move by move at the start of the next session. Three overrides
+apply when they are authored as assets (see `Design/Plan_LiteMobile.md`):
+
+1. **Stamina is the user's rule, not the number below:** 2.5x the matching normal, so light 38,
+   medium 43, heavy 43-48 out of 100 - well above the 12-28 authored here. Plus a ~1 s lockout
+   before the next attack.
+2. **The exotic properties are deferred**, because each needs a system that does not exist:
+   multi-hit, armour frames, guard-crush, counter-stance, and the self-propelled "moves X"
+   advance. Lite keeps damage, frames, reach, hit side and evade directions; the rest comes back
+   with its system.
+3. **No second weapon exists.** Miyamoto's Nitō Cross draws a wakizashi, which is not modelled -
+   it needs re-casting as a katana move or swapping for another of his specials.
 
 ```
 LIGHT SPECIAL · L1+□ — "Haft Strike"
@@ -292,10 +304,22 @@ ANIM: crouching rising cut that continues over the head into a one-footed stance
       body fully extended. The finish pose holds 4 frames before recovery.
 ```
 
-## SPECIAL ATTACKS — default (L1 + button)  ·  PARKED (2026-10-17)
+## SPECIAL ATTACKS — default (L1 + button)  ·  **REVIVED 2026-10-19**
 
-Designed but not planned for the current pass - the user dropped these three from the
-fortnight on 2026-10-17. Kept here for a later one.
+Back in scope, and these three ARE the lite slice's specials: on 2026-10-19 the user confirmed
+the input as **modifier button + attack button, no direction**, which is exactly the L1 + button
+written here. To be confirmed move by move at the start of the next session. Three overrides
+apply when they are authored as assets (see `Design/Plan_LiteMobile.md`):
+
+1. **Stamina is the user's rule, not the number below:** 2.5x the matching normal, so light 38,
+   medium 43, heavy 43-48 out of 100 - well above the 12-28 authored here. Plus a ~1 s lockout
+   before the next attack.
+2. **The exotic properties are deferred**, because each needs a system that does not exist:
+   multi-hit, armour frames, guard-crush, counter-stance, and the self-propelled "moves X"
+   advance. Lite keeps damage, frames, reach, hit side and evade directions; the rest comes back
+   with its system.
+3. **No second weapon exists.** Miyamoto's Nitō Cross draws a wakizashi, which is not modelled -
+   it needs re-casting as a katana move or swapping for another of his specials.
 
 ```
 LIGHT SPECIAL · L1+□ — "Nukitsuke"

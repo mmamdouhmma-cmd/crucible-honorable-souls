@@ -89,6 +89,31 @@ entry (contact frame + speed), a `WeaponAim` mode, and lunge tuning. Mechanical,
 
 **Done when:** a clip is agreed for all 6 specials and both ripostes per character.
 
+### The six specials already exist on paper
+
+`Design/Character_Movesets.md` has three **L1 + button** specials authored per character with
+full frame data, damage, hit side, evade directions and animation notes. They were parked on
+2026-10-17 as out of scope - but the input the user confirmed on 2026-10-19 is exactly L1 +
+button, so they are revived and they are the shortlist to confirm:
+
+| | Bjorn | Miyamoto |
+|---|---|---|
+| SP + Light | **Haft Strike** - haft butt punch into a short cut, 14 dmg, 8/6/14, reach 3.0 | **Nukitsuke** - quick-draw horizontal cut with a sliding step, 10 dmg, 9/3/14 |
+| SP + Medium | **Hewing Charge** - three driving steps into a horizontal cut, 16 dmg, 14/6/18 | **Nitō Cross** - scissor cut, 15 dmg, 12/6/16 |
+| SP + Heavy | **Blood Eagle** - spike driven in and ripped back, 24 dmg, 20/6/22 | **Iaijutsu** - stillness, then one draw-cut, 20 dmg, 18/4/18 |
+
+Three things to settle when confirming them:
+
+- **Stamina comes from the user's 2.5x rule** (38 / 43 / 43-48), not the 12-28 authored there.
+- **The exotic properties are deferred** - multi-hit, armour frames, guard-crush, counter-stance
+  and the self-propelled advance each need a system that does not exist. Lite keeps damage,
+  frames, reach, hit side and evade directions.
+- **Nitō Cross draws a wakizashi, which is not modelled.** Re-cast it as a katana move or swap
+  it for another special.
+
+Damage also wants a look: 24 for Blood Eagle against the current heavy's 11 is more than double,
+and all damage was cut 30% on 2026-10-18 after these were written.
+
 ---
 
 ## Task 2 — the special-attack input layer

@@ -885,3 +885,19 @@ The next session starts at its Task 1.**
     off so the recovery is the only heal in the fight.
   - The only control change left in the plan is the touch `SP` button, which has to LATCH for ~1 s:
     a modifier is a hold, and a thumb cannot hold two buttons at once.
+  - **The three specials per character already exist on paper and are now revived.**
+    `Design/Character_Movesets.md` authored a `L1 + button` trio for each fighter on 2026-10-11 with
+    full frame data, damage, hit side, evade directions and animation notes; they were parked on
+    2026-10-17 as out of scope. The input the user confirmed on 2026-10-19 **is** L1 + button, so
+    both sections are un-parked and they are the shortlist to confirm next session: Bjorn
+    **Haft Strike / Hewing Charge / Blood Eagle**, Miyamoto **Nukitsuke / Nitō Cross / Iaijutsu**.
+    Three overrides are recorded in both docs: stamina comes from the 2.5x rule (38 / 43 / 43-48,
+    not the 12-28 written there); the exotic properties are deferred because each needs a system
+    that does not exist (multi-hit, armour frames, guard-crush, counter-stance, the self-propelled
+    advance); and **Nitō Cross draws a wakizashi, which is not modelled** - it needs re-casting as a
+    katana move or swapping out. Their damage also predates the 30% cut of 2026-10-18 (Blood Eagle
+    24 against the current heavy's 11), so it wants a look.
+  - `Design/Plan_2Weeks.md` now carries a **SUPERSEDED** header pointing at the lite plan, so there
+    is no ambiguity about which plan is live.
+  - Still to confirm next session, neither blocking: whether a string may repeat the same normal
+    (`normal -> normal` on one button), and what replaces Nitō Cross if the wakizashi is out.
