@@ -50,7 +50,16 @@ the hidden passive regen off at the same time matters — today both fighters qu
 
 ---
 
-## Task 1 — cast the animations from the Mixamo pool (START HERE)
+## Task 1 — cast the animations from the Mixamo pool — MEASURED 2026-10-19, awaiting confirmation
+
+> **Done:** `Design/Anim_Inventory.md` holds all 32 clips measured, with a recommended clip for each
+> of the 6 specials and 4 ripostes, and the corrections the measurements forced on the proposal
+> below (there is **no thrust** in either pack; `great sword attack` never extends past its own
+> guard; the two `impact` clips are flinches, not attacks; the advancing clips' root motion is
+> thrown away so an advancing special needs a big `lungeMaxDistance`, not root motion; Bjorn's
+> `Haft Strike` and `Blood Eagle` have no clip at all and need re-designing). **`Nitō Cross` is
+> answered: `great sword slash (4)`**, a full-turn rising cut, which keeps it a katana move.
+> What is still needed is the user picking or swapping each slot.
 
 The user's blocker is animations, and the answer is that the project already owns far more than it
 uses: **98 clips in the two Mixamo packs, only 20 of them mapped.**
@@ -73,7 +82,11 @@ importer's `mirror` flag plus per-state trim and speed effectively double the po
 need `ArtSource/Blender/mixamo_carry2h.py` first, because Bjorn's axe is two-handed and the raw
 clips carry one-handed; greatsword clips already read two-handed.
 
-**First-pass proposal, to confirm against the curves:**
+**First-pass proposal — SUPERSEDED by the measured recommendations in `Design/Anim_Inventory.md`.**
+Kept for the record; four of its ten picks did not survive the curves (`great sword attack` is not a
+thrust, `slide attack` was proposed for two different slots and is a 2.17 s leaping spin,
+`slash (4)` moved from Miyamoto's heavy to his medium, `melee attack downward` was already rejected
+for bottoming out at the left hip):
 
 | Slot | Bjorn (axe) | Miyamoto (katana) |
 |---|---|---|
@@ -109,7 +122,11 @@ Three things to settle when confirming them:
   and the self-propelled advance each need a system that does not exist. Lite keeps damage,
   frames, reach, hit side and evade directions.
 - **Nitō Cross draws a wakizashi, which is not modelled.** Re-cast it as a katana move or swap
-  it for another special.
+  it for another special. **Answered 2026-10-19:** `great sword slash (4)`, a full-turn rising
+  cut, keeps it a katana move — see `Design/Anim_Inventory.md`.
+- **Haft Strike and Blood Eagle have no clip in either pack** (2026-10-19). The inventory
+  substitutes a reverse horizontal and a leaping chop, so both moves need renaming or
+  re-designing to match what the animation can actually show.
 
 Damage also wants a look: 24 for Blood Eagle against the current heavy's 11 is more than double,
 and all damage was cut 30% on 2026-10-18 after these were written.

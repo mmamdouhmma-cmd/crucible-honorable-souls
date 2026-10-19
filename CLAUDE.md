@@ -901,3 +901,52 @@ The next session starts at its Task 1.**
     is no ambiguity about which plan is live.
   - Still to confirm next session, neither blocking: whether a string may repeat the same normal
     (`normal -> normal` on one button), and what replaces Nitō Cross if the wakizashi is out.
+
+### 2026-10-19 (later) - Lite Task 1: the Mixamo pool measured, clips cast
+
+`Design/Anim_Inventory.md` is the deliverable: all 32 attack-shaped clips in the two packs measured
+(26 unused candidates + the 6 already in the game as calibration references), with a recommended
+clip for each of the 6 specials and 4 ripostes. **Awaiting the user's pick/swap per slot** - nothing
+is wired into the game.
+
+- **`ArtSource/Blender/clip_curves.py` rebuilt** (the version used on 2026-10-12 lived in a
+  scratchpad and was gone). Headless, whole set in one Blender run; reports per frame, in the
+  fighter's own frame: right-hand path + a weapon-tip proxy (hand + 0.70 m along the grip line),
+  unwrapped hip yaw, the swing core (tip speed >= 30% of peak), the tip's centre-line crossing
+  (contact candidate), foot speed/height/reach, and hip travel. Summary committed at
+  `ArtSource/Blender/clip_curves.json` (per-frame detail stripped; re-run for it).
+- **Three measurement traps, all fixed in the script** - worth knowing before trusting any re-run:
+  facing must come from the **hip-joint line**, not a hips *bone* axis (a bone axis tilts toward
+  vertical when the pelvis pitches and its ground projection swings wildly - that read as 728 deg of
+  yaw on the jump attack); the tip proxy must know the **grip** (GreatSword clips have the hands
+  0.11-0.20 apart, AxePack clips 0.69-1.08, where the handle continues the FOREARM instead); and a
+  kick must be judged against **tip** speed, not hand speed (in a body-driven sweep the hand barely
+  moves while the blade flies, which labelled three sword cuts as kicks). Silhouette is now one arc
+  label plus independent modifiers, because `great sword kick` is a kick AND a 360.
+- **Accuracy, against the five already calibrated with `BladeTrace`:** single-arc cuts land within
+  **+-2 frames** of the in-game contact (horizontal 26.7 vs 28.7, great sword slash 19.9 vs 21.5,
+  slash (3) 29.6 vs 28.1). **On a spin the script finds the FIRST pass of the blade**, which is
+  usually not the one wanted (both in-game spins were deliberately re-cut to a later sweep), so a
+  spinning clip's contact must still be calibrated in game.
+- **Four corrections the numbers forced on the plan's proposal:** `great sword attack` is **not a
+  thrust** - the blade winds back/left and returns, never reaching further forward than its own
+  guard, and **neither pack contains a thrust** (Miyamoto's `..._Light_Thrust` is already played by
+  a diagonal cut); `great sword impact (4)`/`(5)` are **flinches** (peak tip 0.05/0.08), useful
+  later as extra reactions; the **advancing clips' root motion is discarded** (XZ off the Animator,
+  and the fighters' Rigidbody freezes X/Z, so root motion is not an option) - `run jump attack`
+  3.64 m, `jump attack` 3.19 m, `slide attack` 3.49 m, `slash (2)` 3.10 m all play in place, so an
+  advancing special needs a large `AttackData.lungeMaxDistance` instead; and both `disarm` clips end
+  **38 deg off-facing**.
+- **Design consequences for the user to settle:** Bjorn's authored `Haft Strike` (haft-butt punch)
+  and `Blood Eagle` (spike driven in and ripped back) **have no clip in either pack** and cannot be
+  trimmed into one, so they need renaming or re-designing. **Nitō Cross is answered** -
+  `great sword slash (4)`, a full-turn rising cut, keeps it a katana move and sidesteps the
+  unmodelled wakizashi. `Iaijutsu` has a tempting literal fit in `draw a great sword 1` (15 f, fast
+  upward draw) but its hands are 0.81 apart around a scabbard the model does not have.
+- Recommended: Bjorn backhand / 360 low / run jump attack, dash riposte `combo attack ver. 3`
+  (fastest tip + tightest core in either pack), parry riposte `kick ver. 2` (shortest clip, furthest
+  foot). Miyamoto `slash (5)` / `slash (4)` / `jump attack` (727 deg double spin), dash riposte
+  `great sword kick` (spinning, furthest foot, ends square), parry riposte `kick (2)` (front push
+  kick, contact at 0.88 of the clip so it needs a tight trim). All four of Bjorn's picks are
+  one-handed clips leaning on `TwoHandGrip`'s IK; run `mixamo_carry2h.py` into `AxePack2H/` if a
+  left arm stretches.
