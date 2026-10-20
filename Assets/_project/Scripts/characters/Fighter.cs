@@ -22,6 +22,27 @@ public class Fighter : MonoBehaviour
     [Tooltip("1 = Player 1 (keyboard), 2 = Player 2 (controller).")]
     public int playerNumber = 1;
 
+    [Header("Vitals")]
+    [Tooltip("Max health for THIS fighter. -1 takes the FighterData value. Both fighters share one " +
+             "FighterData asset today, so this is how they get different vitals; the HUD shows a " +
+             "percentage, so the numbers need not match each other.")]
+    [SerializeField] private int maxHealth = -1;
+
+    [Tooltip("Max stamina for THIS fighter. -1 takes the FighterData value.")]
+    [SerializeField] private int maxStamina = -1;
+
+    [Tooltip("Damage reduction percent (0-100) for THIS fighter. -1 takes the FighterData value.")]
+    [SerializeField] private int armor = -1;
+
+    /// <summary>Max health this fighter starts a match with: its own value, else the archetype's.</summary>
+    public int MaxHealth => maxHealth > 0 ? maxHealth : (fighterData != null ? fighterData.MaxHealth : 100);
+
+    /// <summary>Max stamina this fighter starts a match with: its own value, else the archetype's.</summary>
+    public int MaxStamina => maxStamina > 0 ? maxStamina : (fighterData != null ? fighterData.MaxStamina : 100);
+
+    /// <summary>Armor percent for this fighter: its own value, else the archetype's.</summary>
+    public int Armor => armor >= 0 ? armor : (fighterData != null ? fighterData.Armor : 0);
+
     [Header("Runtime State")]
     [SerializeField] private FighterStats stats;
 
@@ -191,6 +212,31 @@ public class Fighter : MonoBehaviour
     [Tooltip("Health regained per second while alive. Keep it small; 0 turns regeneration off. Set per character.")]
     [SerializeField] private float healthRegenPerSecond = BalanceConfig.DEFAULT_HEALTH_REGEN_PER_SECOND;
 
+    [Header("Defensive recovery")]
+    [Tooltip("Health given back for a dash that made a strike miss, as a fraction of THIS fighter's max health.")]
+    [SerializeField] private float healOnDodge = BalanceConfig.HEAL_ON_DODGE;
+
+    [Tooltip("Health given back for a parry, as a fraction of max health.")]
+    [SerializeField] private float healOnParry = BalanceConfig.HEAL_ON_PARRY;
+
+    [Tooltip("Health given back for landing the counter a dodge or parry earned, as a fraction of max health.")]
+    [SerializeField] private float healOnCounterHit = BalanceConfig.HEAL_ON_COUNTER_HIT;
+
+    [Tooltip("Total recovery allowed in one round, as a fraction of max health. 0 = no cap.")]
+    [SerializeField] private float healCapPerRound = BalanceConfig.HEAL_CAP_PER_ROUND;
+
+    [Tooltip("Seconds the HUD shows the \"+N%\" recovery float.")]
+    [SerializeField] private float healFlashDuration = 1.1f;
+
+    private float healFlashTimer = 0f;
+    private int healFlashAmount = 0;
+
+    /// <summary>Seconds left on the HUD's "+N%" recovery float (0 when nothing to show).</summary>
+    public float HealFlashTimeLeft => Mathf.Max(healFlashTimer, 0f);
+
+    /// <summary>Health points given by the most recent defensive recovery.</summary>
+    public int HealFlashAmount => healFlashAmount;
+
     [Tooltip("Seconds after taking a hit (blocked or not) before health regeneration starts again.")]
     [SerializeField] private float healthRegenDelay = BalanceConfig.DEFAULT_HEALTH_REGEN_DELAY;
     private float healthRegenDelayTimer = 0f;
@@ -250,7 +296,7 @@ public class Fighter : MonoBehaviour
 
         if (fighterData != null)
         {
-            stats = new FighterStats(fighterData.MaxHealth, fighterData.MaxStamina, fighterData.Armor);
+            stats = new FighterStats(MaxHealth, MaxStamina, Armor);
         }
 
         // Starting side based on player number; HandleFacing keeps it up to date after that
@@ -317,6 +363,8 @@ public class Fighter : MonoBehaviour
         {
             clashFlashTimer -= Time.deltaTime;
         }
+        if (healFlashTimer > 0f) healFlashTimer -= Time.deltaTime;
+
         if (parryCounterTimer > 0f)
         {
             parryCounterTimer -= Time.deltaTime;
@@ -476,9 +524,31 @@ public class Fighter : MonoBehaviour
         parryCounterTimer = parryCounterWindow;
         parryFlashTimer = BalanceConfig.CLASH_HUD_FLASH_DURATION;
         if (stats != null && parrySuperGain > 0) stats.AddSuperBar(parrySuperGain);
+        RecoverHealth(healOnParry, "parry");
 
         // A parry is a clean defence, so it deliberately leaves any pending dash counter alone.
         Debug.Log($"P{playerNumber}: PARRY - counter window {parryCounterWindow:0.00}s, +{parrySuperGain} super");
+    }
+
+    /// <summary>
+    /// Gives health back for a successful defence and flashes it on the HUD. One place, so dodge,
+    /// parry and counter hit cannot drift apart, and so the cap is applied to all three.
+    /// </summary>
+    /// <param name="fraction">Share of max health, from the serialized per-fighter values.</param>
+    /// <param name="reason">What earned it, for the log.</param>
+    public void RecoverHealth(float fraction, string reason)
+    {
+        if (stats == null || isDead) return;
+        int given = stats.HealFraction(fraction, healCapPerRound);
+        if (given <= 0) return;
+
+        healFlashAmount = given;
+        healFlashTimer = healFlashDuration;
+        if (debugLogs)
+        {
+            Debug.Log($"P{playerNumber}: +{given} hp from the {reason} " +
+                      $"({stats.currentHealth}/{stats.maxHealth})");
+        }
     }
 
     /// <summary>
@@ -559,7 +629,7 @@ private float lungeDuration; // seconds: startup + half the active window, eased
 /// <summary>Fresh stats, no dash/knockback/block/attack, back on the spawn mark (new match or back to the menu).</summary>
 public void ResetForMatch(Vector3 position, Quaternion rotation)
 {
-    if (fighterData != null) stats = new FighterStats(fighterData.MaxHealth, fighterData.MaxStamina, fighterData.Armor);
+    stats = new FighterStats(MaxHealth, MaxStamina, Armor);
     isDashing = false;
     dashTimer = 0f;
     dashCounterTimer = 0f;
@@ -571,6 +641,8 @@ public void ResetForMatch(Vector3 position, Quaternion rotation)
     parryFlashTimer = 0f;
     parryActiveTimer = 0f;
     parryCooldownTimer = 0f;
+    healFlashTimer = 0f;
+    healFlashAmount = 0;
     isDead = false;
     lastDodgeDustTime = -99f;
     lungeStarted = false;
@@ -1005,14 +1077,19 @@ public void NotifyEvaded(bool counterAllowed)
 {
     if (counterAllowed) dodgedAttackThisDash = true;
 
-    // A loud puff at the feet the moment the strike is judged to have missed. Both evade paths
-    // (hitbox arming and trigger contact) can report the same dodge, hence the short guard.
-    if (dustEffects && Time.time - lastDodgeDustTime > 0.15f)
-    {
-        lastDodgeDustTime = Time.time;
-        HitEffects.SpawnDust(FeetPosition(), BodyRadius, Mathf.Max(1f, dodgeDustStrength));
-    }
+    // Both evade paths (hitbox arming and trigger contact) can report the SAME dodge, so the puff
+    // and the health it gives back are gated together on one short guard - otherwise a dodge pays
+    // out twice.
+    bool firstReport = Time.time - lastDodgeDustTime > 0.15f;
+    if (!firstReport) return;
+    lastDodgeDustTime = Time.time;
+
+    if (dustEffects) HitEffects.SpawnDust(FeetPosition(), BodyRadius, Mathf.Max(1f, dodgeDustStrength));
+    RecoverHealth(healOnDodge, "dodge");
 }
+
+/// <summary>Health for landing the punish a dodge or parry earned (called by CombatSystem).</summary>
+public void RecoverHealthForCounterHit() => RecoverHealth(healOnCounterHit, "counter hit");
 
 /// <summary>Human-readable dash direction for logs, e.g. "forward-left".</summary>
 public string DescribeDash()

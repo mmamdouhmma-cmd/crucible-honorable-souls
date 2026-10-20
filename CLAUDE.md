@@ -957,6 +957,93 @@ why a move always finished inside one CLI round trip. At a real 0.05 the Editor'
 about 0.05 game-seconds per real second, which is slow enough to dial a three-hit string across
 three round trips.
 
+### 2026-10-20 - Lite Task 5: counter ripostes, defensive health recovery, per-fighter vitals
+
+All **play-verified**. Also carries the user's two additions: each fighter has its own health and
+stamina, and the HUD reads in percent rather than points.
+
+**Per-fighter vitals.** `Fighter` gained `maxHealth` / `maxStamina` / `armor` under a Vitals header,
+each **-1 = take the FighterData value**, with `MaxHealth` / `MaxStamina` / `Armor` properties that
+both `FighterStats` construction sites now go through. Scene: **Bjorn 90 hp / 100 stam / 15% armor,
+Miyamoto 85 / 100 / 10%**, the numbers in `Design/Character_Stats.md`. This is deliberately NOT a
+second `FighterData` asset: both fighters still share `testfighter_data.asset` (which is why the HUD
+still names them both "test Fighter"), and splitting that is a design pass with real balance
+consequences. Note the sheet's health values make fights ~12% shorter than the 100/100 they were
+tuned at.
+
+**The HUD health number is a percentage** (`82%`), ceil so any health left shows at least 1%. With
+different maxima the raw points read as one fighter simply having more bar than the other.
+
+**Defensive recovery.** New `BalanceConfig.HEAL_ON_DODGE` / `HEAL_ON_PARRY` (0.02) /
+`HEAL_ON_COUNTER_HIT` (0.03) / `HEAL_CAP_PER_ROUND` (**0 = off**), all fractions of the recovering
+fighter's OWN max health so the two fighters get the same share of bar. `FighterStats.HealFraction`
+does the work and keeps `healedThisRound` for the cap; `Fighter.RecoverHealth` is the single entry
+point, so the three cases cannot drift apart. Serialized per fighter (`healOnDodge`, `healOnParry`,
+`healOnCounterHit`, `healCapPerRound`). The hidden passive `healthRegenPerSecond` is **0 on both
+fighters** - recovery is now the only heal in the fight.
+- The dodge heal sits in `NotifyEvaded` **inside the same guard as the dodge dust**: both evade
+  paths (hitbox arming and trigger contact) report the same dodge, so without that one guard a dodge
+  pays out twice. The guard used to cover only the dust and only when `dustEffects` was on.
+- The counter-hit heal is on the HIT, not on starting the counter: the window is not the reward,
+  cashing it is.
+- HUD: a green `+N%` float over the inner end of the health bar that fades and drifts up
+  (`healColor`, `healFloatFadeOver`, `healFloatRise` on FightHud; `Fighter.HealFlashTimeLeft` /
+  `HealFlashAmount` drive it).
+
+**The four ripostes.** `CombatSystem.dashRiposte` / `parryRiposte` (serialized, null = fall back to
+the normal). A plain strike press inside a counter window throws the riposte instead of the normal,
+so a counter LOOKS like one; **holding the special modifier is the deliberate opt-out**, for
+spending the window on a special instead. Parry counter wins if both windows are somehow open.
+They are in neither library, so nothing else can reach them.
+
+| slot | asset | clip | frames | dmg | stam | weapon? |
+|---|---|---|---|---|---|---|
+| Bjorn dash | `Bjorn_Riposte_Dash` (Axe Riposte) | AxePack `combo attack ver. 3` | 12/4/14 | 9 | 12 | yes |
+| Bjorn parry | `Bjorn_Riposte_Parry` (Boot Riposte) | AxePack `attack kick ver. 2` | 12/4/14 | 8 | 12 | **no** |
+| Miya dash | `Miyamoto_Riposte_Dash` (Spinning Riposte) | GSP `great sword kick` | 12/4/14 | 9 | 12 | **no** |
+| Miya parry | `Miyamoto_Riposte_Parry` (Push Kick Riposte) | GSP `great sword kick (2)` | 20/4/6 | 8 | 12 | **no** |
+
+- **`AttackData.hitsWithWeapon` (new, default true).** Three of the four clips Task 1 cast are
+  KICKS, and hits are judged by sweeping the BLADE - a carried blade never catches a kick, so all
+  three would simply have whiffed. With the flag off the authored front box (`hitboxRange` /
+  `hitboxOffset` / `hitboxSize`, fighter space) judges the authored active window instead. That is
+  the same code the slow-frame fallback already used, now entered on `bodyAttack || slowFrame`;
+  logged as `body attack - front box judged <name>`. Kicks are `aimMode Off` (do not swing the
+  sword at them) with reach 1.8-2.0, against the weapon riposte's 3.0.
+- **Frame data is a single calculation with the clip**, as always: `Miyamoto_Riposte_Parry` is
+  **20/4/6**, not 12/4/14, because its contact sits at source frame 46 of 52 - only 6 frames of
+  clip remain after it, so the window has to be wind-up heavy or it clamps. Fitted windows, none
+  clamped: Bjorn dash 14.6-44.6 of 1-83 (hit at 47%), Bjorn parry 3.8-27.8 of 1-43 (47%), Miya dash
+  1.6-19.6 of 1-46 (47%), Miya parry 29.5-52.0 of 1-52 (73%).
+- Damage is modest **because the counter multiplier rides on top** - the riposte consumes the flag
+  through the existing `ConsumeDashCounter` / `ConsumeParryCounter` in `BeginAttack`, so 9 becomes
+  ~12 on a dash counter and 8 becomes 12 on the scene's x1.5 parry counter. Stamina 12 is cheaper
+  than a light: the punish was earned.
+- **Each riposte links into that fighter's light** (`CrucibleCombos`, openerOnly). Without it,
+  replacing the normal strike would have silently removed the ability to open a string off a
+  counter, which worked before this task.
+- `Crucible > Animation > Wire special states` is now **Wire special and riposte states**: it picks
+  up `*_Riposte_*` by name as well as every Special by weight, since a riposte deliberately carries
+  an ordinary weight (so it clashes normally). Triggers `RiposteDash` / `RiposteParry` on both
+  controllers. Map entries, `swing_trims.json` and `swing_contacts.json` all updated, so
+  `Use Mixamo packs` reproduces the four instead of wiping them.
+- Moves screen: the two ripostes are listed on each fighter's moves page as `[after a dodge]` /
+  `[after a parry]` with their follow-up inline, rather than on the strings page, which is already
+  as long as the panel can hold.
+
+**Verified in play at 2.2-2.3 units:** a forced parry window turned a Light press into
+`Miyamoto_Riposte_Parry` (`RIPOSTE - Push Kick Riposte instead of the Light`), which landed through
+the new path (`body attack - front box judged`) for 10 after armour at x1.5; a forced dash window
+turned a **Heavy** press into `Miyamoto_Riposte_Dash`; Bjorn's weapon riposte landed 11 at x1.35
+through the ordinary blade sweep. Recovery: `+2 hp from the dodge (62/85)`, `+2 hp from the parry
+(64/85)`, `+3 hp from the counter hit (67/85)` and `(73/90)`. HUD captured showing `82%` / `73%`
+and the `+2%` float on both sides.
+
+**Testing note:** `HealFraction` gives nothing at full health, which is correct and is why the first
+riposte run showed no recovery at all - hurt the fighter before testing a heal. Also
+`CombatSystem.isAttacking` is not a reflectable field (a reflection `SetValue` on the null it
+returns is the "Object reference not set" an `eval_file` reports).
+
 ### 2026-10-19 (counters checked after a user report)
 
 User report: "parry and dash counters are no longer multiplies". **Both multipliers are in fact

@@ -128,6 +128,18 @@ public static class BalanceConfig
     public const float DESPERATION_HP_THRESHOLD = 0.15f;   // 15%
     
     // Super bar charging
+    // ==================== DEFENSIVE HEALTH RECOVERY ====================
+    // Defending well gives a little health back, so a patient fighter is not simply losing slower
+    // than an aggressive one. Fractions of the defender's OWN max health, so a 90 hp fighter and
+    // an 85 hp one recover the same share of their bar.
+    public const float HEAL_ON_DODGE = 0.02f;        // a dash that made a strike miss
+    public const float HEAL_ON_PARRY = 0.02f;        // a parried strike
+    public const float HEAL_ON_COUNTER_HIT = 0.03f;  // landing the punish the dodge or parry earned
+
+    // Total recovery allowed in one round, as a fraction of max health. 0 = no cap, which is where
+    // this starts: the cap exists for when it proves abusable, not before.
+    public const float HEAL_CAP_PER_ROUND = 0f;
+
     public const int SUPER_GAIN_LAND_HIT = 5;
     public const int SUPER_GAIN_COMBO = 10;
     public const int SUPER_GAIN_PARRY = 15;

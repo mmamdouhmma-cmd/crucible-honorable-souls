@@ -21,6 +21,9 @@ public class FighterStats
 
     public bool signatureUsed; // True if signature already used this match
 
+    /// <summary>Health recovered from defensive play this round, for the optional cap.</summary>
+    public int healedThisRound;
+
     private float staminaRecoveryRemainder; // Sub-1 stamina regen carried between frames
     private float staminaDrainRemainder;    // Sub-1 stamina drain (block hold) carried between frames
     private float healthRegenRemainder;     // Sub-1 health regen carried between frames
@@ -60,6 +63,32 @@ public class FighterStats
     {
         currentHealth += amount;
         if (currentHealth > maxHealth) currentHealth = maxHealth;
+    }
+
+    /// <summary>
+    /// Heals a FRACTION of max health (defensive recovery) and returns the points actually given,
+    /// which is 0 when already full or the round's cap is spent. Rounds up, so the smallest reward
+    /// is always worth at least 1 point however small the bar.
+    /// </summary>
+    /// <param name="fraction">Share of max health to restore, e.g. 0.02 for 2%.</param>
+    /// <param name="capFraction">Share of max health allowed per round in total; 0 = no cap.</param>
+    public int HealFraction(float fraction, float capFraction)
+    {
+        if (!IsAlive() || fraction <= 0f || currentHealth >= maxHealth) return 0;
+
+        int amount = Mathf.Max(1, Mathf.CeilToInt(maxHealth * fraction));
+        if (capFraction > 0f)
+        {
+            int budget = Mathf.RoundToInt(maxHealth * capFraction) - healedThisRound;
+            if (budget <= 0) return 0;
+            amount = Mathf.Min(amount, budget);
+        }
+
+        int before = currentHealth;
+        Heal(amount);
+        int given = currentHealth - before;
+        healedThisRound += given;
+        return given;
     }
 
     /// <summary>

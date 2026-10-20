@@ -251,7 +251,24 @@ input buffer, `STRING_LOCKOUT = 1.5 s`). Today Bjorn has **one** string, Miyamot
 
 ---
 
-## Task 5 — counter ripostes + health recovery
+## Task 5 — counter ripostes + health recovery — DONE 2026-10-20
+
+> Four riposte moves (one per counter type per fighter) on the clips Task 1 cast, +2% / +2% / +3%
+> recovery for dodge / parry / counter hit, and the HUD rebuilt around **percentages** because the
+> fighters no longer share a health total.
+>
+> Two things the plan did not foresee:
+> - **Three of the four cast clips are KICKS**, and hits are judged by sweeping the weapon's blade,
+>   which never catches a kick. New `AttackData.hitsWithWeapon` (default true) makes the authored
+>   front box judge those, reusing the slow-frame fallback's code path.
+> - **A riposte replaces the normal strike**, so without a link of its own a counter could no longer
+>   open a string, which it could before. Each riposte links into that fighter's light.
+>
+> Per-fighter vitals (the user's ask): `Fighter` carries `maxHealth` / `maxStamina` / `armor`,
+> -1 = take the FighterData value. Bjorn 90 hp / 15% armor, Miyamoto 85 / 10%, from
+> `Design/Character_Stats.md`. The passive `healthRegenPerSecond` is 0 on both, so defensive
+> recovery is the only heal in the fight. `HEAL_CAP_PER_ROUND` exists and is 0 (off).
+
 
 The plumbing is already there, which makes this the cheap, high-impact item:
 `CombatSystem.BeginAttack` already consumes `ConsumeDashCounter()` / `ConsumeParryCounter()`.

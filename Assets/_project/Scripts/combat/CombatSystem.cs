@@ -29,6 +29,14 @@ public class CombatSystem : MonoBehaviour
              "hang off their opener's Combo Links.")]
     [SerializeField] private AttackData[] specials;
 
+    [Header("Ripostes")]
+    [Tooltip("Thrown instead of a normal strike while the dash-counter window is open, so a counter " +
+             "LOOKS like one. Leave empty to fall back to the ordinary attack.")]
+    [SerializeField] private AttackData dashRiposte;
+
+    [Tooltip("Thrown instead of a normal strike while the parry-counter window is open.")]
+    [SerializeField] private AttackData parryRiposte;
+
     [Header("Hitbox")]
     [Tooltip("Hit detector on a child object that this combat system drives.")]
     [SerializeField] private HitDetector hitDetector;
@@ -98,6 +106,12 @@ public class CombatSystem : MonoBehaviour
 
     /// <summary>The moves the special modifier produces, keyed by AttackData.specialButton.</summary>
     public AttackData[] Specials => specials;
+
+    /// <summary>The move a plain press gives while a dash counter is open (null = the normal).</summary>
+    public AttackData DashRiposte => dashRiposte;
+
+    /// <summary>The move a plain press gives while a parry counter is open (null = the normal).</summary>
+    public AttackData ParryRiposte => parryRiposte;
 
     private int stringDepth;           // links taken without returning to neutral (0 = a fresh swing)
     private bool stringUsedSpecial;    // a string carries at most ONE special, and it ends there
@@ -228,16 +242,24 @@ public class CombatSystem : MonoBehaviour
             return;
         }
 
-        // Slow-frame safety net: when a rendered frame is longer than SLOW_FRAME_SECONDS the blade sweep can
-        // miss a whole thrust, so on those frames the authored front box (fighter space, world units) decides
-        // the authored active window, exactly as the pre-weapon-box system did. Never used at 60 fps.
+        // The authored front box (fighter space, world units) decides the hit in two cases. A KICK,
+        // because hits are otherwise judged by sweeping the blade and a carried blade never catches
+        // one. And a SLOW FRAME: when a rendered frame is longer than SLOW_FRAME_SECONDS the sweep
+        // can skip a whole thrust, so the box stands in, exactly as the pre-weapon-box system did.
+        // The second case is never used at 60 fps.
+        bool bodyAttack = currentAttack != null && !currentAttack.HitsWithWeapon;
+        bool slowFrame = Time.unscaledDeltaTime > BalanceConfig.SLOW_FRAME_SECONDS;
         if (hitboxActive && hitDetector != null && hitDetector.FollowWeapon && !hitDetector.HasHit && !swingEvaded &&
-            Time.unscaledDeltaTime > BalanceConfig.SLOW_FRAME_SECONDS && IsInActivePhase())
+            (bodyAttack || slowFrame) && IsInActivePhase())
         {
             Fighter opp = fighter != null ? fighter.Opponent : null;
             if (opp != null && !opp.IsDashing && IsWithinReach(currentAttack, opp.transform.position, opp.BodyRadius))
             {
-                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: slow frame ({Time.unscaledDeltaTime * 1000f:0} ms) - front box judged {currentAttack.AttackName}");
+                if (debugLogs)
+                {
+                    string why = bodyAttack ? "body attack" : $"slow frame ({Time.unscaledDeltaTime * 1000f:0} ms)";
+                    Debug.Log($"P{fighter.PlayerNumber}: {why} - front box judged {currentAttack.AttackName}");
+                }
                 hitDetector.ForceHit(opp);
             }
         }
@@ -472,7 +494,19 @@ public class CombatSystem : MonoBehaviour
     if (fighter == null)         { Debug.Log($"P{pn}: BLOCKED - fighter null"); return false; }
     if (fighter.Stats == null)   { Debug.Log($"P{pn}: BLOCKED - Stats null"); return false; }
 
-    AttackData found = FindAttack(attackType, special);
+    // A counter window re-points the strike buttons at a RIPOSTE: the reward for a dodge or a
+    // parry should read as its own move, not as a normal swing with a multiplier hidden on it. The
+    // riposte is not in either library, so it is unreachable any other way. Holding the special
+    // modifier is the deliberate opt-out - that still buys a special, for spending the window on a
+    // bigger punish.
+    AttackData found = null;
+    if (!special && fighter != null)
+    {
+        if (fighter.ParryCounterTimeLeft > 0f && parryRiposte != null) found = parryRiposte;
+        else if (fighter.DashCounterOpen && dashRiposte != null) found = dashRiposte;
+        if (found != null) Debug.Log($"P{pn}: RIPOSTE - {found.AttackName} instead of the {attackType}");
+    }
+    if (found == null) found = FindAttack(attackType, special);
 
     // The modifier is held, but this fighter has no special on that button: fall through to the
     // normal rather than eating the press. A player holding the modifier should still be able to
@@ -855,6 +889,10 @@ public class CombatSystem : MonoBehaviour
         fighter.Stats.AddSuperBar(currentAttackIsDashCounter
             ? BalanceConfig.SUPER_GAIN_DASH_COUNTER
             : BalanceConfig.SUPER_GAIN_LAND_HIT);
+
+        // Landing the punish a dodge or parry earned pays the attacker health back. Deliberately on
+        // the HIT, not on starting the counter: the window alone is not the reward, cashing it is.
+        if (currentAttackIsDashCounter || currentAttackIsParryCounter) fighter.RecoverHealthForCounterHit();
 
         if (debugLogs)
         {

@@ -1,7 +1,8 @@
-// Animator wiring for the SPECIALS (SP + button).
+// Animator wiring for the SPECIALS (SP + button) and the RIPOSTES (the counter windows).
 //
 // Crucible > Animation > Wire special states: for each fighter controller, makes sure every
-// AttackData asset of type Special has a trigger parameter, a state named exactly after the asset
+// AttackData asset of type Special - and every *_Riposte_* asset, which is an ordinary weight so
+// that it clashes normally - has a trigger parameter, a state named exactly after the asset
 // (the whole Mixamo pipeline keys off *state name == asset name*) and the two transitions that
 // reach it and leave it. Re-runnable: it adds what is missing and leaves the rest alone, so it is
 // safe to call after authoring another special.
@@ -24,13 +25,13 @@ public static class CrucibleSpecialStates
     const float BlendIn = 0.12f;
     const float ExitAt = 0.9f;
 
-    [MenuItem("Crucible/Animation/Wire special states")]
+    [MenuItem("Crucible/Animation/Wire special and riposte states")]
     public static void Wire()
     {
         Run(P1Ctrl, "Assets/_project/Characters/Bjorn/Attacks", "Bjorn_Idle");
         Run(P2Ctrl, "Assets/_project/Characters/Miyamoto/Attacks", "Miyamoto_Idle");
         AssetDatabase.SaveAssets();
-        Debug.Log("Special states wired. Run 'Use Mixamo packs' next to give them their clips.");
+        Debug.Log("Special and riposte states wired. Run 'Use Mixamo packs' next to give them their clips.");
     }
 
     static void Run(string ctrlPath, string attackDir, string idleName)
@@ -48,10 +49,14 @@ public static class CrucibleSpecialStates
         {
             var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(AssetDatabase.GUIDToAssetPath(guid));
             var so = new SerializedObject(asset);
-            if (so.FindProperty("attackType").enumValueIndex != 3) continue;   // AttackType.Special
+            bool isSpecial = so.FindProperty("attackType").enumValueIndex == 3;   // AttackType.Special
+            // A riposte is reached only through a counter window, never from a library, so it is
+            // identified by name rather than by weight - it carries an ordinary weight on purpose.
+            bool isRiposte = asset.name.Contains("_Riposte_");
+            if (!isSpecial && !isRiposte) continue;
             specials.Add((asset.name, so.FindProperty("animatorTriggerName").stringValue));
         }
-        if (specials.Count == 0) { Debug.LogWarning($"{attackDir}: no Special assets found"); return; }
+        if (specials.Count == 0) { Debug.LogWarning($"{attackDir}: no Special or Riposte assets found"); return; }
 
         float y = 500f;
         foreach (var (stateName, trigger) in specials.OrderBy(s => s.state))

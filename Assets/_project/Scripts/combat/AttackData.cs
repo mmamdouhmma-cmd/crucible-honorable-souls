@@ -186,6 +186,13 @@ public class AttackData : ScriptableObject
     [Tooltip("Farthest the attacker may travel during the lunge, world units. 0 = no lunge, -1 = BalanceConfig.ATTACK_LUNGE_MAX.")]
     [SerializeField] private float lungeMaxDistance = -1f;
 
+    [Tooltip("Off for a move that connects with the BODY - a kick, a shoulder barge, a headbutt. " +
+             "Hits are normally judged by sweeping the weapon's blade, which never catches a kick " +
+             "because the blade is just being carried; with this off the authored front box " +
+             "(hitboxRange / hitboxOffset / hitboxSize) decides instead, for the authored active " +
+             "window only.")]
+    [SerializeField] private bool hitsWithWeapon = true;
+
     [Header("Combo (strings)")]
     [Tooltip("Branches off this attack. Pressing a listed button inside the cancel window drops the rest " +
              "of this attack's recovery and starts the follow-up, so the two read as one action.")]
@@ -263,6 +270,9 @@ public class AttackData : ScriptableObject
 
     /// <summary>Local-space size of the hitbox.</summary>
     public Vector3 HitboxSize => hitboxSize;
+
+    /// <summary>False for a move that connects with the body (a kick), not the blade.</summary>
+    public bool HitsWithWeapon => hitsWithWeapon;
 
     public AimMode AimMode => aimMode;
     /// <summary>Aim cap for this attack, or -1 to use the component's.</summary>

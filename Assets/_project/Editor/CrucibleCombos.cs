@@ -64,6 +64,10 @@ public static class CrucibleCombos
         {
             new Link(L, true,  "Bjorn_Special_HaftStrike",       false, HitOrBlock),
         }),
+        // A riposte replaces the normal strike inside a counter window, so without a link of its
+        // own a counter could no longer open a string - which it could before ripostes existed.
+        ("Bjorn_Riposte_Dash",        new[] { new Link(L, false, "Bjorn_Light_Slash",             true, Always) }),
+        ("Bjorn_Riposte_Parry",       new[] { new Link(L, false, "Bjorn_Light_Slash",             true, Always) }),
         ("Bjorn_Special_HaftStrike",   new[] { new Link(L, false, "Bjorn_Light_Slash",             true, Always) }),
         ("Bjorn_Special_HewingCharge", new[] { new Link(H, false, "Bjorn_Heavy_OverheadDoubleAxe", true, Always) }),
         ("Bjorn_Special_BloodEagle",   new[] { new Link(L, false, "Bjorn_Light_Slash",             true, Always) }),
@@ -88,6 +92,8 @@ public static class CrucibleCombos
             new Link(L, false, "Miyamoto_Light_Thrust",          true,  Always),
             new Link(M, true,  "Miyamoto_Special_NitoCross",     false, HitOrBlock),
         }),
+        ("Miyamoto_Riposte_Dash",     new[] { new Link(L, false, "Miyamoto_Light_Thrust",     true, Always) }),
+        ("Miyamoto_Riposte_Parry",    new[] { new Link(L, false, "Miyamoto_Light_Thrust",     true, Always) }),
         ("Miyamoto_Special_Nukitsuke", new[] { new Link(M, false, "Miyamoto_Medium_SideSlash", true, Always) }),
         ("Miyamoto_Special_NitoCross", new[] { new Link(L, false, "Miyamoto_Light_Thrust",     true, Always) }),
         ("Miyamoto_Special_Iaijutsu",  new[] { new Link(L, false, "Miyamoto_Light_Thrust",     true, Always) }),

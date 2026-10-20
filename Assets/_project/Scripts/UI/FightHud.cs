@@ -12,6 +12,15 @@ public class FightHud : MonoBehaviour
 {
     [Header("Layout (sized for a 1920x1080 screen, scales with resolution)")]
     [SerializeField] private float barWidth = 720f;
+
+    [Tooltip("Colour of the \"+N%\" defensive-recovery float.")]
+    [SerializeField] private Color healColor = new Color(0.55f, 1f, 0.6f);
+
+    [Tooltip("Seconds over which the recovery float fades out.")]
+    [SerializeField] private float healFloatFadeOver = 1.1f;
+
+    [Tooltip("Pixels the recovery float drifts upward as it fades.")]
+    [SerializeField] private float healFloatRise = 18f;
     [SerializeField] private float healthBarHeight = 30f;
     [SerializeField] private float staminaBarHeight = 12f;
     [SerializeField] private float screenMargin = 50f;
@@ -48,6 +57,7 @@ public class FightHud : MonoBehaviour
         public Image healthFillImage;
         public Image staminaBackImage;
         public Text healthText;
+        public Text healText;
         public Text statusText;
 
         public float shownHealth = 1f;
@@ -55,6 +65,7 @@ public class FightHud : MonoBehaviour
         public float lastHealthTarget = 1f;
         public float trailHold;
         public float shownStamina = 1f;
+        public Vector2 healTextHome;
 
         public int lastHealthValue = -1;
         public int lastMaxHealthValue = -1;
@@ -179,6 +190,14 @@ public class FightHud : MonoBehaviour
         gloss.rectTransform.pivot = new Vector2(0.5f, 0f);
         gloss.rectTransform.offsetMin = Vector2.zero;
         gloss.rectTransform.offsetMax = Vector2.zero;
+
+        // ----- Recovery float ("+2%"), over the inner end of the health bar -----
+        // A sibling created after the bar layers, so it draws on top of them without a canvas.
+        bars.healText = CreateText("Heal Float", root, 20, FontStyle.Bold, outerSide: false, mirrored);
+        Place((RectTransform)bars.healText.transform, healthTop, healthBarHeight, barWidth * 0.25f,
+            alignInner: true, mirrored);
+        bars.healText.text = "";
+        bars.healTextHome = ((RectTransform)bars.healText.transform).anchoredPosition;
 
         // ----- Stamina bar -----
         RectTransform staminaBar = CreateRect("Stamina Bar", root);
@@ -314,7 +333,32 @@ public class FightHud : MonoBehaviour
         {
             bars.lastHealthValue = stats.currentHealth;
             bars.lastMaxHealthValue = stats.maxHealth;
-            bars.healthText.text = $"{stats.currentHealth} / {stats.maxHealth}";
+            // Percent, not points: the fighters have different max health (Bjorn 90, Miyamoto 85),
+            // so raw numbers would read as one of them simply having more bar than the other.
+            // Ceil, so any health left at all still shows at least 1%.
+            int percent = stats.maxHealth > 0
+                ? Mathf.Clamp(Mathf.CeilToInt(100f * stats.currentHealth / stats.maxHealth), 0, 100)
+                : 0;
+            bars.healthText.text = $"{percent}%";
+        }
+
+        // ----- Recovery float -----
+        // Shown as a percentage of max health for the same reason the number is: it is the share of
+        // the bar that came back, which is what the player sees move.
+        float healLeft = bars.fighter.HealFlashTimeLeft;
+        if (healLeft > 0f && stats.maxHealth > 0)
+        {
+            int pct = Mathf.Max(1, Mathf.RoundToInt(100f * bars.fighter.HealFlashAmount / stats.maxHealth));
+            bars.healText.text = $"+{pct}%";
+            // Fades out and drifts up over the last of its life.
+            float t = Mathf.Clamp01(healLeft / healFloatFadeOver);
+            bars.healText.color = new Color(healColor.r, healColor.g, healColor.b, t);
+            ((RectTransform)bars.healText.transform).anchoredPosition =
+                bars.healTextHome + new Vector2(0f, (1f - t) * healFloatRise);
+        }
+        else if (bars.healText.text.Length > 0)
+        {
+            bars.healText.text = "";
         }
 
         // ----- Stamina -----

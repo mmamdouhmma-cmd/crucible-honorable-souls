@@ -494,6 +494,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 0560a43455c345f09dfaa84e8a2b1f91, type: 2}
   - {fileID: 11400000, guid: a811c441b00a4b339b183af4dbdbdf66, type: 2}
   - {fileID: 11400000, guid: 7cbc45a825ee413a941f97b2a44d4159, type: 2}
+  dashRiposte: {fileID: 11400000, guid: 117e090f8d5d48dcbc07be289f71d2d3, type: 2}
+  parryRiposte: {fileID: 11400000, guid: 4c0a7176f0da42c39484c068b288457d, type: 2}
   hitDetector: {fileID: 1167820291}
   hitInterruptsAttack: 1
   dodgedRecoveryFrames: -1
@@ -522,6 +524,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Fighter
   fighterData: {fileID: 11400000, guid: 7ce73d0fe1979bb4d9d923b132921cfb, type: 2}
   playerNumber: 1
+  maxHealth: 90
+  maxStamina: 100
+  armor: 15
   stats:
     currentHealth: 0
     maxHealth: 0
@@ -531,6 +536,7 @@ MonoBehaviour:
     currentSuperBar: 0
     maxSuperBar: 0
     signatureUsed: 0
+    healedThisRound: 0
   combatSystem: {fileID: 126681665}
   dashDistance: 2
   dashDuration: 0.35
@@ -547,7 +553,12 @@ MonoBehaviour:
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
   staminaRecoveryPerSecond: 20
-  healthRegenPerSecond: 1
+  healthRegenPerSecond: 0
+  healOnDodge: 0.02
+  healOnParry: 0.02
+  healOnCounterHit: 0.03
+  healCapPerRound: 0
+  healFlashDuration: 1.1
   healthRegenDelay: 3
   debugLogs: 1
   turnSpeed: 650
@@ -5788,6 +5799,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: de8540860d824981bc232738d2a31024, type: 2}
   - {fileID: 11400000, guid: b95c194576804c7386930ce839c17af3, type: 2}
   - {fileID: 11400000, guid: a2a907a1624a488aaa07cf400baeb419, type: 2}
+  dashRiposte: {fileID: 11400000, guid: 1b9aed89dd8b49a882732a7431ed2d6e, type: 2}
+  parryRiposte: {fileID: 11400000, guid: d8a787f0078b4e5cb12690f70301675c, type: 2}
   hitDetector: {fileID: 1994759405}
   hitInterruptsAttack: 1
   dodgedRecoveryFrames: -1
@@ -5816,6 +5829,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Fighter
   fighterData: {fileID: 11400000, guid: 7ce73d0fe1979bb4d9d923b132921cfb, type: 2}
   playerNumber: 2
+  maxHealth: 85
+  maxStamina: 100
+  armor: 10
   stats:
     currentHealth: 4
     maxHealth: 0
@@ -5825,6 +5841,7 @@ MonoBehaviour:
     currentSuperBar: 0
     maxSuperBar: 0
     signatureUsed: 0
+    healedThisRound: 0
   combatSystem: {fileID: 1967802157}
   dashDistance: 2
   dashDuration: 0.25
@@ -5841,7 +5858,12 @@ MonoBehaviour:
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
   staminaRecoveryPerSecond: 18
-  healthRegenPerSecond: 1
+  healthRegenPerSecond: 0
+  healOnDodge: 0.02
+  healOnParry: 0.02
+  healOnCounterHit: 0.03
+  healCapPerRound: 0
+  healFlashDuration: 1.1
   healthRegenDelay: 3
   debugLogs: 1
   turnSpeed: 720

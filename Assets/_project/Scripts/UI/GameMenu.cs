@@ -515,8 +515,21 @@ public class GameMenu : MonoBehaviour
             foreach (var attack in Library(entry.combat))
                 yield return $"   {Press(keys, attack),-14} {attack.AttackName,-21} {attack.Damage,2} dmg   " +
                              $"{attack.StaminaCost,2} stam   {attack.StartupFrames}/{attack.ActiveFrames}/{attack.RecoveryFrames}";
+            foreach (var r in Ripostes(entry.combat))
+            {
+                // A riposte is not on a button: a counter window re-points the strike buttons at
+                // it. Its own follow-up is shown inline rather than on the strings page, which is
+                // already as long as the panel can hold.
+                string next = "";
+                var link = r.attack.ComboLinks != null && r.attack.ComboLinks.Length > 0 ? r.attack.ComboLinks[0] : null;
+                if (link != null && link.followUp != null)
+                    next = "   > " + PressLabel(keys, link.input, link.withSpecialModifier) + "  " + link.followUp.AttackName;
+                yield return $"   {"[" + r.label + "]",-14} {r.attack.AttackName,-21} {r.attack.Damage,2} dmg   " +
+                             $"{r.attack.StaminaCost,2} stam   {r.attack.StartupFrames}/{r.attack.ActiveFrames}/{r.attack.RecoveryFrames}{next}";
+            }
             yield return "";
-            yield return "   A special costs about two and a half times the stamina of the strike it shares a button with.";
+            yield return "   A special costs about 2.5x the stamina of the strike it shares a button with. A dodge or";
+            yield return "   a parry re-points the strike buttons at that fighter's riposte, and gives health back.";
             yield break;
         }
 
@@ -554,6 +567,16 @@ public class GameMenu : MonoBehaviour
             }
         }
         if (!extended && depth > 0) into.Add((buttons, names));
+    }
+
+    /// <summary>
+    /// The counter-window moves, which no button produces on its own. Listed with what opens them
+    /// rather than with a key.
+    /// </summary>
+    static IEnumerable<(string label, AttackData attack)> Ripostes(CombatSystem combat)
+    {
+        if (combat.DashRiposte != null) yield return ("after a dodge", combat.DashRiposte);
+        if (combat.ParryRiposte != null) yield return ("after a parry", combat.ParryRiposte);
     }
 
     static string CharacterName(CombatSystem combat)
