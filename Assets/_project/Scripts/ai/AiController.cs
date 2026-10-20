@@ -18,6 +18,32 @@ public class AiController : MonoBehaviour
     public AiDifficulty difficulty = AiDifficulty.Moderate;
     [SerializeField] private bool debugLogs = false;
 
+    /// <summary>
+    /// What the opponent is allowed to do. Practice mode narrows this so a single mechanic can be
+    /// drilled against a live opponent: a dummy that only blocks, one that only walks in, one that
+    /// attacks but never defends. Everything off is a standing training dummy.
+    /// </summary>
+    [System.Serializable]
+    public struct Rules
+    {
+        public bool walk;      // close the distance and keep spacing
+        public bool attack;    // throw strikes of its own
+        public bool block;     // guard against a wind-up it has seen
+        public bool dodge;     // sidestep a wind-up it has seen
+        public bool punish;    // attack into a recovery, and counter after a dodge
+
+        /// <summary>An opponent that uses everything its difficulty allows - a normal fight.</summary>
+        public static Rules Full => new Rules { walk = true, attack = true, block = true, dodge = true, punish = true };
+
+        /// <summary>A dummy that stands there and takes it.</summary>
+        public static Rules Dummy => new Rules();
+
+        public bool IsDummy => !walk && !attack && !block && !dodge && !punish;
+    }
+
+    [Tooltip("What this opponent may do. Practice mode writes this; a normal match uses Full.")]
+    public Rules rules = Rules.Full;
+
     /// <summary>True while the AI is in charge of its player.</summary>
     public bool Active { get; private set; }
 
@@ -66,10 +92,14 @@ public class AiController : MonoBehaviour
         Instance = this;
     }
 
-    public void Activate(AiDifficulty d, int player = 2)
+    public void Activate(AiDifficulty d, int player = 2) => Activate(d, player, Rules.Full);
+
+    /// <summary>Takes a player over, restricted to <paramref name="allowed"/> (practice mode).</summary>
+    public void Activate(AiDifficulty d, int player, Rules allowed)
     {
         difficulty = d;
         playerNumber = player;
+        rules = allowed;
         p = For(d);
         Bind();
         Active = true;
@@ -124,6 +154,7 @@ public class AiController : MonoBehaviour
     InputData Think()
     {
         var input = new InputData();
+        if (rules.IsDummy) return input;      // practice dummy: stands there and takes it
         float now = Time.time;
         float gap = Gap();
         int toFoe = ScreenDirToFoe();
@@ -149,11 +180,12 @@ public class AiController : MonoBehaviour
         }
 
         // ---- defence: react to a seen wind-up after the profile's reaction time
-        if (foeWindingUp && !threatHandled && threatSeenAt >= 0f && now - threatSeenAt >= p.reaction && gap < 3.2f)
+        if ((rules.dodge || rules.block) && foeWindingUp && !threatHandled && threatSeenAt >= 0f &&
+            now - threatSeenAt >= p.reaction && gap < 3.2f)
         {
             threatHandled = true;
             float roll = Random.value;
-            if (!busy && roll < p.dodge && stamina >= 15 && now - lastDashAt > 0.6f)
+            if (rules.dodge && !busy && roll < p.dodge && stamina >= 15 && now - lastDashAt > 0.6f)
             {
                 // sidestep (orbits the attacker); into the screen or toward the camera at random
                 input.dashDirection = new Vector2(0f, Random.value < 0.5f ? 1f : -1f);
@@ -161,7 +193,7 @@ public class AiController : MonoBehaviour
                 if (debugLogs) Debug.Log("AI: DODGE");
                 return input;
             }
-            if (roll < p.dodge + p.block && !myCombat.IsAttacking)
+            if (rules.block && roll < p.dodge + p.block && !myCombat.IsAttacking)
             {
                 var a = foeCombat.CurrentAttack;
                 float remaining = a.GetTotalDuration() - foeCombat.AttackTime;
@@ -182,7 +214,7 @@ public class AiController : MonoBehaviour
 
         // ---- counter after a clean dodge, or punish a recovery
         bool counterOpen = me.DashCounterOpen;
-        if ((counterOpen || (p.punish && foeRecovering)) && gap <= 2.7f && stamina >= 10)
+        if (rules.punish && rules.attack && (counterOpen || (p.punish && foeRecovering)) && gap <= 2.7f && stamina >= 10)
         {
             Pick(ref input, preferHeavy: foeRecovering);
             if (debugLogs) Debug.Log(counterOpen ? "AI: COUNTER" : "AI: PUNISH");
@@ -199,14 +231,14 @@ public class AiController : MonoBehaviour
         if (now < nextThink)
         {
             // between decisions: keep the spacing
-            if (gap > p.range + 0.35f) input.moveDirection = toFoe;
+            if (rules.walk && gap > p.range + 0.35f) input.moveDirection = toFoe;
             return input;
         }
         nextThink = now + p.think * Random.Range(0.7f, 1.3f);
 
         if (stamina < 18)
         {
-            if (Random.value < 0.7f) { backOffUntil = now + 0.5f; backOffDir = -toFoe; }
+            if (rules.walk && Random.value < 0.7f) { backOffUntil = now + 0.5f; backOffDir = -toFoe; }
             return input;
         }
 
@@ -214,23 +246,23 @@ public class AiController : MonoBehaviour
         bool inRange = gap <= BalanceConfig.ATTACK_LUNGE_STOP + BalanceConfig.ATTACK_LUNGE_MAX - 0.1f;
         if (inRange)
         {
-            if (Random.value < p.aggression && !foeWindingUp)
+            if (rules.attack && Random.value < p.aggression && !foeWindingUp)
             {
                 Pick(ref input, preferHeavy: false);
                 return input;
             }
-            if (Random.value < p.retreat && gap < p.range - 0.3f)
+            if (rules.walk && Random.value < p.retreat && gap < p.range - 0.3f)
             {
                 backOffUntil = now + Random.Range(0.25f, 0.5f);
                 backOffDir = -toFoe;
                 return input;
             }
         }
-        else
+        else if (rules.walk)
         {
-            if (Random.value < p.mistake) { Pick(ref input, preferHeavy: false); return input; }   // swings at air
+            if (rules.attack && Random.value < p.mistake) { Pick(ref input, preferHeavy: false); return input; }   // swings at air
             // close in: walk, or dash in from far away
-            if (gap > 4.5f && stamina >= 25 && now - lastDashAt > 1.2f && Random.value < 0.5f)
+            if (rules.dodge && gap > 4.5f && stamina >= 25 && now - lastDashAt > 1.2f && Random.value < 0.5f)
             {
                 input.dashDirection = new Vector2(toFoe, 0f);
                 lastDashAt = now;

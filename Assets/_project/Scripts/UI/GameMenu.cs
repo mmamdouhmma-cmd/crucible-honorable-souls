@@ -10,15 +10,32 @@ using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.UI;
 
 /// <summary>
-/// Front end and match flow, built from code (no prefabs): main menu (Local Play, Controls, Settings, Help,
-/// Quit), pause menu (Escape / Options), rebindable controls for both players (keyboard and PS4/PS5 pad),
-/// settings (volume, game speed, blood, which player the controller drives), a help screen and the
-/// KO / rematch screen. Navigate with arrows or WASD, the d-pad or left stick; confirm with Enter / Space /
-/// Cross; back with Escape / Backspace / Circle. The mouse works too. Sits on the GameMangers object.
+/// The whole front end and the match flow, built from code (no prefabs), dressed to match the
+/// game's logo: a near-black field, bronze inscription, dried blood for the selection.
+///
+/// Boot      - the logo, then "press any button".
+/// Main      - Quick Battle (straight back into your last setup), Local Play (1 or 2 players,
+///             character select, arena select), Online, Practice, Move List, Settings, Quit.
+/// In match  - pause (Options / Escape), the KO card, rematch.
+///
+/// Navigate with arrows or WASD, the d-pad or the left stick; confirm with Enter / Space / Cross;
+/// back with Escape / Backspace / Circle. Taps work too. Everything animates on UNSCALED time,
+/// because the pause menu runs at Time.timeScale 0.
+///
+/// Sits on the GameMangers object.
 /// </summary>
 public class GameMenu : MonoBehaviour
 {
-    enum Screen { None, Main, Pause, Settings, Controls, Help, Moves, MatchOver, AiSelect, Online, OnlineHost, OnlineJoin }
+    enum Screen
+    {
+        None, Boot, Main,
+        LocalSetup, CharSelect, ArenaSelect, Difficulty, PracticeRules, Vs,
+        Pause, Settings, Controls, Help, Moves, MatchOver,
+        Online, OnlineHost, OnlineJoin,
+    }
+
+    /// <summary>Which path through the select screens we are on.</summary>
+    enum Flow { None, Local, Practice, Online }
 
     [Serializable]
     class SettingsData
@@ -30,6 +47,17 @@ public class GameMenu : MonoBehaviour
         public int touchButtons = 0;   // 0 auto (touch devices only), 1 always on, 2 off
     }
 
+    /// <summary>What Quick Battle drops you straight back into.</summary>
+    [Serializable]
+    class LastSetup
+    {
+        public bool valid;
+        public int players = 1;        // 1 = vs AI, 2 = both on this device
+        public int p1Character;        // index into the roster for Player 1
+        public string arena = "";
+        public int difficulty = (int)AiDifficulty.Moderate;
+    }
+
     class Item
     {
         public string label;
@@ -38,67 +66,126 @@ public class GameMenu : MonoBehaviour
         public Action confirm;
         public Action<int> adjust;      // left (-1) / right (+1)
         public bool header;             // not selectable
-        public Text text;
+        public bool quiet;              // header drawn small and dim (body copy)
+    }
+
+    class Row
+    {
+        public GameObject go;
+        public RectTransform rt;
         public Image back;
+        public Image gem;
+        public Text label, value, value2;
+        public float slide;             // entrance animation, 0..1
     }
 
     const string SettingsKey = "crucible.settings.v1";
-    const int VisibleRows = 16;
+    const string SetupKey = "crucible.lastsetup.v1";
+    const int RowPool = 26;
 
-    static readonly Color PanelColor = new Color(0.07f, 0.06f, 0.06f, 0.97f);
-    static readonly Color TextColor = new Color(0.88f, 0.84f, 0.76f);
-    static readonly Color DimColor = new Color(0.55f, 0.52f, 0.46f);
-    static readonly Color GoldColor = new Color(0.93f, 0.74f, 0.32f);
-    static readonly Color SelectColor = new Color(0.55f, 0.12f, 0.12f, 0.85f);
+    // ---------------------------------------------------------------- state
 
     SettingsData settings = new SettingsData();
+    LastSetup lastSetup = new LastSetup();
+
     Screen screen = Screen.None;
-    Screen previous = Screen.Main;
+    readonly List<Screen> history = new List<Screen>();
+    Flow flow = Flow.None;
+
     bool inMatch;
     bool vsAi;
+    int playerCount = 1;
+    int p1Character;                    // roster index Player 1 drives
+    int arenaChoice;
+    AiDifficulty aiDifficulty = AiDifficulty.Moderate;
+    AiController.Rules practiceRules = AiController.Rules.Full;
+    bool practiceInfiniteHealth = true, practiceInfiniteStamina = true;
+
     NetSession.Role netRole = NetSession.Role.None;
     float nextOnlineRefresh;
     NetSession Net { get { if (NetSession.Instance == null) gameObject.AddComponent<NetSession>(); return NetSession.Instance; } }
-    AiDifficulty aiDifficulty = AiDifficulty.Moderate;
+
     float savedTimeScale = 1f;
+    float inputGuard;                   // seconds of unscaled time before this screen accepts confirm/back
+    float screenAge;
+    bool rebuilding;                    // Show() is refreshing the screen in place, not entering it
 
-    void SetAi(bool on)
-    {
-        var ai = AiController.Instance != null ? AiController.Instance : GetComponent<AiController>();
-        if (ai == null && on) ai = gameObject.AddComponent<AiController>();
-        if (ai == null) return;
-        if (on) ai.Activate(aiDifficulty, 2); else ai.Deactivate();
-    }
+    // fighters, in scene order; index 0 is whoever starts the scene as Player 1
+    Fighter[] roster = new Fighter[0];
+    Vector3[] sideMark = new Vector3[0];     // spawn marks BY SIDE (0 = P1's side)
+    Quaternion[] sideRot = new Quaternion[0];
+    float[] ownY = new float[0];             // each fighter keeps its own height; the roots differ
+    Vector3[] spawnPos = new Vector3[0];     // resolved per fighter for the current sides
+    Quaternion[] spawnRot = new Quaternion[0];
 
-    Fighter[] fighters = new Fighter[0];
-    Vector3[] spawnPos;
-    Quaternion[] spawnRot;
+    // ---------------------------------------------------------------- widgets
 
     Canvas canvas;
-    RectTransform panel;
-    Text title, subtitle, footer;
-    readonly List<Item> items = new List<Item>();
-    readonly List<GameObject> rows = new List<GameObject>();
-    int selected;
-    int scroll;
-    Font font;
+    RectTransform canvasRect, content;
+    MenuStage stage;
 
-    // rebinding
+    RectTransform panel;
+    Text title, subtitle, footerText;
+    RectTransform header, footer, divider;
+    RawImage titleLogo;
+    readonly List<Item> items = new List<Item>();
+    readonly List<Row> rows = new List<Row>();
+    int selected, scroll, visibleRows = 16;
+    float rowHeight = 46f, rowFont = 28f;
+
+    RectTransform bootView, selectView, arenaView, vsView;
+    Text bootPrompt, bootTitle;
+    RawImage bootLogo;
+    CharacterCard[] cards = new CharacterCard[0];
+    CharacterCard[] vsCards = new CharacterCard[0];
+    bool staged;
+    Text vsWord;
+    Text arenaName, arenaBlurb, arenaCount;
+    RectTransform arenaPips;
+
+    RectTransform captureBack;
+    Text captureText;
     bool capturing;
     int captureAction = -1, capturePlayer;
-    Text captureText;
 
-    // ------------------------------------------------------------------ lifecycle
+    /// <summary>
+    /// A name plate that rides under a fighter on the select screens. There is no portrait: the
+    /// fighter himself is standing in the arena behind the UI, playing his idle.
+    /// </summary>
+    class CharacterCard
+    {
+        public RectTransform rt;
+        public Image slab, frame, tag;
+        public Text name, tagText, stats, tagline;
+        public Transform follow;        // the fighter this plate sits under
+    }
+
+    string winnerName = "";
+    int winnerNumber;
+    int movesPage;
+
+    // ================================================================ lifecycle
 
     void Awake()
     {
-        fighters = FindObjectsByType<Fighter>(FindObjectsSortMode.None);
-        Array.Sort(fighters, (a, b) => a.PlayerNumber.CompareTo(b.PlayerNumber));
-        spawnPos = new Vector3[fighters.Length];
-        spawnRot = new Quaternion[fighters.Length];
-        for (int i = 0; i < fighters.Length; i++) { spawnPos[i] = fighters[i].transform.position; spawnRot[i] = fighters[i].transform.rotation; }
+        var found = FindObjectsByType<Fighter>(FindObjectsSortMode.None);
+        Array.Sort(found, (a, b) => a.PlayerNumber.CompareTo(b.PlayerNumber));
+        roster = found;
+
+        int n = roster.Length;
+        sideMark = new Vector3[n]; sideRot = new Quaternion[n]; ownY = new float[n];
+        spawnPos = new Vector3[n]; spawnRot = new Quaternion[n];
+        for (int i = 0; i < n; i++)
+        {
+            sideMark[i] = roster[i].transform.position;
+            sideRot[i] = roster[i].transform.rotation;
+            ownY[i] = roster[i].transform.position.y;
+            spawnPos[i] = sideMark[i];
+            spawnRot[i] = sideRot[i];
+        }
+
         LoadSettings();
-        font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        LoadSetup();
         BuildCanvas();
     }
 
@@ -108,10 +195,9 @@ public class GameMenu : MonoBehaviour
         {
             Net.OnStartReceived += () =>
             {
-                // guest: the host started or restarted the fight
                 netRole = NetSession.Role.Guest;
                 vsAi = false;
-                for (int i = 0; i < fighters.Length; i++) fighters[i].ResetForMatch(spawnPos[i], spawnRot[i]);
+                PlaceFighters();
                 inMatch = true;
                 FreezeFighters(false);
                 Net.GuestEnterMatch();
@@ -128,14 +214,29 @@ public class GameMenu : MonoBehaviour
             Net.OnRematchRequested += () => { if (netRole == NetSession.Role.Host && !inMatch) StartMatch(); };
             Net.OnPeerLeft += () => { if (netRole != NetSession.Role.None) { Net.Leave(); netRole = NetSession.Role.None; EndMatchToMenu(); subtitle.text = "The other player left"; } };
         }
+
         ApplySettings();
+        if (ArenaDirectory.Instance != null) arenaChoice = ArenaDirectory.Instance.LoadSaved();
         FreezeFighters(true);
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
-        Show(Screen.Main);
+        Show(Screen.Boot);
     }
 
     void Update()
     {
+        // Nothing may stay selected in the EventSystem: with a selection it would answer Enter,
+        // Space and the arrow keys itself, in parallel with this menu.
+        var ev = EventSystem.current;
+        if (ev != null && ev.currentSelectedGameObject != null) ev.SetSelectedGameObject(null);
+
+        float dt = Time.unscaledDeltaTime;
+        screenAge += dt;
+        if (inputGuard > 0f) inputGuard -= dt;
+
+        AnimateRows(dt);
+        if (screen == Screen.CharSelect) TrackPlates(cards, -385f);
+        else if (screen == Screen.Vs) TrackPlates(vsCards, -385f);
+
         var im = InputManager.Instance;
         if (im == null) return;
 
@@ -146,39 +247,114 @@ public class GameMenu : MonoBehaviour
             return;
         }
 
+        if (stage != null && stage.Wiping) return;     // ignore input while the screen is covered
         if (capturing) { CaptureRebind(); return; }
+
+        if (screen == Screen.Boot) { UpdateBoot(); return; }
+        if (screen == Screen.Vs) return;               // runs itself, then starts the fight
 
         if ((screen == Screen.OnlineHost || screen == Screen.OnlineJoin) && Time.unscaledTime >= nextOnlineRefresh)
         {
             nextOnlineRefresh = Time.unscaledTime + 1f;
-            int keep = selected;
-            Show(screen);
-            selected = Mathf.Min(keep, Mathf.Max(0, items.Count - 1));
-            Refresh();
+            Rebuild();
         }
 
         Vector2 nav = im.MenuNavigate();
         if (nav.y > 0f) MoveSelection(-1);
         else if (nav.y < 0f) MoveSelection(1);
         if (nav.x != 0f) Adjust(nav.x > 0f ? 1 : -1);
+
+        // The guard exists because the button that OPENED this screen is still down on the frame it
+        // appears: pausing with Options, whose pad button is also the menu's back, used to resume
+        // the fight the instant the pause menu was drawn.
+        if (inputGuard > 0f) return;
+
+        // Options / Escape toggles the pause off again. Circle deliberately does NOT: it is also
+        // the parry button, and resuming the fight by brushing it was the whole complaint.
+        if (screen == Screen.Pause && im.PausePressed()) { Resume(); return; }
+
         if (im.MenuConfirm()) Confirm();
         else if (im.MenuBack()) Back();
     }
 
-    // ------------------------------------------------------------------ match flow
+    // ================================================================ match flow
+
+    /// <summary>Spawn marks for the sides as they are now, each fighter keeping its own height.</summary>
+    void ResolveSpawns()
+    {
+        for (int i = 0; i < roster.Length; i++)
+        {
+            int side = Mathf.Clamp(roster[i].PlayerNumber - 1, 0, Mathf.Max(0, sideMark.Length - 1));
+            // X/Z from the side's mark, Y from this fighter's own root: the two roots sit at
+            // different heights (0.24 / 0.75) because each model has its own ground offset, and
+            // averaging them is what left both fighters floating once before.
+            spawnPos[i] = new Vector3(sideMark[side].x, ownY[i], sideMark[side].z);
+            spawnRot[i] = sideRot[side];
+        }
+    }
+
+    void PlaceFighters()
+    {
+        ResolveSpawns();
+        for (int i = 0; i < roster.Length; i++) roster[i].ResetForMatch(spawnPos[i], spawnRot[i]);
+    }
+
+    /// <summary>
+    /// Hands Player 1 the roster entry at <paramref name="index"/> and Player 2 the other one.
+    /// The fighters are not swapped or cloned - only which controls they answer to - so this works
+    /// with the two rigs the scene actually has.
+    /// </summary>
+    void ApplySides(int index)
+    {
+        if (roster.Length < 2) return;
+        p1Character = Mathf.Clamp(index, 0, roster.Length - 1);
+        for (int i = 0; i < roster.Length; i++) roster[i].SetPlayerNumber(i == p1Character ? 1 : 2);
+        ResolveSpawns();
+
+        var hud = FindAnyObjectByType<FightHud>();
+        if (hud != null) hud.Rebuild();
+        if (AiController.Instance != null && AiController.Instance.Active) AiController.Instance.Activate(aiDifficulty, 2, practiceRules);
+    }
+
+    void SetAi(bool on, AiController.Rules rules)
+    {
+        var ai = AiController.Instance != null ? AiController.Instance : GetComponent<AiController>();
+        if (ai == null && on) ai = gameObject.AddComponent<AiController>();
+        if (ai == null) return;
+        if (on) ai.Activate(aiDifficulty, 2, rules); else ai.Deactivate();
+    }
 
     public void StartMatch()
     {
         if (netRole == NetSession.Role.Guest) { Net?.SendRematchRequest(); return; }
-        for (int i = 0; i < fighters.Length; i++) fighters[i].ResetForMatch(spawnPos[i], spawnRot[i]);
-        SetAi(vsAi);
+
+        if (ArenaDirectory.Instance != null) ArenaDirectory.Instance.Select(arenaChoice);
+        PlaceFighters();
+        SetAi(false, AiController.Rules.Full);     // the computer wakes on FIGHT, with the players
+
+        var practice = PracticeMode.Instance != null ? PracticeMode.Instance : gameObject.AddComponent<PracticeMode>();
+        if (flow == Flow.Practice)
+        {
+            practice.infiniteHealth = practiceInfiniteHealth;
+            practice.infiniteStamina = practiceInfiniteStamina;
+            practice.Begin(PlaceFighters);
+        }
+        else practice.End();
+
         if (netRole == NetSession.Role.Host) Net?.HostStartMatch();
-        if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(vsAi || netRole != NetSession.Role.None ? 1 : 2);
-        inMatch = true;
-        FreezeFighters(false);
-        if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
+        if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(playerCount >= 2 && !vsAi && netRole == NetSession.Role.None ? 2 : 1);
+
+        // Held still, over the arena, until the count reaches FIGHT. inMatch stays false so a
+        // K.O. cannot be declared during the count either.
+        inMatch = false;
+        FreezeFighters(true);
+        if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
         Time.timeScale = GameSpeed();
         Show(Screen.None);
+        SaveSetup();
+
+        if (countIn != null) StopCoroutine(countIn);
+        countIn = StartCoroutine(CountInRoutine());
     }
 
     public void Pause()
@@ -201,12 +377,13 @@ public class GameMenu : MonoBehaviour
         savedTimeScale = Time.timeScale;
         Time.timeScale = 0f;
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
+        history.Clear();
         Show(Screen.Pause);
     }
 
     void ResumeLocal()
     {
-        if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(netRole != NetSession.Role.None || vsAi ? 1 : 2);
+        if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(playerCount >= 2 && !vsAi && netRole == NetSession.Role.None ? 2 : 1);
         Time.timeScale = savedTimeScale > 0f ? savedTimeScale : GameSpeed();
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
         Show(Screen.None);
@@ -215,27 +392,74 @@ public class GameMenu : MonoBehaviour
     void EndMatchToMenu()
     {
         inMatch = false;
-        SetAi(false);
+        SetAi(false, AiController.Rules.Full);
+        if (PracticeMode.Instance != null) PracticeMode.Instance.End();
         if (netRole != NetSession.Role.None) { Net?.GuestLeaveMatch(); Net?.Leave(); netRole = NetSession.Role.None; }
         if (TouchControls.Instance != null) TouchControls.Instance.Hide();
         Time.timeScale = GameSpeed();
-        for (int i = 0; i < fighters.Length; i++) fighters[i].ResetForMatch(spawnPos[i], spawnRot[i]);
+        PlaceFighters();
         FreezeFighters(true);
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
+        flow = Flow.None;
+        history.Clear();
         Show(Screen.Main);
     }
+
+    /// <summary>
+    /// READY - 3 - 2 - 1 - FIGHT over the arena, with both fighters frozen until the last beat.
+    /// Runs on unscaled time and holds while the game is paused, so pausing mid-count does not
+    /// burn the count down behind the pause menu.
+    /// </summary>
+    IEnumerator CountInRoutine()
+    {
+        string[] beats = { "Ready", "3", "2", "1" };
+        float[] holds = { 0.80f, 0.55f, 0.55f, 0.55f };
+
+        for (int i = 0; i < beats.Length; i++)
+        {
+            if (stage != null) stage.Beat(beats[i], i == 0 ? MenuArt.Bone : MenuArt.BronzeLit, i == 0 ? 130 : 240);
+            yield return WaitWhilePlaying(holds[i]);
+        }
+
+        inMatch = true;
+        FreezeFighters(false);
+        if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
+        SetAi(vsAi, flow == Flow.Practice ? practiceRules : AiController.Rules.Full);
+
+        if (stage != null)
+            stage.Beat("Fight!", MenuArt.BloodLit, 210, flow == Flow.Practice ? "pause for the rules" : null);
+        yield return WaitWhilePlaying(0.55f);
+        if (stage != null) stage.ClearBeat();
+        countIn = null;
+    }
+
+    /// <summary>Counts down <paramref name="seconds"/> of unscaled time, but only while the match
+    /// is actually on screen.</summary>
+    IEnumerator WaitWhilePlaying(float seconds)
+    {
+        float left = seconds;
+        while (left > 0f)
+        {
+            if (screen == Screen.None) left -= Time.unscaledDeltaTime;
+            yield return null;
+        }
+    }
+
+    Coroutine countIn;
 
     void CheckKO()
     {
         if (!inMatch) return;
-        foreach (var f in fighters)
+        foreach (var f in roster)
         {
             if (f.Stats != null && !f.Stats.IsAlive())
             {
                 inMatch = false;
+                if (countIn != null) { StopCoroutine(countIn); countIn = null; }
                 FreezeFighters(true);
                 if (TouchControls.Instance != null) TouchControls.Instance.Hide();
                 if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
+                if (stage != null) stage.Announce(f.CharacterName + "\ndied", MenuArt.BloodLit, 2.0f, null, 140);
                 StartCoroutine(ShowMatchOver(f));
                 return;
             }
@@ -244,19 +468,18 @@ public class GameMenu : MonoBehaviour
 
     IEnumerator ShowMatchOver(Fighter loser)
     {
-        yield return new WaitForSecondsRealtime(1.6f);
+        yield return new WaitForSecondsRealtime(1.9f);
         Fighter winner = null;
-        foreach (var f in fighters) if (f != loser) winner = f;
-        winnerName = winner != null ? (winner.fighterData != null ? winner.fighterData.FighterName : winner.name) : "Nobody";
+        foreach (var f in roster) if (f != loser) winner = f;
+        winnerName = winner != null ? winner.CharacterName : "Nobody";
         winnerNumber = winner != null ? winner.PlayerNumber : 0;
+        history.Clear();
         Show(Screen.MatchOver);
     }
-    string winnerName = "";
-    int winnerNumber;
 
     void FreezeFighters(bool freeze)
     {
-        foreach (var f in fighters)
+        foreach (var f in roster)
         {
             f.enabled = !freeze;
             var an = f.GetComponent<Animator>();
@@ -264,7 +487,7 @@ public class GameMenu : MonoBehaviour
         }
     }
 
-    // ------------------------------------------------------------------ settings
+    // ================================================================ settings
 
     void LoadSettings()
     {
@@ -279,6 +502,28 @@ public class GameMenu : MonoBehaviour
     void SaveSettings()
     {
         PlayerPrefs.SetString(SettingsKey, JsonUtility.ToJson(settings));
+        PlayerPrefs.Save();
+    }
+
+    void LoadSetup()
+    {
+        string json = PlayerPrefs.GetString(SetupKey, "");
+        if (!string.IsNullOrEmpty(json))
+        {
+            try { lastSetup = JsonUtility.FromJson<LastSetup>(json) ?? new LastSetup(); }
+            catch { lastSetup = new LastSetup(); }
+        }
+    }
+
+    void SaveSetup()
+    {
+        if (flow == Flow.Online) return;              // nothing to jump back into
+        lastSetup.valid = true;
+        lastSetup.players = playerCount;
+        lastSetup.p1Character = p1Character;
+        lastSetup.difficulty = (int)aiDifficulty;
+        lastSetup.arena = ArenaDirectory.Instance != null ? ArenaDirectory.Instance.NameOf(arenaChoice) : "";
+        PlayerPrefs.SetString(SetupKey, JsonUtility.ToJson(lastSetup));
         PlayerPrefs.Save();
     }
 
@@ -297,111 +542,234 @@ public class GameMenu : MonoBehaviour
             var fi = typeof(CombatSystem).GetField("bloodOnHit", BindingFlags.NonPublic | BindingFlags.Instance);
             if (fi != null) fi.SetValue(cs, settings.blood);
         }
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.Bindings.firstPadPlayer = settings.padPlayer == 1 ? 1 : 2;
-        }
+        if (InputManager.Instance != null) InputManager.Instance.Bindings.firstPadPlayer = settings.padPlayer == 1 ? 1 : 2;
     }
 
-    // ------------------------------------------------------------------ screens
+    // ================================================================ screens
 
-    void Show(Screen s)
+    /// <summary>Rebuilds the current screen in place, keeping the cursor where it was.</summary>
+    void Rebuild()
     {
-        if (screen != Screen.None && s != screen) previous = screen;
+        int keepSel = selected, keepScroll = scroll;
+        float keepAge = screenAge;
+        rebuilding = true;
+        Show(screen, push: false);
+        rebuilding = false;
+        screenAge = keepAge;                    // a toggle must not replay the entrance animation
+        selected = Mathf.Clamp(keepSel, 0, Mathf.Max(0, items.Count - 1));
+        scroll = Mathf.Clamp(keepScroll, 0, Mathf.Max(0, items.Count - visibleRows));
+        if (items.Count > 0 && items[selected].header) MoveSelection(1); else Refresh();
+    }
+
+    /// <summary>Changes screen behind a wipe, for the transitions between the big views.</summary>
+    void GoWiped(Screen s)
+    {
+        if (stage == null) { Show(s); return; }
+        stage.Wipe(() => Show(s));
+    }
+
+    void Show(Screen s, bool push = true)
+    {
+        if (push && screen != Screen.None && screen != s && screen != Screen.Boot) history.Add(screen);
+
         screen = s;
         capturing = false;
-        canvas.gameObject.SetActive(s != Screen.None);
+        captureBack.gameObject.SetActive(false);
+        screenAge = 0f;
+        inputGuard = rebuilding ? inputGuard : 0.22f;
+
+        bool menuVisible = s != Screen.None;
+        bool onStage = s == Screen.CharSelect || s == Screen.ArenaSelect || s == Screen.Vs;
+        content.gameObject.SetActive(menuVisible);
+        if (stage != null)
+        {
+            stage.SetBackdrop(s == Screen.None ? MenuStage.Backdrop.None
+                            : onStage ? MenuStage.Backdrop.Stage
+                            : s == Screen.Pause || s == Screen.MatchOver ? MenuStage.Backdrop.Pause
+                            : MenuStage.Backdrop.Menu);
+            stage.ShowWatermark(s != Screen.Boot && !onStage);
+        }
+
+        // The select screens show the REAL fighters idling in the arena, so the pair has to be
+        // posed for the camera instead of squared up against each other.
+        if (onStage) StageFighters(s == Screen.Vs, s == Screen.ArenaSelect);
+        else if (staged) Unstage();
+
+        bootView.gameObject.SetActive(s == Screen.Boot);
+        selectView.gameObject.SetActive(s == Screen.CharSelect);
+        arenaView.gameObject.SetActive(s == Screen.ArenaSelect);
+        vsView.gameObject.SetActive(s == Screen.Vs);
+        panel.gameObject.SetActive(menuVisible && s != Screen.Boot && s != Screen.Vs && !onStage);
+        header.gameObject.SetActive(menuVisible && s != Screen.Boot && s != Screen.Vs);
+        footer.gameObject.SetActive(menuVisible && s != Screen.Boot && s != Screen.Vs);
+        bool logoTitle = s == Screen.Main && MenuArt.Logo != null;
+        titleLogo.gameObject.SetActive(logoTitle);
+        title.gameObject.SetActive(!logoTitle);
+        divider.gameObject.SetActive(!logoTitle);
+        subtitle.gameObject.SetActive(!logoTitle);
+
+        var hud = FindAnyObjectByType<FightHud>();
+        if (hud != null) hud.SetVisible(s == Screen.None);
+
         if (s == Screen.None) return;
+        if (s == Screen.Boot) { BuildBoot(); return; }
+        if (s == Screen.Vs) { StartCoroutine(VsRoutine()); return; }
+
         items.Clear();
         selected = 0; scroll = 0;
+        visibleRows = 16; rowHeight = 46f; rowFont = 28;
+        subtitle.text = "";
+        BuildScreen(s);
+
+        LayoutPanel();
+        LayoutRows();
+        if (items.Count > 0 && items[selected].header) MoveSelection(1);
+        Refresh();
+        if (!rebuilding) for (int i = 0; i < rows.Count; i++) rows[i].slide = 0f;   // stagger the entrance
+    }
+
+    void BuildScreen(Screen s)
+    {
         switch (s)
         {
+            // ------------------------------------------------------------ main
             case Screen.Main:
-                title.text = "CRUCIBLE"; subtitle.text = "Honorable Souls";
-                items.Add(new Item { label = "Local Play", confirm = () => { vsAi = false; StartMatch(); } });
-                items.Add(new Item { label = "Against AI", confirm = () => Show(Screen.AiSelect) });
-                items.Add(new Item { label = "Same WiFi", confirm = () => Show(Screen.Online) });
-                items.Add(new Item { label = "Controls", confirm = () => Show(Screen.Controls) });
+                SetTitle("Crucible", "Honourable Souls");
+                if (lastSetup.valid)
+                    items.Add(new Item { label = "Quick Battle", value = QuickSummary, confirm = QuickBattle });
+                items.Add(new Item { label = "Local Play", value = () => "1 or 2 players on this device", confirm = () => { flow = Flow.Local; GoWiped(Screen.LocalSetup); } });
+                items.Add(new Item { label = "Online", value = () => "play over the link", confirm = () => { flow = Flow.Online; Show(Screen.Online); } });
+                items.Add(new Item { label = "Practice", value = () => "a dummy that obeys your rules", confirm = () => { flow = Flow.Practice; playerCount = 1; GoWiped(Screen.CharSelect); } });
+                items.Add(new Item { label = "Move List", confirm = () => Show(Screen.Moves) });
                 items.Add(new Item { label = "Settings", confirm = () => Show(Screen.Settings) });
-                items.Add(new Item { label = "Moves", confirm = () => Show(Screen.Moves) });
-                items.Add(new Item { label = "Help", confirm = () => Show(Screen.Help) });
                 items.Add(new Item { label = "Quit", confirm = Quit });
-                footer.text = NavHint();
+                footerText.text = NavHint();
                 break;
-            case Screen.AiSelect:
-                title.text = "AGAINST AI"; subtitle.text = "You play Player 1 (Bjorn); the AI plays Player 2 (Miyamoto)";
-                items.Add(new Item { label = "Chill", value = () => "slow, sloppy, forgiving", confirm = () => { vsAi = true; aiDifficulty = AiDifficulty.Chill; StartMatch(); } });
-                items.Add(new Item { label = "Moderate", value = () => "reads wind-ups, blocks and dodges half the time", confirm = () => { vsAi = true; aiDifficulty = AiDifficulty.Moderate; StartMatch(); } });
-                items.Add(new Item { label = "Insane", value = () => "reacts in frames, punishes every whiff, counters", confirm = () => { vsAi = true; aiDifficulty = AiDifficulty.Insane; StartMatch(); } });
+
+            // ------------------------------------------------------------ local setup
+            case Screen.LocalSetup:
+                SetTitle("Local Play", "how many of you are there?");
+                items.Add(new Item { label = "One Player", value = () => "you against the computer", confirm = () => { playerCount = 1; GoWiped(Screen.CharSelect); } });
+                items.Add(new Item { label = "Two Players", value = () => "both fighters on this device", confirm = () => { playerCount = 2; GoWiped(Screen.CharSelect); } });
                 items.Add(new Item { label = "Back", confirm = Back });
-                footer.text = NavHint();
+                footerText.text = NavHint();
                 break;
+
+            // ------------------------------------------------------------ difficulty
+            case Screen.Difficulty:
+                SetTitle("The Opponent", "how hard should it push back?");
+                items.Add(new Item { label = "Chill", value = () => "slow, sloppy, forgiving", confirm = () => ChooseDifficulty(AiDifficulty.Chill) });
+                items.Add(new Item { label = "Moderate", value = () => "reads wind-ups, blocks and dodges half the time", confirm = () => ChooseDifficulty(AiDifficulty.Moderate) });
+                items.Add(new Item { label = "Insane", value = () => "reacts in frames, punishes every whiff", confirm = () => ChooseDifficulty(AiDifficulty.Insane) });
+                items.Add(new Item { label = "Back", confirm = Back });
+                footerText.text = NavHint();
+                break;
+
+            // ------------------------------------------------------------ practice
+            case Screen.PracticeRules:
+                SetTitle("Practice", "decide what the dummy is allowed to do");
+                items.Add(new Item { label = "Opponent", value = () => RulesSummary(), adjust = d => { CycleRulesPreset(d); Rebuild(); }, confirm = () => { CycleRulesPreset(1); Rebuild(); } });
+                items.Add(new Item { label = "   Walks and keeps spacing", value = () => OnOff(practiceRules.walk), adjust = d => { practiceRules.walk = !practiceRules.walk; Rebuild(); }, confirm = () => { practiceRules.walk = !practiceRules.walk; Rebuild(); } });
+                items.Add(new Item { label = "   Attacks", value = () => OnOff(practiceRules.attack), adjust = d => { practiceRules.attack = !practiceRules.attack; Rebuild(); }, confirm = () => { practiceRules.attack = !practiceRules.attack; Rebuild(); } });
+                items.Add(new Item { label = "   Blocks", value = () => OnOff(practiceRules.block), adjust = d => { practiceRules.block = !practiceRules.block; Rebuild(); }, confirm = () => { practiceRules.block = !practiceRules.block; Rebuild(); } });
+                items.Add(new Item { label = "   Dodges", value = () => OnOff(practiceRules.dodge), adjust = d => { practiceRules.dodge = !practiceRules.dodge; Rebuild(); }, confirm = () => { practiceRules.dodge = !practiceRules.dodge; Rebuild(); } });
+                items.Add(new Item { label = "   Punishes and counters", value = () => OnOff(practiceRules.punish), adjust = d => { practiceRules.punish = !practiceRules.punish; Rebuild(); }, confirm = () => { practiceRules.punish = !practiceRules.punish; Rebuild(); } });
+                items.Add(new Item { label = "Skill", value = () => aiDifficulty.ToString(), adjust = d => { aiDifficulty = (AiDifficulty)(((int)aiDifficulty + (d > 0 ? 1 : 2)) % 3); Rebuild(); } });
+                items.Add(new Item { label = "", header = true });
+                items.Add(new Item { label = "Infinite health", value = () => OnOff(practiceInfiniteHealth), adjust = d => { practiceInfiniteHealth = !practiceInfiniteHealth; Rebuild(); }, confirm = () => { practiceInfiniteHealth = !practiceInfiniteHealth; Rebuild(); } });
+                items.Add(new Item { label = "Infinite stamina", value = () => OnOff(practiceInfiniteStamina), adjust = d => { practiceInfiniteStamina = !practiceInfiniteStamina; Rebuild(); }, confirm = () => { practiceInfiniteStamina = !practiceInfiniteStamina; Rebuild(); } });
+                items.Add(new Item { label = "", header = true });
+                items.Add(new Item { label = "Begin", confirm = () => { vsAi = true; GoWiped(Screen.Vs); } });
+                items.Add(new Item { label = "Back", confirm = Back });
+                footerText.text = "Left / Right to change    " + NavHint();
+                break;
+
+            // ------------------------------------------------------------ online
             case Screen.Online:
-                title.text = "SAME WIFI"; subtitle.text = "Both phones open " + NetSession.LanHint() + " (the PC runs Server/relay.js)";
-                items.Add(new Item { label = "Host a game", value = () => "you are Bjorn", confirm = () =>
+                SetTitle("Online", "both players open " + NetSession.LanHint());
+                items.Add(new Item { label = "Host a game", value = () => "you fight as Player 1", confirm = () =>
                 {
                     if (Net == null) return;
-                    Net.Host(System.Environment.MachineName.Length > 0 ? System.Environment.MachineName : "room");
+                    Net.Host(Environment.MachineName.Length > 0 ? Environment.MachineName : "room");
                     Show(Screen.OnlineHost);
                 } });
-                items.Add(new Item { label = "Join a game", value = () => "you are Miyamoto", confirm = () => { if (Net == null) return; Net.BrowseRooms(); Show(Screen.OnlineJoin); } });
+                items.Add(new Item { label = "Join a game", value = () => "you fight as Player 2", confirm = () => { if (Net == null) return; Net.BrowseRooms(); Show(Screen.OnlineJoin); } });
                 items.Add(new Item { label = "Back", confirm = Back });
-                footer.text = NavHint();
+                footerText.text = NavHint();
                 break;
+
             case Screen.OnlineHost:
-                title.text = "HOSTING"; subtitle.text = Net != null ? Net.Status : "";
-                items.Add(new Item { label = Net != null && Net.PeerConnected ? "Start the fight" : "Waiting for a player...", confirm = () => { if (Net != null && Net.PeerConnected) { vsAi = false; netRole = NetSession.Role.Host; StartMatch(); } } });
-                items.Add(new Item { label = "Cancel", confirm = () => { Net?.Leave(); netRole = NetSession.Role.None; Show(Screen.Online); } });
-                footer.text = NavHint();
+                SetTitle("Hosting", Net != null ? Net.Status : "");
+                items.Add(new Item { label = Net != null && Net.PeerConnected ? "Start the fight" : "Waiting for a player...",
+                                     confirm = () => { if (Net != null && Net.PeerConnected) { vsAi = false; playerCount = 2; netRole = NetSession.Role.Host; StartMatch(); } } });
+                items.Add(new Item { label = "Cancel", confirm = () => { Net?.Leave(); netRole = NetSession.Role.None; Show(Screen.Online, push: false); } });
+                footerText.text = NavHint();
                 break;
+
             case Screen.OnlineJoin:
-                title.text = "JOIN A GAME"; subtitle.text = Net != null ? Net.Status : "";
+                SetTitle("Join a Game", Net != null ? Net.Status : "");
                 if (Net != null)
                 {
-                    if (Net.Rooms.Count == 0) items.Add(new Item { label = "   (no open games yet; the host must press Host a game)", header = true });
+                    if (Net.Rooms.Count == 0) items.Add(new Item { label = "(no open games yet - the host must press Host a game)", header = true, quiet = true });
                     foreach (var r in Net.Rooms) { string room = r; items.Add(new Item { label = "Join " + room, confirm = () => Net.Join(room) }); }
                 }
-                items.Add(new Item { label = "Back", confirm = () => { Net?.Leave(); netRole = NetSession.Role.None; Show(Screen.Online); } });
-                footer.text = NavHint();
+                items.Add(new Item { label = "Back", confirm = () => { Net?.Leave(); netRole = NetSession.Role.None; Show(Screen.Online, push: false); } });
+                footerText.text = NavHint();
                 break;
+
+            // ------------------------------------------------------------ pause
             case Screen.Pause:
-                title.text = "PAUSED"; subtitle.text = vsAi ? $"vs AI ({aiDifficulty})" : (netRole != NetSession.Role.None ? "same WiFi" : "");
+                SetTitle("Paused", PauseSubtitle());
                 items.Add(new Item { label = "Resume", confirm = Resume });
-                items.Add(new Item { label = "Moves", confirm = () => Show(Screen.Moves) });
-                items.Add(new Item { label = "Help", confirm = () => Show(Screen.Help) });
+                items.Add(new Item { label = "Move List", value = () => "strikes, specials and strings", confirm = () => Show(Screen.Moves) });
+                items.Add(new Item { label = "How to Fight", confirm = () => Show(Screen.Help) });
                 items.Add(new Item { label = "Controls", confirm = () => Show(Screen.Controls) });
                 items.Add(new Item { label = "Settings", confirm = () => Show(Screen.Settings) });
-                items.Add(new Item { label = "Main Menu", confirm = EndMatchToMenu });
-                footer.text = NavHint();
+                if (flow == Flow.Practice)
+                    items.Add(new Item { label = "Practice rules", confirm = () => Show(Screen.PracticeRules) });
+                items.Add(new Item { label = "Restart the fight", confirm = () => { if (stage != null) stage.Wipe(StartMatch); else StartMatch(); } });
+                items.Add(new Item { label = "Main Menu", confirm = () => { if (stage != null) stage.Wipe(EndMatchToMenu); else EndMatchToMenu(); } });
+                footerText.text = "Options / Esc resumes    " + NavHint();
                 break;
+
+            // ------------------------------------------------------------ KO
             case Screen.MatchOver:
-                title.text = winnerNumber > 0 ? (vsAi ? (winnerNumber == 1 ? "YOU WIN" : "THE AI WINS") : $"PLAYER {winnerNumber} WINS") : "DRAW";
-                subtitle.text = netRole == NetSession.Role.Guest ? winnerName + "   (you are Player 2)" : winnerName;
-                items.Add(new Item { label = "Rematch", confirm = StartMatch });
-                items.Add(new Item { label = "Main Menu", confirm = EndMatchToMenu });
-                footer.text = NavHint();
+                SetTitle(winnerNumber > 0 ? (vsAi ? (winnerNumber == 1 ? "You Win" : "You Lose") : $"Player {winnerNumber} Wins") : "Draw",
+                         winnerNumber > 0 ? winnerName + " is left standing" : "");
+                items.Add(new Item { label = "Rematch", confirm = () => { if (stage != null) stage.Wipe(StartMatch); else StartMatch(); } });
+                items.Add(new Item { label = "Change fighters", confirm = () => { inMatch = false; GoWiped(Screen.CharSelect); } });
+                items.Add(new Item { label = "Main Menu", confirm = () => { if (stage != null) stage.Wipe(EndMatchToMenu); else EndMatchToMenu(); } });
+                footerText.text = NavHint();
                 break;
+
+            // ------------------------------------------------------------ settings
             case Screen.Settings:
-                title.text = "SETTINGS"; subtitle.text = "";
+                SetTitle("Settings", "");
                 items.Add(new Item { label = "Master volume", value = () => Mathf.RoundToInt(settings.volume * 100) + "%",
                     adjust = d => { settings.volume = Mathf.Clamp01(settings.volume + d * 0.1f); ApplySettings(); SaveSettings(); } });
                 items.Add(new Item { label = "Game speed", value = () => Mathf.RoundToInt(settings.gameSpeed * 100) + "%",
                     adjust = d => { settings.gameSpeed = Mathf.Clamp(settings.gameSpeed + d * 0.05f, 0.5f, 1f); ApplySettings(); SaveSettings(); } });
-                items.Add(new Item { label = "Blood", value = () => settings.blood ? "On" : "Off",
+                items.Add(new Item { label = "Blood", value = () => OnOff(settings.blood),
                     adjust = d => { settings.blood = !settings.blood; ApplySettings(); SaveSettings(); },
-                    confirm = () => { settings.blood = !settings.blood; ApplySettings(); SaveSettings(); Refresh(); } });
+                    confirm = () => { settings.blood = !settings.blood; ApplySettings(); SaveSettings(); Rebuild(); } });
                 items.Add(new Item { label = "On-screen buttons",
                     value = () => settings.touchButtons == 1 ? "Always" : settings.touchButtons == 2 ? "Off" : "Auto (phones)",
                     adjust = d => { settings.touchButtons = (settings.touchButtons + (d > 0 ? 1 : 2)) % 3; ApplySettings(); SaveSettings(); },
-                    confirm = () => { settings.touchButtons = (settings.touchButtons + 1) % 3; ApplySettings(); SaveSettings(); Refresh(); } });
+                    confirm = () => { settings.touchButtons = (settings.touchButtons + 1) % 3; ApplySettings(); SaveSettings(); Rebuild(); } });
                 items.Add(new Item { label = "Controller drives", value = () => settings.padPlayer == 1 ? "Player 1" : "Player 2",
                     adjust = d => { settings.padPlayer = settings.padPlayer == 1 ? 2 : 1; ApplySettings(); SaveSettings(); },
-                    confirm = () => { settings.padPlayer = settings.padPlayer == 1 ? 2 : 1; ApplySettings(); SaveSettings(); Refresh(); } });
+                    confirm = () => { settings.padPlayer = settings.padPlayer == 1 ? 2 : 1; ApplySettings(); SaveSettings(); Rebuild(); } });
+                items.Add(new Item { label = "", header = true });
+                items.Add(new Item { label = "Controls", value = () => "rebind every key and button", confirm = () => Show(Screen.Controls) });
+                items.Add(new Item { label = "How to Fight", confirm = () => Show(Screen.Help) });
                 items.Add(new Item { label = "Back", confirm = Back });
-                footer.text = "Left / Right to change    " + NavHint();
+                footerText.text = "Left / Right to change    " + NavHint();
                 break;
+
+            // ------------------------------------------------------------ controls
             case Screen.Controls:
-                title.text = "CONTROLS"; subtitle.text = "Select an action, then press the key or pad button to use for it";
+                SetTitle("Controls", "pick an action, then press the key or pad button for it");
+                visibleRows = 20; rowHeight = 37f; rowFont = 23;
                 for (int p = 1; p <= 2; p++)
                 {
                     int player = p;
@@ -423,234 +791,288 @@ public class GameMenu : MonoBehaviour
                     ControlBindings.ResetSaved();
                     InputManager.Instance.ReloadBindings();
                     ApplySettings();
-                    Refresh();
+                    Rebuild();
                 } });
                 items.Add(new Item { label = "Back", confirm = Back });
-                footer.text = "Dash: hold the dash key + a direction (P1 also 7 8 9 / 4 6 / 1 2 3), or flick the right stick    " + NavHint();
+                footerText.text = "Dash: hold the dash key + a direction, or flick the right stick    " + NavHint();
                 break;
+
+            // ------------------------------------------------------------ moves
             case Screen.Moves:
             {
+                visibleRows = 22; rowHeight = 33f; rowFont = 21;
                 int pages = Mathf.Max(1, MovesRoster().Count * 2);
                 movesPage = ((movesPage % pages) + pages) % pages;
-                title.text = "MOVES"; subtitle.text = "read from the live attack data, so this list cannot go stale";
+                SetTitle("Move List", "read from the live attack data, so this list cannot go stale");
                 if (pages > 1)
                     items.Add(new Item
                     {
                         label = "Showing",
                         value = () => MovesPageName(movesPage),
-                        adjust = d => { int n = Mathf.Max(1, MovesRoster().Count * 2); movesPage = (movesPage + (d > 0 ? 1 : n - 1)) % n; Refresh(); }
+                        // Rebuild, not Refresh: the page's lines are baked into `items` when the
+                        // screen is built, so only a rebuild actually changes what is on it. This
+                        // is the bug that made the page label flip while the moves stayed put.
+                        adjust = d => { int n = Mathf.Max(1, MovesRoster().Count * 2); movesPage = (movesPage + (d > 0 ? 1 : n - 1)) % n; Rebuild(); },
+                        confirm = () => { int n = Mathf.Max(1, MovesRoster().Count * 2); movesPage = (movesPage + 1) % n; Rebuild(); },
                     });
-                foreach (string line in MoveLines(movesPage)) items.Add(new Item { label = line, header = true });
+                foreach (string line in MoveLines(movesPage)) items.Add(new Item { label = line, header = true, quiet = true });
                 items.Add(new Item { label = "Back", confirm = Back });
-                footer.text = NavHint();
+                footerText.text = "Left / Right changes the page    " + NavHint();
                 break;
             }
+
+            // ------------------------------------------------------------ help
             case Screen.Help:
-                title.text = "HOW TO FIGHT"; subtitle.text = "";
-                foreach (string line in HelpLines()) items.Add(new Item { label = line, header = true });
+                visibleRows = 22; rowHeight = 33f; rowFont = 21;
+                SetTitle("How to Fight", "");
+                foreach (string line in HelpLines()) items.Add(new Item { label = line, header = true, quiet = true });
                 items.Add(new Item { label = "Back", confirm = Back });
-                footer.text = NavHint();
+                footerText.text = NavHint();
+                break;
+
+            // ------------------------------------------------------------ the custom views
+            case Screen.CharSelect:
+                SetTitle("Choose Your Fighter", playerCount >= 2 ? "Player 1 picks; Player 2 takes the other" : "the computer takes the other");
+                BuildCharSelect();
+                footerText.text = "Left / Right to choose    Enter / Cross to lock in    Esc to go back";
+                break;
+
+            case Screen.ArenaSelect:
+                SetTitle("Choose Your Ground", "");
+                BuildArenaSelect();
+                footerText.text = "Left / Right to choose    Enter / Cross to fight    Esc to go back";
                 break;
         }
-        if (items.Count > 0 && items[selected].header) MoveSelection(1);
-        Refresh();
     }
 
-    static string NavHint() => TouchControls.WantsTouch ? "Tap an item" : "Arrows / D-pad: navigate    Enter / Cross: select    Esc / Circle: back";
-
-    string BindingText(int player, GameAction a)
+    void SetTitle(string t, string sub)
     {
-        var b = InputManager.Instance.Bindings.Player(player);
-        return $"{ControlBindings.KeyLabel(b.Key(a)),-10}   {ControlBindings.PadLabel(b.Pad(a))}";
+        title.text = MenuArt.Track(t.ToUpperInvariant(), 1);
+        subtitle.text = sub ?? "";
     }
 
-    int movesPage;   // fighter * 2 + (0 = its moves, 1 = its strings)
+    static string OnOff(bool b) => b ? "On" : "Off";
 
-    /// <summary>Fighters the move list can page through, in player order.</summary>
-    List<(string name, CombatSystem combat, int player)> MovesRoster()
+    string PauseSubtitle()
     {
-        var roster = new List<(string, CombatSystem, int)>();
-        foreach (var fighter in UnityEngine.Object.FindObjectsByType<Fighter>(FindObjectsInactive.Include)
-                                .OrderBy(f => f.PlayerNumber))
+        if (flow == Flow.Practice) return "practice - nothing here can kill you";
+        if (netRole != NetSession.Role.None) return "online";
+        if (vsAi) return $"versus the computer ({aiDifficulty})";
+        return "two players";
+    }
+
+    string QuickSummary()
+    {
+        string who = lastSetup.players >= 2 ? "2 players" : "vs " + (AiDifficulty)lastSetup.difficulty;
+        string character = lastSetup.p1Character >= 0 && lastSetup.p1Character < roster.Length
+                         ? roster[lastSetup.p1Character].CharacterName : "";
+        string arena = string.IsNullOrEmpty(lastSetup.arena) ? "" : "  -  " + lastSetup.arena;
+        return $"{character}  -  {who}{arena}";
+    }
+
+    void QuickBattle()
+    {
+        playerCount = Mathf.Clamp(lastSetup.players, 1, 2);
+        aiDifficulty = (AiDifficulty)Mathf.Clamp(lastSetup.difficulty, 0, 2);
+        vsAi = playerCount == 1;
+        flow = Flow.Local;
+        ApplySides(Mathf.Clamp(lastSetup.p1Character, 0, Mathf.Max(0, roster.Length - 1)));
+        if (ArenaDirectory.Instance != null)
         {
-            var combat = fighter.GetComponent<CombatSystem>();
-            if (combat == null) continue;
-            // Both fighters currently share one FighterData ("test Fighter"), so that name tells
-            // the two apart for nobody. The identity this project really uses is the attack asset
-            // prefix (Bjorn_Light_Slash -> Bjorn), which also keys the animator states and clip maps.
-            string name = CharacterName(combat) ??
-                          (fighter.fighterData != null ? fighter.fighterData.FighterName : fighter.name);
-            roster.Add((name, combat, fighter.PlayerNumber));
+            var list = ArenaDirectory.Instance.Selectable;
+            for (int i = 0; i < list.Count; i++) if (list[i].displayName == lastSetup.arena) { arenaChoice = i; break; }
         }
-        return roster;
+        GoWiped(Screen.Vs);
     }
 
-    string MovesPageName(int page)
+    void ChooseDifficulty(AiDifficulty d)
     {
-        var roster = MovesRoster();
-        if (roster.Count == 0) return "-";
-        var entry = roster[Mathf.Clamp(page / 2, 0, roster.Count - 1)];
-        return entry.name + (page % 2 == 0 ? " - moves" : " - strings");
+        aiDifficulty = d;
+        vsAi = true;
+        GoWiped(Screen.Vs);
     }
 
-    /// <summary>
-    /// One page of the move list, walked from the live <see cref="AttackData"/> every time the
-    /// screen opens. Only the LONGEST form of each string is listed - a two-hit that can be
-    /// extended is shown as the three-hit, since stopping early is always allowed. Mirrors the two
-    /// engine rules a walk has to know about: a link marked openerOnly is offered only from the
-    /// string's first move, and a string carries at most one special.
-    /// </summary>
-    IEnumerable<string> MoveLines(int page)
+    void CycleRulesPreset(int dir)
     {
-        var roster = MovesRoster();
-        if (roster.Count == 0) { yield return "No fighters in the scene."; yield break; }
-        var entry = roster[Mathf.Clamp(page / 2, 0, roster.Count - 1)];
-        var b = InputManager.Instance != null ? InputManager.Instance.Bindings : ControlBindings.Defaults();
-        var keys = b.Player(entry.player);
+        // three useful shapes, in order: a standing dummy, a dummy that only defends, a full fight
+        bool dummy = practiceRules.IsDummy;
+        bool defends = !practiceRules.attack && (practiceRules.block || practiceRules.dodge);
+        int now = dummy ? 0 : defends ? 1 : 2;
+        int next = ((now + (dir > 0 ? 1 : 2)) % 3);
+        practiceRules = next == 0 ? AiController.Rules.Dummy
+                      : next == 1 ? new AiController.Rules { block = true, dodge = true }
+                      : AiController.Rules.Full;
+    }
 
-        if (page % 2 == 0)
+    string RulesSummary()
+    {
+        if (practiceRules.IsDummy) return "Standing dummy";
+        if (!practiceRules.attack && (practiceRules.block || practiceRules.dodge)) return "Defends only";
+        if (practiceRules.attack && !practiceRules.block && !practiceRules.dodge) return "Attacks only";
+        var r = practiceRules;
+        return r.walk && r.attack && r.block && r.dodge && r.punish ? "Full fight" : "Custom";
+    }
+
+    static string NavHint() => TouchControls.WantsTouch
+        ? "Tap an item"
+        : "Arrows / D-pad: move    Enter / Cross: select    Esc / Circle: back";
+
+    // ================================================================ boot
+
+    void BuildBoot()
+    {
+        bootPrompt.text = MenuArt.Track("PRESS ANY BUTTON", 2);
+        if (bootRoutine != null) StopCoroutine(bootRoutine);
+        bootRoutine = StartCoroutine(BootRoutine());
+    }
+
+    IEnumerator BootRoutine()
+    {
+        var logoRect = bootLogo != null ? bootLogo.rectTransform : null;
+        bootPrompt.color = MenuArt.Fade(MenuArt.Bone, 0f);
+        float fade = 1.1f;
+        for (float k = 0f; k < 1f; k += Time.unscaledDeltaTime / fade)
         {
-            yield return $"{entry.name.ToUpper()}   (Player {entry.player})   damage / stamina / startup-active-recovery";
-            yield return "";
-            foreach (var attack in Library(entry.combat))
-                yield return $"   {Press(keys, attack),-14} {attack.AttackName,-21} {attack.Damage,2} dmg   " +
-                             $"{attack.StaminaCost,2} stam   {attack.StartupFrames}/{attack.ActiveFrames}/{attack.RecoveryFrames}";
-            foreach (var r in Ripostes(entry.combat))
-            {
-                // A riposte is not on a button: a counter window re-points the strike buttons at
-                // it. Its own follow-up is shown inline rather than on the strings page, which is
-                // already as long as the panel can hold.
-                string next = "";
-                var link = r.attack.ComboLinks != null && r.attack.ComboLinks.Length > 0 ? r.attack.ComboLinks[0] : null;
-                if (link != null && link.followUp != null)
-                    next = "   > " + PressLabel(keys, link.input, link.withSpecialModifier) + "  " + link.followUp.AttackName;
-                yield return $"   {"[" + r.label + "]",-14} {r.attack.AttackName,-21} {r.attack.Damage,2} dmg   " +
-                             $"{r.attack.StaminaCost,2} stam   {r.attack.StartupFrames}/{r.attack.ActiveFrames}/{r.attack.RecoveryFrames}{next}";
-            }
-            yield return "";
-            yield return "   A special costs about 2.5x the stamina of the strike it shares a button with. A dodge or";
-            yield return "   a parry re-points the strike buttons at that fighter's riposte, and gives health back.";
-            yield break;
+            float e = MenuArt.EaseOut(k);
+            if (bootLogo != null) bootLogo.color = MenuArt.Fade(Color.white, e);
+            if (bootTitle != null) bootTitle.color = MenuArt.Fade(MenuArt.BronzeLit, e);
+            if (logoRect != null) logoRect.localScale = Vector3.one * Mathf.Lerp(1.08f, 1f, e);
+            yield return null;
         }
-
-        var strings = new List<(string buttons, string names)>();
-        foreach (var opener in Library(entry.combat))
-            WalkMoves(opener, keys, Press(keys, opener), opener.AttackName, 0, opener.IsSpecial, strings);
-        yield return $"{entry.name.ToUpper()}   (Player {entry.player})   {strings.Count} strings";
-        yield return "";
-        foreach (var line in strings)
-            yield return $"   {line.buttons,-30} {line.names}";
-        yield return "";
-        yield return "   Press the next button before the move finishes; stopping early is always allowed.";
+        if (bootLogo != null) { bootLogo.color = Color.white; logoRect.localScale = Vector3.one; }
+        bootReady = true;
     }
 
-    /// <summary>
-    /// Collects only the strings that cannot be continued any further, so each branch is listed
-    /// once at full length instead of once per prefix.
-    /// </summary>
-    void WalkMoves(AttackData attack, ControlBindings.PlayerBindings keys, string buttons, string names,
-                   int depth, bool usedSpecial, List<(string, string)> into)
+    bool bootReady;
+    Coroutine bootRoutine;
+
+    void UpdateBoot()
     {
-        bool extended = false;
-        if (attack != null && attack.ComboLinks != null && depth + 2 <= BalanceConfig.MAX_STRING_LENGTH)
+        // breathe the prompt in and out once the logo has settled
+        float a = bootReady ? 0.35f + 0.65f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 1.6f)) : 0f;
+        bootPrompt.color = MenuArt.Fade(MenuArt.Bone, a);
+
+        if (!bootReady || inputGuard > 0f) return;
+        if (!AnyButton()) return;
+
+        bootReady = false;
+        history.Clear();
+        GoWiped(Screen.Main);
+    }
+
+    static bool AnyButton()
+    {
+        if (Input.anyKeyDown) return true;
+        if (Input.touchCount > 0) return true;
+        foreach (var g in Gamepad.all)
         {
-            foreach (var link in attack.ComboLinks)
-            {
-                if (link == null || link.followUp == null) continue;
-                if (link.openerOnly && depth > 0) continue;
-                if (usedSpecial && link.followUp.IsSpecial) continue;
-                extended = true;
-                WalkMoves(link.followUp, keys,
-                          buttons + " > " + PressLabel(keys, link.input, link.withSpecialModifier),
-                          names + " > " + link.followUp.AttackName,
-                          depth + 1, usedSpecial || link.followUp.IsSpecial, into);
-            }
+            if (g.buttonSouth.wasPressedThisFrame || g.buttonEast.wasPressedThisFrame ||
+                g.buttonWest.wasPressedThisFrame || g.buttonNorth.wasPressedThisFrame ||
+                g.startButton.wasPressedThisFrame || g.selectButton.wasPressedThisFrame) return true;
         }
-        if (!extended && depth > 0) into.Add((buttons, names));
+        return false;
     }
 
-    /// <summary>
-    /// The counter-window moves, which no button produces on its own. Listed with what opens them
-    /// rather than with a key.
-    /// </summary>
-    static IEnumerable<(string label, AttackData attack)> Ripostes(CombatSystem combat)
+    // ================================================================ character select
+
+    static string StatsLine(Fighter f)
     {
-        if (combat.DashRiposte != null) yield return ("after a dodge", combat.DashRiposte);
-        if (combat.ParryRiposte != null) yield return ("after a parry", combat.ParryRiposte);
+        var combat = f.Combat;
+        var dmg = new List<string>();
+        if (combat != null && combat.Attacks != null)
+            foreach (var a in combat.Attacks) if (a != null) dmg.Add(a.Damage.ToString());
+        string strikes = dmg.Count > 0 ? string.Join(" / ", dmg) : "-";
+        return $"HEALTH {f.MaxHealth}      STAMINA {f.MaxStamina}      ARMOUR {f.Armor}%\nSTRIKES {strikes}";
     }
 
-    static string CharacterName(CombatSystem combat)
+    static string Tagline(string character)
     {
-        foreach (var attack in Library(combat))
+        if (string.IsNullOrEmpty(character)) return "";
+        if (character.StartsWith("Miy", StringComparison.OrdinalIgnoreCase))
+            return "Katana. Quick, exact, unforgiving of a wasted swing.";
+        if (character.StartsWith("Bj", StringComparison.OrdinalIgnoreCase))
+            return "Dane axe. Slow to start, heavy to stop, longest reach.";
+        return "";
+    }
+
+    void MoveCharacter(int dir)
+    {
+        if (roster.Length < 2) return;
+        p1Character = (p1Character + (dir > 0 ? 1 : roster.Length - 1)) % roster.Length;
+        RefreshCards();
+    }
+
+    void ConfirmCharacter()
+    {
+        ApplySides(p1Character);
+        GoWiped(Screen.ArenaSelect);
+    }
+
+    // ================================================================ arena select
+
+    void BuildArenaSelect()
+    {
+        var dir = ArenaDirectory.Instance;
+        int count = dir != null ? dir.Selectable.Count : 0;
+        arenaChoice = count > 0 ? Mathf.Clamp(arenaChoice, 0, count - 1) : 0;
+        RefreshArena();
+    }
+
+    void RefreshArena()
+    {
+        var dir = ArenaDirectory.Instance;
+        int count = dir != null ? dir.Selectable.Count : 0;
+        arenaName.text = MenuArt.Track(count > 0 ? dir.NameOf(arenaChoice).ToUpperInvariant() : "NO ARENA", 2);
+        arenaBlurb.text = count > 0 ? dir.BlurbOf(arenaChoice) : "This build ships no selectable arena.";
+        arenaCount.text = count > 1 ? $"{arenaChoice + 1} of {count}" : "";
+
+        foreach (Transform child in arenaPips) Destroy(child.gameObject);
+        for (int i = 0; i < count; i++)
         {
-            int cut = attack.name.IndexOf('_');
-            if (cut > 0) return attack.name.Substring(0, cut);
+            var pip = MenuArt.Img(arenaPips, "Pip" + i, MenuArt.Diamond, i == arenaChoice ? MenuArt.BronzeLit : MenuArt.Fade(MenuArt.Bronze, 0.3f));
+            MenuArt.Box(pip.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(i == arenaChoice ? 16f : 11f, i == arenaChoice ? 16f : 11f),
+                        new Vector2((i - (count - 1) * 0.5f) * 34f, 0f));
         }
-        return null;
     }
 
-    static IEnumerable<AttackData> Library(CombatSystem combat)
+    void MoveArena(int dir)
     {
-        foreach (var a in combat.Attacks ?? new AttackData[0]) if (a != null) yield return a;
-        foreach (var a in combat.Specials ?? new AttackData[0]) if (a != null) yield return a;
+        var d = ArenaDirectory.Instance;
+        int count = d != null ? d.Selectable.Count : 0;
+        if (count <= 1) return;
+        arenaChoice = (arenaChoice + (dir > 0 ? 1 : count - 1)) % count;
+        // Switch the real arena, so choosing one means looking at it. Not remembered yet: that
+        // happens when the choice is confirmed.
+        d.Select(arenaChoice, remember: false);
+        StageFighters(false, true);        // the new floor may sit at a different height
+        RefreshArena();
     }
 
-    static string Press(ControlBindings.PlayerBindings keys, AttackData attack) =>
-        PressLabel(keys, attack.IsSpecial ? attack.SpecialButton : attack.AttackType, attack.IsSpecial);
-
-    static string PressLabel(ControlBindings.PlayerBindings keys, AttackType button, bool special)
+    void ConfirmArena()
     {
-        GameAction action = button == AttackType.Light ? GameAction.Light
-                          : button == AttackType.Medium ? GameAction.Medium : GameAction.Heavy;
-        string key = ControlBindings.KeyLabel(keys.Key(action));
-        // Bracketed, because Player 2's strikes are punctuation (, . /) and the modifier is a
-        // two-word key: without them a string reads as ",  >  .  >  R Ctrl+," and nobody can
-        // tell where one press ends and the next begins.
-        return special ? $"[{ControlBindings.KeyLabel(keys.Key(GameAction.Special))} + {key}]" : $"[{key}]";
+        if (flow == Flow.Practice) { GoWiped(Screen.PracticeRules); return; }
+        if (playerCount == 1) { GoWiped(Screen.Difficulty); return; }
+        vsAi = false;
+        GoWiped(Screen.Vs);
     }
 
-    IEnumerable<string> HelpLines()
-    {
-        yield return "Walk toward or away from your opponent. Light, Medium and Heavy strikes each have a wind-up,";
-        yield return "an active window and a recovery. Heavier strikes hit harder and take longer. Every strike";
-        yield return "steps forward a little to reach its target.";
-        yield return "";
-        yield return "BLOCK   Hold Block to absorb a hit for stamina. Holding drains stamina; an empty bar breaks the guard.";
-        yield return "PARRY   Tap Parry just as a strike lands to deflect it: no damage, no stamina lost, and the attacker";
-        yield return "        is stunned long enough to punish, with half a second to counter for +35% damage. It is its";
-        yield return "        own button, never the guard: it costs a little stamina and about a second before you can";
-        yield return "        try again, so read the swing rather than tapping it on every one.";
-        yield return "DASH    Dash key + direction, or flick the right stick. A dash timed against a strike dodges it.";
-        yield return "        A side dash circles your opponent so you stay in range. After a clean dodge you have";
-        yield return "        half a second to counter for +35% damage, and the attacker who missed is stuck recovering.";
-        yield return "CLASH   Two strikes of equal weight meeting cancel each other. The heavier strike wins otherwise.";
-        yield return "SPECIAL Hold the Special modifier and press a strike for that character's special version of it:";
-        yield return "        three per fighter, one on each button. They hit harder and reach further, cost about two";
-        yield return "        and a half times the stamina, and leave a beat afterwards in which you cannot attack, so";
-        yield return "        a whiffed special is punished. On a phone, tap SP once and it stays lit for your next strike.";
-        yield return "KO      Empty your opponent's health bar.";
-        yield return "";
-        var b = InputManager.Instance != null ? InputManager.Instance.Bindings : ControlBindings.Defaults();
-        yield return $"P1 keyboard:  move {ControlBindings.KeyLabel(b.p1.Key(GameAction.MoveLeft))}/{ControlBindings.KeyLabel(b.p1.Key(GameAction.MoveRight))}   " +
-                     $"light {ControlBindings.KeyLabel(b.p1.Key(GameAction.Light))}  medium {ControlBindings.KeyLabel(b.p1.Key(GameAction.Medium))}  heavy {ControlBindings.KeyLabel(b.p1.Key(GameAction.Heavy))}   " +
-                     $"block {ControlBindings.KeyLabel(b.p1.Key(GameAction.Block))}  parry {ControlBindings.KeyLabel(b.p1.Key(GameAction.Defense))}   " +
-                     $"special {ControlBindings.KeyLabel(b.p1.Key(GameAction.Special))}+strike   dash {ControlBindings.KeyLabel(b.p1.Key(GameAction.Dash))}";
-        yield return $"P2 keyboard:  move {ControlBindings.KeyLabel(b.p2.Key(GameAction.MoveLeft))}/{ControlBindings.KeyLabel(b.p2.Key(GameAction.MoveRight))}   " +
-                     $"light {ControlBindings.KeyLabel(b.p2.Key(GameAction.Light))}  medium {ControlBindings.KeyLabel(b.p2.Key(GameAction.Medium))}  heavy {ControlBindings.KeyLabel(b.p2.Key(GameAction.Heavy))}   " +
-                     $"block {ControlBindings.KeyLabel(b.p2.Key(GameAction.Block))}  parry {ControlBindings.KeyLabel(b.p2.Key(GameAction.Defense))}   " +
-                     $"special {ControlBindings.KeyLabel(b.p2.Key(GameAction.Special))}+strike   dash {ControlBindings.KeyLabel(b.p2.Key(GameAction.Dash))}";
-        var pp = b.Player(b.firstPadPlayer);
-        yield return $"Controller (Player {b.firstPadPlayer}):  move stick/d-pad   light {ControlBindings.PadLabel(pp.Pad(GameAction.Light))}  medium {ControlBindings.PadLabel(pp.Pad(GameAction.Medium))}  " +
-                     $"heavy {ControlBindings.PadLabel(pp.Pad(GameAction.Heavy))}   block {ControlBindings.PadLabel(pp.Pad(GameAction.Block))}  parry {ControlBindings.PadLabel(pp.Pad(GameAction.Defense))}   " +
-                     $"special {ControlBindings.PadLabel(pp.Pad(GameAction.Special))}+strike   dash: flick right stick   pause: Options";
-        yield return "";
-    }
-
-    // ------------------------------------------------------------------ navigation
+    // ================================================================ navigation
 
     void MoveSelection(int dir)
     {
         if (items.Count == 0) return;
+
+        // Screens that are nearly all body copy (How to Fight, the move list) have one or two
+        // selectable rows, so following the selection would never scroll them. Scroll the view.
+        int selectable = 0;
+        foreach (var it in items) if (!it.header) selectable++;
+        if (selectable <= 2 && items.Count > visibleRows)
+        {
+            scroll = Mathf.Clamp(scroll + dir, 0, items.Count - visibleRows);
+            Refresh();
+            return;
+        }
+
         int n = items.Count;
         int i = selected;
         for (int k = 0; k < n; k++)
@@ -659,9 +1081,9 @@ public class GameMenu : MonoBehaviour
             if (!items[i].header) { selected = i; break; }
         }
         if (selected < scroll) scroll = selected;
-        if (selected >= scroll + VisibleRows) scroll = selected - VisibleRows + 1;
-        // keep a header visible above the first selectable item
-        if (selected == FirstSelectable() ) scroll = 0;
+        if (selected >= scroll + visibleRows) scroll = selected - visibleRows + 1;
+        if (selected == FirstSelectable()) scroll = 0;
+        scroll = Mathf.Clamp(scroll, 0, Mathf.Max(0, items.Count - visibleRows));
         Refresh();
     }
 
@@ -673,6 +1095,8 @@ public class GameMenu : MonoBehaviour
 
     void Adjust(int dir)
     {
+        if (screen == Screen.CharSelect) { MoveCharacter(dir); return; }
+        if (screen == Screen.ArenaSelect) { MoveArena(dir); return; }
         if (selected < 0 || selected >= items.Count) return;
         items[selected].adjust?.Invoke(dir);
         Refresh();
@@ -680,6 +1104,8 @@ public class GameMenu : MonoBehaviour
 
     void Confirm()
     {
+        if (screen == Screen.CharSelect) { ConfirmCharacter(); return; }
+        if (screen == Screen.ArenaSelect) { ConfirmArena(); return; }
         if (selected < 0 || selected >= items.Count) return;
         items[selected].confirm?.Invoke();
     }
@@ -688,13 +1114,23 @@ public class GameMenu : MonoBehaviour
     {
         switch (screen)
         {
-            case Screen.Main: break;
-            case Screen.Pause: Resume(); break;
-            case Screen.MatchOver: break;
-            default:
-                Show(inMatch ? Screen.Pause : Screen.Main);
-                break;
+            case Screen.Main:
+            case Screen.MatchOver:
+                return;
+            case Screen.Pause:
+                // Deliberately NOT a resume: Circle is the parry button, and a stray press used to
+                // throw you back into the fight. Options / Escape resumes (handled in Update).
+                return;
         }
+
+        if (history.Count > 0)
+        {
+            var back = history[history.Count - 1];
+            history.RemoveAt(history.Count - 1);
+            Show(back, push: false);
+            return;
+        }
+        Show(inMatch ? Screen.Pause : Screen.Main, push: false);
     }
 
     void Quit()
@@ -706,15 +1142,15 @@ public class GameMenu : MonoBehaviour
 #endif
     }
 
-    // ------------------------------------------------------------------ rebinding
+    // ================================================================ rebinding
 
     void BeginCapture(int player, GameAction a)
     {
         capturing = true;
         capturePlayer = player;
         captureAction = (int)a;
-        captureText.text = $"Press a key or controller button for  PLAYER {player}: {ControlBindings.ActionLabel(a)}     (Esc cancels)";
-        captureText.transform.parent.gameObject.SetActive(true);
+        captureText.text = $"Press a key or controller button for\n\nPLAYER {player}   {ControlBindings.ActionLabel(a)}\n\n(Esc cancels)";
+        captureBack.gameObject.SetActive(true);
     }
 
     void CaptureRebind()
@@ -749,11 +1185,12 @@ public class GameMenu : MonoBehaviour
     void EndCapture()
     {
         capturing = false;
-        captureText.transform.parent.gameObject.SetActive(false);
+        captureBack.gameObject.SetActive(false);
+        inputGuard = 0.2f;
         Refresh();
     }
 
-    // ------------------------------------------------------------------ drawing
+    // ================================================================ canvas
 
     void BuildCanvas()
     {
@@ -762,6 +1199,7 @@ public class GameMenu : MonoBehaviour
             var es = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
             es.transform.SetParent(transform, false);
         }
+
         var go = new GameObject("Menu Canvas", typeof(RectTransform));
         go.transform.SetParent(transform, false);
         canvas = go.AddComponent<Canvas>();
@@ -772,59 +1210,144 @@ public class GameMenu : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920, 1080);
         scaler.matchWidthOrHeight = 0.5f;
         go.AddComponent<GraphicRaycaster>();
+        canvasRect = (RectTransform)go.transform;
 
-        var dim = MakeImage(go.transform, "Dim", new Color(0f, 0f, 0f, 0.55f));
-        Stretch(dim.rectTransform);
+        content = MenuArt.Rect(canvasRect, "Content");
+        MenuArt.Stretch(content);
 
-        var panelImg = MakeImage(go.transform, "Panel", PanelColor);
-        panel = panelImg.rectTransform;
-        panel.anchorMin = new Vector2(0.5f, 0.5f); panel.anchorMax = new Vector2(0.5f, 0.5f);
-        panel.sizeDelta = new Vector2(1500, 960);
-        panel.anchoredPosition = Vector2.zero;
+        BuildChrome();
+        BuildBootView();
+        BuildSelectView();
+        BuildArenaView();
+        BuildVsView();
 
-        var frame = MakeImage(panel, "Frame", GoldColor);
-        Stretch(frame.rectTransform); frame.rectTransform.offsetMin = new Vector2(-3, -3); frame.rectTransform.offsetMax = new Vector2(3, 3);
-        frame.transform.SetAsFirstSibling();
-        var inner = MakeImage(panel, "Inner", PanelColor);
-        Stretch(inner.rectTransform);
-        inner.transform.SetSiblingIndex(1);
+        stage = go.AddComponent<MenuStage>();
+        stage.Build(canvasRect);
 
-        title = MakeText(panel, "Title", "", 64, TextAnchor.MiddleCenter, GoldColor, FontStyle.Bold);
-        Place(title.rectTransform, 0f, 1f, 1f, 1f, new Vector2(40, -110), new Vector2(-40, -30));
-        subtitle = MakeText(panel, "Subtitle", "", 24, TextAnchor.MiddleCenter, DimColor, FontStyle.Italic);
-        Place(subtitle.rectTransform, 0f, 1f, 1f, 1f, new Vector2(40, -150), new Vector2(-40, -112));
-        footer = MakeText(panel, "Footer", "", 20, TextAnchor.MiddleCenter, DimColor, FontStyle.Normal);
-        Place(footer.rectTransform, 0f, 0f, 1f, 0f, new Vector2(40, 18), new Vector2(-40, 58));
+        captureBack = MenuArt.Rect(canvasRect, "Capture");
+        MenuArt.Stretch(captureBack);
+        var capFill = MenuArt.Img(captureBack, "Fill", MenuArt.Solid, MenuArt.Fade(MenuArt.Ink, 0.96f));
+        MenuArt.Stretch(capFill.rectTransform);
+        captureText = MenuArt.Shadowed(captureBack, "Text", "", 34, TextAnchor.MiddleCenter, MenuArt.BronzeLit, FontStyle.Bold);
+        MenuArt.Stretch(captureText.rectTransform);
+        captureText.horizontalOverflow = HorizontalWrapMode.Wrap;
+        captureBack.SetAsLastSibling();
+        captureBack.gameObject.SetActive(false);
 
-        for (int i = 0; i < VisibleRows; i++)
+        content.SetSiblingIndex(1);      // between the stage's back and front layers
+    }
+
+    /// <summary>
+    /// The header, the slab and the footer. Header and footer live OUTSIDE the slab, so the select
+    /// screens - which have no slab, because the live arena is behind them - still get a title and
+    /// a hint line in the same place.
+    /// </summary>
+    void BuildChrome()
+    {
+        header = MenuArt.Rect(content, "Header");
+        MenuArt.Place(header, 0f, 1f, 1f, 1f, new Vector2(0f, -210f), new Vector2(0f, 0f));
+
+        // The logo art is a 16:9 plate with the wordmark floating in the middle of a lot of black,
+        // so the title crops to the wordmark itself - otherwise most of the header is padding and
+        // the words run off the top of the screen.
+        titleLogo = MenuArt.Raw(header, "TitleLogo", MenuArt.Logo, Color.white);
+        // Measured off the art: the wordmark occupies x 138-1796, y 390-750 of the 1920x1080
+        // plate, so the crop (plus a small margin) is 4.42:1 and the rect has to match it.
+        titleLogo.uvRect = new Rect(0.055f, 0.292f, 0.895f, 0.360f);
+        MenuArt.Box(titleLogo.rectTransform, new Vector2(0.5f, 1f), new Vector2(860f, 195f), new Vector2(0f, -116f));
+
+        title = MenuArt.Shadowed(header, "Title", "", 58, TextAnchor.MiddleCenter, MenuArt.BronzeLit, FontStyle.Bold);
+        MenuArt.Place(title.rectTransform, 0f, 1f, 1f, 1f, new Vector2(40, -118), new Vector2(-40, -40));
+
+        divider = MenuArt.Divider(header, "Divider", MenuArt.Bronze, 540f);
+        divider.anchorMin = divider.anchorMax = new Vector2(0.5f, 1f);
+        divider.anchoredPosition = new Vector2(0f, -130f);
+
+        subtitle = MenuArt.Label(header, "Subtitle", "", 23, TextAnchor.MiddleCenter, MenuArt.Dim, FontStyle.Italic);
+        MenuArt.Place(subtitle.rectTransform, 0f, 1f, 1f, 1f, new Vector2(40, -176), new Vector2(-40, -142));
+
+        panel = MenuArt.Rect(content, "Panel");
+        MenuArt.Box(panel, new Vector2(0.5f, 0.5f), new Vector2(1380f, 620f), new Vector2(0f, -56f));
+
+        var slab = MenuArt.Img(panel, "Slab", MenuArt.Panel, new Color(0.15f, 0.125f, 0.105f, 0.97f), Image.Type.Sliced);
+        MenuArt.Stretch(slab.rectTransform);
+        var sink = MenuArt.Img(panel, "Sink", MenuArt.FadeDown, MenuArt.Fade(Color.black, 0.45f));
+        MenuArt.Stretch(sink.rectTransform);
+        var frame = MenuArt.Img(panel, "Frame", MenuArt.Frame, Color.white, Image.Type.Sliced);
+        MenuArt.Stretch(frame.rectTransform, -6f);
+
+        footer = MenuArt.Rect(content, "Footer");
+        MenuArt.Place(footer, 0f, 0f, 1f, 0f, new Vector2(0f, 16f), new Vector2(0f, 96f));
+        var footRule = MenuArt.Img(footer, "FootRule", MenuArt.Rule, MenuArt.Fade(MenuArt.Bronze, 0.45f));
+        MenuArt.Place(footRule.rectTransform, 0.5f, 1f, 0.5f, 1f, new Vector2(-320f, -8f), new Vector2(320f, 0f));
+        footerText = MenuArt.Shadowed(footer, "Text", "", 19, TextAnchor.MiddleCenter, MenuArt.Dim);
+        MenuArt.Place(footerText.rectTransform, 0f, 0f, 1f, 0f, new Vector2(40, 18), new Vector2(-40, 56));
+
+        for (int i = 0; i < RowPool; i++) rows.Add(BuildRow(i));
+    }
+
+    /// <summary>
+    /// Sizes the slab to the rows it actually holds: a six-item main menu in a fixed 920-tall box
+    /// is mostly empty box.
+    /// </summary>
+    void LayoutPanel()
+    {
+        int shown = Mathf.Min(items.Count, visibleRows);
+        float height = Mathf.Clamp(shown * rowHeight + 64f, 180f, 640f);
+        panel.sizeDelta = new Vector2(1380f, height);
+        panel.anchoredPosition = new Vector2(0f, -56f);
+    }
+
+    Row BuildRow(int index)
+    {
+        var row = new Row();
+        row.rt = MenuArt.Rect(panel, "Row" + index);
+        row.go = row.rt.gameObject;
+
+        row.back = row.go.AddComponent<Image>();
+        row.back.sprite = MenuArt.Solid;
+        row.back.color = Color.clear;
+        row.back.raycastTarget = true;
+
+        var btn = row.go.AddComponent<Button>();
+        btn.transition = Selectable.Transition.None;
+        // No EventSystem navigation: this menu tracks its own selection and draws its own gem.
+        btn.navigation = new Navigation { mode = Navigation.Mode.None };
+        int rowIndex = index;
+        btn.onClick.AddListener(() =>
         {
-            var row = new GameObject("Row" + i, typeof(RectTransform));
-            row.transform.SetParent(panel, false);
-            var rt = row.GetComponent<RectTransform>();
-            float top = -165f - i * 46f;
-            Place(rt, 0f, 1f, 1f, 1f, new Vector2(60, top - 42), new Vector2(-60, top));
-            var back = row.AddComponent<Image>();
-            back.color = new Color(0, 0, 0, 0);
-            var btn = row.AddComponent<Button>();
-            int rowIndex = i;
-            btn.transition = Selectable.Transition.None;
-            btn.onClick.AddListener(() => { int idx = scroll + rowIndex; if (idx < items.Count && !items[idx].header) { selected = idx; Refresh(); Confirm(); } });
-            var label = MakeText(row.transform, "Label", "", 28, TextAnchor.MiddleLeft, TextColor, FontStyle.Normal);
-            Place(label.rectTransform, 0f, 0f, 0.6f, 1f, new Vector2(24, 0), new Vector2(0, 0));
-            var value = MakeText(row.transform, "Value", "", 26, TextAnchor.MiddleLeft, GoldColor, FontStyle.Normal);
-            Place(value.rectTransform, 0.55f, 0f, 0.78f, 1f, new Vector2(0, 0), new Vector2(-8, 0));
-            var value2 = MakeText(row.transform, "Value2", "", 26, TextAnchor.MiddleLeft, GoldColor, FontStyle.Normal);
-            Place(value2.rectTransform, 0.78f, 0f, 1f, 1f, new Vector2(0, 0), new Vector2(-24, 0));
-            rows.Add(row);
+            int idx = scroll + rowIndex;
+            // Clicking a Selectable leaves it selected in the EventSystem, and the next Enter would
+            // then fire THIS row again - whatever it happens to say on the screen you moved on to.
+            if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
+            if (idx < items.Count && !items[idx].header) { selected = idx; Refresh(); Confirm(); }
+        });
+
+        row.gem = MenuArt.Img(row.rt, "Gem", MenuArt.Diamond, Color.clear);
+        MenuArt.Box(row.gem.rectTransform, new Vector2(0f, 0.5f), new Vector2(12f, 12f), new Vector2(26f, 0f));
+
+        row.label = MenuArt.Label(row.rt, "Label", "", 28, TextAnchor.MiddleLeft, MenuArt.Bone);
+        MenuArt.Place(row.label.rectTransform, 0f, 0f, 0.62f, 1f, new Vector2(48, 0), new Vector2(0, 0));
+
+        row.value = MenuArt.Label(row.rt, "Value", "", 24, TextAnchor.MiddleRight, MenuArt.Bronze);
+        MenuArt.Place(row.value.rectTransform, 0.6f, 0f, 0.86f, 1f, new Vector2(0, 0), new Vector2(0, 0));
+
+        row.value2 = MenuArt.Label(row.rt, "Value2", "", 24, TextAnchor.MiddleRight, MenuArt.Bronze);
+        MenuArt.Place(row.value2.rectTransform, 0.86f, 0f, 1f, 1f, new Vector2(0, 0), new Vector2(-26, 0));
+
+        return row;
+    }
+
+    void LayoutRows()
+    {
+        for (int i = 0; i < rows.Count; i++)
+        {
+            float top = -32f - i * rowHeight;
+            MenuArt.Place(rows[i].rt, 0f, 1f, 1f, 1f, new Vector2(54, top - rowHeight + 6f), new Vector2(-54, top));
+            rows[i].label.fontSize = Mathf.RoundToInt(rowFont);
+            rows[i].value.fontSize = Mathf.RoundToInt(rowFont * 0.86f);
+            rows[i].value2.fontSize = Mathf.RoundToInt(rowFont * 0.86f);
         }
-
-        var capBack = MakeImage(go.transform, "Capture", new Color(0.02f, 0.02f, 0.02f, 0.96f));
-        Stretch(capBack.rectTransform);
-        captureText = MakeText(capBack.transform, "CaptureText", "", 34, TextAnchor.MiddleCenter, GoldColor, FontStyle.Bold);
-        Stretch(captureText.rectTransform);
-        capBack.gameObject.SetActive(false);
-
-        canvas.gameObject.SetActive(false);
     }
 
     void Refresh()
@@ -833,54 +1356,496 @@ public class GameMenu : MonoBehaviour
         {
             int idx = scroll + i;
             var row = rows[i];
-            bool has = idx < items.Count;
-            row.SetActive(has);
+            bool has = i < visibleRows && idx < items.Count;
+            if (row.go.activeSelf != has) row.go.SetActive(has);
             if (!has) continue;
+
             var it = items[idx];
-            var label = row.transform.Find("Label").GetComponent<Text>();
-            var value = row.transform.Find("Value").GetComponent<Text>();
-            var value2 = row.transform.Find("Value2").GetComponent<Text>();
-            value2.text = it.value2 != null ? it.value2() : "";
-            var back = row.GetComponent<Image>();
             bool sel = idx == selected && !it.header;
-            label.text = (sel ? "> " : "   ") + it.label;
-            label.color = it.header ? (string.IsNullOrEmpty(it.label) ? TextColor : (it.label.StartsWith("PLAYER") ? GoldColor : TextColor)) : (sel ? Color.white : TextColor);
-            label.fontStyle = it.header && it.label.StartsWith("PLAYER") ? FontStyle.Bold : FontStyle.Normal;
-            label.fontSize = it.header && !it.label.StartsWith("PLAYER") ? 22 : 28;
-            value.text = it.value != null ? it.value() : "";
-            if (it.adjust != null && sel) value.text = "<  " + value.text + "  >";
-            back.color = sel ? SelectColor : new Color(0, 0, 0, 0);
+
+            row.label.text = it.label;
+            row.value.text = it.value != null ? it.value() : "";
+            row.value2.text = it.value2 != null ? it.value2() : "";
+            if (it.adjust != null && sel) row.value.text = "<   " + row.value.text + "   >";
+
+            bool sectionHead = it.header && !it.quiet && !string.IsNullOrEmpty(it.label);
+            row.label.color = it.header
+                            ? (sectionHead ? MenuArt.Bronze : MenuArt.Fade(MenuArt.Bone, 0.72f))
+                            : (sel ? MenuArt.BronzeLit : MenuArt.Bone);
+            row.label.fontStyle = sectionHead ? FontStyle.Bold : FontStyle.Normal;
+            row.label.fontSize = Mathf.RoundToInt(it.quiet ? rowFont * 0.95f : rowFont);
+            row.value.color = sel ? MenuArt.BronzeLit : MenuArt.Fade(MenuArt.Bronze, 0.8f);
+            row.value2.color = row.value.color;
+            row.gem.color = sel ? MenuArt.BronzeLit : Color.clear;
+            row.back.color = sel ? MenuArt.Fade(MenuArt.Blood, 0.62f) : Color.clear;
+            row.back.raycastTarget = !it.header;
         }
     }
 
-    // helpers
-    Text MakeText(Transform parent, string name, string text, int size, TextAnchor anchor, Color color, FontStyle style)
+    /// <summary>Rows slide in from the left in sequence, and the selected one breathes.</summary>
+    void AnimateRows(float dt)
     {
-        var go = new GameObject(name, typeof(RectTransform));
-        go.transform.SetParent(parent, false);
-        var t = go.AddComponent<Text>();
-        t.font = font; t.fontSize = size; t.alignment = anchor; t.color = color; t.fontStyle = style; t.text = text;
-        t.horizontalOverflow = HorizontalWrapMode.Overflow; t.verticalOverflow = VerticalWrapMode.Overflow;
-        t.raycastTarget = false;
-        return t;
+        if (screen == Screen.None || screen == Screen.Boot || screen == Screen.Vs) return;
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var row = rows[i];
+            if (!row.go.activeSelf) continue;
+            float delay = i * 0.028f;
+            float target = Mathf.Clamp01((screenAge - delay) / 0.2f);
+            row.slide = Mathf.Max(row.slide, target);
+            float e = MenuArt.EaseOut(row.slide);
+            var p = row.rt.anchoredPosition;
+            row.rt.anchoredPosition = new Vector2(Mathf.Lerp(-40f, 0f, e), p.y);
+
+            int idx = scroll + i;
+            if (idx == selected && idx < items.Count && !items[idx].header)
+            {
+                float pulse = 0.52f + 0.1f * Mathf.Sin(Time.unscaledTime * 4.2f);
+                row.back.color = MenuArt.Fade(MenuArt.Blood, pulse * e);
+                row.gem.rectTransform.anchoredPosition = new Vector2(26f + Mathf.Sin(Time.unscaledTime * 4.2f) * 3f, 0f);
+            }
+            else if (row.back.color.a > 0f && e >= 1f)
+            {
+                var c = row.back.color;
+                row.back.color = MenuArt.Fade(c, Mathf.Min(c.a, 0f));
+            }
+        }
     }
 
-    static Image MakeImage(Transform parent, string name, Color color)
+    // ================================================================ custom views
+
+    void BuildBootView()
     {
-        var go = new GameObject(name, typeof(RectTransform));
-        go.transform.SetParent(parent, false);
-        var img = go.AddComponent<Image>();
-        img.color = color;
-        return img;
+        bootView = MenuArt.Rect(content, "Boot");
+        MenuArt.Stretch(bootView);
+
+        if (MenuArt.Logo != null)
+        {
+            // Full bleed: the logo art has an opaque near-black background, so at any smaller size
+            // its edge draws a visible rectangle against the field behind it.
+            bootLogo = MenuArt.Raw(bootView, "Logo", MenuArt.Logo, MenuArt.Fade(Color.white, 0f));
+            MenuArt.Box(bootLogo.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(1920f, 1080f), Vector2.zero);
+        }
+        else
+        {
+            bootTitle = MenuArt.Shadowed(bootView, "Title", MenuArt.Track("CRUCIBLE", 3), 120, TextAnchor.MiddleCenter, MenuArt.Fade(MenuArt.BronzeLit, 0f), FontStyle.Bold);
+            MenuArt.Box(bootTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(1600f, 180f), new Vector2(0f, 90f));
+            var sub = MenuArt.Label(bootView, "Sub", MenuArt.Track("HONOURABLE SOULS", 3), 34, TextAnchor.MiddleCenter, MenuArt.Bronze);
+            MenuArt.Box(sub.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(1600f, 60f), new Vector2(0f, -10f));
+        }
+
+        bootPrompt = MenuArt.Shadowed(bootView, "Prompt", "", 30, TextAnchor.MiddleCenter, MenuArt.Bone);
+        MenuArt.Box(bootPrompt.rectTransform, new Vector2(0.5f, 0f), new Vector2(1200f, 60f), new Vector2(0f, 150f));
+
+        bootView.gameObject.SetActive(false);
     }
 
-    static void Stretch(RectTransform rt)
+    void BuildSelectView()
     {
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+        selectView = MenuArt.Rect(content, "Select");
+        MenuArt.Stretch(selectView);
+
+        cards = new CharacterCard[Mathf.Max(2, roster.Length)];
+        for (int i = 0; i < cards.Length; i++) cards[i] = BuildPlate(selectView, "Card" + i);
+
+        selectView.gameObject.SetActive(false);
     }
 
-    static void Place(RectTransform rt, float ax, float ay, float bx, float by, Vector2 offMin, Vector2 offMax)
+    /// <summary>A plate: tag, name, one line of character, and the numbers that matter.</summary>
+    CharacterCard BuildPlate(RectTransform parent, string name)
     {
-        rt.anchorMin = new Vector2(ax, ay); rt.anchorMax = new Vector2(bx, by); rt.offsetMin = offMin; rt.offsetMax = offMax;
+        var card = new CharacterCard();
+        card.rt = MenuArt.Rect(parent, name);
+        MenuArt.Box(card.rt, new Vector2(0.5f, 0.5f), new Vector2(470f, 142f), Vector2.zero);
+
+        card.slab = MenuArt.Img(card.rt, "Slab", MenuArt.Panel, new Color(0.11f, 0.09f, 0.08f, 0.9f), Image.Type.Sliced);
+        MenuArt.Stretch(card.slab.rectTransform);
+        card.frame = MenuArt.Img(card.rt, "Frame", MenuArt.Frame, MenuArt.Bronze, Image.Type.Sliced);
+        MenuArt.Stretch(card.frame.rectTransform, -4f);
+
+        card.tag = MenuArt.Img(card.rt, "Tag", MenuArt.Solid, MenuArt.P1);
+        MenuArt.Box(card.tag.rectTransform, new Vector2(0.5f, 1f), new Vector2(180f, 30f), new Vector2(0f, 14f));
+        card.tagText = MenuArt.Label(card.tag.rectTransform, "TagText", "", 19, TextAnchor.MiddleCenter, MenuArt.Ink, FontStyle.Bold);
+        MenuArt.Stretch(card.tagText.rectTransform);
+
+        card.name = MenuArt.Shadowed(card.rt, "Name", "", 36, TextAnchor.MiddleCenter, MenuArt.BronzeLit, FontStyle.Bold);
+        MenuArt.Place(card.name.rectTransform, 0f, 1f, 1f, 1f, new Vector2(0f, -54f), new Vector2(0f, -8f));
+
+        card.tagline = MenuArt.Label(card.rt, "Tagline", "", 18, TextAnchor.UpperCenter, MenuArt.Dim, FontStyle.Italic);
+        MenuArt.Place(card.tagline.rectTransform, 0f, 1f, 1f, 1f, new Vector2(14f, -82f), new Vector2(-14f, -54f));
+        card.tagline.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+        card.stats = MenuArt.Label(card.rt, "Stats", "", 17, TextAnchor.UpperCenter, MenuArt.Fade(MenuArt.Bone, 0.88f));
+        MenuArt.Place(card.stats.rectTransform, 0f, 1f, 1f, 1f, new Vector2(10f, -136f), new Vector2(-10f, -84f));
+
+        return card;
     }
+
+    void BuildCharSelect()
+    {
+        if (roster.Length == 0) return;
+        p1Character = Mathf.Clamp(p1Character, 0, roster.Length - 1);
+        RefreshCards();
+    }
+
+    void RefreshCards()
+    {
+        for (int i = 0; i < cards.Length; i++)
+        {
+            var card = cards[i];
+            if (card == null) continue;
+            bool present = i < roster.Length;
+            card.rt.gameObject.SetActive(present);
+            if (!present) continue;
+
+            bool isP1 = i == p1Character;
+            card.follow = roster[i].transform;
+            card.name.text = MenuArt.Track(roster[i].CharacterName.ToUpperInvariant(), 1);
+            card.tagText.text = isP1 ? "PLAYER 1" : (playerCount >= 2 ? "PLAYER 2" : "COMPUTER");
+            card.tag.color = isP1 ? MenuArt.P1 : MenuArt.P2;
+            card.frame.color = isP1 ? MenuArt.BronzeLit : MenuArt.Fade(MenuArt.Bronze, 0.4f);
+            card.slab.color = new Color(0.11f, 0.09f, 0.08f, isP1 ? 0.92f : 0.72f);
+            card.name.color = isP1 ? MenuArt.BronzeLit : MenuArt.Fade(MenuArt.BronzeLit, 0.6f);
+            card.stats.text = StatsLine(roster[i]);
+            card.tagline.text = Tagline(roster[i].CharacterName);
+            card.rt.localScale = Vector3.one * (isP1 ? 1f : 0.92f);
+        }
+    }
+
+    void BuildArenaView()
+    {
+        arenaView = MenuArt.Rect(content, "Arena");
+        MenuArt.Stretch(arenaView);
+
+        var plate = MenuArt.Rect(arenaView, "Plate");
+        MenuArt.Box(plate, new Vector2(0.5f, 0f), new Vector2(1060f, 228f), new Vector2(0f, 206f));
+        var slab = MenuArt.Img(plate, "Slab", MenuArt.Panel, new Color(0.14f, 0.115f, 0.1f, 0.96f), Image.Type.Sliced);
+        MenuArt.Stretch(slab.rectTransform);
+        var frame = MenuArt.Img(plate, "Frame", MenuArt.Frame, MenuArt.Bronze, Image.Type.Sliced);
+        MenuArt.Stretch(frame.rectTransform, -5f);
+
+        arenaName = MenuArt.Shadowed(plate, "Name", "", 56, TextAnchor.MiddleCenter, MenuArt.BronzeLit, FontStyle.Bold);
+        MenuArt.Place(arenaName.rectTransform, 0f, 0.5f, 1f, 0.5f, new Vector2(40f, 20f), new Vector2(-40f, 84f));
+
+        var rule = MenuArt.Divider(plate, "Rule", MenuArt.Bronze, 420f);
+        rule.anchorMin = rule.anchorMax = new Vector2(0.5f, 0.5f);
+        rule.anchoredPosition = new Vector2(0f, 8f);
+
+        arenaBlurb = MenuArt.Label(plate, "Blurb", "", 24, TextAnchor.MiddleCenter, MenuArt.Bone, FontStyle.Italic);
+        MenuArt.Place(arenaBlurb.rectTransform, 0f, 0.5f, 1f, 0.5f, new Vector2(40f, -44f), new Vector2(-40f, -6f));
+
+        arenaCount = MenuArt.Label(plate, "Count", "", 20, TextAnchor.MiddleCenter, MenuArt.Dim);
+        MenuArt.Place(arenaCount.rectTransform, 0f, 0f, 1f, 0f, new Vector2(0f, 16f), new Vector2(0f, 46f));
+
+        var leftArrow = MenuArt.Label(arenaView, "Left", "<", 72, TextAnchor.MiddleCenter, MenuArt.Fade(MenuArt.Bronze, 0.8f), FontStyle.Bold);
+        MenuArt.Box(leftArrow.rectTransform, new Vector2(0.5f, 0f), new Vector2(90f, 90f), new Vector2(-610f, 206f));
+        var rightArrow = MenuArt.Label(arenaView, "Right", ">", 72, TextAnchor.MiddleCenter, MenuArt.Fade(MenuArt.Bronze, 0.8f), FontStyle.Bold);
+        MenuArt.Box(rightArrow.rectTransform, new Vector2(0.5f, 0f), new Vector2(90f, 90f), new Vector2(610f, 206f));
+
+        arenaPips = MenuArt.Rect(arenaView, "Pips");
+        MenuArt.Box(arenaPips, new Vector2(0.5f, 0f), new Vector2(400f, 30f), new Vector2(0f, 352f));
+
+        arenaView.gameObject.SetActive(false);
+    }
+
+    void BuildVsView()
+    {
+        vsView = MenuArt.Rect(content, "Vs");
+        MenuArt.Stretch(vsView);
+
+        vsCards = new CharacterCard[2];
+        for (int i = 0; i < 2; i++) vsCards[i] = BuildPlate(vsView, "VsCard" + i);
+
+        vsWord = MenuArt.Shadowed(vsView, "Word", "VS", 190, TextAnchor.MiddleCenter, MenuArt.BloodLit, FontStyle.Bold);
+        MenuArt.Box(vsWord.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(600f, 240f), new Vector2(0f, 40f));
+
+        vsView.gameObject.SetActive(false);
+    }
+
+    void SetPlate(CharacterCard card, int rosterIndex, string tag, Color tagColor)
+    {
+        if (card == null || rosterIndex < 0 || rosterIndex >= roster.Length) return;
+        card.rt.gameObject.SetActive(true);
+        card.follow = roster[rosterIndex].transform;
+        card.name.text = MenuArt.Track(roster[rosterIndex].CharacterName.ToUpperInvariant(), 1);
+        card.name.color = MenuArt.BronzeLit;
+        card.tagText.text = tag;
+        card.tag.color = tagColor;
+        card.frame.color = MenuArt.BronzeLit;
+        card.slab.color = new Color(0.11f, 0.09f, 0.08f, 0.9f);
+        card.stats.text = StatsLine(roster[rosterIndex]);
+        card.tagline.text = Tagline(roster[rosterIndex].CharacterName);
+        card.rt.localScale = Vector3.one;
+    }
+
+    // ================================================================ versus card
+
+    IEnumerator VsRoutine()
+    {
+        ApplySides(p1Character);
+        StageFighters(true);                       // ApplySides may have swapped which side is whose
+
+        int other = roster.Length > 1 ? (p1Character == 0 ? 1 : 0) : 0;
+        SetPlate(vsCards[0], p1Character, "PLAYER 1", MenuArt.P1);
+        SetPlate(vsCards[1], other,
+                 playerCount >= 2 && !vsAi ? "PLAYER 2" : flow == Flow.Practice ? "DUMMY" : "COMPUTER",
+                 MenuArt.P2);
+
+        const float punch = 0.45f;
+        for (float k = 0f; k < 1f; k += Time.unscaledDeltaTime / punch)
+        {
+            float e = MenuArt.EaseOut(k);
+            vsWord.color = MenuArt.Fade(MenuArt.BloodLit, e);
+            vsWord.rectTransform.localScale = Vector3.one * Mathf.Lerp(2.1f, 1f, e);
+            yield return null;
+        }
+        vsWord.color = MenuArt.BloodLit;
+        vsWord.rectTransform.localScale = Vector3.one;
+
+        yield return new WaitForSecondsRealtime(0.95f);
+        if (stage != null) stage.Wipe(StartMatch); else StartMatch();
+    }
+
+    // ================================================================ staging the real fighters
+
+    /// <summary>
+    /// Poses the two fighters for the camera and parks the camera on them, so the select screens
+    /// show the actual rigs playing their idle instead of a picture of them. Nothing here is worth
+    /// preserving: <see cref="PlaceFighters"/> puts both back on their marks when the match starts.
+    /// </summary>
+    void StageFighters(bool vs, bool wide = false)
+    {
+        if (roster.Length < 2 || sideMark.Length < 2) return;
+        var cam = Camera.main;
+        if (cam == null) return;
+
+        var fightCam = cam.GetComponent<FightCamera>();
+        if (fightCam != null) fightCam.enabled = false;     // it would drag the view back every frame
+
+        Vector3 mid = (sideMark[0] + sideMark[1]) * 0.5f;
+        Vector3 camDir = cam.transform.position - mid;      // keep the arena's established viewpoint
+        camDir.y = 0f;
+        if (camDir.sqrMagnitude < 0.01f) camDir = Vector3.back;
+        camDir.Normalize();
+        Vector3 screenRight = Vector3.Cross(Vector3.up, -camDir).normalized;
+
+        float spread = vs ? 2.0f : 2.4f;
+        int other = p1Character == 0 ? 1 : 0;
+        float turn = vs ? 60f : 18f;                        // VS squares them up against each other
+
+        // Frame first, pose second: a fighter stood 2.4 units off to the side does not face the
+        // camera by facing the stage centre - that error was 31 degrees, a near profile.
+        float fov = cam.fieldOfView * Mathf.Deg2Rad;
+        float aspect = cam.aspect > 0.1f ? cam.aspect : 16f / 9f;
+        // Arena select pulls right back: the thing being chosen is the ground, not the fighters.
+        float wantHeight = wide ? 17f : vs ? 5.0f : 5.4f;    // fighters are 2.9 units tall
+        float wantWidth = wide ? 34f : spread * 2f + 3.6f;
+        float distV = (wantHeight * 0.5f) / Mathf.Tan(fov * 0.5f);
+        float distH = (wantWidth * 0.5f) / Mathf.Tan(Mathf.Atan(Mathf.Tan(fov * 0.5f) * aspect));
+        float dist = Mathf.Max(distV, distH);
+
+        Vector3 look = mid + Vector3.up * (wide ? 2.6f : 1.45f);
+        Vector3 camPos = look + camDir * dist + Vector3.up * (wide ? 4.5f : 0.55f);
+        cam.transform.position = camPos;
+        cam.transform.rotation = Quaternion.LookRotation(look - camPos, Vector3.up);
+
+        // The chosen fighter stands a step forward, which reads as "this one" without a spotlight.
+        PlaceStaged(p1Character, mid - screenRight * spread + camDir * (vs ? 0f : 0.2f), camPos, turn);
+        PlaceStaged(other, mid + screenRight * spread + camDir * (vs ? 0f : -0.1f), camPos, -turn);
+        staged = true;
+    }
+
+    void PlaceStaged(int index, Vector3 pos, Vector3 camPos, float yaw)
+    {
+        if (index < 0 || index >= roster.Length) return;
+        var f = roster[index];
+        pos.y = ownY[index];                                 // each root has its own ground offset
+        Vector3 toCam = camPos - pos;
+        toCam.y = 0f;
+        if (toCam.sqrMagnitude < 0.01f) toCam = Vector3.back;
+        var rot = Quaternion.LookRotation(toCam.normalized, Vector3.up) * Quaternion.Euler(0f, yaw, 0f);
+        // A full reset, not just a move: coming here from a K.O. the loser is still dead and face
+        // down, and a corpse on the character-select screen then stayed down all the way back to
+        // the next match. ResetForMatch also syncs the rigidbody and the transform for us.
+        f.ResetForMatch(pos, rot);
+    }
+
+    void Unstage()
+    {
+        staged = false;
+        var cam = Camera.main;
+        var fightCam = cam != null ? cam.GetComponent<FightCamera>() : null;
+        if (fightCam != null) fightCam.enabled = true;
+        PlaceFighters();
+    }
+
+    /// <summary>Slides each plate under the fighter it belongs to, wherever the camera put him.</summary>
+    void TrackPlates(CharacterCard[] set, float y)
+    {
+        var cam = Camera.main;
+        if (cam == null || set == null) return;
+        foreach (var card in set)
+        {
+            if (card == null || card.follow == null || !card.rt.gameObject.activeSelf) continue;
+            Vector3 screenPoint = cam.WorldToScreenPoint(card.follow.position);
+            if (screenPoint.z < 0f) continue;
+            Vector2 local;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPoint, null, out local);
+            card.rt.anchoredPosition = new Vector2(Mathf.Clamp(local.x, -640f, 640f), y);
+        }
+    }
+
+    // ================================================================ move list
+
+    List<(string name, CombatSystem combat, int player)> MovesRoster()
+    {
+        var list = new List<(string, CombatSystem, int)>();
+        foreach (var fighter in roster.OrderBy(f => f.PlayerNumber))
+        {
+            var combat = fighter.GetComponent<CombatSystem>();
+            if (combat == null) continue;
+            list.Add((fighter.CharacterName, combat, fighter.PlayerNumber));
+        }
+        return list;
+    }
+
+    string MovesPageName(int page)
+    {
+        var r = MovesRoster();
+        if (r.Count == 0) return "-";
+        var entry = r[Mathf.Clamp(page / 2, 0, r.Count - 1)];
+        return entry.name + (page % 2 == 0 ? "  -  moves" : "  -  strings");
+    }
+
+    /// <summary>
+    /// One page of the move list, walked from the live <see cref="AttackData"/> every time the
+    /// screen is built. Only the LONGEST form of each string is listed - a two-hit that can be
+    /// extended is shown as the three-hit, since stopping early is always allowed. Mirrors the two
+    /// engine rules a walk has to know about: a link marked openerOnly is offered only from the
+    /// string's first move, and a string carries at most one special.
+    /// </summary>
+    IEnumerable<string> MoveLines(int page)
+    {
+        var r = MovesRoster();
+        if (r.Count == 0) { yield return "No fighters in the scene."; yield break; }
+        var entry = r[Mathf.Clamp(page / 2, 0, r.Count - 1)];
+        var b = InputManager.Instance != null ? InputManager.Instance.Bindings : ControlBindings.Defaults();
+        var keys = b.Player(entry.player);
+
+        if (page % 2 == 0)
+        {
+            yield return $"{entry.name.ToUpperInvariant()}   (Player {entry.player})      damage / stamina / startup-active-recovery";
+            yield return "";
+            foreach (var attack in Library(entry.combat))
+                yield return $"   {Press(keys, attack),-16} {attack.AttackName,-23} {attack.Damage,2} dmg   " +
+                             $"{attack.StaminaCost,2} stam   {attack.StartupFrames}/{attack.ActiveFrames}/{attack.RecoveryFrames}";
+            foreach (var rp in Ripostes(entry.combat))
+            {
+                string next = "";
+                var link = rp.attack.ComboLinks != null && rp.attack.ComboLinks.Length > 0 ? rp.attack.ComboLinks[0] : null;
+                if (link != null && link.followUp != null)
+                    next = "   > " + PressLabel(keys, link.input, link.withSpecialModifier) + "  " + link.followUp.AttackName;
+                yield return $"   {"[" + rp.label + "]",-16} {rp.attack.AttackName,-23} {rp.attack.Damage,2} dmg   " +
+                             $"{rp.attack.StaminaCost,2} stam   {rp.attack.StartupFrames}/{rp.attack.ActiveFrames}/{rp.attack.RecoveryFrames}{next}";
+            }
+            yield return "";
+            yield return "   A special costs about 2.5x the stamina of the strike it shares a button with. A dodge or";
+            yield return "   a parry re-points the strike buttons at that fighter's riposte, and gives health back.";
+            yield break;
+        }
+
+        var strings = new List<(string buttons, string names)>();
+        foreach (var opener in Library(entry.combat))
+            WalkMoves(opener, keys, Press(keys, opener), opener.AttackName, 0, opener.IsSpecial, strings);
+        yield return $"{entry.name.ToUpperInvariant()}   (Player {entry.player})      {strings.Count} strings";
+        yield return "";
+        foreach (var line in strings)
+            yield return $"   {line.buttons,-32} {line.names}";
+        yield return "";
+        yield return "   Press the next button before the move finishes; stopping early is always allowed.";
+    }
+
+    void WalkMoves(AttackData attack, ControlBindings.PlayerBindings keys, string buttons, string names,
+                   int depth, bool usedSpecial, List<(string, string)> into)
+    {
+        bool extended = false;
+        if (attack != null && attack.ComboLinks != null && depth + 2 <= BalanceConfig.MAX_STRING_LENGTH)
+        {
+            foreach (var link in attack.ComboLinks)
+            {
+                if (link == null || link.followUp == null) continue;
+                if (link.openerOnly && depth > 0) continue;
+                if (usedSpecial && link.followUp.IsSpecial) continue;
+                extended = true;
+                WalkMoves(link.followUp, keys,
+                          buttons + " > " + PressLabel(keys, link.input, link.withSpecialModifier),
+                          names + " > " + link.followUp.AttackName,
+                          depth + 1, usedSpecial || link.followUp.IsSpecial, into);
+            }
+        }
+        if (!extended && depth > 0) into.Add((buttons, names));
+    }
+
+    static IEnumerable<(string label, AttackData attack)> Ripostes(CombatSystem combat)
+    {
+        if (combat.DashRiposte != null) yield return ("after a dodge", combat.DashRiposte);
+        if (combat.ParryRiposte != null) yield return ("after a parry", combat.ParryRiposte);
+    }
+
+    static IEnumerable<AttackData> Library(CombatSystem combat)
+    {
+        foreach (var a in combat.Attacks ?? new AttackData[0]) if (a != null) yield return a;
+        foreach (var a in combat.Specials ?? new AttackData[0]) if (a != null) yield return a;
+    }
+
+    static string Press(ControlBindings.PlayerBindings keys, AttackData attack) =>
+        PressLabel(keys, attack.IsSpecial ? attack.SpecialButton : attack.AttackType, attack.IsSpecial);
+
+    static string PressLabel(ControlBindings.PlayerBindings keys, AttackType button, bool special)
+    {
+        GameAction action = button == AttackType.Light ? GameAction.Light
+                          : button == AttackType.Medium ? GameAction.Medium : GameAction.Heavy;
+        string key = ControlBindings.KeyLabel(keys.Key(action));
+        return special ? $"[{ControlBindings.KeyLabel(keys.Key(GameAction.Special))} + {key}]" : $"[{key}]";
+    }
+
+    IEnumerable<string> HelpLines()
+    {
+        yield return "Walk toward or away from your opponent. Light, Medium and Heavy strikes each have a wind-up,";
+        yield return "an active window and a recovery. Heavier strikes hit harder and take longer. Every strike";
+        yield return "steps forward a little to reach its target.";
+        yield return "";
+        yield return "BLOCK    Hold Block to absorb a hit for stamina. Holding drains stamina; an empty bar breaks the guard.";
+        yield return "PARRY    Tap Parry just as a strike lands to deflect it: no damage, no stamina lost, and the attacker";
+        yield return "         is stunned long enough to punish, with a window to counter for extra damage. It is its own";
+        yield return "         button, never the guard: it costs stamina and a second of cooldown, so read the swing.";
+        yield return "DASH     Dash key + direction, or flick the right stick. A dash timed against a strike dodges it.";
+        yield return "         A side dash circles your opponent so you stay in range. After a clean dodge you have";
+        yield return "         a moment to counter for extra damage, and the attacker who missed is stuck recovering.";
+        yield return "CLASH    Two strikes of equal weight meeting cancel each other. The heavier strike wins otherwise.";
+        yield return "SPECIAL  Hold the Special modifier and press a strike for that character's special version of it:";
+        yield return "         three per fighter. They hit harder, cost about two and a half times the stamina, and";
+        yield return "         leave a beat afterwards in which you cannot attack. On a phone, tap SP then the strike.";
+        yield return "STRINGS  Press the next button before the current move finishes to cancel into it. The Move List";
+        yield return "         shows every string each fighter has.";
+        yield return "HEALTH   You get a little health back for a dodge, a parry, and for landing the counter they earn.";
+        yield return "         Go a few seconds without being hit and you start slowly regenerating.";
+        yield return "KO       Empty your opponent's health bar.";
+        yield return "";
+        var b = InputManager.Instance != null ? InputManager.Instance.Bindings : ControlBindings.Defaults();
+        yield return KeyboardLine("P1", b.p1);
+        yield return KeyboardLine("P2", b.p2);
+        var pp = b.Player(b.firstPadPlayer);
+        yield return $"Controller (Player {b.firstPadPlayer}):  move stick/d-pad   light {ControlBindings.PadLabel(pp.Pad(GameAction.Light))}  " +
+                     $"medium {ControlBindings.PadLabel(pp.Pad(GameAction.Medium))}  heavy {ControlBindings.PadLabel(pp.Pad(GameAction.Heavy))}   " +
+                     $"block {ControlBindings.PadLabel(pp.Pad(GameAction.Block))}  parry {ControlBindings.PadLabel(pp.Pad(GameAction.Defense))}   " +
+                     $"special {ControlBindings.PadLabel(pp.Pad(GameAction.Special))}+strike   dash: flick right stick   pause: Options";
+    }
+
+    static string KeyboardLine(string who, ControlBindings.PlayerBindings k) =>
+        $"{who} keyboard:  move {ControlBindings.KeyLabel(k.Key(GameAction.MoveLeft))}/{ControlBindings.KeyLabel(k.Key(GameAction.MoveRight))}   " +
+        $"light {ControlBindings.KeyLabel(k.Key(GameAction.Light))}  medium {ControlBindings.KeyLabel(k.Key(GameAction.Medium))}  " +
+        $"heavy {ControlBindings.KeyLabel(k.Key(GameAction.Heavy))}   block {ControlBindings.KeyLabel(k.Key(GameAction.Block))}  " +
+        $"parry {ControlBindings.KeyLabel(k.Key(GameAction.Defense))}   special {ControlBindings.KeyLabel(k.Key(GameAction.Special))}+strike   " +
+        $"dash {ControlBindings.KeyLabel(k.Key(GameAction.Dash))}";
 }

@@ -58,6 +58,50 @@ public class Fighter : MonoBehaviour
     /// <summary>Player slot (1 = P1 / keyboard, 2 = P2 / controller).</summary>
     public int PlayerNumber => playerNumber;
 
+    [Tooltip("Display name. Blank = worked out from this fighter's attack assets (Bjorn_Light_Slash -> Bjorn).")]
+    [SerializeField] private string characterName = "";
+    private string resolvedName;
+
+    /// <summary>
+    /// Who this fighter IS, as the menus and the HUD show it. Both fighters currently share one
+    /// <see cref="FighterData"/> asset called "test Fighter", which tells the two apart for nobody,
+    /// so the identity this project really uses is the attack asset prefix - the same prefix that
+    /// keys the animator states and the Mixamo clip maps.
+    /// </summary>
+    public string CharacterName
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(characterName)) return characterName;
+            if (!string.IsNullOrEmpty(resolvedName)) return resolvedName;
+
+            if (combatSystem != null && combatSystem.Attacks != null)
+            {
+                foreach (var attack in combatSystem.Attacks)
+                {
+                    if (attack == null) continue;
+                    int cut = attack.name.IndexOf('_');
+                    if (cut > 0) { resolvedName = attack.name.Substring(0, cut); return resolvedName; }
+                }
+            }
+            resolvedName = fighterData != null && !string.IsNullOrEmpty(fighterData.FighterName)
+                         ? fighterData.FighterName : name;
+            return resolvedName;
+        }
+    }
+
+    /// <summary>
+    /// Moves this fighter to the other player's controls. Used by character select, where choosing
+    /// the "other" fighter swaps which side each player drives rather than cloning a rig. The caller
+    /// is responsible for putting them on the matching spawn mark and for rebuilding the HUD.
+    /// </summary>
+    public void SetPlayerNumber(int number)
+    {
+        playerNumber = Mathf.Clamp(number, 1, 2);
+        facingRight = (playerNumber == 1);
+        currentInput = new InputData();
+    }
+
     private Rigidbody rb;
     private Animator animator;
     private bool animatorHasHitParams; // controller defines the HitSide int and GetHit trigger
@@ -689,6 +733,10 @@ private void ResolveIdleState()
     string[] candidates =
     {
         idleStateName,
+        // The controllers name their states after the CHARACTER (Bjorn_Idle), not after the shared
+        // "test Fighter" FighterData, so without this every match reset fell through to
+        // Animator.Rebind() - the fallback the dead-fighter-stays-dead fix exists to avoid.
+        CharacterName + "_Idle",
         fighterData != null ? fighterData.FighterName + "_Idle" : null,
         fighterData != null ? fighterData.name + "_Idle" : null,
         "Idle"

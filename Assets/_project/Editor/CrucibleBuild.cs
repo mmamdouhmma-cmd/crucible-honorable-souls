@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -53,10 +54,14 @@ public static class CrucibleBuild
     }
 
     /// <summary>
-    /// Builds from a throwaway COPY of the scene with the arenas that are switched OFF deleted, and
-    /// returns its path. An inactive GameObject is still serialized, so every build so far has
-    /// shipped all four arenas - about 126 MB of meshes and 2K textures nobody can reach. The real
-    /// scene is never modified: the copy is deleted and the original reopened in <see cref="RestoreScene"/>.
+    /// Builds from a throwaway COPY of the scene with the scenery nobody can reach deleted, and
+    /// returns its path. An inactive GameObject is still serialized, so a build used to ship all
+    /// four arenas - about 126 MB of meshes and 2K textures. The real scene is never modified: the
+    /// copy is deleted and the original reopened in <see cref="RestoreScene"/>.
+    ///
+    /// <para>The arenas marked <c>shipped</c> in the scene's <c>ArenaDirectory</c> are KEPT even
+    /// though they are switched off, because arena select turns them on at runtime. That one
+    /// toggle therefore decides both what ships and what is selectable, which is the point.</para>
     /// </summary>
     static string PrepareScene()
     {
@@ -75,22 +80,64 @@ public static class CrucibleBuild
         }
 
         var sc = EditorSceneManager.OpenScene(BuildScene, OpenSceneMode.Single);
+        var keep = ShippedArenaRoots(sc);
         var stripped = new List<string>();
+        var kept = new List<string>();
         foreach (var go in sc.GetRootGameObjects())
         {
-            // An inactive ROOT carrying renderers is scenery that has been switched off - the other
-            // arenas. Logic objects carry no renderers, and nothing at runtime turns a root back on,
-            // so this cannot take anything the game still needs.
+            // An inactive ROOT carrying renderers is scenery that has been switched off. Logic
+            // objects carry no renderers, so this cannot take anything the game still needs - with
+            // one exception, the arenas the player is allowed to choose between.
             if (go.activeSelf || go.GetComponentsInChildren<Renderer>(true).Length == 0) continue;
+            if (keep.Contains(go.name)) { kept.Add(go.name); continue; }
             stripped.Add(go.name);
-            Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(go);
         }
         EditorSceneManager.SaveScene(sc);
 
-        Debug.Log(stripped.Count > 0
-            ? $"Build scene: shipping one arena, left out {stripped.Count} switched-off ({string.Join(", ", stripped)})"
-            : "Build scene: no switched-off scenery to leave out.");
+        Debug.Log($"Build scene: shipping {1 + kept.Count} arena(s)" +
+                  (kept.Count > 0 ? $" (selectable: {string.Join(", ", kept)})" : "") +
+                  (stripped.Count > 0 ? $", left out {stripped.Count} ({string.Join(", ", stripped)})"
+                                      : ", nothing left out."));
         return BuildScene;
+    }
+
+    /// <summary>
+    /// Root names of the arenas marked <c>shipped</c> on the scene's ArenaDirectory. Read through
+    /// SerializedObject because this assembly is an asmdef and so cannot reference the runtime
+    /// types in Assembly-CSharp directly. No directory in the scene = nothing to keep, which is
+    /// the old one-arena behaviour.
+    /// </summary>
+    static HashSet<string> ShippedArenaRoots(UnityEngine.SceneManagement.Scene sc)
+    {
+        var keep = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var type = Type.GetType("ArenaDirectory, Assembly-CSharp");
+        if (type == null)
+        {
+            Debug.LogWarning("Build scene: no ArenaDirectory type found - shipping only the active arena.");
+            return keep;
+        }
+
+        foreach (var go in sc.GetRootGameObjects())
+        {
+            var comp = go.GetComponentInChildren(type, true);
+            if (comp == null) continue;
+
+            var arenas = new SerializedObject(comp).FindProperty("arenas");
+            if (arenas == null || !arenas.isArray) break;
+            for (int i = 0; i < arenas.arraySize; i++)
+            {
+                var entry = arenas.GetArrayElementAtIndex(i);
+                var rootName = entry.FindPropertyRelative("rootName");
+                var shipped = entry.FindPropertyRelative("shipped");
+                if (rootName != null && shipped != null && shipped.boolValue && !string.IsNullOrEmpty(rootName.stringValue))
+                    keep.Add(rootName.stringValue);
+            }
+            break;
+        }
+
+        if (keep.Count == 0) Debug.LogWarning("Build scene: ArenaDirectory marks no arena as shipped - shipping only the active one.");
+        return keep;
     }
 
     /// <summary>Drops the throwaway scene and puts the real one back in the Editor.</summary>

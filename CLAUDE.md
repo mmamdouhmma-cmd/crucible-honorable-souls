@@ -62,6 +62,23 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
 
 ## Where things stand (end of 2026-10-20)
 
+- **The game has a front end.** Boot (logo, press any button) -> main menu -> Quick Battle /
+  Local Play (1P or 2P, character select, arena select, difficulty) / Online / Practice / Move
+  List / Settings / Quit, with a restyled pause and KO screen, wipe transitions and an ember-lit
+  backdrop. Built from code in `Scripts/UI/{GameMenu,MenuArt,MenuStage}.cs`; run
+  `Crucible > Front End > Set up the front end` once on a fresh clone.
+- **Matches open with READY - 3 - 2 - 1 - FIGHT** (`GameMenu.CountInRoutine`). Until the last
+  beat `inMatch` is false, the fighters are frozen and input is off - and `SetAi` is deliberately
+  deferred to FIGHT too, because the AI calls `CombatSystem.TryAttack` directly and neither
+  `InputEnabled` nor a disabled `Fighter` holds it back.
+- **A uGUI menu that handles its own keyboard must shut the EventSystem out of it**: give every
+  row Button `Navigation.Mode.None` AND clear `EventSystem.currentSelectedGameObject` each frame,
+  or `StandaloneInputModule` navigates and submits in parallel and presses land on the wrong row.
+- **Character and arena select show the LIVE rigs and the real arena**, not art: the menus pose
+  the two fighters for the camera (`GameMenu.StageFighters`) and arena select switches the arena
+  behind the UI as you scroll. Two arenas ship (`ArenaDirectory`, whose `shipped` flag also
+  drives what the build keeps).
+
 - **Tasks 1–6 of `Design/Plan_LiteMobile.md` are done and play-verified**: six specials on
   `SP + Light/Medium/Heavy`, ten combo strings per character, four counter ripostes, defensive
   health recovery, per-fighter health/stamina/armour, a percentage HUD, a Moves screen, and a

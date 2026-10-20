@@ -625,6 +625,11 @@ public class CombatSystem : MonoBehaviour
     public void ResetForMatch()
     {
         if (isAttacking) EndAttack("match reset");
+        // Belt and braces: the blow that ended the last match was live when the match stopped, and
+        // a hitbox left armed through the teleport to the spawn marks would register a hit on the
+        // first frame of the new one.
+        if (hitDetector != null) hitDetector.Deactivate();
+        hitboxActive = false;
         chainCount = 0;
         attackLockoutTimer = 0f;
         inHitstun = false;

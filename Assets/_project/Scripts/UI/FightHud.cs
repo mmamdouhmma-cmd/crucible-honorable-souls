@@ -106,7 +106,38 @@ public class FightHud : MonoBehaviour
 
     // ==================== BUILD ====================
 
-    private void Start()
+    private GameObject canvasObject;
+
+    private void Start() { Build(); }
+
+    /// <summary>
+    /// Throws the bars away and builds them again. Character select can swap which fighter answers
+    /// to which player, and the bars are built per side with the name baked in, so after a swap the
+    /// HUD has to be rebuilt or Player 1's block would still be reading the other fighter.
+    /// </summary>
+    /// <summary>
+    /// Hides the bars outside a fight. The menus draw over the live arena now, so a health bar
+    /// left on top of the character select is the first thing you see.
+    /// </summary>
+    public void SetVisible(bool visible)
+    {
+        if (canvasObject != null) canvasObject.SetActive(visible);
+    }
+
+    public bool IsVisible => canvasObject == null || canvasObject.activeSelf;
+
+    public void Rebuild()
+    {
+        bool wasVisible = IsVisible;      // a rebuild during a menu must not pop the bars back on
+        if (canvasObject != null) Destroy(canvasObject);
+        canvasObject = null;
+        player1Bars = null;
+        player2Bars = null;
+        Build();
+        SetVisible(wasVisible);
+    }
+
+    private void Build()
     {
         Fighter player1 = null;
         Fighter player2 = null;
@@ -124,7 +155,7 @@ public class FightHud : MonoBehaviour
 
         font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
-        GameObject canvasObject = new GameObject("FightHUD Canvas", typeof(RectTransform));
+        canvasObject = new GameObject("FightHUD Canvas", typeof(RectTransform));
         canvasObject.transform.SetParent(transform, false);
 
         Canvas canvas = canvasObject.AddComponent<Canvas>();
@@ -165,7 +196,7 @@ public class FightHud : MonoBehaviour
         root.sizeDelta = new Vector2(barWidth, staminaTop + staminaBarHeight);
 
         // ----- Text row -----
-        string fighterName = fighter.fighterData != null ? fighter.fighterData.FighterName : "";
+        string fighterName = fighter.CharacterName;
         Text nameText = CreateText("Name", root, 26, FontStyle.Bold, outerSide: true, mirrored);
         Place((RectTransform)nameText.transform, 0f, textRowHeight, barWidth * 0.7f, alignInner: false, mirrored);
         nameText.text = $"P{fighter.PlayerNumber}  {fighterName}";

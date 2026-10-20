@@ -1307,3 +1307,149 @@ aspect.
 - Debug-only components still in the scene: `PlayProbe`, `BladeTrace`, `InputHold`, `DebugTimeScale`
   (the last one is wanted - the Settings speed slider drives it).
 
+
+### 2026-10-20 (later) - the front end: boot, character select on the live rigs, arena select, pause
+
+The game now opens as a game: Unity splash -> logo -> "press any button" -> main menu -> a setup
+flow -> the fight. Built from code like the rest of the UI, dressed from the logo (near-black
+field, bronze inscription, dried-blood selection). All of it play-verified by capture.
+
+- **`Scripts/UI/MenuArt.cs` (new)** - the palette and every texture, generated in code: mottled
+  stone panel and bronze frame as 9-slice sprites, vignette, soft dot, diamond, hairline rule,
+  film scratches, a top-down fade. Plus the uGUI builders (`Rect`/`Img`/`Raw`/`Label`/`Shadowed`/
+  `Place`/`Box`/`Divider`) and `Track()` for letter-spaced caps. `Logo` loads
+  `Resources/ui/crucible_logo` (the user's art, copied into Resources).
+- **`Scripts/UI/MenuStage.cs` (new)** - three layers on the menu canvas: a back layer (dark field,
+  dim logo watermark, hearth glow, 26 drifting embers, vignette), the menu content, and a front
+  layer (grain, the two-panel wipe with bronze leading edges, and the announcement text used for
+  FIGHT / K.O. / PARRY). `Wipe(atBlack)` is the transition every screen change uses; the callback
+  is wrapped in try/catch so an exception cannot strand the screen behind a black wipe.
+  Everything animates on **unscaled** time, because the pause menu runs at `Time.timeScale` 0.
+- **`Scripts/core/ArenaDirectory.cs` (new)**, on GameMangers - the four arenas with a `shipped`
+  flag. One flag decides BOTH what the build ships and what the player can pick:
+  `CrucibleBuild.ShippedArenaRoots` reads the component out of the scene with `SerializedObject`
+  (the editor asmdef cannot reference Assembly-CSharp) and keeps those roots instead of deleting
+  every switched-off root. Shipping now: **Medieval Fortress + Desert Arena**; Al-Quds and Forest
+  Clearing stay out.
+- **`Scripts/core/PracticeMode.cs` (new)** + **`AiController.Rules`** - practice tops the bars up
+  rather than nulling damage, so every hit still resolves normally, and only while
+  `currentHealth > 0` so a death animation is never interrupted. `Rules` gates walking, attacking,
+  blocking, dodging and punishing independently (12 gates inside `Think`), with `Dummy` and `Full`
+  presets, so the practice screen can hand the AI as much or as little as you want.
+
+**The select screens show the REAL fighters, not art** (the user's call mid-session; the concept-art
+portraits were built first and then deleted). `GameMenu.StageFighters` disables `FightCamera`, poses
+the pair for the camera and parks the camera on them; `PlaceFighters` puts everything back when the
+match starts, so nothing staged has to be preserved. Three things it has to get right:
+- **Frame first, pose second.** A fighter standing 2.4 units off to the side does not face the
+  camera by facing the stage centre - that error measured 31 degrees, a near profile. The camera
+  position is computed first, then each fighter is turned toward *it*.
+- **Each fighter keeps its own Y** (`ownY`, 0.24 / 0.75): the two roots have different ground
+  offsets, and averaging them is the old floating bug.
+- Arena select pulls the camera right back and **switches the real arena live** as you scroll
+  (`ArenaDirectory.Select(i, remember: false)`), so choosing the ground means looking at it.
+
+**The three bugs the user reported, all root-caused and fixed:**
+1. **The Move List would not change page.** The adjust lambda changed `movesPage` and called
+   `Refresh()`, which only re-renders the rows already built - but a page's lines are baked into
+   `items` when the screen is BUILT. The label (a live lambda) updated while the moves never did.
+   Now the adjust rebuilds the screen. Verified: page 1 -> 2 -> 3 with the body text changing.
+2. **Pause resumed on almost any button.** `MenuConfirm` fires on Enter/Space/Cross and `MenuBack`
+   on Esc/Backspace/Circle/Options - so on a pad only Square, Triangle, the shoulders and the
+   d-pad did NOT resume, and Space is Player 1's dash key. Two fixes: a **0.22 s unscaled input
+   guard** on every screen change (the button that opened the screen is still down on the frame it
+   appears), and `Back()` on the pause ROOT now does nothing - Options/Escape still toggles the
+   pause off, but Circle, which is also the parry button, no longer throws you back into the
+   fight. Verified: `Back()` on Pause leaves the screen on Pause; `Resume()` returns to the match.
+3. **Health regen after a quiet spell is back.** It was never missing from the code
+   (`healthRegenDelay` 3 s has been there) - `healthRegenPerSecond` was serialized **0** on both
+   fighters. Set to 1 hp/s in the scene. Verified in play: hurt to 60/90, 69/90 ten seconds later.
+
+**Other bugs found and fixed on the way, none of them reported:**
+- **A domain reload broke the backdrop.** `MenuStage.Ember` was a plain class, so recompiling
+  while the game was playing left `embers` null while the plain `Image` references beside it
+  survived, and `ApplyBackdrop` then threw once per frame. `[System.Serializable]` on `Ember` plus
+  null guards.
+- **The HUD drew over the menus.** New `FightHud.SetVisible`, driven by the screen. And
+  `Rebuild()` (which `ApplySides` calls when the sides swap) now restores the visibility it had,
+  or the bars popped back on top of the VS card.
+- **`Fighter.ResolveIdleState` never found the idle state.** It tried the FighterData name, but
+  both fighters share one asset called "test Fighter" while the controllers name their states
+  after the CHARACTER. Every match reset fell through to `Animator.Rebind()` - the fallback the
+  dead-fighter-stays-dead fix exists to avoid. New `Fighter.CharacterName` (derived from the
+  attack-asset prefix) is now the first candidate, so `Bjorn_Idle` / `Miyamoto_Idle` resolve.
+- Lists longer than the visible rows could not be scrolled when nearly every row was body copy
+  (How to Fight, the move list): the view now scrolls when there are two or fewer selectable rows.
+- The slab is sized to the rows it holds instead of a fixed 920 tall.
+
+**Layout notes worth keeping:** the header and footer live OUTSIDE the slab, so the select screens -
+which have no slab, because the arena is behind them - get a title and a hint line in the same
+place. The logo art is a 16:9 plate with the wordmark floating in black, measured at x 138-1796,
+y 390-750 of 1920x1080; the main-menu title crops to exactly that (`uvRect`, 4.42:1) and the boot
+screen shows it **full bleed**, because at any smaller size its opaque black background draws a
+visible rectangle against the field.
+
+- `Editor/CrucibleFrontEnd.cs` (new): `Crucible > Front End > Set up the front end` imports the
+  logo (max 2048, no mips), paints Unity's own splash the logo's near-black so the hand-off has no
+  flash, and adds ArenaDirectory + PracticeMode to GameMangers. Re-runnable.
+- **Flow**: Quick Battle jumps straight back into your last setup (character, 1P/2P, difficulty,
+  arena - saved to PlayerPrefs on every match start); Local Play is the full 1P/2P -> character ->
+  arena -> difficulty -> VS path; Practice goes character -> arena -> rules. Character select is
+  "pick your side": the two scene fighters are not cloned, only the player numbers swap
+  (`Fighter.SetPlayerNumber`), the spawn marks are stored per SIDE, and the HUD is rebuilt.
+- Verified end to end in play: pick the other fighter -> Miyamoto becomes P1 and Bjorn P2, they
+  swap marks, the match starts with `FightCamera` back on and both fighters on the floor; vs-AI
+  activates the AI, practice activates a standing dummy with infinite health. Console: 0 errors.
+
+### 2026-10-20 (later still) - the count-in, the wrong-page bug, and death by name
+
+Three things the user asked for after playing the new front end.
+
+**"I click Local Play and it jumps to Quick Battle, or it lands on Settings."** Two selection
+systems were running over the same rows. This menu tracks its own `selected` index and draws its
+own gem, but the rows are uGUI `Button`s under a `StandaloneInputModule`, so Unity's EventSystem
+was ALSO navigating them: the arrow keys moved its focus independently of the gem, and
+Enter/Space sent `Submit` to whatever IT had selected - on top of this menu's own `Confirm()`.
+One press did two things, and clicking a row left that row selected, so the next Enter fired the
+row in that same slot on whatever screen you had moved on to. Fixed at both ends: every row
+Button gets `Navigation.Mode.None`, and `Update` clears `EventSystem.currentSelectedGameObject`
+whenever anything holds it. Verified: 26/26 rows have navigation off, and a selection forced onto
+a row is gone by the next frame. **Any uGUI menu that does its own keyboard handling needs both
+halves of this** - the module is enabled for mouse clicks, and it answers the keyboard too.
+
+**"Sometimes the character keeps dying even after restarting."** The rematch path itself is
+clean, and I could not reproduce a fighter coming back dead: killed and restarted repeatedly,
+health returns to full, `isDead` clears, the animator lands back on `Bjorn_Idle`. (I also forced
+`idleStateHash` to 0 to re-create the pre-fix `Animator.Rebind()` fallback, and even that
+recovers.) What was real and is now fixed is the corpse that stayed down *through the menus*:
+`MatchOver -> Change fighters` goes to character select, which only *moved* the fighters to pose
+them, so the loser lay dead on the select screen and through every screen after it.
+`PlaceStaged` now calls `ResetForMatch`, which revives and re-idles as part of posing. Also
+hardened `CombatSystem.ResetForMatch` to disarm the hitbox unconditionally rather than only when
+`isAttacking` - the blow that ends a match is live when the match stops, and a hitbox left armed
+through the teleport to the spawn marks would land a free hit on the first frame of the next one.
+
+**The count-in.** `StartMatch` no longer drops you straight into the fight: it places everything,
+shows the arena, and holds. `CountInRoutine` runs READY (0.8 s) - 3 - 2 - 1 (0.55 s each) - FIGHT,
+on unscaled time, and only while `screen == Screen.None`, so pausing mid-count does not burn the
+count down behind the pause menu. Until FIGHT: `inMatch` is false (no K.O. can be declared),
+`FreezeFighters(true)`, and `InputManager.InputEnabled` is false. **The AI needed its own gate** -
+it drives `CombatSystem.TryAttack` directly, so neither the disabled `Fighter` nor `InputEnabled`
+holds it, and it would have opened every match with a free swing. `SetAi` is now called with the
+real rules at FIGHT, and with `false` at match start. Verified in one frame at match start:
+`inMatch=False input=False fighterEnabled=False AI=False`; four seconds later all true.
+
+**The lettering.** `MenuArt.Chiselled` builds one line as a stack of `Text` copies - six extrusion
+layers walking down-right from the face colour into near-black, a pale copy offset up-left for the
+lit top edge, then the face with an outline - so flat uGUI text reads carved and lit the way the
+logo's wordmark does. The announcement layer uses it, so FIGHT, the numbers and the K.O. line all
+get it. Two things it has to do: `FitWidth` shrinks the line until it fits (150 -> 114 for
+"MIYAMOTO DIED"; "K.O." and a long name cannot share a size), and `Shape` tracks each line
+separately, because tracking a string with a newline in it spaces the newline out too and knocks
+both lines off centre. **No font was added**: the project still ships only `LegacyRuntime.ttf`, and
+an OS serif would fall back to Arial in a web build, so the dimensional look is built from the
+stack rather than from a typeface. A free Roman serif (Cinzel is OFL) would be a closer match to
+the logo if it is ever worth the download.
+
+Death now reads as the user asked - the name, with DIED under it:
+`stage.Announce(f.CharacterName + "\ndied", BloodLit, 2.0f, null, 140)`.

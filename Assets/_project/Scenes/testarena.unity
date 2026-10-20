@@ -538,6 +538,7 @@ MonoBehaviour:
     signatureUsed: 0
     healedThisRound: 0
   combatSystem: {fileID: 126681665}
+  characterName: 
   dashDistance: 2
   dashDuration: 0.35
   dashStaminaCost: 16
@@ -553,7 +554,7 @@ MonoBehaviour:
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
   staminaRecoveryPerSecond: 20
-  healthRegenPerSecond: 0
+  healthRegenPerSecond: 1
   healOnDodge: 0.02
   healOnParry: 0.02
   healOnCounterHit: 0.03
@@ -4138,6 +4139,8 @@ GameObject:
   - component: {fileID: 1348053410}
   - component: {fileID: 1348053412}
   - component: {fileID: 1348053413}
+  - component: {fileID: 1348053415}
+  - component: {fileID: 1348053414}
   m_Layer: 0
   m_Name: GameMangers
   m_TagString: Untagged
@@ -4215,6 +4218,12 @@ MonoBehaviour:
   playerNumber: 2
   difficulty: 1
   debugLogs: 0
+  rules:
+    walk: 1
+    attack: 1
+    block: 1
+    dodge: 1
+    punish: 1
 --- !u!114 &1348053410
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4279,6 +4288,51 @@ MonoBehaviour:
   dash: {x: 0, y: 0}
   secondsLeft: 0
   delayLeft: 0
+--- !u!114 &1348053414
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1348053404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: daaae2da88ba748458696baf0997b573, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PracticeMode
+  infiniteHealth: 1
+  infiniteStamina: 1
+  autoResetDistance: 0
+--- !u!114 &1348053415
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1348053404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2a28b742237bf44fbe32bea8f49a344, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ArenaDirectory
+  arenas:
+  - displayName: Medieval Fortress
+    rootName: MedievalFortress
+    blurb: Grey stone, high walls, no way out.
+    shipped: 1
+  - displayName: Desert Arena
+    rootName: DesertArena
+    blurb: Sun-bleached sand and old blood.
+    shipped: 1
+  - displayName: Al-Quds Courtyard
+    rootName: Arena_AlQuds
+    blurb: Arches, gilded dome, holy ground.
+    shipped: 0
+  - displayName: Forest Clearing
+    rootName: ForestClearing
+    blurb: Wet earth under a closed canopy.
+    shipped: 0
+  testGroundName: Ground
 --- !u!1 &1348276768
 GameObject:
   m_ObjectHideFlags: 0
@@ -5843,6 +5897,7 @@ MonoBehaviour:
     signatureUsed: 0
     healedThisRound: 0
   combatSystem: {fileID: 1967802157}
+  characterName: 
   dashDistance: 2
   dashDuration: 0.25
   dashStaminaCost: 12
@@ -5858,7 +5913,7 @@ MonoBehaviour:
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
   staminaRecoveryPerSecond: 18
-  healthRegenPerSecond: 0
+  healthRegenPerSecond: 1
   healOnDodge: 0.02
   healOnParry: 0.02
   healOnCounterHit: 0.03
