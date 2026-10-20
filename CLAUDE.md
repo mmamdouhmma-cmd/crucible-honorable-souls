@@ -10,7 +10,7 @@
 - `Assets/_project/Scripts/input/` — `InputManager` singleton on the `GameMangers` object.
 - `Assets/_project/Scripts/UI/FightHud.cs`, `Assets/_project/Scripts/core/FightCamera.cs`.
 - `Assets/_project/Characters/<Name>/Attacks/` — per-character `AttackData` assets, named `<Name>_<Weight>_<Move>`. `Characters/<Name>/Model/` — the Tripo rigged FBX + textures + material (git-ignored, see Git notes). `Characters/_Unrigged/` — Tripo meshes not rigged yet (git-ignored).
-- `Assets/_project/Animation/Controllers/` — `P1_Bjorn.controller`, `P2_Miyamoto.controller`. `Animation/Clips/{Mixamo,Maria}/` — placeholder test clips; `Animation/Clips/Custom/` — for Blender exports.
+- `Assets/_project/Animation/Controllers/` — `P1_Bjorn.controller`, `P2_Miyamoto.controller`, `P3_Richard.controller`. `Animation/Clips/{Mixamo,Maria}/` — placeholder test clips; `Animation/Clips/Custom/` — for Blender exports.
 - `Assets/_project/Data/Fighters/` — `FighterData` assets. `Assets/_project/Input/` — the Input System actions asset. `Assets/_project/Art/ConceptArt/` — character portraits.
 - `Assets/_project/_Legacy/` — unreferenced leftovers (old Bjorn test model, Maria mesh/material, `Player2Controller.cs`, URP template readme). Safe to delete once nobody misses them.
 - `Assets/_project/Scenes/testarena.unity` — the test scene.
@@ -79,6 +79,57 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   behind the UI as you scroll. Two arenas ship (`ArenaDirectory`, whose `shipped` flag also
   drives what the build keeps).
 
+- **The roster's numbers live in ONE table**: `Editor/CrucibleBalance.cs`
+  (`Crucible > Combat > Apply the roster balance`), which writes each fighter's `FighterData`,
+  every `AttackData`'s damage/stamina/pierce/frames/hitstun, and the `Fighter` components in the
+  scene. Each fighter now has his own data asset (`bjorn_data`, `miyamoto_data`, `richard_data`);
+  `testfighter_data` is no longer referenced. Archetypes as of 2026-10-20: Miyamoto 80 hp / 100
+  stamina / 8 armour / x0.92 / walk 4.4, Bjorn 95 / 110 / 14 / x1.10 / 3.8 (costliest moves),
+  Richard 115 / 85 / 22 / x1.00 / 3.2 (85% block at 2/s drain). `FighterData.AttackSpeed` and
+  `DashDistance` are DEAD fields - attack speed is only the AttackData frame counts, and changing
+  one re-times its clip, so re-run `Use Mixamo packs` after a frame change.
+- **Three fighters now, not two.** Richard (sword + kite shield, the tank: 105 hp, 110 stamina,
+  24 armour, movement 33) lives on `Player3` with `P3_Richard.controller` and his own
+  `richard_data`. His whole move set is the table in `Editor/CrucibleRichard.cs`; build him with
+  `Crucible > Characters > Richard > 1/2/3`, then `Rebuild Player3 (Richard body)`, then the shared
+  menu items (special states, `Use Mixamo packs`, `Wire combo strings`). His animation is the
+  **Pro Sword and Shield pack** plus four clips keyed by hand in
+  `ArtSource/Blender/richard_clips.py` (thrust, shield charge, shield bash, double-high) — the pack
+  has no thrust and no bash. He carries a shield, so he is NOT in `CrucibleCharacterSetup.TwoHanded`
+  and has no `TwoHandGrip`.
+- **Four fighters now.** Salaadin (falchion + round shield, the balanced one: 95 hp, 115 stamina,
+  18 armour, x0.92 damage, walk 4.1) lives on `Player4` with `P4_Salaadin.controller` and
+  `salaadin_data`. His move set is the table in `Editor/CrucibleSalaadin.cs` (normals are slashes,
+  every special is a kick or a turn); build him with `Crucible > Characters > Salaadin > 1/2/3`,
+  then `Rebuild Player4 (Salaadin body)`, then the shared menu items. **His folder is lowercase
+  `Characters/salaadin`** - renaming it deadlocks the Editor if any shell is sitting in it, so
+  `Folder()` in `CrucibleBalance.cs` and `CharDir()` in `CrucibleCharacterSetup.cs` handle it in
+  code. He shares only Richard's two WALK clips; his idle, both kicks and two specials are keyed
+  in `ArtSource/Blender/salaadin_clips.py`.
+- **Porting a hand-keyed clip to another character's rig: convert, never scale by height.**
+  Learned on Salaadin, whose rig is 1.00 tall against Richard's 1.85 but whose arms are half
+  human proportion:
+  - Hand and foot targets go in **fractions of that limb's own reach from its own joint**, which
+    is what `pose()` and `kick()` in `salaadin_clips.py` take. Height-scaled metres miss.
+  - Swing a limb with the **two-bone IK**, not by rotating a bone about its own axis - bone roll
+    differs per rig, and a kick keyed that way comes out sideways.
+  - **Hip travel from a pack clip is in the PACK rig's units** (those armatures are scaled 0.01).
+    Carry it as a fraction of the source's rest hip height. The check is `RootT.y` on the imported
+    clip: healthy clips sit near 0.8-1.0, and a broken one read -52.4.
+  - A weapon's mount decides its `aim()` arguments: Salaadin's shield has its boss on `-palm`, so
+    `(UP, -FWD)` where Richard's shield takes `(UP, FWD)`.
+- **The scene holds the whole roster; the menu benches whoever is not fighting.**
+  `GameMenu.ApplySides(first, second)` switches the non-participants off and calls
+  `Fighter.RefreshOpponent()` on the pair — `FindOpponent` used to take the first other Fighter in
+  the scene, which with three rigs is the wrong one (it made Richard's heavy hit a benched Bjorn).
+  Anything that walks the roster must skip inactive fighters: K.O., the winner, `PlaceFighters`.
+  **`FightCamera` had the same bug**: it resolves Player 1 and Player 2 ONCE in `Start`, so after
+  the numbers moved it kept framing a benched fighter standing on his mark - the view read as
+  off-centre and swung round. `PlaceFighters` now calls `FightCamera.RetargetToFighters()`, which
+  re-finds the pair and re-reads the framing from the camera's AUTHORED scene transform (kept in
+  `homePosition`, because the select screens move the camera and never put it back).
+  Character select takes two locks (Player 1, then Player 2 / the computer) whenever the roster is
+  bigger than two, and `StageFighters` lines up N.
 - **Tasks 1–6 of `Design/Plan_LiteMobile.md` are done and play-verified**: six specials on
   `SP + Light/Medium/Heavy`, ten combo strings per character, four counter ripostes, defensive
   health recovery, per-fighter health/stamina/armour, a percentage HUD, a Moves screen, and a
@@ -99,8 +150,7 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   plan and deliberately not changed blind.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
-  quick tunnel, new URL each restart); both fighters still share one `FighterData` called
-  "test Fighter"; `parryCounterDamageMultiplier` is serialized 1.5 against `BalanceConfig`'s
+  quick tunnel, new URL each restart); `parryCounterDamageMultiplier` is serialized 1.5 against `BalanceConfig`'s
   1.35 and `parryCounterWindow` 1.0 s against 0.5 s, never settled; `PlayProbe`, `BladeTrace`
   and `InputHold` are debug-only components still in the scene (`DebugTimeScale` is wanted —
   the Settings speed slider drives it).

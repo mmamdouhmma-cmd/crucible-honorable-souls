@@ -1453,3 +1453,262 @@ the logo if it is ever worth the download.
 
 Death now reads as the user asked - the name, with DIED under it:
 `stage.Announce(f.CharacterName + "\ndied", BloodLit, 2.0f, null, 140)`.
+
+### 2026-10-20 — Richard the third fighter: sword, kite shield, and a roster that holds three
+
+Richard ("Tanke") is in: his own rig, his own weapons, 8 moves, 12 combo strings, and a character
+select that now carries three fighters instead of a hard-coded pair.
+
+**The model.** The Tripo knight in `Characters/Richard/` arrived unrigged (5340 verts, T-pose,
+empty hands). It went through the **Mixamo auto-rigger** in the user's own browser — chin, wrists,
+elbows, knees and groin markers, Standard Skeleton (65 bones), symmetry on — and came back as
+"Sword And Shield Idle.fbx", which is the rigged source. `ArtSource/Blender/prep_weapon.py` and a
+new `prep_shield.py` squared the sword (1.10 long, grip at z=0) and the shield (0.78 tall, boss on
++Y, grip at the origin), and `ArtSource/Blender/richard_body.py` mounts both on the hand bones and
+exports `Characters/Richard/Model/Richard_Body.fbx`.
+
+Two mounting traps, both cost an hour: **the Mixamo FBX imports already posed**, so the weapons
+must be placed with `armature.data.pose_position = 'REST'` (and exported that way); and after bone
+parenting, assigning `matrix_world` uses a stale parent matrix — the basis has to be computed
+against the bone's TAIL space explicitly:
+`bone_space = arm.matrix_world @ pb.matrix @ Matrix.Translation((0, pb.bone.length, 0))`.
+A third: `pose_bone.matrix` is armature space with **unscaled** rotation, so inverting
+`arm.matrix_world` (scale 0.01) injects a ×100 error — the IK missed by 5.7 m until the targets
+went through `to_armature_space()`.
+
+**The animation.** The Pro Sword and Shield pack (51 clips) covers everything except the two moves
+the brief actually names: there is **no thrust and no shield bash** in it. Those are keyed on
+Richard's rig in `richard_clips.py`, along with the shield charge and the double-high swing. The
+measurements and the casting table are in `Design/Anim_Inventory.md`.
+
+**The authoring.** New `Editor/CrucibleRichard.cs` holds his whole move set in one table and three
+ordered menu items (`Crucible > Characters > Richard > 1/2/3`): write the AttackData + FighterData
+assets, copy `P2_Miyamoto.controller` into `P3_Richard.controller` renaming 11 states, and clone
+Player2 into Player3. Then the shared menu items finish it, unchanged in shape:
+special/riposte states, `Use Mixamo packs` (now with a P3 map, and `Custom` as a pack name), combo
+strings. `CrucibleCharacterSetup` grew a `TwoHanded` list — Richard is not on it, so he gets no
+`TwoHandGrip` IK dragging his shield arm onto the hilt.
+
+**Three fighters broke two things that only ever saw two.**
+1. `Fighter.FindOpponent` returned *the first other Fighter in the scene*. Richard's heavy hit the
+   benched Bjorn, in a match against Miyamoto, and the log read "P1 HIT P1". It now picks the
+   active fighter with the other player number, and `GameMenu.ApplySides` calls the new
+   `RefreshOpponent()` on both sides once the numbers are handed out.
+2. `GameMenu` assumed the roster WAS the match: `ApplySides(int)` gave everyone else Player 2,
+   `VsRoutine` computed "the other one" as `p1Character == 0 ? 1 : 0`, the K.O. winner was "any
+   fighter that is not the loser", and staging placed exactly two. Now `ApplySides(first, second)`
+   switches the non-participants OFF, select takes two locks (Player 1, then Player 2 — the title
+   says which), `MoveCharacter` walks past the pick the other side holds, and `StageFighters`
+   lines up N fighters and frames them.
+
+Play-verified at `timeScale` 0.7 against Miyamoto: Lion Thrust 7, Cross Slash 9, Crusader Hew 12
+(all landing on the blade sweep), Shield Charge 14 with a 0.60 lunge, Shield Bash 15, Twin Hew 16,
+no errors. Select shows all three with their cards (Richard: health 105, stamina 110, armour 24%,
+strikes 7/9/12) and the live rigs posed behind them.
+
+Open: his ground offset (−0.480/3) was measured off the bind pose, so if his feet float in the
+Mixamo idle it is that constant in `CrucibleCharacterSetup.GroundOffset`. The AI drives his normals
+but, like the other two, cannot dial a string or throw a special on purpose.
+
+**Balance pass the same day (user's archetype brief).** "Miyamoto fastest, least damage, lowest
+health, mid stamina; Bjorn a little more stamina but higher cost, slower, highest damage, mid
+health; Richard most health, lowest stamina, damage between, slower than Bjorn." Two things were
+in the way: Bjorn and Miyamoto **shared one `FighterData`** ("test Fighter"), so neither speed nor
+damage could differ, and `FighterData.AttackSpeed`/`DashDistance` turned out to be **dead fields**
+that nothing reads — attack speed is only the AttackData frame counts.
+
+So the numbers moved into one place: `Editor/CrucibleBalance.cs` holds all three fighters and all
+25 moves, and `Crucible > Combat > Apply the roster balance` writes the data assets, the
+AttackData and the scene Fighters. `CrucibleRichard` no longer carries damage or frames — it
+authors the SHAPE of his moves (trigger, height, hitbox, aim, which dash evades) and calls the
+balance table.
+
+Shipped: Miyamoto 80/100/8 x0.92 walk 4.4 regen 20 · Bjorn 95/110/14 x1.10 walk 3.8 regen 17,
+heavy costs 23 and Blood Eagle 54 so his bigger tank empties faster · Richard 115/85/22 x1.00
+walk 3.2 regen 14, and because his low pool fights his own shield the user approved paying him
+back with the best guard (85% at 2/s drain, against 80/3 and 60/3). Startup ladders light
+6/10/11, medium 9/18/15, heavy 16/18/22 — which fixed two inversions: Miyamoto's heavy had been
+the SLOWEST in the game (23) and Bjorn's the fastest (15).
+
+Verified in play, Bjorn vs Richard: the axe does 11 into Richard (13 x 1.10 against 22% armour
+less 5 pierce) and the hew does 10 back (11 x 1.00 against 14% less 8 pierce), pools read 115/85
+and 95/110. Frame changes re-time the clips, so `Use Mixamo packs` was re-run: Miyamoto's light is
+now 0.25 s, Richard's 0.38 s; heavies 0.53 / 0.63 / 0.73 s.
+
+### 2026-10-21 — Richard's shield turned round and his sword off his forearm
+
+Two mount fixes in `ArtSource/Blender/richard_body.py`, both measured rather than eyeballed, then
+re-exported to `Characters/Richard/Model/Richard_Body.fbx` and rebuilt with
+`Crucible > Characters > Rebuild Player3`.
+
+**The sword was crossing the forearm** because the blade sat on the hand bone's thumb axis and that
+axis leans about 17 degrees back toward the elbow (measured in the idle pose: thumb dot
+wrist->elbow = +0.29). A `tweak` of -20 degrees about the weapon's local X squares the blade with
+the forearm - in the idle it now stands up and forward at roughly 50 degrees. Worth knowing: the
+tweak is a rotation in the weapon's own frame applied AFTER the axis mapping, and because the
+mapping is written in the hand bone's axes it means the same thing in every pose, so it can be
+reasoned about at rest and trusted in animation.
+
+**The shield was upside down AND back to front.** Point-up came from mapping its top (+Z) onto
+`along`; it now goes on `thumb` with a -24 degree tweak, which in the idle puts the point straight
+down and the face within a degree of the fighter's forward. Back-to-front was a bad assumption
+inherited from `prep_shield.py`: its boss test picks the side whose centre band bulges furthest,
+and on this asset the **grip bar stands prouder than the dome**, so +Y came out as the arm side.
+The mount now takes the face from `-Y` and the docstring carries the caveat.
+
+**The fist poked through the board** for two reasons, and the second only showed up on a close-up
+render: the shield's origin is the TIP OF THE BOSS with the whole mesh behind it (not the grip, as
+the comment claimed), and the hand sat 7 cm above the boss where the shell curves away. Centring
+the boss on the fist (`thumb` 0.088) and pushing the board out along its own normal fixed it. The
+push was picked by sweeping 0 to 15 cm inside one Blender run and counting hand vertices with no
+shell in front of them: 17 of 266 at zero, 1 at 3 cm, 0 from 6 cm on. 6 cm it is -> `along` 0.235.
+
+Two measurement traps for next time: sampling "hand" vertices within 12 cm of the wrist bone only
+catches the palm (a hand is ~19 cm long, and it was the FINGERS poking through), and neither a
+`closest_point_on_mesh` normal test nor a ray-parity test can say whether a weapon is inside this
+body - the mesh is not watertight, cape and skirt are open shells. What does work: ray-cast from
+the body vertex along the shield's own face normal and ask whether any shell is in front of it.
+A side-view render is not evidence either - the hilt that looked buried in the forearm was just
+depth overlap, which a render looking straight down the forearm settled in one frame.
+
+**And his idle was the wrong one.** The pack ships four. Measured over each clip - head yaw,
+hand height and forward reach, and the total distance the shield hand travels - they fall into
+two groups: `idle` (109 f, 1.17 of hand travel), `idle (2)` (224 f, 2.93) and `idle (3)` (261 f,
+4.58) are loose, weight-shifting, look-around idles, while **`idle (4)` (76 f, 0.08)** is a
+settled fighting stance that only breathes, with the shield already up (hand 0.13 above the hips
+and 0.35 in front). It also loops better: a 0.3 cm worst-bone gap and no hips drift, against
+2.0 cm and 0.7 cm for the clip he had. `Richard_Idle` in `CrucibleMixamoSetup.P3Map` now points
+at it. No barbarian idle was needed - the axe-pack idles put the hands where an axe is, not where
+a shield is.
+
+### 2026-10-21 — The camera was framing a benched fighter
+
+"Why is the camera angle changed, it should be closer and centered between both." The scene file
+turned out to be innocent - reading transforms while the Editor is PLAYING gives runtime values,
+and the first look (Player1 inactive at a 199-degree yaw, 0.12 high) was Bjorn's corpse from a
+K.O., not something saved. On disk the layout was exactly as committed.
+
+The bug was `FightCamera.Start`: it resolves `player1`/`player2` once, by player number, and
+`ApplySides` hands those numbers to a different pair every match. Playing Miyamoto vs Richard,
+the camera was still following Miyamoto and **Bjorn**, who was switched off and standing on his
+spawn mark - so it centred on the midpoint between a fighter and a bench, and swung off-axis
+(10 degrees of yaw, 2.3 units left). Exactly the `FindOpponent` bug from the day before, in a
+second place. `PlaceFighters` now calls the new `FightCamera.RetargetToFighters()`: re-find the
+pair, snap back to the camera's authored transform, re-read the framing. The authored transform
+has to be remembered in `Awake` (`homePosition`), because `StageFighters` moves the camera for the
+select screens and `Unstage` never puts it back.
+
+With the right pair in frame the view was still the old one, so the camera moved too, by the
+user's two words: **centred** on the fighters' midpoint (x 0.93 instead of -0.62, which had put
+them a ninth of the screen off to the right) and **closer** - 6.6 units back instead of 9.5, which
+takes the pair from about a quarter of the frame height to about forty percent. Checked at a
+6.5-unit gap, far wider than a dash: `zoomOutPerUnit` 0.5 keeps both in frame with room to spare.
+
+**The post-move dead time came down to 0.85 s**, on the user's call. It was three separate
+constants in `BalanceConfig`, not one: `STRING_LOCKOUT` 1.5 (after a combo), `ATTACK_CHAIN_LOCKOUT`
+1.5 (after the second repeat of the same button) and `SPECIAL_LOCKOUT` 1.0 (after a special). All
+three are 0.85 now, so whatever a fighter just finished the gap reads the same. No fighter
+overrides them - the three `CombatSystem` fields (`stringLockout`, `sameAttackLockout`,
+`specialLockout`) are all 0 in the scene, which means "fall back to BalanceConfig", so the
+constants were the only place to change. Verified live: all three log lines read 0.85 s.
+Worth remembering: the lockout is GAME time, and the Settings game speed (0.85) stretches it on
+the clock - 0.85 s of lockout is about one real second at the default setting.
+
+### 2026-10-21 — Salaadin, the fourth fighter: everything that does not need the rig
+
+The post-move dead time came down to 0.85 s first (above), then the roster grew.
+
+**Salaadin** - falchion and round shield, the balanced one. His source meshes were already in
+`Assets/_project/Characters/salaadin/`: the Tripo body (`islamic knight 3d model`), the
+`ornate curved sword` and an `ornate round shield`. The user settled the open questions:
+slashes as his normals and kicks in his specials; the kicks hand-keyed in Blender rather than
+downloaded; 95 hp, 115 stamina, 18 armour, damage x0.92, walk 4.1; and - asked later - he MAY
+share Richard's two walk clips, but nothing else of Richard's.
+
+Done this session, all of it ahead of the rig:
+
+- **Weapons prepped and verified.** `Salaadin_Falchion.fbx` (4,036 verts, 0.90 long, grip at the
+  origin) and `Salaadin_Shield.fbx` (4,085 verts, 0.80 across). The shield was RENDERED from both
+  faces before trusting the script, after Richard's boss test lied: +Y really is the outward face
+  (crescent-and-star boss, riveted rim), -Y the back. It is a **centre-grip round shield** - one
+  vertical bar across the middle, held in the fist, not strapped like Richard's kite. Its origin
+  sits 0.096 ABOVE the disc centre, because prep_shield puts the origin where a kite shield's grip
+  belongs; `salaadin_body.py` pays that back with `thumb = 0.096`.
+- **A real bug in `prep_weapon.py` / `prep_shield.py`**: the .fbm texture scan matched Unity's
+  `<name>_basecolor.jpg.meta`, which sorts AFTER the jpg and overwrote it, so the load threw. It
+  never bit Richard because his sources sat outside `Assets/`. Both scripts now filter by image
+  extension (`IMAGE_EXT`).
+- **`Editor/CrucibleSalaadin.cs`** - his whole move set, built on the Richard pattern but cloning
+  **P3_Richard** as the controller template (same sword-and-shield shape, specials already wired):
+  Saif Cut / Crescent Slash / Hattin Cleave, specials Veiled Rush / Breaking Kick / Whirling Saif,
+  ripostes Falcon (dash) and Heel (parry, a kick, `hitsWithWeapon` off).
+- **`CrucibleBalance`** gained his row and his eight moves. Start-ups sit between Miyamoto's and
+  Bjorn's (8/12/17 against 6/9/16 and 10/18/18). NOTE: his assets live in a LOWERCASE `salaadin`
+  folder, so `WriteMove` now goes through a `Folder()` mapping.
+- **`CrucibleMixamoSetup` P4Map**: clips measured, not guessed. Light `slash (3)` (48 f, the most
+  compact cut left), medium `attack (2)` (40 f, only 0.5 of vertical travel - genuinely flat),
+  heavy `slash (4)` (70 f, 1.87 of drop), dash riposte `attack (3)`, death `death (2)`. Richard's
+  `slash`, `slash (5)`, `attack (4)`, `idle (4)` and the pack's one `kick` are left alone.
+- **`ArtSource/Blender/salaadin_body.py`** - his mount, copied from Richard's with a centre-grip
+  shield table. Starting numbers only; they get the render check when the rig lands.
+
+**The idle problem, written down so it is not rediscovered**: of the pack's four idles Richard
+holds the only settled one. `idle`, `idle (2)` and `idle (3)` are the wandering ones the user
+rejected for Richard (hand drift 0.32 / 0.73 / 0.68 against idle (4)'s 0.08) and `block idle` is
+frozen stiff (drift 0.01). So Salaadin's idle is a FIFTH hand-keyed clip: block idle's guard
+stance with a breath keyed on top.
+
+**Still to do** (all of it needs the Mixamo auto-rigged body, which the user was producing):
+`salaadin_clips.py` (guard idle, rising slash, front kick, spinning double, heel kick), run
+`salaadin_body.py` and check the grips in renders, the three `Crucible > Characters > Salaadin`
+menu items, a `Rebuild Player4` body step, then the shared wiring menus and a play test.
+Nothing in `GameMenu` hardcodes a roster size - `roster` is discovered - so the select screens
+should take a fourth fighter without a code change. That is a claim to verify, not a result.
+
+### 2026-10-21 — Salaadin animates: his own five clips, and the hip-travel trap
+
+Finished the fourth fighter. He now fights with nothing of Richard's but the two walks, which
+is what was asked for.
+
+**His own clips.** `ArtSource/Blender/salaadin_clips.py` keys five the pack cannot give him:
+`Salaadin_GuardIdle` (the pack's block idle with a breath over it, one sine so frame 0 == frame
+72 and it loops), `Salaadin_VeiledRush` (run-in behind the shield into a rising cut),
+`Salaadin_BreakingKick` (front kick, then a low cut), `Salaadin_WhirlingSaif` (a full turn with
+two cuts in it) and `Salaadin_HeelKick` (the parry riposte: the same boot, shorter). Richard's
+four were the starting framework; all five builders are new, and the controller no longer holds
+a single Richard clip.
+
+Three things had to be fixed before any of it worked, and all three are the same lesson -
+**a number lifted from another character's rig means nothing until it is converted**:
+
+- **Hand targets are now fractions of that arm's own reach, measured from its own shoulder**,
+  not metres from the hips. His rig is 1.00 tall against Richard's 1.85, but its arms are 0.197 -
+  about half human proportion - so scaling Richard's targets by height put every one of them past
+  his fingertips (the guard pose missed by 0.021, a thrust by 0.174). `pose()` also pulls in any
+  target longer than 0.97 of reach instead of quietly missing it.
+- **The kicks are foot IK, not bone bends.** Rotating a leg bone about its own X swings it
+  sideways on this rig: the first build rendered as a crouch with no leg in front of him. The
+  arms' analytic two-bone solver now drives `UpLeg/Leg/Foot` as well, poled forward so the knee
+  cannot hyperextend.
+- **Hip travel is carried as a fraction of the source rig's hip height.** The packs are authored
+  on an armature scaled 0.01, so their hips translation is in hundredths against his metres.
+  Applied raw it dropped him 52 hip-heights through the floor - Unity read `RootT.y` **-52.4**
+  where the pack's own block idle reads **0.796**. `take()` now normalises it on the way in and
+  `apply_frame` puts it back in the target rig's units; his five clips land at 0.82-0.94, inside
+  the band the pack's own clips occupy. **`RootT.y` on the imported clip is the check** - read it
+  before believing any hand-built clip.
+
+Also: his shield mounts with its boss on **-palm**, so `aim()` takes `(UP, -FWD)` where Richard's
+takes `(UP, FWD)`. Richard's value shows the opponent the back of the shield, which is exactly
+what the first render did.
+
+**Combat.** `CrucibleCombos.cs` gained his table - the same three shapes as the others, but every
+special he can dial is a kick or a turn: light buys the Breaking Kick, medium the Whirling Saif,
+heavy the Veiled Rush, and each special hands a normal back. Eight attacks, 2/2/2/1/1/1/1/1 links.
+
+**Play-verified** Salaadin (P1) vs Bjorn: all three specials fire their own clips and land -
+Bjorn 100 -> 89 -> 76 -> 66% - the Veiled Rush lunges in and the shield reads correctly facing
+the opponent through the cut. No game-side console errors.
+
+Still open: his ground offset came from the rest pose and has only been eyeballed in play; the
+cape skinning has not been looked at closely in motion; and nothing is committed.

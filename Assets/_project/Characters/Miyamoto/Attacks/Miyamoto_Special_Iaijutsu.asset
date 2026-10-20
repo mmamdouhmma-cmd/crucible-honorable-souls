@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Miyamoto_Special_Iaijutsu
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Iaijutsu
-  damage: 16
-  staminaCost: 48
+  damage: 15
+  staminaCost: 42
   armorPierce: 10
-  startupFrames: 34
+  startupFrames: 30
   activeFrames: 4
   recoveryFrames: 8
   animationClip: {fileID: 0}
@@ -34,6 +34,7 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: 1.4
+  hitsWithWeapon: 1
   comboLinks:
   - input: 0
     withSpecialModifier: 0

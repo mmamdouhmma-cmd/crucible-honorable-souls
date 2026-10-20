@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Bjorn_Special_HewingCharge
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Hewing Charge
-  damage: 15
-  staminaCost: 43
+  damage: 16
+  staminaCost: 48
   armorPierce: 5
   startupFrames: 22
   activeFrames: 5
@@ -26,7 +26,7 @@ MonoBehaviour:
   specialButton: 1
   comesFrom: 2
   hitSide: 1
-  hitstunFrames: 12
+  hitstunFrames: 13
   hitboxRange: 3.5
   hitboxOffset: {x: 0, y: 0.5, z: 0}
   hitboxSize: {x: 1.8, y: 1, z: 1}
@@ -34,6 +34,7 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: -1
+  hitsWithWeapon: 1
   comboLinks:
   - input: 2
     withSpecialModifier: 0

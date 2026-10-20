@@ -34,7 +34,7 @@ ModelImporter:
       name: Bjorn_Heavy_SpinOverhead
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 4.2
+      firstFrame: 6.2
       lastFrame: 52.2
       wrapMode: 0
       orientationOffsetY: 0
@@ -63,7 +63,7 @@ ModelImporter:
       name: Miyamoto_Heavy_Overhead
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 11.2
+      firstFrame: 18.2
       lastFrame: 50.2
       wrapMode: 0
       orientationOffsetY: 0

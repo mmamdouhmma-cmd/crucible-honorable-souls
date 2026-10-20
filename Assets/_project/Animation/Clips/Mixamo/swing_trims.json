@@ -178,5 +178,77 @@
     "core_start": 27,
     "core_end": 46,
     "peak_speed_m_per_frame": 0.1063
+  },
+  "sword and shield slash": {
+    "first": 1,
+    "last": 46,
+    "fps": 30,
+    "peak": 19,
+    "core_start": 18,
+    "core_end": 21
+  },
+  "sword and shield slash (5)": {
+    "first": 1,
+    "last": 42,
+    "fps": 30,
+    "peak": 19,
+    "core_start": 17,
+    "core_end": 22
+  },
+  "sword and shield slash (3)": {
+    "first": 1,
+    "last": 48,
+    "fps": 30,
+    "peak": 26,
+    "core_start": 20,
+    "core_end": 30
+  },
+  "sword and shield attack (4)": {
+    "first": 1,
+    "last": 31,
+    "fps": 30,
+    "peak": 15,
+    "core_start": 13,
+    "core_end": 23
+  },
+  "sword and shield kick": {
+    "first": 1,
+    "last": 37,
+    "fps": 30,
+    "peak": 5,
+    "core_start": 2,
+    "core_end": 16
+  },
+  "Richard_Thrust": {
+    "first": 1,
+    "last": 34,
+    "fps": 30,
+    "peak": 15,
+    "core_start": 10,
+    "core_end": 20
+  },
+  "Richard_ShieldCharge": {
+    "first": 1,
+    "last": 41,
+    "fps": 30,
+    "peak": 25,
+    "core_start": 18,
+    "core_end": 30
+  },
+  "Richard_ShieldBash": {
+    "first": 1,
+    "last": 58,
+    "fps": 30,
+    "peak": 33,
+    "core_start": 25,
+    "core_end": 40
+  },
+  "Richard_DoubleHigh": {
+    "first": 1,
+    "last": 68,
+    "fps": 30,
+    "peak": 47,
+    "core_start": 35,
+    "core_end": 55
   }
 }

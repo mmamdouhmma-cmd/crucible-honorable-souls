@@ -19,6 +19,11 @@ public static class CrucibleMixamoSetup
     const string CustomDir = "Assets/_project/Animation/Clips/Custom";
     const string P1Ctrl = "Assets/_project/Animation/Controllers/P1_Bjorn.controller";
     const string P2Ctrl = "Assets/_project/Animation/Controllers/P2_Miyamoto.controller";
+    const string P3Ctrl = "Assets/_project/Animation/Controllers/P3_Richard.controller";
+    const string P4Ctrl = "Assets/_project/Animation/Controllers/P4_Salaadin.controller";
+
+    /// <summary>Where a pack lives. "Custom" is the hand-keyed set in Animation/Clips/Custom.</summary>
+    static string PackDir(string pack) => pack == "Custom" ? CustomDir : $"{MixamoDir}/{pack}";
 
     // state name -> (pack, clip file stem, loop)
     static readonly (string state, string pack, string clip, bool loop)[] P1Map =
@@ -86,6 +91,64 @@ public static class CrucibleMixamoSetup
         ("Dash_Back",                    "AxePack2H", "standing walk back",              false),
         ("Dash_Left",                    "AxePack2H", "standing walk left",              false),
         ("Dash_Right",                   "AxePack2H", "standing walk right",             false),
+    };
+
+    // Richard: the Pro Sword and Shield pack, plus the four clips it does not contain
+    // (ArtSource/Blender/richard_clips.py keys them on his own rig: the thrust, the shield charge,
+    // the bash into a low cut, and the two high swings spliced into one move).
+    static readonly (string state, string pack, string clip, bool loop)[] P3Map =
+    {
+        ("Richard_Idle",                   "SwordShieldPack", "sword and shield idle (4)",   true),   // a settled fighting stance: 76 f, 8 cm of hand drift and a 0.3 cm loop gap, where "idle" (109 f) and idles 2-3 (224/261 f) look around and shift their weight
+        ("Richard_Walk_Forward",           "SwordShieldPack", "sword and shield walk",       true),
+        ("Richard_Walk_Back",              "SwordShieldPack", "sword and shield walk (2)",   true),
+        ("Richard_Light_Thrust",           "Custom",          "Richard_Thrust",              false),
+        ("Richard_Medium_Slash",           "SwordShieldPack", "sword and shield slash (5)",  false),  // diagonal-down, 42 f, the cleanest quick cut in the pack
+        ("Richard_Heavy_Overhead",         "SwordShieldPack", "sword and shield slash",      false),  // the pack's true overhead: tip drops 1.44, fastest tip in the set
+        ("Richard_Special_ShieldCharge",   "Custom",          "Richard_ShieldCharge",        false),
+        ("Richard_Special_ShieldBash",     "Custom",          "Richard_ShieldBash",          false),
+        ("Richard_Special_DoubleHigh",     "Custom",          "Richard_DoubleHigh",          false),
+        ("Richard_Riposte_Dash",           "SwordShieldPack", "sword and shield attack (4)", false),  // 31 f, the shortest cut in the pack
+        ("Richard_Riposte_Parry",          "SwordShieldPack", "sword and shield kick",       false),  // a BOOT: hitsWithWeapon is off
+        ("React_Front",                    "SwordShieldPack", "sword and shield impact",     false),
+        ("React_Left",                     "SwordShieldPack", "sword and shield impact (2)", false),
+        ("React_Right",                    "SwordShieldPack", "sword and shield impact (3)", false),
+        ("Block_Hold",                     "SwordShieldPack", "sword and shield block idle", true),   // the shield guard - his block really is the shield
+        ("Block_Impact",                   "SwordShieldPack", "sword and shield block",      false),
+        ("Parry_Success",                  "SwordShieldPack", "sword and shield block (2)",  false),
+        ("Death",                          "SwordShieldPack", "sword and shield death",      false),
+        // dashes: the runs and the fast strafes, each cut to one stride and fitted to the dash time
+        ("Dash_Forward",                   "SwordShieldPack", "sword and shield run",        false),
+        ("Dash_Back",                      "SwordShieldPack", "sword and shield run (2)",    false),
+        ("Dash_Left",                      "SwordShieldPack", "sword and shield strafe (3)", false),
+        ("Dash_Right",                     "SwordShieldPack", "sword and shield strafe (4)", false),
+    };
+
+    // Salaadin shares the pack with Richard but not his clips: Richard holds the pack's only
+    // settled idle and its one kick, so Salaadin's guard stance and all three of his kicks are
+    // hand-keyed (ArtSource/Blender/salaadin_clips.py) and his cuts are the variants Richard
+    // left. The walks ARE shared - the pack has two and Richard has both (the user's call).
+    static readonly (string state, string pack, string clip, bool loop)[] P4Map =
+    {
+        ("Salaadin_Idle",                  "Custom",          "Salaadin_GuardIdle",            true),   // block idle's stance with a breath keyed on top: fight-ready, and it does not wander
+        ("Salaadin_Walk_Forward",          "SwordShieldPack", "sword and shield walk",         true),   // shared with Richard
+        ("Salaadin_Walk_Back",             "SwordShieldPack", "sword and shield walk (2)",     true),   // shared with Richard
+        ("Salaadin_Light_SaifCut",         "SwordShieldPack", "sword and shield slash (3)",    false),  // 48 f, the most compact cut left in the pack
+        ("Salaadin_Medium_CrescentSlash",  "SwordShieldPack", "sword and shield attack (2)",   false),  // 40 f and only 0.5 of vertical travel: the flat, wide swing
+        ("Salaadin_Heavy_HattinCleave",    "SwordShieldPack", "sword and shield slash (4)",    false),  // 70 f, 1.87 of drop: the big diagonal
+        ("Salaadin_Special_VeiledRush",    "Custom",          "Salaadin_VeiledRush",           false),
+        ("Salaadin_Special_BreakingKick",  "Custom",          "Salaadin_BreakingKick",         false),
+        ("Salaadin_Special_WhirlingSaif",  "Custom",          "Salaadin_WhirlingSaif",         false),
+        ("Salaadin_Riposte_Dash",          "SwordShieldPack", "sword and shield attack (3)",   false),  // 53 f
+        ("Salaadin_Riposte_Parry",         "Custom",          "Salaadin_HeelKick",             false),  // a KICK: hitsWithWeapon is off
+        ("React_Front",                    "SwordShieldPack", "sword and shield impact",       false),  // only three impacts exist; shared
+        ("React_Left",                     "SwordShieldPack", "sword and shield impact (2)",   false),
+        ("React_Right",                    "SwordShieldPack", "sword and shield impact (3)",   false),
+        ("Block_Hold",                     "SwordShieldPack", "sword and shield block idle",   true),
+        ("Block_Impact",                   "SwordShieldPack", "sword and shield block",        false),
+        ("Parry_Success",                  "SwordShieldPack", "sword and shield block (2)",    false),
+        ("Death",                          "SwordShieldPack", "sword and shield death (2)",    false),  // the pack's other death, so he does not fall like Richard
+        ("Dash_Forward",                   "SwordShieldPack", "sword and shield run",          false),
+        ("Dash_Back",                      "SwordShieldPack", "sword and shield run (2)",      false),
     };
 
     // Attack clips are trimmed to their swing core (measured in Blender: Animation/Clips/Mixamo/swing_trims.json,
@@ -159,9 +222,13 @@ public static class CrucibleMixamoSetup
         Trims.Clear();
         ComputeTrims(P1Map, "Assets/_project/Characters/Bjorn/Attacks");
         ComputeTrims(P2Map, "Assets/_project/Characters/Miyamoto/Attacks");
-        ImportAll(P1Map, P2Map);
+        ComputeTrims(P3Map, "Assets/_project/Characters/Richard/Attacks");
+        ComputeTrims(P4Map, "Assets/_project/Characters/salaadin/Attacks");
+        ImportAll(P1Map, P2Map, P3Map, P4Map);
         Wire(P1Ctrl, P1Map, "Assets/_project/Characters/Bjorn/Attacks", "Player1");
         Wire(P2Ctrl, P2Map, "Assets/_project/Characters/Miyamoto/Attacks", "Player2");
+        if (File.Exists(P3Ctrl)) Wire(P3Ctrl, P3Map, "Assets/_project/Characters/Richard/Attacks", "Player3");
+        if (File.Exists(P4Ctrl)) Wire(P4Ctrl, P4Map, "Assets/_project/Characters/salaadin/Attacks", "Player4");
         AssetDatabase.SaveAssets();
         Debug.Log("Mixamo packs wired into P1_Bjorn and P2_Miyamoto. Play to check; Dash_* states keep the custom clips.");
     }
@@ -197,7 +264,7 @@ public static class CrucibleMixamoSetup
         foreach (var map in maps)
             foreach (var m in map)
             {
-                string path = $"{MixamoDir}/{m.pack}/{m.clip}.fbx";
+                string path = $"{PackDir(m.pack)}/{m.clip}.fbx";
                 if (!byFile.TryGetValue(path, out var list)) byFile[path] = list = new List<(string, bool)>();
                 if (!list.Any(e => e.state == m.state)) list.Add((m.state, m.loop));
             }
@@ -261,7 +328,7 @@ public static class CrucibleMixamoSetup
         {
             var cs = ac.layers[0].stateMachine.states.FirstOrDefault(s => s.state.name == m.state);
             if (cs.state == null) { Debug.LogWarning($"{Path.GetFileName(ctrlPath)}: no state {m.state}"); continue; }
-            var clip = LoadClip($"{MixamoDir}/{m.pack}/{m.clip}.fbx", m.state);
+            var clip = LoadClip($"{PackDir(m.pack)}/{m.clip}.fbx", m.state);
             if (clip == null) { Debug.LogError($"{m.clip}: clip {m.state} failed to import"); continue; }
             cs.state.motion = clip;
             cs.state.speed = 1f;

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Mid Thrust
   damage: 7
-  staminaCost: 15
+  staminaCost: 12
   armorPierce: 0
   startupFrames: 6
   activeFrames: 3
@@ -34,6 +34,7 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: -1
+  hitsWithWeapon: 1
   comboLinks:
   - input: 1
     withSpecialModifier: 0

@@ -99,12 +99,67 @@ public static class CrucibleCombos
         ("Miyamoto_Special_Iaijutsu",  new[] { new Link(L, false, "Miyamoto_Light_Thrust",     true, Always) }),
     };
 
+
+    // Richard. The tank opens with the thrust or the cross slash; every three-hit string is paid
+    // for by landing the two normals first, and each special hands him back a normal so a counter
+    // can keep going.
+    static readonly (string attack, Link[] links)[] Richard =
+    {
+        ("Richard_Light_Thrust", new[]
+        {
+            new Link(M, false, "Richard_Medium_Slash",          true,  Always),
+            new Link(H, true,  "Richard_Special_DoubleHigh",    false, HitOrBlock),
+        }),
+        ("Richard_Medium_Slash", new[]
+        {
+            new Link(H, false, "Richard_Heavy_Overhead",        true,  Always),
+            new Link(M, true,  "Richard_Special_ShieldBash",    false, HitOrBlock),
+        }),
+        ("Richard_Heavy_Overhead", new[]
+        {
+            new Link(L, false, "Richard_Light_Thrust",          true,  Always),
+            new Link(L, true,  "Richard_Special_ShieldCharge",  false, HitOrBlock),
+        }),
+        ("Richard_Riposte_Dash",           new[] { new Link(L, false, "Richard_Light_Thrust", true, Always) }),
+        ("Richard_Riposte_Parry",          new[] { new Link(L, false, "Richard_Light_Thrust", true, Always) }),
+        ("Richard_Special_ShieldCharge",   new[] { new Link(M, false, "Richard_Medium_Slash", true, Always) }),
+        ("Richard_Special_ShieldBash",     new[] { new Link(L, false, "Richard_Light_Thrust", true, Always) }),
+        ("Richard_Special_DoubleHigh",     new[] { new Link(L, false, "Richard_Light_Thrust", true, Always) }),
+    };
+
+    // Salaadin. Same three shapes, but every special he can dial is a kick or a turn rather than a
+    // shield blow: the light buys the kick, the medium buys the spin, the heavy buys the rush, and
+    // each special hands a normal back so a riposte can keep going.
+    static readonly (string attack, Link[] links)[] Salaadin =
+    {
+        ("Salaadin_Light_SaifCut", new[]
+        {
+            new Link(M, false, "Salaadin_Medium_CrescentSlash", true,  Always),
+            new Link(M, true,  "Salaadin_Special_BreakingKick", false, HitOrBlock),
+        }),
+        ("Salaadin_Medium_CrescentSlash", new[]
+        {
+            new Link(H, false, "Salaadin_Heavy_HattinCleave",   true,  Always),
+            new Link(H, true,  "Salaadin_Special_WhirlingSaif", false, HitOrBlock),
+        }),
+        ("Salaadin_Heavy_HattinCleave", new[]
+        {
+            new Link(L, false, "Salaadin_Light_SaifCut",        true,  Always),
+            new Link(L, true,  "Salaadin_Special_VeiledRush",   false, HitOrBlock),
+        }),
+        ("Salaadin_Riposte_Dash",          new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
+        ("Salaadin_Riposte_Parry",         new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
+        ("Salaadin_Special_VeiledRush",    new[] { new Link(M, false, "Salaadin_Medium_CrescentSlash", true, Always) }),
+        ("Salaadin_Special_BreakingKick",  new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
+        ("Salaadin_Special_WhirlingSaif",  new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
+    };
+
     [MenuItem("Crucible/Combat/Wire combo strings")]
     public static void Wire()
     {
         var all = LoadAttacks(null);
         int written = 0;
-        foreach (var table in new[] { Bjorn, Miyamoto })
+        foreach (var table in new[] { Bjorn, Miyamoto, Richard, Salaadin })
             foreach (var (attackName, links) in table)
             {
                 if (!all.TryGetValue(attackName, out var attack)) { Debug.LogError($"no AttackData named {attackName}"); continue; }
@@ -140,7 +195,8 @@ public static class CrucibleCombos
     public static void Report()
     {
         foreach (var (dir, who) in new[] { ("Assets/_project/Characters/Bjorn/Attacks", "Bjorn"),
-                                           ("Assets/_project/Characters/Miyamoto/Attacks", "Miyamoto") })
+                                           ("Assets/_project/Characters/Miyamoto/Attacks", "Miyamoto"),
+                                           ("Assets/_project/Characters/Richard/Attacks", "Richard") })
         {
             var lines = new List<string>();
             foreach (var opener in LoadAttacks(dir).Values.OrderBy(a => a.name))

@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Miyamoto_Special_Nukitsuke
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Nukitsuke
-  damage: 14
-  staminaCost: 38
+  damage: 13
+  staminaCost: 34
   armorPierce: 5
   startupFrames: 18
   activeFrames: 5
@@ -34,6 +34,7 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: -1
+  hitsWithWeapon: 1
   comboLinks:
   - input: 1
     withSpecialModifier: 0

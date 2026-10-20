@@ -75,11 +75,16 @@ public class FightCamera : MonoBehaviour
     private float slowMoTimer;        // unscaled seconds left
     private bool slowMoRunning;
 
+    private Vector3 homePosition;      // the framing the SCENE sets up, before any menu moves the camera
+    private Quaternion homeRotation;
+
     private void Awake()
     {
         Instance = this;
         cam = GetComponent<Camera>();
         if (cam != null) baseFov = cam.fieldOfView;
+        homePosition = transform.position;
+        homeRotation = transform.rotation;
     }
 
     private void OnDestroy()
@@ -90,21 +95,43 @@ public class FightCamera : MonoBehaviour
 
     private void Start()
     {
-        if (player1 == null || player2 == null)
-        {
-            foreach (Fighter fighter in FindObjectsOfType<Fighter>())
-            {
-                if (player1 == null && fighter.PlayerNumber == 1) player1 = fighter.transform;
-                else if (player2 == null && fighter.PlayerNumber == 2) player2 = fighter.transform;
-            }
-        }
-
+        if (player1 == null || player2 == null) FindPair();
         if (player1 == null || player2 == null)
         {
             Debug.LogWarning($"FightCamera on {name}: needs two fighters to follow, camera will stay still.");
             return;
         }
+        CaptureFraming();
+    }
 
+    private void FindPair()
+    {
+        player1 = player2 = null;
+        foreach (Fighter fighter in FindObjectsByType<Fighter>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (player1 == null && fighter.PlayerNumber == 1) player1 = fighter.transform;
+            else if (player2 == null && fighter.PlayerNumber == 2) player2 = fighter.transform;
+        }
+    }
+
+    /// <summary>
+    /// Point the camera at whoever is Player 1 and Player 2 NOW and re-read the scene's framing
+    /// against them. The pair is resolved once in Start, but with a roster bigger than two the menu
+    /// hands the numbers to a different pair each match - without this the camera keeps following a
+    /// benched fighter standing on his spawn mark, and frames the midpoint between him and a real
+    /// one, which reads as a view that has drifted off-centre and swung round. Call it with the
+    /// fighters standing on their marks (GameMenu.PlaceFighters does).
+    /// </summary>
+    public void RetargetToFighters()
+    {
+        FindPair();
+        if (player1 == null || player2 == null) return;
+        transform.SetPositionAndRotation(homePosition, homeRotation);   // frame from the authored view, not from wherever a menu left it
+        CaptureFraming();
+    }
+
+    private void CaptureFraming()
+    {
         Vector3 midpoint = (player1.position + player2.position) * 0.5f;
         Vector3 toPlayer2 = player2.position - player1.position;
         toPlayer2.y = 0f;

@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Bjorn_Heavy_SpinOverhead
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Spinning Overhead
-  damage: 11
-  staminaCost: 19
+  damage: 13
+  staminaCost: 25
   armorPierce: 5
-  startupFrames: 30
+  startupFrames: 28
   activeFrames: 4
   recoveryFrames: 14
   animationClip: {fileID: -203655887218126122, guid: f56c48a57b22e754fa2567b293436be2, type: 3}
@@ -26,7 +26,7 @@ MonoBehaviour:
   specialButton: 0
   comesFrom: 0
   hitSide: 0
-  hitstunFrames: 10
+  hitstunFrames: 11
   hitboxRange: 3.2
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 0.9, y: 1.6, z: 1}
@@ -34,6 +34,7 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: -1
+  hitsWithWeapon: 1
   comboLinks:
   - input: 0
     withSpecialModifier: 1

@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Miyamoto_Heavy_Overhead
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Overhead Slash
-  damage: 8
-  staminaCost: 19
+  damage: 9
+  staminaCost: 16
   armorPierce: 0
-  startupFrames: 23
+  startupFrames: 16
   activeFrames: 4
   recoveryFrames: 12
   animationClip: {fileID: -203655887218126122, guid: c2d1513b8b91eb14f92136653bc88ee4, type: 3}
@@ -34,6 +34,7 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: -1
+  hitsWithWeapon: 1
   comboLinks:
   - input: 0
     withSpecialModifier: 0

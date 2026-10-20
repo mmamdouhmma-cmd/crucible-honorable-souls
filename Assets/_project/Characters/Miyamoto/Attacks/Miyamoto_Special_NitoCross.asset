@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Miyamoto_Special_NitoCross
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Nito Cross
-  damage: 15
-  staminaCost: 43
+  damage: 14
+  staminaCost: 38
   armorPierce: 5
   startupFrames: 20
   activeFrames: 5
@@ -34,6 +34,7 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: 1.2
+  hitsWithWeapon: 1
   comboLinks:
   - input: 0
     withSpecialModifier: 0

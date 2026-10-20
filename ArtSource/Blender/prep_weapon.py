@@ -14,6 +14,7 @@ Conventions produced (and relied on by the socket setup in Blender/Unity):
   - textures land in <out_dir>/<Name>.fbm/: <Name>_basecolor.png, <Name>_normal.png,
     <Name>_mask.png (R metallic, G AO, B 0, A smoothness) built from Tripo's ORM (R=AO, G=roughness, B=metallic)
 """
+IMAGE_EXT = (".png", ".jpg", ".jpeg", ".tga", ".tif", ".tiff", ".bmp", ".exr")
 import bpy, sys, os
 import numpy as np
 from mathutils import Vector
@@ -158,7 +159,7 @@ if SRC.lower().endswith(".fbx"):
         for fp in os.listdir(d):
             lo = fp.lower()
             key = "color" if "basecolor" in lo else "normal" if "normal" in lo else "metal" if "metallic" in lo else "rough" if "roughness" in lo else None
-            if key:
+            if key and lo.endswith(IMAGE_EXT):
                 imgs[key] = bpy.data.images.load(os.path.join(d, fp))   # the node-linked images often carry no pixels
 
 import shutil

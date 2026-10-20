@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
+  m_Name: Richard_Riposte_Dash
+  m_EditorClassIdentifier: Assembly-CSharp::AttackData
+  attackName: Lion Riposte
+  damage: 9
+  staminaCost: 12
+  armorPierce: 0
+  startupFrames: 12
+  activeFrames: 4
+  recoveryFrames: 14
+  animationClip: {fileID: 0}
+  animatorTriggerName: RiposteDash
+  attackHeight: 1
+  attackType: 1
+  specialButton: 0
+  comesFrom: 2
+  hitSide: 1
+  hitstunFrames: 9
+  hitboxRange: 2.9
+  hitboxOffset: {x: 0, y: 1, z: 0}
+  hitboxSize: {x: 1.2, y: 1.1, z: 1}
+  aimMode: 0
+  aimMaxAngle: -1
+  lungeStopDistance: -1
+  lungeMaxDistance: -1
+  hitsWithWeapon: 1
+  comboLinks:
+  - input: 0
+    withSpecialModifier: 0
+    followUp: {fileID: 11400000, guid: 985c9886d66fbbc489187bb5e0a274a4, type: 2}
+    requires: 0
+    openerOnly: 1
+  cancelStartFrame: -1
+  cancelEndFrame: -1
+  dodgedRecoveryFrames: -1

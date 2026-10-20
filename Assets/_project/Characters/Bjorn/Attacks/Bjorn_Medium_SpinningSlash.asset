@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Bjorn_Medium_SpinningSlash
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Spinning Slash
-  damage: 9
-  staminaCost: 17
+  damage: 10
+  staminaCost: 20
   armorPierce: 2
-  startupFrames: 23
+  startupFrames: 18
   activeFrames: 5
   recoveryFrames: 12
   animationClip: {fileID: -203655887218126122, guid: eb004d33400bbe6418d3c34ff1214435, type: 3}
@@ -26,7 +26,7 @@ MonoBehaviour:
   specialButton: 0
   comesFrom: 2
   hitSide: 1
-  hitstunFrames: 8
+  hitstunFrames: 9
   hitboxRange: 3.5
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1.8, y: 1, z: 1}
@@ -34,6 +34,7 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: -1
+  hitsWithWeapon: 1
   comboLinks:
   - input: 0
     withSpecialModifier: 0

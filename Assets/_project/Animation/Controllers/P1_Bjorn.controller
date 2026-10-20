@@ -8,7 +8,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Heavy_OverheadDoubleAxe
-  m_Speed: 1.8
+  m_Speed: 1.8000002
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5028021779989187177}
@@ -524,7 +524,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Right
-  m_Speed: 1.8095239
+  m_Speed: 2.1111112
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -3820680488363845076}
@@ -676,7 +676,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Medium_SpinningSlash
-  m_Speed: 1.7999998
+  m_Speed: 1.8
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -880058307156642897}
@@ -1132,7 +1132,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Back
-  m_Speed: 1.9523808
+  m_Speed: 2.2777774
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -682203960301777304}
@@ -1243,7 +1243,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Left
-  m_Speed: 1.7619046
+  m_Speed: 2.0555553
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -181069246195649405}
@@ -1484,7 +1484,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Forward
-  m_Speed: 1.904762
+  m_Speed: 2.222222
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -208769763827821102}

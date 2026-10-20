@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Bjorn_Special_BloodEagle
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Blood Eagle
-  damage: 16
-  staminaCost: 48
+  damage: 18
+  staminaCost: 54
   armorPierce: 10
   startupFrames: 24
   activeFrames: 5
@@ -26,7 +26,7 @@ MonoBehaviour:
   specialButton: 2
   comesFrom: 0
   hitSide: 0
-  hitstunFrames: 14
+  hitstunFrames: 15
   hitboxRange: 3.2
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 0.9, y: 1.8, z: 1}
@@ -34,6 +34,7 @@ MonoBehaviour:
   aimMaxAngle: -1
   lungeStopDistance: 1.7
   lungeMaxDistance: 2.2
+  hitsWithWeapon: 1
   comboLinks:
   - input: 0
     withSpecialModifier: 0

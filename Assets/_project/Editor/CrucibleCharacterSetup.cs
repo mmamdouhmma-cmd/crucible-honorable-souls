@@ -25,7 +25,20 @@ public static class CrucibleCharacterSetup
     {
         { "Bjorn", -0.136f / 4f },
         { "Miyamoto", -0.623f / 3f },
+        { "Richard", -0.480f / 3f },
+        { "Salaadin", -0.555f / 3f },  // his rest-pose feet sat 0.555 world above the floor at root scale 3
     };
+
+    /// <summary>
+    /// Where a fighter's assets live. Every folder matches the character name except Salaadin's,
+    /// which was created lowercase and cannot be renamed while Unity holds the files open
+    /// ("Access is denied"); AssetDatabase paths are case sensitive even though Windows is not.
+    /// </summary>
+    static string CharDir(string charName) =>
+        "Assets/_project/Characters/" + (charName == "Salaadin" ? "salaadin" : charName);
+
+    /// <summary>Fighters whose off hand holds the haft. Richard's holds a shield, so he has no grip IK.</summary>
+    static readonly string[] TwoHanded = { "Bjorn", "Miyamoto" };
 
     [MenuItem("Crucible/Characters/Rebuild Player1 (Bjorn new body)")]
     public static void RebuildP1() => Rebuild("Player1", "Bjorn");
@@ -33,10 +46,16 @@ public static class CrucibleCharacterSetup
     [MenuItem("Crucible/Characters/Rebuild Player2 (Miyamoto new body)")]
     public static void RebuildP2() => Rebuild("Player2", "Miyamoto");
 
+    [MenuItem("Crucible/Characters/Rebuild Player3 (Richard body)")]
+    public static void RebuildP3() => Rebuild("Player3", "Richard");
+
+    [MenuItem("Crucible/Characters/Rebuild Player4 (Salaadin body)")]
+    public static void RebuildP4() => Rebuild("Player4", "Salaadin");
+
     [MenuItem("Crucible/Characters/Report fighters")]
     public static void Report()
     {
-        foreach (var n in new[] { "Player1", "Player2" })
+        foreach (var n in new[] { "Player1", "Player2", "Player3", "Player4" })
         {
             var go = GameObject.Find(n);
             if (go == null) { Debug.Log($"{n}: not in scene"); continue; }
@@ -54,7 +73,7 @@ public static class CrucibleCharacterSetup
 
     static void Rebuild(string playerName, string charName)
     {
-        string charDir = $"Assets/_project/Characters/{charName}";
+        string charDir = CharDir(charName);
         string fbxPath = $"{charDir}/Model/{charName}_Body.fbx";
         var player = GameObject.Find(playerName);
         if (player == null) { Debug.LogError($"{playerName} not found in the open scene"); return; }
@@ -171,6 +190,8 @@ public static class CrucibleCharacterSetup
     {
         { "Bjorn_Axe",       (0.62f, 0.50f) },   // 0.70 haft, butt at -0.21: head is the top ~38%; left hand 0.22 above the right (0.43/0.70)
         { "Miyamoto_Katana", (0.24f, 0.04f) },   // blade starts past the tsuba; left hand near the kashira (0.023/0.57 up from the butt)
+        { "Richard_Sword",   (0.20f, 0.00f) },   // 1.10 long with the grip at 0: the blade starts just past the cross guard
+        { "Salaadin_Falchion", (0.24f, 0.00f) }, // 0.50 long, grip at 0: the curve starts just past the hilt
     };
 
     /// <summary>
@@ -220,6 +241,21 @@ public static class CrucibleCharacterSetup
         }
         var oldBox = player.transform.Find("Hitbox");
         if (oldBox != null && oldBox.gameObject.activeSelf) { Undo.RecordObject(oldBox.gameObject, "park hitbox"); oldBox.gameObject.SetActive(false); }
+
+        bool twoHanded = TwoHanded.Contains(charName);
+        if (!twoHanded)
+        {
+            // A shield fighter: no off-hand grip on the hilt, so drop the IK that would drag his
+            // shield arm onto the sword, and let the shield mesh ride the hand bone it is parented to.
+            var oldGrip = player.GetComponent(RuntimeType("TwoHandGrip"));
+            if (oldGrip != null) Undo.DestroyObjectImmediate(oldGrip);
+            var aimOnly = player.GetComponent(RuntimeType("WeaponAim")) ?? Undo.AddComponent(player, RuntimeType("WeaponAim"));
+            var sao = new SerializedObject(aimOnly);
+            sao.FindProperty("weapon").objectReferenceValue = weapon.transform;
+            sao.ApplyModifiedProperties();
+            Debug.Log($"{charName}: blade box on {weapon.name} z {y0:F4}..{b.max.z:F4} (mesh local), no two-hand grip");
+            return;
+        }
 
         // off-hand socket: on the haft axis, oriented like the right hand bone (same wrap around the haft)
         var socket = weapon.transform.Find("LeftGrip");

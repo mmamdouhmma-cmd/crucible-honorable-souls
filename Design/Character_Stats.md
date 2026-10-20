@@ -11,6 +11,27 @@ guard meter, parry and signature are not implemented yet and are listed here as 
 
 ---
 
+## Shipped numbers vs this sheet (2026-10-20)
+
+This file stays the DESIGN sheet, including the four fighters that do not exist yet. The three
+that are in the game are balanced against each other in one table instead:
+`Assets/_project/Editor/CrucibleBalance.cs`, applied with `Crucible > Combat > Apply the roster
+balance`. What ships today, after the archetype pass the user asked for:
+
+| | Health | Stamina | Armour | Damage x | Walk | Regen/s | Dash | Block |
+|---|---|---|---|---|---|---|---|---|
+| Miyamoto (fastest, weakest) | 80 | 100 | 8 | 0.92 | 4.4 | 20 | 2.6u / 0.22s, 12 st | 60% @ 3/s |
+| Bjorn (highest damage) | 95 | 110 | 14 | 1.10 | 3.8 | 17 | 2.2u / 0.30s, 18 st | 80% @ 3/s |
+| Richard (the wall) | 115 | 85 | 22 | 1.00 | 3.2 | 14 | 2.0u / 0.34s, 16 st | 85% @ 2/s |
+
+Bjorn carries the biggest stamina tank AND the costliest moves (heavy 23, special 54), so it
+empties faster than Miyamoto's; Richard's small tank is paid back with the strongest guard.
+Startup ladders: light 6 / 10 / 11, medium 9 / 18 / 15, heavy 16 / 18 / 22.
+Two fields on `FighterData` are dead - `AttackSpeed` and `DashDistance` are read by nothing, so
+"attack speed" only means the frame data on each `AttackData`.
+
+---
+
 ## Roster summary
 
 | # | Fighter | Archetype | Weapons (separate meshes) | Health | Armor | Dmg | Move spd | Atk spd | Weight |

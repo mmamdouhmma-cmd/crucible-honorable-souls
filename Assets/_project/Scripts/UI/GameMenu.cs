@@ -54,6 +54,7 @@ public class GameMenu : MonoBehaviour
         public bool valid;
         public int players = 1;        // 1 = vs AI, 2 = both on this device
         public int p1Character;        // index into the roster for Player 1
+        public int p2Character = 1;    // and for Player 2 (or the computer)
         public string arena = "";
         public int difficulty = (int)AiDifficulty.Moderate;
     }
@@ -96,6 +97,8 @@ public class GameMenu : MonoBehaviour
     bool vsAi;
     int playerCount = 1;
     int p1Character;                    // roster index Player 1 drives
+    int p2Character = 1;                // roster index Player 2 (or the computer) drives
+    bool pickingP2;                     // the select screen is on the second pick
     int arenaChoice;
     AiDifficulty aiDifficulty = AiDifficulty.Moderate;
     AiController.Rules practiceRules = AiController.Rules.Full;
@@ -293,22 +296,50 @@ public class GameMenu : MonoBehaviour
         }
     }
 
+    /// <summary>Everyone back in the scene: the select screens scroll through the whole roster.</summary>
+    void ShowWholeRoster()
+    {
+        foreach (var f in roster) if (!f.gameObject.activeSelf) f.gameObject.SetActive(true);
+    }
+
     void PlaceFighters()
     {
         ResolveSpawns();
-        for (int i = 0; i < roster.Length; i++) roster[i].ResetForMatch(spawnPos[i], spawnRot[i]);
+        for (int i = 0; i < roster.Length; i++)
+        {
+            // Benched fighters stay where they are: resetting one would poke an Animator on an
+            // inactive object, which Unity warns about twice per call.
+            if (!roster[i].gameObject.activeSelf) continue;
+            roster[i].ResetForMatch(spawnPos[i], spawnRot[i]);
+        }
+        // The pair is on its marks: let the camera re-find it. It resolves Player 1 and Player 2
+        // once in Start, and with three rigs the numbers move between matches, so without this it
+        // keeps framing whoever held the number at scene load - a benched fighter on his mark.
+        if (FightCamera.Instance != null) FightCamera.Instance.RetargetToFighters();
     }
 
     /// <summary>
-    /// Hands Player 1 the roster entry at <paramref name="index"/> and Player 2 the other one.
-    /// The fighters are not swapped or cloned - only which controls they answer to - so this works
-    /// with the two rigs the scene actually has.
+    /// Hands Player 1 the roster entry <paramref name="first"/> and Player 2 <paramref name="second"/>.
+    /// With more than two rigs in the scene everyone else is switched OFF, so only the chosen pair
+    /// is in the arena, in the HUD and in front of the AI. The fighters are not swapped or
+    /// cloned - only which controls they answer to.
     /// </summary>
-    void ApplySides(int index)
+    void ApplySides(int first, int second)
     {
         if (roster.Length < 2) return;
-        p1Character = Mathf.Clamp(index, 0, roster.Length - 1);
-        for (int i = 0; i < roster.Length; i++) roster[i].SetPlayerNumber(i == p1Character ? 1 : 2);
+        p1Character = Mathf.Clamp(first, 0, roster.Length - 1);
+        p2Character = Mathf.Clamp(second, 0, roster.Length - 1);
+        if (p2Character == p1Character) p2Character = (p1Character + 1) % roster.Length;
+        for (int i = 0; i < roster.Length; i++)
+        {
+            bool fighting = i == p1Character || i == p2Character;
+            if (roster[i].gameObject.activeSelf != fighting) roster[i].gameObject.SetActive(fighting);
+            if (fighting) roster[i].SetPlayerNumber(i == p1Character ? 1 : 2);
+        }
+        // Both numbers are set now, so each of the two can look the other up. Without this they
+        // keep whoever they found in Start, which with three rigs in the scene is the wrong one.
+        roster[p1Character].RefreshOpponent();
+        roster[p2Character].RefreshOpponent();
         ResolveSpawns();
 
         var hud = FindAnyObjectByType<FightHud>();
@@ -452,6 +483,7 @@ public class GameMenu : MonoBehaviour
         if (!inMatch) return;
         foreach (var f in roster)
         {
+            if (!f.gameObject.activeInHierarchy) continue;    // a benched fighter is not in this match
             if (f.Stats != null && !f.Stats.IsAlive())
             {
                 inMatch = false;
@@ -470,7 +502,7 @@ public class GameMenu : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(1.9f);
         Fighter winner = null;
-        foreach (var f in roster) if (f != loser) winner = f;
+        foreach (var f in roster) if (f != loser && f.gameObject.activeInHierarchy) winner = f;
         winnerName = winner != null ? winner.CharacterName : "Nobody";
         winnerNumber = winner != null ? winner.PlayerNumber : 0;
         history.Clear();
@@ -521,6 +553,7 @@ public class GameMenu : MonoBehaviour
         lastSetup.valid = true;
         lastSetup.players = playerCount;
         lastSetup.p1Character = p1Character;
+        lastSetup.p2Character = p2Character;
         lastSetup.difficulty = (int)aiDifficulty;
         lastSetup.arena = ArenaDirectory.Instance != null ? ArenaDirectory.Instance.NameOf(arenaChoice) : "";
         PlayerPrefs.SetString(SetupKey, JsonUtility.ToJson(lastSetup));
@@ -572,6 +605,7 @@ public class GameMenu : MonoBehaviour
     {
         if (push && screen != Screen.None && screen != s && screen != Screen.Boot) history.Add(screen);
 
+        if (s == Screen.CharSelect && screen != Screen.CharSelect && !rebuilding) pickingP2 = false;
         screen = s;
         capturing = false;
         captureBack.gameObject.SetActive(false);
@@ -832,7 +866,12 @@ public class GameMenu : MonoBehaviour
 
             // ------------------------------------------------------------ the custom views
             case Screen.CharSelect:
-                SetTitle("Choose Your Fighter", playerCount >= 2 ? "Player 1 picks; Player 2 takes the other" : "the computer takes the other");
+                SetTitle("Choose Your Fighter",
+                         roster.Length > 2
+                           ? (pickingP2 ? (playerCount >= 2 ? "Player 2 picks" : "now who the computer brings")
+                                        : "Player 1 picks first")
+                           : playerCount >= 2 ? "Player 1 picks; Player 2 takes the other"
+                                              : "the computer takes the other");
                 BuildCharSelect();
                 footerText.text = "Left / Right to choose    Enter / Cross to lock in    Esc to go back";
                 break;
@@ -876,7 +915,7 @@ public class GameMenu : MonoBehaviour
         aiDifficulty = (AiDifficulty)Mathf.Clamp(lastSetup.difficulty, 0, 2);
         vsAi = playerCount == 1;
         flow = Flow.Local;
-        ApplySides(Mathf.Clamp(lastSetup.p1Character, 0, Mathf.Max(0, roster.Length - 1)));
+        ApplySides(lastSetup.p1Character, lastSetup.p2Character);
         if (ArenaDirectory.Instance != null)
         {
             var list = ArenaDirectory.Instance.Selectable;
@@ -990,6 +1029,8 @@ public class GameMenu : MonoBehaviour
         if (string.IsNullOrEmpty(character)) return "";
         if (character.StartsWith("Miy", StringComparison.OrdinalIgnoreCase))
             return "Katana. Quick, exact, unforgiving of a wasted swing.";
+        if (character.StartsWith("Ric", StringComparison.OrdinalIgnoreCase))
+            return "Sword and kite shield. Slowest of the three, hardest to put down.";
         if (character.StartsWith("Bj", StringComparison.OrdinalIgnoreCase))
             return "Dane axe. Slow to start, heavy to stop, longest reach.";
         return "";
@@ -997,14 +1038,33 @@ public class GameMenu : MonoBehaviour
 
     void MoveCharacter(int dir)
     {
-        if (roster.Length < 2) return;
-        p1Character = (p1Character + (dir > 0 ? 1 : roster.Length - 1)) % roster.Length;
+        int n = roster.Length;
+        if (n < 2) return;
+        int taken = pickingP2 ? p1Character : p2Character;
+        int next = pickingP2 ? p2Character : p1Character;
+        for (int step = 0; step < n; step++)            // walk past the pick the other side holds
+        {
+            next = (next + (dir > 0 ? 1 : n - 1)) % n;
+            if (next != taken || n < 3) break;
+        }
+        if (pickingP2) p2Character = next; else p1Character = next;
+        if (p1Character == p2Character) p2Character = (p1Character + 1) % n;
         RefreshCards();
+        StageFighters(false);                           // the chosen fighter steps forward
     }
 
     void ConfirmCharacter()
     {
-        ApplySides(p1Character);
+        // Three rigs or more means the second fighter is a choice too, so the screen takes two
+        // locks: Player 1, then Player 2 (the computer's fighter in a one-player match).
+        if (!pickingP2 && roster.Length > 2)
+        {
+            pickingP2 = true;
+            SetTitle("Choose Your Fighter", playerCount >= 2 ? "Player 2 picks" : "now who the computer brings");
+            RefreshCards();
+            return;
+        }
+        ApplySides(p1Character, p2Character);
         GoWiped(Screen.ArenaSelect);
     }
 
@@ -1112,6 +1172,13 @@ public class GameMenu : MonoBehaviour
 
     void Back()
     {
+        if (screen == Screen.CharSelect && pickingP2)   // back to Player 1 before leaving the screen
+        {
+            pickingP2 = false;
+            Refresh();
+            return;
+        }
+
         switch (screen)
         {
             case Screen.Main:
@@ -1485,6 +1552,9 @@ public class GameMenu : MonoBehaviour
     {
         if (roster.Length == 0) return;
         p1Character = Mathf.Clamp(p1Character, 0, roster.Length - 1);
+        p2Character = Mathf.Clamp(p2Character, 0, roster.Length - 1);
+        if (p2Character == p1Character && roster.Length > 1)
+            p2Character = (p1Character + 1) % roster.Length;
         RefreshCards();
     }
 
@@ -1499,16 +1569,21 @@ public class GameMenu : MonoBehaviour
             if (!present) continue;
 
             bool isP1 = i == p1Character;
+            bool isP2 = i == p2Character;
+            bool live = pickingP2 ? isP2 : isP1;        // the side doing the choosing right now
             card.follow = roster[i].transform;
             card.name.text = MenuArt.Track(roster[i].CharacterName.ToUpperInvariant(), 1);
-            card.tagText.text = isP1 ? "PLAYER 1" : (playerCount >= 2 ? "PLAYER 2" : "COMPUTER");
+            card.tagText.text = isP1 ? "PLAYER 1"
+                              : isP2 ? (playerCount >= 2 ? "PLAYER 2" : flow == Flow.Practice ? "DUMMY" : "COMPUTER")
+                              : "";
+            card.tag.gameObject.SetActive(isP1 || isP2);
             card.tag.color = isP1 ? MenuArt.P1 : MenuArt.P2;
-            card.frame.color = isP1 ? MenuArt.BronzeLit : MenuArt.Fade(MenuArt.Bronze, 0.4f);
-            card.slab.color = new Color(0.11f, 0.09f, 0.08f, isP1 ? 0.92f : 0.72f);
-            card.name.color = isP1 ? MenuArt.BronzeLit : MenuArt.Fade(MenuArt.BronzeLit, 0.6f);
+            card.frame.color = live ? MenuArt.BronzeLit : MenuArt.Fade(MenuArt.Bronze, 0.4f);
+            card.slab.color = new Color(0.11f, 0.09f, 0.08f, live ? 0.92f : 0.72f);
+            card.name.color = live ? MenuArt.BronzeLit : MenuArt.Fade(MenuArt.BronzeLit, 0.6f);
             card.stats.text = StatsLine(roster[i]);
             card.tagline.text = Tagline(roster[i].CharacterName);
-            card.rt.localScale = Vector3.one * (isP1 ? 1f : 0.92f);
+            card.rt.localScale = Vector3.one * (live ? 1f : 0.92f);
         }
     }
 
@@ -1582,12 +1657,11 @@ public class GameMenu : MonoBehaviour
 
     IEnumerator VsRoutine()
     {
-        ApplySides(p1Character);
+        ApplySides(p1Character, p2Character);
         StageFighters(true);                       // ApplySides may have swapped which side is whose
 
-        int other = roster.Length > 1 ? (p1Character == 0 ? 1 : 0) : 0;
         SetPlate(vsCards[0], p1Character, "PLAYER 1", MenuArt.P1);
-        SetPlate(vsCards[1], other,
+        SetPlate(vsCards[1], p2Character,
                  playerCount >= 2 && !vsAi ? "PLAYER 2" : flow == Flow.Practice ? "DUMMY" : "COMPUTER",
                  MenuArt.P2);
 
@@ -1618,6 +1692,7 @@ public class GameMenu : MonoBehaviour
         if (roster.Length < 2 || sideMark.Length < 2) return;
         var cam = Camera.main;
         if (cam == null) return;
+        if (!vs) ShowWholeRoster();                         // select scrolls through everyone
 
         var fightCam = cam.GetComponent<FightCamera>();
         if (fightCam != null) fightCam.enabled = false;     // it would drag the view back every frame
@@ -1630,7 +1705,7 @@ public class GameMenu : MonoBehaviour
         Vector3 screenRight = Vector3.Cross(Vector3.up, -camDir).normalized;
 
         float spread = vs ? 2.0f : 2.4f;
-        int other = p1Character == 0 ? 1 : 0;
+        int shown = vs ? 2 : roster.Length;                 // VS is the pair; select is the roster
         float turn = vs ? 60f : 18f;                        // VS squares them up against each other
 
         // Frame first, pose second: a fighter stood 2.4 units off to the side does not face the
@@ -1639,7 +1714,7 @@ public class GameMenu : MonoBehaviour
         float aspect = cam.aspect > 0.1f ? cam.aspect : 16f / 9f;
         // Arena select pulls right back: the thing being chosen is the ground, not the fighters.
         float wantHeight = wide ? 17f : vs ? 5.0f : 5.4f;    // fighters are 2.9 units tall
-        float wantWidth = wide ? 34f : spread * 2f + 3.6f;
+        float wantWidth = wide ? 34f : spread * (shown - 1) + 3.6f;
         float distV = (wantHeight * 0.5f) / Mathf.Tan(fov * 0.5f);
         float distH = (wantWidth * 0.5f) / Mathf.Tan(Mathf.Atan(Mathf.Tan(fov * 0.5f) * aspect));
         float dist = Mathf.Max(distV, distH);
@@ -1650,8 +1725,22 @@ public class GameMenu : MonoBehaviour
         cam.transform.rotation = Quaternion.LookRotation(look - camPos, Vector3.up);
 
         // The chosen fighter stands a step forward, which reads as "this one" without a spotlight.
-        PlaceStaged(p1Character, mid - screenRight * spread + camDir * (vs ? 0f : 0.2f), camPos, turn);
-        PlaceStaged(other, mid + screenRight * spread + camDir * (vs ? 0f : -0.1f), camPos, -turn);
+        if (vs)
+        {
+            PlaceStaged(p1Character, mid - screenRight * spread, camPos, turn);
+            PlaceStaged(p2Character, mid + screenRight * spread, camPos, -turn);
+        }
+        else
+        {
+            float half = (shown - 1) * 0.5f;                // a line of fighters centred on the marks
+            for (int i = 0; i < shown; i++)
+            {
+                float slot = (i - half) * spread;
+                bool picked = pickingP2 ? i == p2Character : i == p1Character;
+                float yaw = slot < -0.01f ? turn : slot > 0.01f ? -turn : 0f;
+                PlaceStaged(i, mid + screenRight * slot + camDir * (picked ? 0.2f : -0.1f), camPos, yaw);
+            }
+        }
         staged = true;
     }
 

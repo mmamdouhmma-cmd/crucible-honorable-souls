@@ -230,3 +230,44 @@ Mechanical, per the existing pipeline — none of it is creative work:
 3. A `WeaponAim` mode on the AttackData — `Off` for anything spinning (a spin must not be
    aim-corrected), `YawOnly` for overheads, `Full` otherwise.
 4. Lunge tuning, and a large `lungeMaxDistance` for the advancing picks (point 3 above).
+
+---
+
+# Sword and shield (Richard), 2026-10-20
+
+51 clips from the **Pro Sword and Shield Pack** (`Animation/Clips/Mixamo/SwordShieldPack/`, 20 MB),
+measured with `ArtSource/Blender/clip_curves.py` the same way as the axe and greatsword packs.
+Frames are 30 fps source frames; contact is where the tip crosses the opponent's centre line.
+
+| clip | frames | shape | contact | cast as |
+|---|---|---|---|---|
+| `slash` | 46 | true overhead, tip drops 1.44, fastest tip in the pack (1.188) | 17.7 | **Heavy — Crusader Hew** |
+| `slash (5)` | 42 | diagonal down from the right shoulder | 17.4 | **Medium — Cross Slash** |
+| `slash (3)` | 48 | diagonal up | 27.4 | second half of `Richard_DoubleHigh` |
+| `attack (4)` | 31 | quick diagonal down, shortest cut in the pack | 13.2 | **Riposte (dash)** |
+| `attack` | 42 | leaping chop, travels 3.63 | — | unused: travel would need root motion |
+| `attack (2)`, `attack (3)` | 48, 52 | spinning advances | — | unused |
+| `kick` | 37 | front boot | 4.2 | **Riposte (parry)** — `hitsWithWeapon` off |
+| `block idle` | 41 | shield up, weight back | — | **Block_Hold** — his guard really is the shield |
+| `block`, `block (2)` | 17, 15 | shield impact, shield shove | — | Block_Impact, Parry_Success |
+| `impact`, `impact (2)`, `impact (3)` | 21, 29, 21 | front, left, right flinch | — | React_Front/Left/Right |
+| `walk`, `walk (2)` | 33, 38 | forward, back | — | Walk_Forward/Back |
+| `run`, `run (2)` | 22, 17 | forward, back | — | Dash_Forward/Back (half-cut to one stride) |
+| `strafe (3)`, `strafe (4)` | 25, 27 | fast left, fast right | — | Dash_Left/Right |
+| `sword and shield idle` | 108 | guard-down idle | — | Richard_Idle |
+| `death` | 69 | fall backward | — | Death |
+
+**The pack has no thrust and no shield bash**, and those are two of the three moves the brief asks
+for. They were keyed on Richard's own rig in `ArtSource/Blender/richard_clips.py` (analytic
+two-bone IK onto targets measured from the hips, exported armature-only at 30 fps to
+`Animation/Clips/Custom/`):
+
+| authored clip | frames | how it is built | contact |
+|---|---|---|---|
+| `Richard_Thrust` | 34 | guard, cock at f7, extend to `right=(0.46, 0.08, 0.33)` at f15, hold, return | 15 |
+| `Richard_ShieldCharge` | 41 | run frames 0–17 with the shield up, then the thrust | 25 |
+| `Richard_ShieldBash` | 58 | keyed left-arm bash f0–9, then mocap `slash (5)` from f16 as the low cut | 33 |
+| `Richard_DoubleHigh` | 68 | `slash` f0–29 spliced to `slash (3)` from f10 — one move, two swings | 47 |
+
+Reach note: the extension target had to come in from 0.60 forward to 0.46 — 0.60 is outside the
+arm's reach on this rig and the IK missed by 0.32.

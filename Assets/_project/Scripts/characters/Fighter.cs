@@ -905,13 +905,29 @@ private void HandleKnockback()
 /// <summary>
 /// Returns the other Fighter in the scene, or null if there isn't one.
 /// </summary>
+/// <summary>
+/// Picks the fighter on the OTHER side. The scene holds the whole roster and the menu benches
+/// everyone who is not in this match, so an active fighter with the other player number is the
+/// opponent; anyone switched off is ignored. Call <see cref="RefreshOpponent"/> after the pair
+/// changes - picking the first Fighter in the scene used to hand Richard a benched Bjorn.
+/// </summary>
 private Fighter FindOpponent()
 {
-    foreach (Fighter other in FindObjectsOfType<Fighter>())
+    Fighter fallback = null;
+    foreach (Fighter other in FindObjectsByType<Fighter>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
     {
-        if (other != this) return other;
+        if (other == this) continue;
+        if (other.PlayerNumber != playerNumber) return other;
+        fallback = fallback != null ? fallback : other;
     }
-    return null;
+    return fallback;
+}
+
+/// <summary>Re-reads who this fighter is up against, after the menu has picked the pair.</summary>
+public void RefreshOpponent()
+{
+    opponent = FindOpponent();
+    if (opponent != null) IgnoreOpponentBodyCollision();
 }
 
 /// <summary>

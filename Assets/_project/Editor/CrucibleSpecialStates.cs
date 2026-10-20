@@ -19,6 +19,7 @@ public static class CrucibleSpecialStates
 {
     const string P1Ctrl = "Assets/_project/Animation/Controllers/P1_Bjorn.controller";
     const string P2Ctrl = "Assets/_project/Animation/Controllers/P2_Miyamoto.controller";
+    const string P3Ctrl = "Assets/_project/Animation/Controllers/P3_Richard.controller";
 
     // Blend into a special. The same rule the attack transitions already use: fixed duration, no
     // exit time, because the attack's own frame data decides when it starts and ends.
@@ -30,6 +31,7 @@ public static class CrucibleSpecialStates
     {
         Run(P1Ctrl, "Assets/_project/Characters/Bjorn/Attacks", "Bjorn_Idle");
         Run(P2Ctrl, "Assets/_project/Characters/Miyamoto/Attacks", "Miyamoto_Idle");
+        if (System.IO.File.Exists(P3Ctrl)) Run(P3Ctrl, "Assets/_project/Characters/Richard/Attacks", "Richard_Idle");
         AssetDatabase.SaveAssets();
         Debug.Log("Special and riposte states wired. Run 'Use Mixamo packs' next to give them their clips.");
     }
