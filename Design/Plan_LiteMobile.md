@@ -1,8 +1,12 @@
 # CRUCIBLE Lite — the mobile-first slice
 
 Agreed with the user on 2026-10-19, decisions confirmed the same evening.
-**This plan replaces `Plan_2Weeks.md` as the active backlog.** Work starts at the first prompt of
-the next session, at Task 1.
+**This plan replaced `Plan_2Weeks.md` as the active backlog.**
+
+**STATUS 2026-10-20 (end of session): Tasks 1-6 done.** Task 6's phone pass is the only part of
+them still open, and it needs the user's device. **Task 7 (the AI) is NOT being done from this
+plan** - the user is writing a new task list for the next session, which supersedes what is left
+here. Everything below is kept as the record of what was built and why.
 
 ## Why this exists
 
@@ -313,7 +317,11 @@ The plumbing is already there, which makes this the cheap, high-impact item:
 
 ---
 
-## Task 7 — make the AI play the lite game
+## Task 7 — make the AI play the lite game — NOT SCHEDULED (dropped 2026-10-20)
+
+Left undone by the user's call at the end of 2026-10-20; the next session starts from their new
+task list, not from here. The gap is real and still worth closing whenever it is wanted, so the
+description stays:
 
 The AI only walks, swings, blocks and dashes. It **cannot parry at all** (it never writes
 `defenseButton`), does not know strings exist, and will not know about specials. Lite is
@@ -324,7 +332,8 @@ deliberate strings, specials when stamina allows, and ripostes inside their own 
 
 ## Running order
 
-Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7, then a balance pass.
+Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 **(all done 2026-10-19/20)**. Task 7 was
+dropped; the next session works from the user's new task list.
 
 Tasks 1–3 are the spine: the inventory removes the animation question, the input layer and the
 special assets are what the combos are then built out of.

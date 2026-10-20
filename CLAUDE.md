@@ -1086,6 +1086,39 @@ Items 1 and 2 done and verified; **item 3 (the phone pass) needs the user's devi
   data file is still over GitHub Pages' 100 MB per-file limit), but **online two-player needs the
   relay running somewhere always-on** regardless.
 
+### 2026-10-20 (end of session) - where CRUCIBLE Lite stands
+
+**Tasks 1-6 of `Design/Plan_LiteMobile.md` are done**, every one play-verified. **Task 7 (teaching
+the AI the lite game) was dropped by the user**, who is writing a new task list for the next
+session - so the next session starts from THAT list, not from the lite plan's running order. The
+plan file carries a status header saying so.
+
+What exists now that did not on 2026-10-19: six specials on `SP + button`, ten combo strings per
+character in the three agreed shapes, four counter ripostes with their own clips and animator
+states, defensive health recovery, per-fighter health/stamina/armour, a percentage HUD, a Moves
+screen, and a web build less than half the size it was.
+
+**Open, and only the user's phone can answer it** (Task 6 item 3): frame rate, whether the
+on-screen buttons fall under a real thumb, and online latency. Two layout questions are written up
+in the plan and deliberately NOT changed blind - the two-player pads meeting over the fighters at
+screen centre, and BLOCK/PARRY sitting ~53% of the screen height up the right edge on a phone
+aspect.
+
+**Other things left deliberately, each recorded where it belongs:**
+- The AI cannot parry, throw a special or dial a string on purpose (lite plan, Task 7).
+- The web build is **uncompressed on purpose**; Brotli + the decompression fallback is the next
+  size win, and would need the right `Content-Encoding` from whatever serves it.
+- Hosting still means the laptop is the server (relay + quick tunnel), the URL changes on every
+  tunnel restart, and online two-player needs a relay running somewhere always-on no matter where
+  the static files live.
+- Both fighters still share one `FighterData` called "test Fighter", so the HUD names them both
+  that; the per-fighter numbers live on the `Fighter` components instead.
+- `parryCounterDamageMultiplier` is serialized **1.5** in the scene against `BalanceConfig`'s 1.35,
+  and `parryCounterWindow` 1.0 s against 0.5 - a deliberate-looking divergence that was never
+  settled.
+- Debug-only components still in the scene: `PlayProbe`, `BladeTrace`, `InputHold`, `DebugTimeScale`
+  (the last one is wanted - the Settings speed slider drives it).
+
 ### 2026-10-19 (counters checked after a user report)
 
 User report: "parry and dash counters are no longer multiplies". **Both multipliers are in fact
