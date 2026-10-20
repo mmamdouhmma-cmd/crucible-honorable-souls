@@ -78,7 +78,12 @@ public class TouchControls : MonoBehaviour
     public static bool WantsTouch =>
         Mode == 1 || (Mode != 2 && ((Instance != null && Instance.forceShow) || IsTouchDevice));
 
-    static bool IsTouchDevice
+    /// <summary>
+    /// Whether this is a phone or tablet, as the PAGE reports it rather than as the build target
+    /// implies - a PC browser runs the WebGL build too. Public because the render settings have to
+    /// make the same call: see <see cref="MobileQuality"/>.
+    /// </summary>
+    public static bool IsTouchDevice
     {
         get
         {
@@ -180,6 +185,10 @@ public class TouchControls : MonoBehaviour
         {
             touchDevice = 1;
             ApplyVisibility();
+            // The render settings were decided at startup on the same (wrong) answer, so they get
+            // another look now that a real finger has settled it.
+            var quality = FindFirstObjectByType<MobileQuality>();
+            if (quality != null) quality.Apply();
         }
 
         if (!visible) return;

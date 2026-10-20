@@ -98,3 +98,7 @@ ArtSource/Mocap/raw/
 ArtSource/Mocap/landmarks/
 ArtSource/Mocap/models/
 Server/cf.prev.log
+
+# Throwaway scene CrucibleBuild builds from (one arena only); deleted when the build ends.
+Assets/_project/Scenes/_build_temp.unity
+Assets/_project/Scenes/_build_temp.unity.meta

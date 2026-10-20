@@ -285,7 +285,23 @@ The plumbing is already there, which makes this the cheap, high-impact item:
 
 ---
 
-## Task 6 — the mobile build
+## Task 6 — the mobile build — code DONE 2026-10-20, phone pass OPEN
+
+> Items 1 and 2 are done and verified. **Item 3 needs a real device and is the open part.**
+> The build is **155 MB, down from 268** (data file 214 -> 101 MB).
+>
+> Still open, and only a phone can answer it: frame rate, whether the buttons fall under a
+> thumb, and online latency. Two things to look at while testing, neither fixed blind:
+> - In **local two-player on one device** both pads' BLOCK and PARRY land about 110 canvas
+>   units either side of screen centre, on top of the fighters. That is what the layout asks
+>   for (movement outboard, strikes inboard) but it covers the fight.
+> - BLOCK and PARRY sit ~510 canvas units up the right edge. Reachable in principle for a
+>   thumb anchored at the corner, but BLOCK is a HOLD and gets used constantly.
+>
+> Not done, and the next real size win if it is wanted: the build is **uncompressed on
+> purpose** so any static server can host it. Brotli plus the decompression fallback would
+> cut it again, at the cost of needing the right Content-Encoding headers.
+
 
 1. **Ship one arena.** The 280 MB build (224 MB of it data) is mostly three Tripo arenas plus
    Al-Quds all sitting in the scene. Strip to the active one at build time.

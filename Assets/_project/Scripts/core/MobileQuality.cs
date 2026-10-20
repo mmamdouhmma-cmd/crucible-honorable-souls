@@ -14,10 +14,16 @@ public class MobileQuality : MonoBehaviour
     public float shadowDistance = 18f;
     public bool postProcessing = false;
 
-    void Awake()
+    void Awake() => Apply();
+
+    /// <summary>
+    /// Applied at startup, and again if a finger lands on a device first read as a desktop.
+    /// The gate is the DEVICE, not the build target: treating WebGL as mobile gave every PC
+    /// browser phone visuals. <see cref="TouchControls.IsTouchDevice"/> asks the page itself.
+    /// </summary>
+    public void Apply()
     {
-        bool mobile = Application.isMobilePlatform || Application.platform == RuntimePlatform.WebGLPlayer || force;
-        if (!mobile) return;
+        if (!force && !TouchControls.IsTouchDevice) return;
         Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 0;
         var urp = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;

@@ -1044,6 +1044,48 @@ riposte run showed no recovery at all - hurt the fighter before testing a heal. 
 `CombatSystem.isAttacking` is not a reflectable field (a reflection `SetValue` on the null it
 returns is the "Object reference not set" an `eval_file` reports).
 
+### 2026-10-20 - Lite Task 6: one arena per build, quality by device (phone pass still open)
+
+Items 1 and 2 done and verified; **item 3 (the phone pass) needs the user's device and is open.**
+
+- **The build ships ONE arena: 268 MB -> 155 MB**, the data file **214 -> 101 MB**, in 12.8 min.
+  `CrucibleBuild` now builds from a throwaway COPY of the scene (`_build_temp.unity`, gitignored)
+  with the switched-off scenery deleted, then deletes the copy and reopens the real scene in a
+  `finally`, so a failed build cannot leave the Editor on the stripped copy. An inactive GameObject
+  is still serialized, so all four arenas (~126 MB of source meshes and 2K textures) had shipped in
+  every build since October.
+  - The rule is **"an inactive ROOT that carries renderers"**, not a list of arena names, so it
+    keeps working when a different arena is placed. Nothing at runtime activates a root (checked:
+    no runtime script references an arena or calls SetActive on one) and logic objects carry no
+    renderers, so it cannot take something the game needs.
+  - It saves open scenes first when the scene is dirty, because the copy is made from the file on
+    DISK - unsaved edits would silently miss the build.
+  - Logged as `Build scene: shipping one arena, left out 3 switched-off (Arena_AlQuds, DesertArena,
+    ForestClearing)`. Verified separately from a build by invoking `PrepareScene` / `RestoreScene`
+    through reflection: 9 gameplay roots + `MedievalFortress` in the copy, 12 roots and a deleted
+    temp scene afterwards.
+- **`MobileQuality` follows the DEVICE, not the build target.** It gated on
+  `isMobilePlatform || WebGLPlayer`, so every PC browser got render scale 0.7, 18-unit shadows and
+  no post. It now shares `TouchControls.IsTouchDevice` (made public; it asks the PAGE through
+  `DeviceBridge.jslib`), which is the same call the on-screen pad already makes. `Awake` is now
+  `Apply()`, public, and `TouchControls` calls it again if a finger later lands on something first
+  read as a desktop - the quality decision was made at startup on the same wrong answer.
+- **The touch pad was captured for the first time** (`ArtSource/Characters/Renders/ui/touch_pad*.png`,
+  `forceShow` + `Layout()` through reflection). The `SP` button from Task 2 and the `PARRY` button
+  both exist and are placed as intended. Two things for the phone pass, deliberately NOT changed
+  blind: in the two-player layout both pads' BLOCK/PARRY meet within ~110 canvas units of screen
+  centre, over the fighters; and BLOCK/PARRY sit ~510 canvas units up the right edge (canvas is
+  1920x1080 reference, match 0.5, so on a 20:9 phone the canvas is ~2147x966 and that is ~53% of
+  the screen height).
+- Still uncompressed on purpose (any static server can host it); Brotli + decompression fallback is
+  the next size win if the build ever needs to leave the PC.
+- **Hosting, for the record** (the user asked): the laptop IS the server today - `Server/relay.js`
+  hosts the files and relays the netplay, `cloudflared` tunnels it, so sleeping or closing either
+  window kills every tester's link, and the quick-tunnel URL changes on each restart. Single-player
+  and local two-player are pure static files and could live on a static host (itch.io; the 101 MB
+  data file is still over GitHub Pages' 100 MB per-file limit), but **online two-player needs the
+  relay running somewhere always-on** regardless.
+
 ### 2026-10-19 (counters checked after a user report)
 
 User report: "parry and dash counters are no longer multiplies". **Both multipliers are in fact
