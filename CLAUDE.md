@@ -237,6 +237,32 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `Salaadin > 4 Rewire`, `Apply the roster balance`. **His corrected rig is NOT in git**:
   `Characters/*/Model/` and `ArtSource/Characters/` are both gitignored, so the FBXs live only on
   this machine and a fresh clone must re-run that chain. `Design/Salaadin_Rerig.md` has the numbers.
+- **There is a Blender file to ANIMATE each shielded fighter in**: `ArtSource/Blender/
+  {Richard,Salaadin}_Studio.blend`, built by `ArtSource/Blender/character_studio.py`
+  (`blender -b --python character_studio.py -- <Name> <Body.fbx> <out.blend> <Clips/Custom>`).
+  It opens on the rig in pose mode, weapons mounted, meshes `hide_select`, scene at 30 fps, and
+  carries two text blocks: **EXPORT_CLIP** (Alt+P sends the current action to `Clips/Custom/`) and
+  **README**. This is the hand-animation route; the `*_clips.py` scripts are code generators and
+  cannot be posed. Bjorn and Miyamoto have neither - they are Tripo rigs with different bone names
+  and the studio script has not been tried on them.
+  - EXPORT_CLIP works on a **throwaway copy** of the rig and its action, so the lead-in never
+    touches what you are animating. Two things it must get right, both found by self-test:
+    the copy is born `<Name>_Rig.001` and that name goes into the FBX, which breaks the copied
+    avatar - so it lends the copy the real name for the export; and **the copy must be deleted
+    BEFORE the name is handed back**, or the rig you animate on ends up `<Name>_Rig.001` itself and
+    the NEXT export cannot find it. There is an `assert` on that now.
+  - `CrucibleMixamoSetup.ImportAll` sweeps any `<Character>_*.fbx` in `Clips/Custom/` that is in no
+    map table and gives it a one-clip entry, so a hand-made clip gets the same treatment as a
+    mapped one. Without it a studio export imported Generic with no avatar at all.
+  - Verified end to end on both: `CopyFromOther` -> `<Name>_BodyAvatar`, Based Upon **Original**,
+    `lockRootRotation`, `firstFrame 1` so the rest lead-in never plays.
+- **`Design/Animation_Handoff.pdf` is the brief for a 3D animator** - the four rigs, weapon mounts,
+  the scene/export spec, the animator contract (parameters, shared states, which four clips must
+  loop) and **the exact frame budget for all 33 attacks**, generated from the AttackData assets and
+  the controllers. The number it surfaced: **37 of 90 animator states play at 1.8x or faster**,
+  worst x3.78, and Bjorn and Miyamoto hold 28 of them. `Use Mixamo packs` sets
+  `state.speed = clip.length / (frames/60)`, so a clip keyed to that length plays at x1.00 - and
+  a hand-edited state speed is overwritten the next time that menu item runs.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `parryCounterDamageMultiplier` is serialized 1.5 against `BalanceConfig`'s
