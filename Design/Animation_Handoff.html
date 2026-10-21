@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CRUCIBLE — Animation Handoff Pack</title>
+<style>
+  @page { size:A4; margin:13mm 12mm 11mm 12mm; }
+  :root{
+    --ink:#15150f; --ink-2:#4a4940; --ink-3:#7a786c;
+    --rule:#dcd8ca; --rule-soft:#ebe8dd; --surface:#fcfcfb; --panel:#f6f4ec;
+    --accent:#8a5a1c;
+    --pack:#2a78d6; --authored:#eb6834;
+    --ok:#1baf7a; --warn:#eda100; --bad:#e34948;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; background:var(--surface); }
+  body{ font-family:"Charter","Georgia","Times New Roman",serif; color:var(--ink);
+        font-size:8.8pt; line-height:1.42; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  section{ page-break-after:always; }
+  section:last-of-type{ page-break-after:auto; }
+  h1{ font-size:25pt; line-height:1.07; margin:0 0 4mm; letter-spacing:-.5px; font-weight:600; }
+  h2{ font-family:"Inter","Segoe UI",Arial,sans-serif; font-size:11.5pt; font-weight:650;
+      letter-spacing:-.1px; margin:0 0 2.5mm; padding-bottom:1.3mm; border-bottom:1.5px solid var(--ink); }
+  h3{ font-family:"Inter","Segoe UI",Arial,sans-serif; font-size:8.5pt; font-weight:650;
+      letter-spacing:.4px; text-transform:uppercase; color:var(--ink-2); margin:4.5mm 0 1.6mm; }
+  h3:first-child{ margin-top:0; }
+  p{ margin:0 0 2.2mm; }
+  .lede{ font-size:9.9pt; line-height:1.48; color:var(--ink-2); }
+  .muted{ color:var(--ink-3); }
+  code,.mono{ font-family:"JetBrains Mono","Consolas","DejaVu Sans Mono",monospace; font-size:7.5pt; }
+
+  .eyebrow{ font-family:"Inter",Arial,sans-serif; font-size:8pt; font-weight:650;
+            letter-spacing:2.2px; text-transform:uppercase; color:var(--accent); margin-bottom:5mm; }
+  .cover{ display:flex; flex-direction:column; height:264mm; }
+  .cover .rule{ height:3px; background:var(--ink); width:38mm; margin:0 0 6mm; }
+  .cover-foot{ margin-top:auto; border-top:1px solid var(--rule); padding-top:3mm;
+               display:flex; justify-content:space-between; font-size:8pt; color:var(--ink-3); }
+
+  table{ width:100%; border-collapse:collapse; margin:0 0 2.5mm; }
+  th{ font-family:"Inter",Arial,sans-serif; font-size:7.1pt; font-weight:650; letter-spacing:.4px;
+      text-transform:uppercase; color:var(--ink-3); text-align:left;
+      padding:0 2mm 1.3mm 0; border-bottom:1px solid var(--ink); vertical-align:bottom; }
+  td{ padding:1.3mm 2mm 1.3mm 0; border-bottom:1px solid var(--rule-soft); vertical-align:top; }
+  tr:last-child td{ border-bottom:1px solid var(--rule); }
+  td.num,th.num{ text-align:right; padding-right:2.5mm; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .name{ font-weight:600; }
+  .moves td{ padding-top:1.1mm; padding-bottom:1.1mm; }
+  .moves tr.hot td{ background:#fdf0ef; }
+  .moves tr.warm td{ background:#fdf8ec; }
+
+  .tag{ display:inline-block; font-family:"Inter",Arial,sans-serif; font-size:6.5pt; font-weight:650;
+        letter-spacing:.4px; text-transform:uppercase; padding:.6mm 1.4mm; border-radius:2px;
+        border:1px solid currentColor; white-space:nowrap; }
+  .t-git{ color:#1b7a57; } .t-local{ color:#9a6a00; }
+
+  .bar{ display:flex; height:5.5mm; border-radius:2px; overflow:hidden; background:var(--rule-soft); }
+  .bar .pack{ background:var(--pack); } .bar .auth{ background:var(--authored); margin-left:2px; }
+  .legend{ display:flex; gap:6mm; font-family:"Inter",Arial,sans-serif; font-size:7.5pt;
+           color:var(--ink-2); margin:0 0 2.5mm; }
+  .legend i{ display:inline-block; width:3mm; height:3mm; border-radius:1px; margin-right:1.4mm; vertical-align:-.3mm; }
+  .comp td{ vertical-align:middle; }
+  .cnt{ font-family:"Inter",Arial,sans-serif; font-size:7.4pt; color:var(--ink-2);
+        font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  .panel{ background:var(--panel); border-left:2.5px solid var(--accent); padding:2.8mm 3.2mm; margin:0 0 3mm; }
+  .panel h4{ font-family:"Inter",Arial,sans-serif; font-size:8.3pt; font-weight:650; margin:0 0 1.4mm; }
+  .panel p{ margin:0 0 1.4mm; font-size:8.4pt; } .panel p:last-child{ margin-bottom:0; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:4mm; }
+
+  .flow{ display:flex; margin:1.5mm 0 3.5mm; }
+  .step{ flex:1; border:1px solid var(--rule); border-radius:3px; padding:2.3mm; background:#fff; position:relative; }
+  .step + .step{ margin-left:5mm; }
+  .step + .step::before{ content:"\2192"; position:absolute; left:-4.1mm; top:50%;
+                         transform:translateY(-50%); color:var(--ink-3); font-size:10pt; }
+  .step b{ font-family:"Inter",Arial,sans-serif; font-size:7.4pt; font-weight:650; display:block; margin-bottom:.8mm; }
+  .step span{ font-size:7.4pt; color:var(--ink-2); display:block; line-height:1.33; }
+
+  .tl{ display:flex; align-items:center; margin:1.5mm 0 1mm; font-family:"Inter",Arial,sans-serif; font-size:7.2pt; }
+  .tl div{ padding:1.4mm 0; text-align:center; color:#fff; font-weight:650; }
+  .tl .s{ background:#8e8c80; } .tl .a{ background:var(--bad); } .tl .r{ background:#b9b6a8; }
+</style>
+</head>
+<body>
+
+<!-- ============ 1 COVER ============ -->
+<section class="cover">
+  <div class="eyebrow">CRUCIBLE: Honorable Souls</div>
+  <div class="rule"></div>
+  <h1>Animation<br>Handoff Pack</h1>
+  <p class="lede" style="max-width:132mm">
+    Everything needed to animate this game without opening it: the four rigs and what is wrong
+    with each, the scene and export spec, the animator contract, and the exact frame budget for
+    every move. All figures are measured from the project as it stands on 21 October 2026.
+  </p>
+
+  <div style="margin-top:8mm" class="grid2">
+    <div>
+      <h3>Scope</h3>
+      <table>
+        <tr><td class="name">Fighters</td><td class="num">4</td></tr>
+        <tr><td class="name">Animator states</td><td class="num">90</td></tr>
+        <tr><td class="name">Attacks with frame data</td><td class="num">33</td></tr>
+        <tr><td class="name">Clips authored for this game</td><td class="num">10</td></tr>
+        <tr><td class="name">States on borrowed pack clips</td><td class="num">80</td></tr>
+        <tr><td class="name">States playing faster than 1.8x</td><td class="num" style="color:#e34948"><b>37</b></td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>Read this first</h3>
+      <p style="font-size:8.5pt">
+        The game is animated almost entirely from three bought Mixamo packs. Where a pack clip is
+        longer than the move it was assigned to, the import tooling <b>speeds it up to fit</b> —
+        and 37 of 90 states are being played at 1.8x or more. That, not the rigging, is what makes
+        the game look clumsy.
+      </p>
+      <p style="font-size:8.5pt">
+        Every move table in here gives a <b>Target</b> length and a <b>@30fps</b> frame count.
+        An animation keyed to that number plays at x1.00 and the problem disappears.
+      </p>
+    </div>
+  </div>
+
+  <div class="cover-foot">
+    <span>Unity 6000.4.4f1 · URP · branch <span class="mono">salaadin</span> · humanoid retargeting</span>
+    <span>21 October 2026</span>
+  </div>
+</section>
+
+<!-- ============ 2 RIGS ============ -->
+<section>
+  <h2>The four rigs</h2>
+  <p class="lede" style="font-size:9.2pt; margin-bottom:3mm">
+    Two different auto-riggers are in play, and they do not share a bone naming convention.
+    Nothing here was rigged by a person except the corrections on Salaadin.
+  </p>
+
+  <table>
+    <thead><tr>
+      <th style="width:13%">Fighter</th><th style="width:15%">Rig</th><th style="width:16%">Bone names</th>
+      <th class="num">Bones</th><th class="num">Nodes</th><th class="num">Verts</th>
+      <th class="num">Height</th><th class="num">Scene x</th><th style="width:9%">State</th>
+    </tr></thead>
+    <tbody>
+      <tr><td class="name">Bjorn</td><td>Tripo auto-rig</td><td class="mono">R_Hand, …</td>
+          <td class="num">~40</td><td class="num">45</td><td class="num">144,779</td><td class="num">1.01</td><td class="num">4.0</td>
+          <td><span class="tag t-git">ok</span></td></tr>
+      <tr><td class="name">Miyamoto</td><td>Tripo auto-rig</td><td class="mono">R_Hand, …</td>
+          <td class="num">~40</td><td class="num">45</td><td class="num">139,431</td><td class="num">1.04</td><td class="num">3.0</td>
+          <td><span class="tag t-git">ok</span></td></tr>
+      <tr><td class="name">Richard</td><td>Mixamo auto-rig</td><td class="mono">mixamorig:*</td>
+          <td class="num">65</td><td class="num">70</td><td class="num">14,649</td><td class="num">2.04</td><td class="num">3.0</td>
+          <td><span class="tag t-git">ok</span></td></tr>
+      <tr><td class="name">Salaadin</td><td>Mixamo, <b>hand-corrected</b></td><td class="mono">mixamorig:*</td>
+          <td class="num">65</td><td class="num">70</td><td class="num">12,574</td><td class="num">1.09</td><td class="num">3.0</td>
+          <td><span class="tag t-local">fixed</span></td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:7.9pt; margin-top:-.5mm">
+    Height is the skinned bounds in model units. <b>Scene x</b> is the uniform scale on the fighter
+    root in the arena — the models are different sizes, so the scene corrects for it. Gameplay
+    distances are authored in world units and never derived from the model scale.
+  </p>
+
+  <h3>Weapon mounts</h3>
+  <table>
+    <thead><tr><th style="width:17%">Fighter</th><th style="width:24%">Right hand</th>
+      <th style="width:24%">Left hand</th><th>Mount notes</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Bjorn</td><td class="mono">Bjorn_Axe_R</td><td>—</td>
+          <td>parented to <span class="mono">R_Hand</span>; two-handed grip constraint</td></tr>
+      <tr><td class="name">Miyamoto</td><td class="mono">Miyamoto_Katana_R</td><td>—</td>
+          <td>parented to <span class="mono">R_Hand</span>; two-handed grip constraint</td></tr>
+      <tr><td class="name">Richard</td><td class="mono">Richard_Sword_R</td><td class="mono">Richard_Shield_L</td>
+          <td>shield boss on <span class="mono">+palm</span>; no two-hand grip</td></tr>
+      <tr><td class="name">Salaadin</td><td class="mono">Salaadin_Falchion_R</td><td class="mono">Salaadin_Shield_L</td>
+          <td>shield boss on <span class="mono">-palm</span>; falchion mounted with a -20 deg blade lean</td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:7.9pt; margin-top:-.5mm">
+    Weapons are rigid children of the hand bones — <b>not skinned, and never keyed</b>. They follow
+    the hand and nothing else, so a grip change has to be animated in the wrist.
+  </p>
+
+  <h3>What is wrong with Salaadin's rig, and what was done</h3>
+  <p style="font-size:8.5pt">
+    His mesh is mostly cloth: leg geometry stops at the top of the boots and above it there is only
+    coat skirt and cloak. Mixamo fits its skeleton to mesh <i>volume</i>, so where the thigh and
+    pelvis should be it found only fabric. Two marker passes were tried; the second came back
+    symmetric and worse. Four joints are now placed <b>by construction</b> in
+    <span class="mono">salaadin_fixrig.py</span>, which moves bones in edit mode — the rest pose
+    changes while the mesh and vertex groups stay put, so Mixamo's weights are kept and nothing is
+    re-weighted.
+  </p>
+  <table>
+    <thead><tr><th style="width:21%">Joint</th><th style="width:24%">As Mixamo left it</th>
+      <th style="width:22%">Corrected to</th><th>Symptom it caused</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Elbow</td><td>35% shoulder to wrist</td><td>52%</td><td>upper arm shorter than the forearm — the "snake arm"</td></tr>
+      <tr><td class="name">Knee</td><td>bent 128 deg into the skirt</td><td>179 deg, on the hip-ankle line</td><td>a permanent crouch; never a clean T-pose</td></tr>
+      <tr><td class="name">Hip separation</td><td>19.8% of height</td><td>11.0%, at 52% up</td><td>thighs converging twice as hard as the ankles</td></tr>
+      <tr><td class="name">Hip fore/aft</td><td>forward, inside the coat</td><td>over the ankle</td><td><b>the splits</b> — thigh rest tilted 23 deg backward</td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:7.9pt; margin-top:-.5mm">
+    Bone roll is preserved throughout — a roll angle describes different axes once the head or tail
+    has moved. <b>His arms never showed any of this</b>, because the generated clips key arms with
+    IK and only the legs are copied rest-relative.
+  </p>
+</section>
+
+<!-- ============ 3 SCENE + EXPORT SPEC ============ -->
+<section>
+  <h2>Scene and export spec</h2>
+
+  <div class="grid2">
+    <div>
+      <h3>Author in</h3>
+      <table>
+        <tr><td class="name">Application</td><td>Blender 5.1</td></tr>
+        <tr><td class="name">Scene frame rate</td><td><b>30 fps</b></td></tr>
+        <tr><td class="name">Game frame rate</td><td>60 fps (frame data)</td></tr>
+        <tr><td class="name">Conversion</td><td>1 game frame = half a Blender frame</td></tr>
+        <tr><td class="name">Up / forward</td><td>Y up, -Z forward (on export)</td></tr>
+        <tr><td class="name">First keyed frame</td><td><b>1</b> — frame 0 is reserved</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>Deliver to</h3>
+      <table>
+        <tr><td class="name">Destination</td><td class="mono">Animation/Clips/Custom/</td></tr>
+        <tr><td class="name">File name</td><td class="mono">&lt;Char&gt;_&lt;Slot&gt;_&lt;Move&gt;.fbx</td></tr>
+        <tr><td class="name">Contents</td><td>armature + one empty, no mesh</td></tr>
+        <tr><td class="name">The empty</td><td class="mono">&lt;Char&gt;_ClipRoot</td></tr>
+        <tr><td class="name">Root motion</td><td><b>none</b> — see below</td></tr>
+        <tr><td class="name">Scale</td><td>FBX_SCALE_NONE, unit scale applied</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" style="border-left-color:var(--bad)">
+    <h4>No root motion. All movement is code.</h4>
+    <p>
+      <span class="mono">applyRootMotion</span> is <b>false</b> on all four fighters. Walking, dash
+      distance, attack lunge and knockback are driven by the character scripts in world units. A
+      clip that travels will be ignored at best and will fight the code at worst.
+    </p>
+    <p>
+      Animate in place. If a move <i>reads</i> as a lunge — Shield Charge, Veiled Rush — the travel
+      is already in the game's lunge values; the clip supplies the lean and the footwork only.
+    </p>
+  </div>
+
+  <h3>Four import rules every authored clip must satisfy</h3>
+  <table>
+    <thead><tr><th style="width:27%">Rule</th><th>What breaks without it</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Copy the body's avatar<br><span class="muted" style="font-weight:400">CopyFromOther</span></td>
+          <td>Retargeting through the clip's own auto-built avatar is not an identity even on the same skeleton. Wrist twist does not survive it.</td></tr>
+      <tr><td class="name">Based Upon: <b>Original</b></td>
+          <td><i>Body Orientation</i> infers facing from the posed body. On a bladed guard it read the turned shoulders as forward and yawed the whole skeleton <b>66.6 deg</b>. The tell is that every bone is off by the same angle — check that before blaming a wrist or a pole vector.</td></tr>
+      <tr><td class="name">Export an empty beside the armature</td>
+          <td>An armature-only FBX makes the armature the file root, so Blender's 100x lands on the avatar's root. The two avatars then disagree on scale and every stretched joint is silently rewritten — the guard arrived with the elbows 16 deg tighter.</td></tr>
+      <tr><td class="name">Frame 0 holds the rest pose</td>
+          <td>Blender writes the first exported frame as the file's bind pose, and Unity builds the clip's avatar from it. A clip that opens in the guard makes <i>the guard</i> the T-pose, and every frame returns as a delta from the wrong place.</td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:7.9pt; margin-top:-.5mm">
+    All four are handled automatically by <span class="mono">EXPORT_CLIP</span> inside
+    <span class="mono">Salaadin_Studio.blend</span> and by the <span class="mono">*_clips.py</span>
+    generators. They are listed because any other export route has to reproduce them.
+  </p>
+
+  <h3>The round trip</h3>
+  <div class="flow">
+    <div class="step"><b>1 · Key</b><span>Pose the rig in Blender from frame 1.</span></div>
+    <div class="step"><b>2 · Export</b><span>Run <code>EXPORT_CLIP</code>; the FBX lands in <code>Clips/Custom/</code>.</span></div>
+    <div class="step"><b>3 · Import</b><span>Unity: <code>Crucible &gt; Animation &gt; Use Mixamo packs</code>.</span></div>
+    <div class="step"><b>4 · Wire</b><span>Point the animator state at the clip; set speed back to x1.00.</span></div>
+  </div>
+
+  <div class="panel" style="border-left-color:var(--warn)">
+    <h4>The trap that costs a day: Unity caches the skeleton</h4>
+    <p>
+      <span class="mono">humanDescription.skeleton</span> stores every bone's position in the
+      <span class="mono">.meta</span>, and Unity builds the avatar from that <b>cache, not the
+      file</b>. Re-export an FBX with a joint in a new place and nothing changes at runtime. The
+      tell is that the same hierarchy measures <b>correctly in edit mode and wrong in play mode</b>.
+      <span class="mono">Rebuild Player&lt;N&gt;</span> clears the cached arrays before every
+      reimport; anything else that touches a rig must do the same.
+    </p>
+  </div>
+</section>
+
+<!-- ============ 4 CONTRACT ============ -->
+<section>
+  <h2>The animator contract</h2>
+  <p class="lede" style="font-size:9.2pt; margin-bottom:3mm">
+    Each fighter has his own controller (<span class="mono">P1_Bjorn</span> …
+    <span class="mono">P4_Salaadin</span>) but they share one parameter set and one skeleton of
+    states. A new clip replaces the motion on an existing state; it does not add one.
+  </p>
+
+  <div class="grid2">
+    <div>
+      <h3>Parameters the code drives</h3>
+      <table>
+        <tr><th style="width:46%">Parameter</th><th>Meaning</th></tr>
+        <tr><td class="mono">MoveSpeed</td><td>float, walk blend, every frame</td></tr>
+        <tr><td class="mono">LightAttack</td><td>trigger</td></tr>
+        <tr><td class="mono">MediumAttack</td><td>trigger</td></tr>
+        <tr><td class="mono">HeavyAttack</td><td>trigger</td></tr>
+        <tr><td class="mono">HeavyFromLight</td><td>trigger, combo link</td></tr>
+        <tr><td class="mono">SpecialLight</td><td>trigger</td></tr>
+        <tr><td class="mono">SpecialMedium</td><td>trigger</td></tr>
+        <tr><td class="mono">SpecialHeavy</td><td>trigger</td></tr>
+        <tr><td class="mono">RiposteDash</td><td>trigger, dodge counter</td></tr>
+        <tr><td class="mono">RiposteParry</td><td>trigger, parry counter</td></tr>
+        <tr><td class="mono">GetHit</td><td>trigger</td></tr>
+        <tr><td class="mono">HitSide</td><td>int: 0 front, 1 left, 2 right</td></tr>
+        <tr><td class="mono">Blocking</td><td>bool</td></tr>
+        <tr><td class="mono">Dash</td><td>trigger</td></tr>
+        <tr><td class="mono">DashDir</td><td>int: fwd / back / left / right</td></tr>
+        <tr><td class="mono">ParrySuccess</td><td>trigger</td></tr>
+        <tr><td class="mono">Death</td><td>trigger</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>States every fighter has</h3>
+      <table>
+        <tr><th style="width:52%">State</th><th class="num">Loop</th><th>Driven by</th></tr>
+        <tr><td class="mono">&lt;Name&gt;_Idle</td><td class="num"><b>yes</b></td><td>default</td></tr>
+        <tr><td class="mono">&lt;Name&gt;_Walk_Forward</td><td class="num"><b>yes</b></td><td>MoveSpeed</td></tr>
+        <tr><td class="mono">&lt;Name&gt;_Walk_Back</td><td class="num"><b>yes</b></td><td>MoveSpeed</td></tr>
+        <tr><td class="mono">Block_Hold</td><td class="num"><b>yes</b></td><td>Blocking</td></tr>
+        <tr><td class="mono">Block_Impact</td><td class="num">no</td><td>blocked hit</td></tr>
+        <tr><td class="mono">React_Front</td><td class="num">no</td><td>HitSide 0</td></tr>
+        <tr><td class="mono">React_Left</td><td class="num">no</td><td>HitSide 1</td></tr>
+        <tr><td class="mono">React_Right</td><td class="num">no</td><td>HitSide 2</td></tr>
+        <tr><td class="mono">Dash_Forward</td><td class="num">no</td><td>DashDir</td></tr>
+        <tr><td class="mono">Dash_Back</td><td class="num">no</td><td>DashDir</td></tr>
+        <tr><td class="mono">Dash_Left</td><td class="num">no</td><td>DashDir</td></tr>
+        <tr><td class="mono">Dash_Right</td><td class="num">no</td><td>DashDir</td></tr>
+        <tr><td class="mono">Parry_Success</td><td class="num">no</td><td>ParrySuccess</td></tr>
+        <tr><td class="mono">Death</td><td class="num">no</td><td>Death</td></tr>
+      </table>
+      <p class="muted" style="font-size:7.9pt">
+        Plus the character's own 3 normals, 3 specials, 2 ripostes and any combo-link states.
+        <b>Four clips per fighter must loop seamlessly</b>: idle, both walks, block hold.
+      </p>
+    </div>
+  </div>
+
+  <h3>How an attack is timed</h3>
+  <p style="font-size:8.5pt">
+    Every attack is three counts at 60 fps. The hitbox arms the instant startup ends and disarms
+    when the active window closes; one hit per swing. <b>The contact frame is therefore
+    <span class="mono">startup + 1</span></b> — that is where the blade must be on the opponent,
+    and the tables that follow give it for every move.
+  </p>
+  <div class="tl">
+    <div class="s" style="width:40%">STARTUP — wind-up</div>
+    <div class="a" style="width:12%">ACTIVE</div>
+    <div class="r" style="width:48%">RECOVERY — follow-through</div>
+  </div>
+  <p class="muted" style="font-size:7.9pt">
+    Active windows are 3 to 5 frames across the whole roster — 50 to 83 ms. The swing must read as
+    a hit in that window, so the blade should be travelling fastest there, not arriving there.
+  </p>
+
+  <div class="panel">
+    <h4>Target length, and why it is the number that matters</h4>
+    <p>
+      Nothing stretches a clip automatically. <span class="mono">Use Mixamo packs</span> computes
+      each state's speed itself — <span class="mono">state.speed = clip length / move length</span>
+      — so a clip longer than its move is simply played faster, and <b>the speed is recomputed
+      every time that menu item runs</b>. Editing a state's speed by hand will not survive.
+    </p>
+    <p>
+      The <b>Target</b> column in the move tables is that divisor:
+      <span class="mono">total frames / 60</span>, the length a clip has to be for the computed
+      speed to come out at x1.00. The <b>@30fps</b> column is the same number in Blender frames,
+      which is what to key to.
+    </p>
+    <p>
+      A move with 25 total frames wants a <b>0.42 s clip, which is 13 Blender frames</b>. That is
+      short. Fighting-game animation is short; the readability comes from the pose at contact, not
+      from the number of frames around it.
+    </p>
+  </div>
+</section>
+
+<!-- ============ 5 MOVES A ============ -->
+<section>
+  <h2>Move specs — Bjorn and Miyamoto</h2>
+  <p class="muted" style="font-size:8pt; margin-bottom:3mm">
+    Frames are 60 fps. <b>Contact</b> is the first active frame. <b>Target</b> is the clip length
+    that plays at x1.00; <b>@30fps</b> is that in Blender frames. <b>Now</b> is the speed the
+    current clip is being played at — shaded rows are stretched past 1.4x.
+  </p>
+  <h3>Bjorn</h3>
+<table class="moves"><thead><tr><th style="width:20%">Move</th><th style="width:14%">Trigger</th><th class="num">Start</th><th class="num">Act</th><th class="num">Rec</th><th class="num">Total</th><th class="num">Contact</th><th class="num">Target</th><th class="num">@30fps</th><th style="width:12%">Source</th><th class="num">Now</th></tr></thead><tbody>
+<tr class="hot"><td class="name">Slash</td><td class="mono">LightAttack</td><td class="num">10</td><td class="num">4</td><td class="num">8</td><td class="num"><b>22</b></td><td class="num">11</td><td class="num">0.37s</td><td class="num"><b>11</b></td><td><span class="muted">AxePack</span></td><td class="num">×1.80</td></tr>
+<tr class="hot"><td class="name">Spinning Slash</td><td class="mono">MediumAttack</td><td class="num">18</td><td class="num">5</td><td class="num">12</td><td class="num"><b>35</b></td><td class="num">19</td><td class="num">0.58s</td><td class="num"><b>18</b></td><td><span class="muted">AxePack2H</span></td><td class="num">×1.80</td></tr>
+<tr class="hot"><td class="name">Overhead Double Axe</td><td class="mono">HeavyAttack</td><td class="num">18</td><td class="num">5</td><td class="num">15</td><td class="num"><b>38</b></td><td class="num">19</td><td class="num">0.63s</td><td class="num"><b>19</b></td><td><span class="muted">GreatSwordPack</span></td><td class="num">×1.80</td></tr>
+<tr class="hot"><td class="name">Spinning Overhead</td><td class="mono">HeavyFromLight</td><td class="num">28</td><td class="num">4</td><td class="num">14</td><td class="num"><b>46</b></td><td class="num">29</td><td class="num">0.77s</td><td class="num"><b>23</b></td><td><span class="muted">GreatSwordPack</span></td><td class="num">×2.00</td></tr>
+<tr class="hot"><td class="name">Blood Eagle</td><td class="mono">SpecialHeavy</td><td class="num">24</td><td class="num">5</td><td class="num">24</td><td class="num"><b>53</b></td><td class="num">25</td><td class="num">0.88s</td><td class="num"><b>26</b></td><td><span class="muted">AxePack</span></td><td class="num">×2.20</td></tr>
+<tr class="hot"><td class="name">Haft Strike</td><td class="mono">SpecialLight</td><td class="num">18</td><td class="num">5</td><td class="num">20</td><td class="num"><b>43</b></td><td class="num">19</td><td class="num">0.72s</td><td class="num"><b>22</b></td><td><span class="muted">AxePack</span></td><td class="num">×2.00</td></tr>
+<tr class="hot"><td class="name">Hewing Charge</td><td class="mono">SpecialMedium</td><td class="num">22</td><td class="num">5</td><td class="num">22</td><td class="num"><b>49</b></td><td class="num">23</td><td class="num">0.82s</td><td class="num"><b>24</b></td><td><span class="muted">AxePack</span></td><td class="num">×2.00</td></tr>
+<tr class="hot"><td class="name">Axe Riposte</td><td class="mono">RiposteDash</td><td class="num">12</td><td class="num">4</td><td class="num">14</td><td class="num"><b>30</b></td><td class="num">13</td><td class="num">0.50s</td><td class="num"><b>15</b></td><td><span class="muted">AxePack</span></td><td class="num">×2.00</td></tr>
+<tr class="warm"><td class="name">Boot Riposte</td><td class="mono">RiposteParry</td><td class="num">12</td><td class="num">4</td><td class="num">14</td><td class="num"><b>30</b></td><td class="num">13</td><td class="num">0.50s</td><td class="num"><b>15</b></td><td><span class="muted">AxePack</span></td><td class="num">×1.60</td></tr>
+</tbody></table>
+<h3>Miyamoto</h3>
+<table class="moves"><thead><tr><th style="width:20%">Move</th><th style="width:14%">Trigger</th><th class="num">Start</th><th class="num">Act</th><th class="num">Rec</th><th class="num">Total</th><th class="num">Contact</th><th class="num">Target</th><th class="num">@30fps</th><th style="width:12%">Source</th><th class="num">Now</th></tr></thead><tbody>
+<tr class="hot"><td class="name">Mid Thrust</td><td class="mono">LightAttack</td><td class="num">6</td><td class="num">3</td><td class="num">6</td><td class="num"><b>15</b></td><td class="num">7</td><td class="num">0.25s</td><td class="num"><b>8</b></td><td><span class="muted">GreatSwordPack</span></td><td class="num">×1.80</td></tr>
+<tr class="hot"><td class="name">Side Slash</td><td class="mono">MediumAttack</td><td class="num">9</td><td class="num">4</td><td class="num">8</td><td class="num"><b>21</b></td><td class="num">10</td><td class="num">0.35s</td><td class="num"><b>10</b></td><td><span class="muted">GreatSwordPack</span></td><td class="num">×1.80</td></tr>
+<tr class="hot"><td class="name">Overhead Slash</td><td class="mono">HeavyAttack</td><td class="num">16</td><td class="num">4</td><td class="num">12</td><td class="num"><b>32</b></td><td class="num">17</td><td class="num">0.53s</td><td class="num"><b>16</b></td><td><span class="muted">GreatSwordPack</span></td><td class="num">×2.00</td></tr>
+<tr><td class="name">Iaijutsu</td><td class="mono">SpecialHeavy</td><td class="num">30</td><td class="num">4</td><td class="num">8</td><td class="num"><b>42</b></td><td class="num">31</td><td class="num">0.70s</td><td class="num"><b>21</b></td><td><span class="muted">GreatSwordPack</span></td><td class="num">×1.25</td></tr>
+<tr class="hot"><td class="name">Nito Cross</td><td class="mono">SpecialMedium</td><td class="num">20</td><td class="num">5</td><td class="num">22</td><td class="num"><b>47</b></td><td class="num">21</td><td class="num">0.78s</td><td class="num"><b>24</b></td><td><span class="muted">GreatSwordPack</span></td><td class="num">×2.26</td></tr>
+<tr><td class="name">Nukitsuke</td><td class="mono">SpecialLight</td><td class="num">18</td><td class="num">5</td><td class="num">20</td><td class="num"><b>43</b></td><td class="num">19</td><td class="num">0.72s</td><td class="num"><b>22</b></td><td><span class="muted">GreatSwordPack</span></td><td class="num">×1.00</td></tr>
+<tr><td class="name">Spinning Riposte</td><td class="mono">RiposteDash</td><td class="num">12</td><td class="num">4</td><td class="num">14</td><td class="num"><b>30</b></td><td class="num">13</td><td class="num">0.50s</td><td class="num"><b>15</b></td><td><span class="muted">GreatSwordPack</span></td><td class="num">×1.20</td></tr>
+<tr class="warm"><td class="name">Push Kick Riposte</td><td class="mono">RiposteParry</td><td class="num">20</td><td class="num">4</td><td class="num">6</td><td class="num"><b>30</b></td><td class="num">21</td><td class="num">0.50s</td><td class="num"><b>15</b></td><td><span class="muted">GreatSwordPack</span></td><td class="num">×1.43</td></tr>
+</tbody></table>
+
+</section>
+
+<!-- ============ 6 MOVES B ============ -->
+<section>
+  <h2>Move specs — Richard and Salaadin</h2>
+  <h3>Richard</h3>
+<table class="moves"><thead><tr><th style="width:20%">Move</th><th style="width:14%">Trigger</th><th class="num">Start</th><th class="num">Act</th><th class="num">Rec</th><th class="num">Total</th><th class="num">Contact</th><th class="num">Target</th><th class="num">@30fps</th><th style="width:12%">Source</th><th class="num">Now</th></tr></thead><tbody>
+<tr><td class="name">Lion Thrust</td><td class="mono">LightAttack</td><td class="num">11</td><td class="num">3</td><td class="num">9</td><td class="num"><b>23</b></td><td class="num">12</td><td class="num">0.38s</td><td class="num"><b>12</b></td><td><b style="color:#eb6834">authored</b></td><td class="num">×1.21</td></tr>
+<tr class="warm"><td class="name">Cross Slash</td><td class="mono">MediumAttack</td><td class="num">15</td><td class="num">4</td><td class="num">11</td><td class="num"><b>30</b></td><td class="num">16</td><td class="num">0.50s</td><td class="num"><b>15</b></td><td><span class="muted">SwordShieldPack</span></td><td class="num">×1.60</td></tr>
+<tr class="warm"><td class="name">Crusader Hew</td><td class="mono">HeavyAttack</td><td class="num">22</td><td class="num">5</td><td class="num">17</td><td class="num"><b>44</b></td><td class="num">23</td><td class="num">0.73s</td><td class="num"><b>22</b></td><td><span class="muted">SwordShieldPack</span></td><td class="num">×1.40</td></tr>
+<tr class="hot"><td class="name">Twin Hew</td><td class="mono">SpecialHeavy</td><td class="num">30</td><td class="num">5</td><td class="num">20</td><td class="num"><b>55</b></td><td class="num">31</td><td class="num">0.92s</td><td class="num"><b>28</b></td><td><b style="color:#eb6834">authored</b></td><td class="num">×2.36</td></tr>
+<tr class="hot"><td class="name">Shield Bash</td><td class="mono">SpecialMedium</td><td class="num">22</td><td class="num">5</td><td class="num">20</td><td class="num"><b>47</b></td><td class="num">23</td><td class="num">0.78s</td><td class="num"><b>24</b></td><td><b style="color:#eb6834">authored</b></td><td class="num">×2.16</td></tr>
+<tr><td class="name">Shield Charge</td><td class="mono">SpecialLight</td><td class="num">24</td><td class="num">5</td><td class="num">18</td><td class="num"><b>47</b></td><td class="num">25</td><td class="num">0.78s</td><td class="num"><b>24</b></td><td><b style="color:#eb6834">authored</b></td><td class="num">×1.16</td></tr>
+<tr><td class="name">Lion Riposte</td><td class="mono">RiposteDash</td><td class="num">12</td><td class="num">4</td><td class="num">14</td><td class="num"><b>30</b></td><td class="num">13</td><td class="num">0.50s</td><td class="num"><b>15</b></td><td><span class="muted">SwordShieldPack</span></td><td class="num">×1.00</td></tr>
+<tr><td class="name">Boot Riposte</td><td class="mono">RiposteParry</td><td class="num">12</td><td class="num">4</td><td class="num">14</td><td class="num"><b>30</b></td><td class="num">13</td><td class="num">0.50s</td><td class="num"><b>15</b></td><td><span class="muted">SwordShieldPack</span></td><td class="num">×1.20</td></tr>
+</tbody></table>
+<h3>Salaadin</h3>
+<table class="moves"><thead><tr><th style="width:20%">Move</th><th style="width:14%">Trigger</th><th class="num">Start</th><th class="num">Act</th><th class="num">Rec</th><th class="num">Total</th><th class="num">Contact</th><th class="num">Target</th><th class="num">@30fps</th><th style="width:12%">Source</th><th class="num">Now</th></tr></thead><tbody>
+<tr><td class="name">Saif Cut</td><td class="mono">LightAttack</td><td class="num">8</td><td class="num">3</td><td class="num">7</td><td class="num"><b>18</b></td><td class="num">9</td><td class="num">0.30s</td><td class="num"><b>9</b></td><td><span class="muted">SwordShieldPack</span></td><td class="num">×1.11</td></tr>
+<tr class="hot"><td class="name">Shin Cut</td><td class="mono">MediumAttack</td><td class="num">12</td><td class="num">4</td><td class="num">9</td><td class="num"><b>25</b></td><td class="num">13</td><td class="num">0.42s</td><td class="num"><b>12</b></td><td><b style="color:#eb6834">authored</b></td><td class="num">×2.72</td></tr>
+<tr class="hot"><td class="name">Whirling Saif</td><td class="mono">HeavyAttack</td><td class="num">17</td><td class="num">4</td><td class="num">13</td><td class="num"><b>34</b></td><td class="num">18</td><td class="num">0.57s</td><td class="num"><b>17</b></td><td><b style="color:#eb6834">authored</b></td><td class="num">×2.71</td></tr>
+<tr class="warm"><td class="name">Crescent Slash</td><td class="mono">SpecialMedium</td><td class="num">20</td><td class="num">5</td><td class="num">19</td><td class="num"><b>44</b></td><td class="num">21</td><td class="num">0.73s</td><td class="num"><b>22</b></td><td><span class="muted">SwordShieldPack</span></td><td class="num">×1.77</td></tr>
+<tr class="hot"><td class="name">Hattin Cleave</td><td class="mono">SpecialHeavy</td><td class="num">26</td><td class="num">5</td><td class="num">20</td><td class="num"><b>51</b></td><td class="num">27</td><td class="num">0.85s</td><td class="num"><b>26</b></td><td><span class="muted">SwordShieldPack</span></td><td class="num">×2.71</td></tr>
+<tr class="hot"><td class="name">Veiled Rush</td><td class="mono">SpecialLight</td><td class="num">20</td><td class="num">5</td><td class="num">18</td><td class="num"><b>43</b></td><td class="num">21</td><td class="num">0.72s</td><td class="num"><b>22</b></td><td><b style="color:#eb6834">authored</b></td><td class="num">×2.00</td></tr>
+<tr class="hot"><td class="name">Falcon Riposte</td><td class="mono">RiposteDash</td><td class="num">12</td><td class="num">4</td><td class="num">14</td><td class="num"><b>30</b></td><td class="num">13</td><td class="num">0.50s</td><td class="num"><b>15</b></td><td><span class="muted">SwordShieldPack</span></td><td class="num">×3.47</td></tr>
+<tr class="warm"><td class="name">Saber Riposte</td><td class="mono">RiposteParry</td><td class="num">12</td><td class="num">4</td><td class="num">14</td><td class="num"><b>30</b></td><td class="num">13</td><td class="num">0.50s</td><td class="num"><b>15</b></td><td><b style="color:#eb6834">authored</b></td><td class="num">×1.47</td></tr>
+</tbody></table>
+  <div class="panel" style="border-left-color:var(--ok)">
+    <h4>Salaadin fights with the falchion and nothing else</h4>
+    <p>
+      No thrusts, no shield bashes, no kicks. Where the other three answer a parry with a boot, his
+      riposte is a saber counter. The shield blocks; it never strikes. Keep that when adding moves.
+    </p>
+  </div>
+</section>
+
+<!-- ============ 7 COVERAGE ============ -->
+<section>
+  <h2>What is real and what is placeholder</h2>
+  <div class="legend">
+    <span><i style="background:#2a78d6"></i>Mixamo pack clip</span>
+    <span><i style="background:#eb6834"></i>Authored for this game</span>
+  </div>
+  <table class="comp">
+    <thead><tr><th style="width:14%">Fighter</th><th style="width:44%">All animator states</th>
+      <th style="width:24%">Packs drawn on</th><th class="num">Stretched 1.8x+</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Bjorn</td>
+        <td><div class="bar"><span class="pack" style="width:95.8%"></span><span class="auth" style="width:4.2%"></span></div>
+            <div class="cnt">23 pack · 1 authored · 24 states</div></td>
+        <td>AxePack 12, AxePack2H 8, GreatSword 3</td><td class="num" style="color:#e34948"><b>16</b></td></tr>
+      <tr><td class="name">Miyamoto</td>
+        <td><div class="bar"><span class="pack" style="width:100%"></span></div>
+            <div class="cnt">22 pack · 0 authored · 22 states</div></td>
+        <td>GreatSword 13, AxePack2H 7, AxePack 2</td><td class="num" style="color:#e34948"><b>12</b></td></tr>
+      <tr><td class="name">Richard</td>
+        <td><div class="bar"><span class="pack" style="width:81.8%"></span><span class="auth" style="width:18.2%"></span></div>
+            <div class="cnt">18 pack · 4 authored · 22 states</div></td>
+        <td>SwordShieldPack 18</td><td class="num"><b>3</b></td></tr>
+      <tr><td class="name">Salaadin</td>
+        <td><div class="bar"><span class="pack" style="width:77.3%"></span><span class="auth" style="width:22.7%"></span></div>
+            <div class="cnt">17 pack · 5 authored · 22 states</div></td>
+        <td>SwordShieldPack 17</td><td class="num"><b>6</b></td></tr>
+    </tbody>
+  </table>
+
+  <h3>The worst stretches in the game — the work queue</h3>
+  <table>
+    <thead><tr><th style="width:16%">Fighter</th><th style="width:36%">State</th>
+      <th class="num">Clip</th><th style="width:22%">Source</th><th class="num">Played at</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Bjorn</td><td class="mono">React_Right</td><td class="num">1.70s</td><td>AxePack</td><td class="num"><b>×3.78</b></td></tr>
+<tr><td class="name">Salaadin</td><td class="mono">Salaadin_Riposte_Dash</td><td class="num">1.73s</td><td>SwordShieldPack</td><td class="num"><b>×3.47</b></td></tr>
+<tr><td class="name">Miyamoto</td><td class="mono">Parry_Success</td><td class="num">1.33s</td><td>AxePack</td><td class="num"><b>×3.33</b></td></tr>
+<tr><td class="name">Bjorn</td><td class="mono">React_Front</td><td class="num">1.50s</td><td>AxePack</td><td class="num"><b>×3.33</b></td></tr>
+<tr><td class="name">Bjorn</td><td class="mono">Parry_Success</td><td class="num">1.33s</td><td>AxePack</td><td class="num"><b>×3.33</b></td></tr>
+<tr><td class="name">Miyamoto</td><td class="mono">Dash_Back</td><td class="num">0.68s</td><td>AxePack2H</td><td class="num"><b>×3.11</b></td></tr>
+<tr><td class="name">Miyamoto</td><td class="mono">Dash_Forward</td><td class="num">0.67s</td><td>AxePack2H</td><td class="num"><b>×3.03</b></td></tr>
+<tr><td class="name">Miyamoto</td><td class="mono">Dash_Right</td><td class="num">0.63s</td><td>AxePack2H</td><td class="num"><b>×2.88</b></td></tr>
+<tr><td class="name">Miyamoto</td><td class="mono">React_Right</td><td class="num">1.27s</td><td>GreatSwordPack</td><td class="num"><b>×2.81</b></td></tr>
+<tr><td class="name">Miyamoto</td><td class="mono">Dash_Left</td><td class="num">0.62s</td><td>AxePack2H</td><td class="num"><b>×2.80</b></td></tr>
+<tr><td class="name">Salaadin</td><td class="mono">Salaadin_Medium_ShinCut</td><td class="num">1.13s</td><td>authored</td><td class="num"><b>×2.72</b></td></tr>
+<tr><td class="name">Salaadin</td><td class="mono">Salaadin_Special_HattinCleave</td><td class="num">2.30s</td><td>SwordShieldPack</td><td class="num"><b>×2.71</b></td></tr>
+<tr><td class="name">Salaadin</td><td class="mono">Salaadin_Heavy_WhirlingSaif</td><td class="num">1.53s</td><td>authored</td><td class="num"><b>×2.71</b></td></tr>
+<tr><td class="name">Miyamoto</td><td class="mono">React_Left</td><td class="num">1.20s</td><td>GreatSwordPack</td><td class="num"><b>×2.67</b></td></tr>
+<tr><td class="name">Richard</td><td class="mono">Richard_Special_DoubleHigh</td><td class="num">2.17s</td><td>authored</td><td class="num"><b>×2.36</b></td></tr>
+<tr><td class="name">Bjorn</td><td class="mono">Dash_Back</td><td class="num">0.68s</td><td>AxePack2H</td><td class="num"><b>×2.28</b></td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:7.9pt; margin-top:-.5mm">
+    Top 16 of <b>37 states at 1.8x or worse</b>, out of 90. Bjorn and Miyamoto hold 28 of the 37 —
+    the Axe and Great Sword packs are long cinematic clips pinned to short moves. Richard is
+    cleanest at 3, because the Sword and Shield pack happens to be brisk.
+  </p>
+</section>
+
+<!-- ============ 8 WHERE TO START ============ -->
+<section>
+  <h2>Where to start, and what to watch for</h2>
+
+  <h3>Suggested order</h3>
+  <table>
+    <thead><tr><th style="width:7%">#</th><th style="width:33%">Work</th><th>Why it is first</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="name">The three reaction clips, per fighter</td>
+          <td>React_Front / Left / Right run up to x3.78. They fire on <i>every single hit</i>, so they are the most-seen animation in the game and the worst-played.</td></tr>
+      <tr><td class="num">2</td><td class="name">Dashes, Bjorn and Miyamoto</td>
+          <td>x2.3 to x3.1, and dashes are the defensive core — they fire constantly and read as a twitch.</td></tr>
+      <tr><td class="num">3</td><td class="name">Salaadin's Medium and Heavy</td>
+          <td>x2.72 and x2.71. They are his two showpiece normals and already authored, so only the timing needs redoing.</td></tr>
+      <tr><td class="num">4</td><td class="name">Parry_Success and the ripostes</td>
+          <td>x3.33 and x3.47. The payoff beat of the whole defensive game lands as a blur.</td></tr>
+      <tr><td class="num">5</td><td class="name">Specials</td>
+          <td>x1.8 to x2.4. Most visible per use, least frequent — real value, but after the above.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Things that will bite</h3>
+  <table>
+    <thead><tr><th style="width:28%">Watch for</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Two bone conventions</td>
+          <td>Bjorn and Miyamoto are Tripo rigs with their own names; Richard and Salaadin are <span class="mono">mixamorig:*</span>. A clip authored on one will not open on the other. Pack clips cross between them only because they go through Unity's humanoid retargeting.</td></tr>
+      <tr><td class="name">Porting a pose between rigs</td>
+          <td>Convert, never scale by height. Limb targets belong in <b>fractions of that limb's own reach</b>; height-scaled metres miss. Swing a limb with two-bone IK, not by rotating a bone about its own axis — bone roll differs per rig and the limb comes out sideways.</td></tr>
+      <tr><td class="name">Elbow poles</td>
+          <td>The pole must sit <b>below</b> the shoulder. Salaadin's was once written level with it and both arms came out winged.</td></tr>
+      <tr><td class="name">Salaadin's stance</td>
+          <td><span class="mono">LEG_DAMP = 0.55</span> in the generator eases his legs back toward rest, because the pack's block idle plants the feet 94 deg apart — fine on Richard, the splits on him. Keying legs by hand sidesteps this entirely; do not copy the generated leg values.</td></tr>
+      <tr><td class="name">Bodies are not in git</td>
+          <td>The four body FBXs and all source meshes are gitignored and live on one machine. They are rebuilt from the Blender scripts. The six weapon FBXs <i>are</i> committed.</td></tr>
+      <tr><td class="name">The frame data can move</td>
+          <td>Startup / active / recovery live in one table, <span class="mono">Editor/CrucibleBalance.cs</span>. Change a move's timing there and its clip is re-fitted the next time <span class="mono">Use Mixamo packs</span> runs — so a balance pass silently re-times animation. Re-run that menu item after any frame change, then check the speed.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="panel" style="border-left-color:var(--ok)">
+    <h4>The file to work in</h4>
+    <p>
+      <span class="mono">ArtSource/Blender/Salaadin_Studio.blend</span> opens on his corrected rig in
+      pose mode, falchion and shield mounted, mesh locked, scene at 30 fps. Two text blocks ride
+      inside it: <b>EXPORT_CLIP</b> sends the current action to Unity with all four import rules
+      satisfied, and <b>README</b> repeats the workflow. The export runs on a throwaway copy, so it
+      never touches the animation being worked on.
+    </p>
+    <p>
+      The equivalent for Richard is the generator <span class="mono">richard_clips.py</span>; a
+      studio file for him has not been built yet.
+    </p>
+  </div>
+</section>
+
+</body>
+</html>
