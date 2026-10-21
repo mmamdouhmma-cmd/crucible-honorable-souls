@@ -293,6 +293,17 @@ public static class CrucibleMixamoSetup
                 if (!byFile.TryGetValue(path, out var list)) byFile[path] = list = new List<(string, bool)>();
                 if (!list.Any(e => e.state == m.state)) list.Add((m.state, m.loop));
             }
+        // Hand-keyed clips exported from Salaadin_Studio.blend are not in any map yet - the artist
+        // makes the clip first and points a state at it after. Without an entry here they would be
+        // imported Generic with no avatar, which is the one setup that cannot work, so sweep in any
+        // <Character>_*.fbx sitting in Clips/Custom and give it the same treatment as a mapped one.
+        // OwnerAvatar decides whose it is from the file name, and returns null for anything else.
+        foreach (var path in Directory.GetFiles(CustomDir, "*.fbx").Select(p => p.Replace(Path.DirectorySeparatorChar, '/')))
+            if (!byFile.ContainsKey(path) && OwnerAvatar(path) != null)
+                // one clip named after the file, so it still gets Based Upon: Original and the
+                // restlead frame dropped - an empty list would write no clipAnimations at all
+                byFile[path] = new List<(string, bool)> { (Path.GetFileNameWithoutExtension(path), false) };
+
         foreach (var kv in byFile)
         {
             string path = kv.Key;
