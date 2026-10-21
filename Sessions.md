@@ -1710,5 +1710,16 @@ heavy the Veiled Rush, and each special hands a normal back. Eight attacks, 2/2/
 Bjorn 100 -> 89 -> 76 -> 66% - the Veiled Rush lunges in and the shield reads correctly facing
 the opponent through the cut. No game-side console errors.
 
-Still open: his ground offset came from the rest pose and has only been eyeballed in play; the
-cape skinning has not been looked at closely in motion; and nothing is committed.
+**Committed** as `3bb1150` on branch **`salaadin`** - 297 files, ~83 MB. It carries this session's
+work plus everything that had never been committed before it: Richard's character assets, his
+four keyed clips, the Sword and Shield pack, the per-fighter data assets and the 0.85s lockout.
+Splitting those out would have left a commit that cannot open the scene. `main` is still behind;
+land it with `git merge --ff-only salaadin`. Nearly all of the 83 MB is weapon basecolor JPGs at
+4-6 MB each - the first thing to downsize if the repo starts to feel heavy.
+
+Still open on Salaadin: his ground offset came from the rest pose and has only been eyeballed
+standing; the cape has not been watched in motion at full speed; and the AI has never driven him.
+
+**Next session starts from the user's new task list**, not from `Plan_LiteMobile.md`'s running
+order - Task 7 (teaching the AI the lite game) was dropped and the list that replaces it has not
+been written down here yet.
