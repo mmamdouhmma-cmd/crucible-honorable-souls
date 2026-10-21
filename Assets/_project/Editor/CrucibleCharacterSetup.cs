@@ -86,11 +86,27 @@ public static class CrucibleCharacterSetup
         if (mi.avatarSetup != ModelImporterAvatarSetup.CreateFromThisModel) { mi.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel; reimport = true; }
         if (mi.materialImportMode != ModelImporterMaterialImportMode.None) { mi.materialImportMode = ModelImporterMaterialImportMode.None; reimport = true; }
         var hd = mi.humanDescription;
+        // THROW THE STORED SKELETON AWAY. humanDescription.skeleton keeps a copy of every bone's
+        // position from the LAST time the avatar was built, in the .meta, and Unity builds the
+        // avatar from that copy rather than from the file. Re-exporting the FBX with joints in new
+        // places therefore changes nothing at runtime: the Animator keeps posing the old skeleton
+        // while the same hierarchy measures correctly in edit mode, because edit mode reads the
+        // file and play mode reads the avatar. Salaadin's corrected elbow was invisible for exactly
+        // this reason - the file said 52% of the way from shoulder to wrist and the stored skeleton
+        // still said 41%. Clearing both arrays makes CreateFromThisModel regenerate them, which is
+        // what "rebuild the body from the FBX" is supposed to mean.
+        if (hd.skeleton.Length > 0 || hd.human.Length > 0)
+        {
+            hd.skeleton = new SkeletonBone[0];
+            hd.human = new HumanBone[0];
+            reimport = true;
+        }
         if (hd.upperArmTwist != 1f || hd.lowerArmTwist != 1f || hd.upperLegTwist != 0.5f || hd.lowerLegTwist != 0.5f)
         {
             hd.upperArmTwist = 1f; hd.lowerArmTwist = 1f; hd.upperLegTwist = 0.5f; hd.lowerLegTwist = 0.5f;
-            mi.humanDescription = hd; reimport = true;
+            reimport = true;
         }
+        if (reimport) mi.humanDescription = hd;
         if (reimport) { mi.SaveAndReimport(); Debug.Log($"{charName}: importer set to Humanoid, reimported"); }
 
         var fbx = AssetDatabase.LoadAssetAtPath<GameObject>(fbxPath);

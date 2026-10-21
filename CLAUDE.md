@@ -195,17 +195,30 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
 - **Open, and only the user's phone can answer it**: frame rate, whether the on-screen buttons
   fall under a real thumb, online latency. Two touch-layout questions are written up in the lite
   plan and deliberately not changed blind.
-- **Salaadin's rig is being re-rigged and the current one is known bad** - see
-  `Design/Salaadin_Rerig.md`. Mixamo's auto-rigger put his elbow markers 41% of the way from
-  shoulder to wrist instead of ~52%, so his upper arm is 8.0% of his height against Richard's
-  14.6% and shorter than his own forearm, and his knee markers left him bound at 149/135 deg
-  instead of a straight symmetric T-pose. The MESH is fine; this is a re-rig, not a re-model, and
-  nothing downstream caused it - the raw Mixamo download measures the same as the game. The user
-  is redoing the Mixamo pass; when `ArtSource/Characters/Mixamo/Salaadin_Rigged.fbx` is replaced,
-  rebuild with `salaadin_body.py` -> `salaadin_clips.py` -> the Salaadin menu chain, and check the
-  `MOUNT` offsets in `salaadin_body.py` (metres against a 1.04-tall rig, so new proportions can
-  move the falchion and shield off the hand; the IK targets in `salaadin_clips.py` are fractions
-  of limb reach and carry over by themselves).
+- **Salaadin's rig was fixed by hand, because Mixamo cannot rig him.** His mesh is mostly cloth:
+  the leg geometry stops at z=0.33 (the top of the boots) and above it there is only coat skirt and
+  cloak. Mixamo's auto-rigger fits its skeleton to the mesh VOLUME, so it has nothing but fabric
+  where the thigh should be and drops the knee ~10% of body height forward of the hip-ankle line -
+  a permanent crouch no front-view marker can correct. Two marker rounds proved it: the second was
+  symmetric (well placed) and still bent 128 deg, and the elbow went the WRONG way, 41% -> 35% of
+  the way from shoulder to wrist. `ArtSource/Blender/salaadin_fixrig.py` fixes both by CONSTRUCTION
+  instead of fitting - knee onto the straight hip->ankle line, elbow onto the shoulder->wrist line
+  at 52% - by moving the bones in EDIT mode, which moves the rest pose while the mesh and the
+  vertex groups stay put, so Mixamo's weights are kept and nothing is re-weighted. The round trip
+  is `Salaadin_Rigged.fbx` -> `salaadin_fixrig.py` -> `Salaadin_Rigged_Fixed.fbx` ->
+  `salaadin_body.py`; `Design/Salaadin_Rerig.md` has the measurements. Verified in play: elbow 52%,
+  bind knees 179 deg, shield boss . forward 0.89, 22 states and 0 null clips.
+- **`humanDescription.skeleton` caches every bone's position and Unity builds the avatar from the
+  CACHE, not the file.** Re-export an FBX with a joint in a new place and nothing changes at
+  runtime - the Animator keeps posing the old skeleton. The tell is maddening: the same hierarchy
+  measures CORRECTLY in edit mode and WRONG in play mode, because edit mode reads the file and play
+  mode reads the avatar. Salaadin's corrected elbow was invisible for exactly this reason (file
+  52%, cached 41%). `avatarSetup = CreateFromThisModel` does NOT refresh it; the stored arrays must
+  be cleared (`hd.skeleton = new SkeletonBone[0]; hd.human = new HumanBone[0]`) before the
+  reimport. `Rebuild Player<N>` in `CrucibleCharacterSetup.cs` now does that every time.
+- **His corrected rig is NOT in git**: `Characters/*/Model/` and `ArtSource/Characters/` are both
+  gitignored, so `Salaadin_Body.fbx`, its .meta and `Salaadin_Rigged*.fbx` live only on this
+  machine. A fresh clone rebuilds them by running `salaadin_fixrig.py` then `salaadin_body.py`.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `parryCounterDamageMultiplier` is serialized 1.5 against `BalanceConfig`'s

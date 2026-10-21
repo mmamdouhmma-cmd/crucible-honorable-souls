@@ -1844,3 +1844,47 @@ silently lose its animation.
 Verified in play mode (Salaadin vs Richard and vs Miyamoto, Al-Quds): the guard matching the
 authored clip bone for bone, both fighters' 22 animator states pointing at a clip, the Move List reading
 the new set off the live AttackData, and the main menu showing Battle Now with no Quick Battle row.
+
+### 2026-10-21 - Salaadin's rig: Mixamo cannot see him, and Unity cached the old skeleton
+
+The user: "why in the game scene salaadine is not even in a Tpose like the others, he is broken he
+got a streatch leg, and his arm is like a snake, i think it should be re rigged. and humanized."
+
+He was right, and it was upstream of every fix from earlier in the day. Measured on the raw Mixamo
+download, before any of our scripts touch it: upper arm 8.0% of height against Richard's 14.6% and
+SHORTER than his own forearm, because the elbow landed 41% of the way from shoulder to wrist
+instead of ~52%; knees bound at 149/135 deg against Richard's 167/165. The mesh rendered on its own
+is well proportioned and stands with straight symmetric legs, so a re-rig, not a re-model.
+
+The user redid the Mixamo pass with the markers placed carefully. **It came out worse**: symmetric
+now (the placement was good) but the elbow moved the wrong way to 35% and the knees bent to 128 deg
+with the joint 11.6% of height off the leg axis. The reason is structural, and worth remembering -
+his mesh is 27 loose parts and the LEG GEOMETRY STOPS AT z=0.33, the top of the boots. Above that
+there is only coat skirt and cloak (which reaches y=0.22 behind him). Mixamo fits its skeleton to
+the mesh VOLUME, so where the thigh should be it finds fabric and puts the knee in the skirt. The
+knee marker's HEIGHT was right at 51%; it is the DEPTH, which Mixamo infers, that no front-view
+marker can reach. Same story at the elbow, where the shoulder cape swallows the upper arm.
+
+So the skeleton was corrected by construction instead of by fitting: `salaadin_fixrig.py` moves the
+knee onto the straight hip->ankle line and the elbow onto the shoulder->wrist line at 52%, in EDIT
+mode, which moves the rest pose while the mesh and the vertex groups stay where they are. Mixamo's
+weights are kept and nothing is re-weighted. Elbow 35 -> 52%, knees 128 -> 179 deg, 11.2% -> 0.2%
+off the axis. The weapon mounts needed no change, because only the elbow moved and the hand bones
+were never touched.
+
+**Then the fix did not appear in the game, and the reason cost an hour.** The body FBX measured 52%
+and the scene's Player4 measured 52% in edit mode - but 41% in PLAY mode. `humanDescription.skeleton`
+caches every bone's position in the .meta, and Unity builds the avatar from that cache rather than
+from the file. Edit mode reads the file; play mode reads the avatar. `avatarSetup =
+CreateFromThisModel` does not refresh the cache - the stored `skeleton` and `human` arrays have to
+be cleared before the reimport. `CrucibleCharacterSetup.Rebuild` now clears them every time, which
+is what "rebuild the body from the FBX" should always have meant.
+
+Verified in a live match against Richard: elbow 52%, bind knees 179 deg, shield boss . forward 0.89,
+22 states and 0 null clips, console clean. He stands and fights like the other three.
+
+Carried forward: his corrected rig is NOT in git - `Characters/*/Model/` and `ArtSource/Characters/`
+are both gitignored, so a fresh clone must re-run `salaadin_fixrig.py` then `salaadin_body.py`.
+Richard's own rig was never re-fitted and does not need it (Mixamo found his limbs because he wears
+plate, not a cape).
+
