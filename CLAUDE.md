@@ -197,28 +197,46 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   plan and deliberately not changed blind.
 - **Salaadin's rig was fixed by hand, because Mixamo cannot rig him.** His mesh is mostly cloth:
   the leg geometry stops at z=0.33 (the top of the boots) and above it there is only coat skirt and
-  cloak. Mixamo's auto-rigger fits its skeleton to the mesh VOLUME, so it has nothing but fabric
-  where the thigh should be and drops the knee ~10% of body height forward of the hip-ankle line -
-  a permanent crouch no front-view marker can correct. Two marker rounds proved it: the second was
-  symmetric (well placed) and still bent 128 deg, and the elbow went the WRONG way, 41% -> 35% of
-  the way from shoulder to wrist. `ArtSource/Blender/salaadin_fixrig.py` fixes both by CONSTRUCTION
-  instead of fitting - knee onto the straight hip->ankle line, elbow onto the shoulder->wrist line
-  at 52% - by moving the bones in EDIT mode, which moves the rest pose while the mesh and the
-  vertex groups stay put, so Mixamo's weights are kept and nothing is re-weighted. The round trip
-  is `Salaadin_Rigged.fbx` -> `salaadin_fixrig.py` -> `Salaadin_Rigged_Fixed.fbx` ->
-  `salaadin_body.py`; `Design/Salaadin_Rerig.md` has the measurements. Verified in play: elbow 52%,
-  bind knees 179 deg, shield boss . forward 0.89, 22 states and 0 null clips.
+  cloak. Mixamo's auto-rigger fits its skeleton to the mesh VOLUME, so where the thigh and pelvis
+  should be it finds only fabric. Two careful marker rounds proved it - the second was symmetric
+  and WORSE. `ArtSource/Blender/salaadin_fixrig.py` places four joints by CONSTRUCTION instead, by
+  moving bones in EDIT mode (which moves the rest pose while the mesh and vertex groups stay put,
+  so Mixamo's weights are kept and nothing is re-weighted):
+  - **elbow** onto the shoulder->wrist line at 52% (Mixamo had it at 35%, giving an upper arm
+    SHORTER than the forearm - the "snake arm");
+  - **knee** onto the straight hip->ankle line (Mixamo bent it 128 deg into the skirt);
+  - **hip joints** in to 11% of height apart and down to 52% up (Mixamo had them 19.8% apart -
+    twice his ankle separation - and 54% up, out in the coat);
+  - **hip fore/aft over the ankle**, which is the one that caused the SPLITS. The clips copy the
+    pack's leg bones rest-relative (`apply_frame`), which is only valid when both rigs' legs rest
+    the same way: the pack thigh hangs at (0.00,-0.01,-1.00) and Richard's at (+0.08,+0.13,-0.99),
+    while Mixamo left Salaadin's at (-0.01,+0.39,-0.92) - **tilted 23 deg backward**, because his
+    hip socket sat forward in the coat. Every copied leg rotation landed 23 deg out and compounded
+    down the knee. **His arms never showed this because the clips key them with IK, not copied
+    rotations** - only the legs come through `apply_frame`.
+  Bone ROLL is preserved across all of it (`align_roll` to each bone's saved z axis), since a roll
+  angle describes different axes once the head or tail moves.
+- **`LEG_DAMP` in `salaadin_clips.py` narrows his stance, and it is not a hack.** With the rig
+  correct his guard reproduced the pack's block idle EXACTLY (L 61.5 / R 48.0 against the pack's
+  61.5 / 49.2) - and that pack clip plants the feet 94 deg apart. It reads fine on the pack rig and
+  on Richard, who is short-legged and already stands wide, and reads as the splits on Salaadin, who
+  is long-legged with his feet together at rest. `LEG_DAMP = 0.55` eases each leg rotation back
+  toward rest, keeping the shape of the stance and taking the span out: 94 -> 50 deg, against
+  Richard's 56. Verified across his states: idle 50, walk 31, shin cut 50, whirling saif 50,
+  veiled rush 35; guard still shield boss . forward 0.98, blade edge . forward 0.94, elbows 118/129.
 - **`humanDescription.skeleton` caches every bone's position and Unity builds the avatar from the
   CACHE, not the file.** Re-export an FBX with a joint in a new place and nothing changes at
   runtime - the Animator keeps posing the old skeleton. The tell is maddening: the same hierarchy
   measures CORRECTLY in edit mode and WRONG in play mode, because edit mode reads the file and play
-  mode reads the avatar. Salaadin's corrected elbow was invisible for exactly this reason (file
-  52%, cached 41%). `avatarSetup = CreateFromThisModel` does NOT refresh it; the stored arrays must
-  be cleared (`hd.skeleton = new SkeletonBone[0]; hd.human = new HumanBone[0]`) before the
+  mode reads the avatar. `avatarSetup = CreateFromThisModel` does NOT refresh it; the stored arrays
+  must be cleared (`hd.skeleton = new SkeletonBone[0]; hd.human = new HumanBone[0]`) before the
   reimport. `Rebuild Player<N>` in `CrucibleCharacterSetup.cs` now does that every time.
-- **His corrected rig is NOT in git**: `Characters/*/Model/` and `ArtSource/Characters/` are both
-  gitignored, so `Salaadin_Body.fbx`, its .meta and `Salaadin_Rigged*.fbx` live only on this
-  machine. A fresh clone rebuilds them by running `salaadin_fixrig.py` then `salaadin_body.py`.
+- **Rebuilding Salaadin end to end**: `salaadin_fixrig.py` (Salaadin_Rigged.fbx ->
+  Salaadin_Rigged_Fixed.fbx) -> `salaadin_body.py` -> `salaadin_clips.py` -> in Unity
+  `Rebuild Player4`, `Use Mixamo packs`, `Wire special and riposte states`, `Wire combo strings`,
+  `Salaadin > 4 Rewire`, `Apply the roster balance`. **His corrected rig is NOT in git**:
+  `Characters/*/Model/` and `ArtSource/Characters/` are both gitignored, so the FBXs live only on
+  this machine and a fresh clone must re-run that chain. `Design/Salaadin_Rerig.md` has the numbers.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `parryCounterDamageMultiplier` is serialized 1.5 against `BalanceConfig`'s

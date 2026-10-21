@@ -111,6 +111,10 @@ def take(path):
     return frames
 
 
+# How much of the pack's leg pose to keep, 1.0 being all of it. See apply_frame.
+LEG_DAMP = 0.55
+
+
 def apply_frame(arm, frame, only=None, skip=None):
     for pb in arm.pose.bones:
         short = pb.name.split(":")[-1]
@@ -123,6 +127,16 @@ def apply_frame(arm, frame, only=None, skip=None):
         m = frame[short][0].copy()
         if short == "Hips":
             m.translation = m.translation * (HIP_H / max(arm.matrix_world.to_scale()[0], 1e-6))
+        elif LEG_DAMP < 1.0 and any(short.endswith(b) for b in ("UpLeg", "Leg")):
+            # NARROW THE STANCE. These leg keys are the pack's own, copied bone for bone, and the
+            # pack's block idle plants the feet 94 deg apart - a stance that reads fine on the pack
+            # rig and on Richard, who is short-legged and already stands wide, and reads as the
+            # SPLITS on Salaadin, who is long-legged with his feet together at rest. Easing each
+            # leg rotation back toward its rest pose keeps the shape of the stance and takes the
+            # span out of it. Richard's idle sits near 56 deg, which is what this is tuned to.
+            loc, rot, scl = m.decompose()
+            rot = Quaternion().slerp(rot, LEG_DAMP)
+            m = Matrix.LocRotScale(loc, rot, scl)
         pb.matrix_basis = m
     bpy.context.view_layer.update()
 

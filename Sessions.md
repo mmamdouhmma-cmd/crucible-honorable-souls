@@ -1888,3 +1888,41 @@ are both gitignored, so a fresh clone must re-run `salaadin_fixrig.py` then `sal
 Richard's own rig was never re-fitted and does not need it (Mixamo found his limbs because he wears
 plate, not a cape).
 
+### 2026-10-21 - Salaadin, continued: the splits, and the 23 degrees behind them
+
+"salaadin is completely messed, like he is doing a split, however i tried few animations on mixamo
+it was fine, but i think it needs to be rigged on blender."
+
+Both halves of that were right, and the second half explains the first. On Mixamo's own site the
+rig animates fine because Mixamo retargets to the rig it built. Our clips do something different:
+`apply_frame` in `salaadin_clips.py` copies the PACK's leg bones rest-relative onto his rig, which
+is only valid when both skeletons' legs rest the same way. The pack thigh hangs at
+(0.00,-0.01,-1.00) and Richard's at (+0.08,+0.13,-0.99) - both vertical. Mixamo left Salaadin's at
+(-0.01,+0.39,-0.92), **tilted 23 degrees backward**, because it had put his hip socket forward
+inside the coat. Every copied leg rotation landed 23 degrees out and compounded down the knee.
+His ARMS were never affected, which is why only the legs ever looked wrong - the clips key arms
+with IK and only the legs come through apply_frame.
+
+Getting there took four passes at the joints, each one uncovering the next, and all four are now in
+salaadin_fixrig.py: elbow to 52% of shoulder->wrist, knee onto the straight hip->ankle line, hip
+joints in to 11% of height apart and down to 52% up, and finally the hip's fore/aft over the ankle.
+Bone roll is preserved throughout (align_roll to each bone's saved z axis) - a roll angle means
+different axes once the head or tail moves, and I lost a pass to that.
+
+With the rig correct, his guard then reproduced the pack's block idle EXACTLY - L 61.5 / R 48.0
+against the pack's 61.5 / 49.2 - and that is when the real nature of the thing showed: the pack's
+block idle plants the feet 94 degrees apart. It reads as a wide guard on the pack rig and on
+Richard, who is short-legged and already stands wide at rest, and as the splits on Salaadin, who is
+long-legged with his feet together. So the last step was not a rig fix at all: LEG_DAMP = 0.55 in
+salaadin_clips.py eases each leg rotation back toward rest, keeping the shape and taking the span
+out. 94 -> 50 degrees, against Richard's 56.
+
+Verified live: idle 50, walk 31, shin cut 50, whirling saif 50, veiled rush 35; guard still shield
+boss . forward 0.98, blade edge . forward 0.94, elbows 118/129, 22 states and 0 null clips.
+
+Also fixed on the way, and worth more than the rig: **humanDescription.skeleton caches every bone's
+position and Unity builds the avatar from the CACHE, not the file.** Re-export a joint in a new
+place and nothing changes at runtime. The tell is that the same hierarchy measures correctly in
+edit mode and wrong in play mode - edit mode reads the file, play mode reads the avatar.
+CreateFromThisModel does not refresh it. Rebuild Player<N> now clears the stored arrays every time.
+
