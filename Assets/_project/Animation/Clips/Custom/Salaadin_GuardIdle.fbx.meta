@@ -32,10 +32,10 @@ ModelImporter:
     clipAnimations:
     - serializedVersion: 16
       name: Salaadin_Idle
-      takeName: Scene
-      internalID: -623603649343465320
-      firstFrame: 0
-      lastFrame: 72
+      takeName: restlead
+      internalID: -5812743650383702295
+      firstFrame: 1
+      lastFrame: 73
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -113,8 +113,8 @@ ModelImporter:
     serializedVersion: 3
     human: []
     skeleton: []
-    armTwist: 0.5
-    foreArmTwist: 0.5
+    armTwist: 1
+    foreArmTwist: 1
     upperLegTwist: 0.5
     legTwist: 0.5
     armStretch: 0.05

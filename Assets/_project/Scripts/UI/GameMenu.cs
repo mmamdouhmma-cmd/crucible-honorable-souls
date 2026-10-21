@@ -14,8 +14,8 @@ using UnityEngine.UI;
 /// game's logo: a near-black field, bronze inscription, dried blood for the selection.
 ///
 /// Boot      - the logo, then "press any button".
-/// Main      - Quick Battle (straight back into your last setup), Local Play (1 or 2 players,
-///             character select, arena select), Online, Practice, Move List, Settings, Quit.
+/// Main      - Battle Now (1 or 2 players, character select, arena select), Online, Practice,
+///             Move List, Settings, Quit.
 /// In match  - pause (Options / Escape), the KO card, rematch.
 ///
 /// Navigate with arrows or WASD, the d-pad or the left stick; confirm with Enter / Space / Cross;
@@ -47,18 +47,6 @@ public class GameMenu : MonoBehaviour
         public int touchButtons = 0;   // 0 auto (touch devices only), 1 always on, 2 off
     }
 
-    /// <summary>What Quick Battle drops you straight back into.</summary>
-    [Serializable]
-    class LastSetup
-    {
-        public bool valid;
-        public int players = 1;        // 1 = vs AI, 2 = both on this device
-        public int p1Character;        // index into the roster for Player 1
-        public int p2Character = 1;    // and for Player 2 (or the computer)
-        public string arena = "";
-        public int difficulty = (int)AiDifficulty.Moderate;
-    }
-
     class Item
     {
         public string label;
@@ -81,13 +69,11 @@ public class GameMenu : MonoBehaviour
     }
 
     const string SettingsKey = "crucible.settings.v1";
-    const string SetupKey = "crucible.lastsetup.v1";
     const int RowPool = 26;
 
     // ---------------------------------------------------------------- state
 
     SettingsData settings = new SettingsData();
-    LastSetup lastSetup = new LastSetup();
 
     Screen screen = Screen.None;
     readonly List<Screen> history = new List<Screen>();
@@ -188,7 +174,6 @@ public class GameMenu : MonoBehaviour
         }
 
         LoadSettings();
-        LoadSetup();
         BuildCanvas();
     }
 
@@ -382,7 +367,6 @@ public class GameMenu : MonoBehaviour
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
         Time.timeScale = GameSpeed();
         Show(Screen.None);
-        SaveSetup();
 
         if (countIn != null) StopCoroutine(countIn);
         countIn = StartCoroutine(CountInRoutine());
@@ -537,29 +521,6 @@ public class GameMenu : MonoBehaviour
         PlayerPrefs.Save();
     }
 
-    void LoadSetup()
-    {
-        string json = PlayerPrefs.GetString(SetupKey, "");
-        if (!string.IsNullOrEmpty(json))
-        {
-            try { lastSetup = JsonUtility.FromJson<LastSetup>(json) ?? new LastSetup(); }
-            catch { lastSetup = new LastSetup(); }
-        }
-    }
-
-    void SaveSetup()
-    {
-        if (flow == Flow.Online) return;              // nothing to jump back into
-        lastSetup.valid = true;
-        lastSetup.players = playerCount;
-        lastSetup.p1Character = p1Character;
-        lastSetup.p2Character = p2Character;
-        lastSetup.difficulty = (int)aiDifficulty;
-        lastSetup.arena = ArenaDirectory.Instance != null ? ArenaDirectory.Instance.NameOf(arenaChoice) : "";
-        PlayerPrefs.SetString(SetupKey, JsonUtility.ToJson(lastSetup));
-        PlayerPrefs.Save();
-    }
-
     float GameSpeed() => Mathf.Clamp(settings.gameSpeed, 0.5f, 1f);
 
     void ApplySettings()
@@ -669,9 +630,7 @@ public class GameMenu : MonoBehaviour
             // ------------------------------------------------------------ main
             case Screen.Main:
                 SetTitle("Crucible", "Honourable Souls");
-                if (lastSetup.valid)
-                    items.Add(new Item { label = "Quick Battle", value = QuickSummary, confirm = QuickBattle });
-                items.Add(new Item { label = "Local Play", value = () => "1 or 2 players on this device", confirm = () => { flow = Flow.Local; GoWiped(Screen.LocalSetup); } });
+                items.Add(new Item { label = "Battle Now", value = () => "1 or 2 players on this device", confirm = () => { flow = Flow.Local; GoWiped(Screen.LocalSetup); } });
                 items.Add(new Item { label = "Online", value = () => "play over the link", confirm = () => { flow = Flow.Online; Show(Screen.Online); } });
                 items.Add(new Item { label = "Practice", value = () => "a dummy that obeys your rules", confirm = () => { flow = Flow.Practice; playerCount = 1; GoWiped(Screen.CharSelect); } });
                 items.Add(new Item { label = "Move List", confirm = () => Show(Screen.Moves) });
@@ -682,7 +641,7 @@ public class GameMenu : MonoBehaviour
 
             // ------------------------------------------------------------ local setup
             case Screen.LocalSetup:
-                SetTitle("Local Play", "how many of you are there?");
+                SetTitle("Battle Now", "how many of you are there?");
                 items.Add(new Item { label = "One Player", value = () => "you against the computer", confirm = () => { playerCount = 1; GoWiped(Screen.CharSelect); } });
                 items.Add(new Item { label = "Two Players", value = () => "both fighters on this device", confirm = () => { playerCount = 2; GoWiped(Screen.CharSelect); } });
                 items.Add(new Item { label = "Back", confirm = Back });
@@ -898,30 +857,6 @@ public class GameMenu : MonoBehaviour
         if (netRole != NetSession.Role.None) return "online";
         if (vsAi) return $"versus the computer ({aiDifficulty})";
         return "two players";
-    }
-
-    string QuickSummary()
-    {
-        string who = lastSetup.players >= 2 ? "2 players" : "vs " + (AiDifficulty)lastSetup.difficulty;
-        string character = lastSetup.p1Character >= 0 && lastSetup.p1Character < roster.Length
-                         ? roster[lastSetup.p1Character].CharacterName : "";
-        string arena = string.IsNullOrEmpty(lastSetup.arena) ? "" : "  -  " + lastSetup.arena;
-        return $"{character}  -  {who}{arena}";
-    }
-
-    void QuickBattle()
-    {
-        playerCount = Mathf.Clamp(lastSetup.players, 1, 2);
-        aiDifficulty = (AiDifficulty)Mathf.Clamp(lastSetup.difficulty, 0, 2);
-        vsAi = playerCount == 1;
-        flow = Flow.Local;
-        ApplySides(lastSetup.p1Character, lastSetup.p2Character);
-        if (ArenaDirectory.Instance != null)
-        {
-            var list = ArenaDirectory.Instance.Selectable;
-            for (int i = 0; i < list.Count; i++) if (list[i].displayName == lastSetup.arena) { arenaChoice = i; break; }
-        }
-        GoWiped(Screen.Vs);
     }
 
     void ChooseDifficulty(AiDifficulty d)

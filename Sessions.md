@@ -1723,3 +1723,96 @@ standing; the cape has not been watched in motion at full speed; and the AI has 
 **Next session starts from the user's new task list**, not from `Plan_LiteMobile.md`'s running
 order - Task 7 (teaching the AI the lite game) was dropped and the list that replaces it has not
 been written down here yet.
+
+### 2026-10-21 — Battle Now, Salaadin's move set reshuffled, and the bind pose that ate every authored clip
+
+Three asks, one of which turned out to be a pipeline bug rather than a pose problem.
+
+**1. Main menu.** Quick Battle is gone — the row, `QuickSummary`, `QuickBattle`, the `LastSetup`
+class, `LoadSetup`/`SaveSetup` and the `crucible.lastsetup.v1` pref, all of it. Nothing else read
+any of it. "Local Play" is now **Battle Now** (the row and the setup screen's title).
+
+**2. Salaadin's move set.** His Medium and Heavy traded places with SP + Medium and SP + Heavy,
+and every kick came out of him (the user's call: "no kicks anywhere on him").
+
+| slot | move | clip |
+|---|---|---|
+| Light | Saif Cut | pack `sword and shield slash (3)` |
+| Medium | **Shin Cut** | `Custom/Salaadin_ShinCut` (the old Breaking Kick with the boot cut off) |
+| Heavy | **Whirling Saif** | `Custom/Salaadin_WhirlingSaif` |
+| SP + Light | Veiled Rush | `Custom/Salaadin_VeiledRush` |
+| SP + Medium | **Crescent Slash** | pack `sword and shield attack (2)` |
+| SP + Heavy | **Hattin Cleave** | pack `sword and shield slash (4)` |
+| dodge riposte | Falcon Riposte | pack `sword and shield attack (3)` |
+| parry riposte | **Saber Riposte** | `Custom/Salaadin_SaberRiposte` — a cut, not a boot, so `hitsWithWeapon` is ON where the other three fighters' parry ripostes have it off |
+
+The AttackData assets were renamed to match their new slots, so `CreateMoves` now **sweeps the
+Attacks folder of anything the table no longer names**, and `Salaadin > 4 Rewire Player4 to the
+move set` re-points the scene's CombatSystem lists without rebuilding the whole fighter (it holds
+the assets by GUID). `kick()` / `kick_keys()` are gone from `salaadin_clips.py`.
+
+**The numbers did not move with the moves.** A row in `CrucibleBalance` is a SLOT, so a normal
+still costs a normal's stamina. The visible consequence: the two showpieces now play at about
+**x2.7** to fit a normal's window (Shin Cut 25 f, Whirling Saif 34 f). Widening those frames is a
+balance decision and was left alone.
+
+**3. "Both elbows broken, shield facing up, arms like he has wings."** Not a posing mistake — the
+poses were right in Blender every time. **An armature-only FBX carries no skin, so it has no bind
+pose, and Blender's exporter writes the pose it is evaluated on at export time as the file's node
+transforms, baking the animation relative to them.** Unity then builds the clip's own avatar from
+that pose, so a clip that opens in the guard makes THE GUARD the T-pose and every retargeted frame
+lands as the body's own T-pose plus a delta. Salaadin's guard idle barely moves, so the delta was
+nothing and the clip played as the pure bind T-pose: arms straight out, elbows locked, shield flat.
+
+Measured, in Blender: author the guard (left elbow 113°, hand at `(0.132,-0.457,0.654)`), export,
+re-import → elbow 158°, hand at `(0.347,-0.044,0.721)` — the rest pose, exactly. Six export-flag
+variants changed nothing; `pose_position='REST'` fixed the written rest and killed the animation.
+
+`rest_lead_in()` in both `salaadin_clips.py` and `richard_clips.py` fixes it at the source:
+shift every key by one, key the real rest pose at frame 0, then `frame_set(0)` **and**
+`view_layer.update()` so the exporter is evaluated on the rest pose — without that update the
+depsgraph is stale and it writes the last pose built anyway (that cost two wrong attempts: first
+the lead-in keyed the guard again, then the clip and the lead-in swapped places). The scene is
+renamed `restlead`, which becomes the FBX take name, and `CrucibleMixamoSetup` drops frame 0 from
+any take by that name (including through a `Trims` window).
+
+Two real posing bugs were under it:
+- **The elbow pole had no vertical term.** Richard's is taken from the hips, most of an arm's
+  length below the shoulders; Salaadin's was written from the shoulder as
+  `lat*0.6*sign - fwd*0.5`, poling both elbows out level — wings even once the pose survived.
+  Now `lat*0.45*sign - fwd*0.40 - UP*0.85`, in units of arm span.
+- **The falchion is mounted with a -20° tweak** (`salaadin_body.py`), so asking `aim()` for a
+  blade direction put the spine 20° out of it and the edge 20° out of square: the guard carried
+  the edge behind straight down and every cut sliced a little with the spine. `pose()` now turns
+  the wrist back by `BLADE_LEAN` before aiming. Measured in play: blade·forward **0.94**,
+  edge·down **0.94**, shield boss·forward **1.00** — tip at the opponent, sharp side leading, the
+  decorated face of the shield square on.
+
+The shield's `aim()` arguments were right all along; it only ever looked "up" because the clip was
+playing the bind T-pose, where the palm faces down and the boss (on `-palm`) therefore faces up.
+
+**Richard's four authored clips still carry the old offset.** They travel far enough to still read
+as a thrust and a bash, so nobody noticed, but `Richard_Thrust` frame 1 is measurably his T-pose
+rather than his guard. `richard_clips.py` is fixed; his FBXs were deliberately NOT rebuilt, since
+that visibly changes a character nobody complained about.
+
+**And one trap on top: "2 Build controller" writes a FRESH `P4_Salaadin.controller`**, so its GUID
+changes and the scene's Animator reference goes null - Player4 then stands in the bind T-pose with
+no animation at all, which looks exactly like the bug above. `RewirePlayer4` now reassigns the
+controller as well as the move set, and says so.
+
+**What is still not exact: Unity clamps the guard.** The clip is provably right - sampled onto
+Player4 in the Editor it reproduces Blender to two decimals at every frame (elbow 113°, shield
+boss . forward **1.00**). The same clip through the runtime Animator settles at elbow 97° and the
+shield boss **76° off** square. Reading the live `HumanPose`: `Left/Right Forearm Stretch` are both
+pinned at **0.98**, and `Left Hand Down-Up` / `Left Hand In-Out` are **0.01 / 0.00** - the wrist roll
+that presents the shield is not representable (Unity's hand has two DOF and no twist; roll has to
+live on `Forearm Twist In-Out`, which sits at -0.19). Salaadin's rig is 1.0 tall with half-length
+arms, so the avatar Unity auto-generated for him has limits that do not fit it. The fix is to
+configure `Salaadin_BodyAvatar`'s human limits (or rebuild the avatar from a proper T-pose), NOT to
+re-author the clip - re-authoring would only push harder against the clamp. Not done this session.
+
+Verified in play mode (Salaadin vs Miyamoto, Al-Quds): both elbows bent with the arms in front of
+the body, the shield up and its decorated face presented forward, **blade edge . forward = 0.96**
+(sharp side leading, as asked), every animator state pointing at its clip, the Move List reading
+the new set off the live AttackData, and the main menu showing Battle Now with no Quick Battle row.

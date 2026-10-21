@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 4389196e461280b42842204721347557
+guid: 73c4cbccb6f651f45b4470faee3bd8ee
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Salaadin_Special_BreakingKick
-      takeName: Scene
-      internalID: -623603649343465320
-      firstFrame: 0
-      lastFrame: 54
+      name: Salaadin_Medium_ShinCut
+      takeName: restlead
+      internalID: -5812743650383702295
+      firstFrame: 1
+      lastFrame: 35
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

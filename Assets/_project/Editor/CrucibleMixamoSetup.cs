@@ -124,7 +124,7 @@ public static class CrucibleMixamoSetup
     };
 
     // Salaadin shares the pack with Richard but not his clips: Richard holds the pack's only
-    // settled idle and its one kick, so Salaadin's guard stance and all three of his kicks are
+    // settled idle, so Salaadin's guard stance and the cuts the pack cannot give him are
     // hand-keyed (ArtSource/Blender/salaadin_clips.py) and his cuts are the variants Richard
     // left. The walks ARE shared - the pack has two and Richard has both (the user's call).
     static readonly (string state, string pack, string clip, bool loop)[] P4Map =
@@ -133,13 +133,13 @@ public static class CrucibleMixamoSetup
         ("Salaadin_Walk_Forward",          "SwordShieldPack", "sword and shield walk",         true),   // shared with Richard
         ("Salaadin_Walk_Back",             "SwordShieldPack", "sword and shield walk (2)",     true),   // shared with Richard
         ("Salaadin_Light_SaifCut",         "SwordShieldPack", "sword and shield slash (3)",    false),  // 48 f, the most compact cut left in the pack
-        ("Salaadin_Medium_CrescentSlash",  "SwordShieldPack", "sword and shield attack (2)",   false),  // 40 f and only 0.5 of vertical travel: the flat, wide swing
-        ("Salaadin_Heavy_HattinCleave",    "SwordShieldPack", "sword and shield slash (4)",    false),  // 70 f, 1.87 of drop: the big diagonal
+        ("Salaadin_Medium_ShinCut",        "Custom",          "Salaadin_ShinCut",              false),  // the low cut, keyed by hand (the pack has nothing below the waist)
+        ("Salaadin_Heavy_WhirlingSaif",    "Custom",          "Salaadin_WhirlingSaif",         false),
         ("Salaadin_Special_VeiledRush",    "Custom",          "Salaadin_VeiledRush",           false),
-        ("Salaadin_Special_BreakingKick",  "Custom",          "Salaadin_BreakingKick",         false),
-        ("Salaadin_Special_WhirlingSaif",  "Custom",          "Salaadin_WhirlingSaif",         false),
+        ("Salaadin_Special_CrescentSlash", "SwordShieldPack", "sword and shield attack (2)",   false),  // 40 f and only 0.5 of vertical travel: the flat, wide swing
+        ("Salaadin_Special_HattinCleave",  "SwordShieldPack", "sword and shield slash (4)",    false),  // 70 f, 1.87 of drop: the big diagonal
         ("Salaadin_Riposte_Dash",          "SwordShieldPack", "sword and shield attack (3)",   false),  // 53 f
-        ("Salaadin_Riposte_Parry",         "Custom",          "Salaadin_HeelKick",             false),  // a KICK: hitsWithWeapon is off
+        ("Salaadin_Riposte_Parry",         "Custom",          "Salaadin_SaberRiposte",         false),  // a saber counter, not a boot - he has no kicks
         ("React_Front",                    "SwordShieldPack", "sword and shield impact",       false),  // only three impacts exist; shared
         ("React_Left",                     "SwordShieldPack", "sword and shield impact (2)",   false),
         ("React_Right",                    "SwordShieldPack", "sword and shield impact (3)",   false),
@@ -280,13 +280,19 @@ public static class CrucibleMixamoSetup
             var takes = mi.defaultClipAnimations;
             if (takes.Length == 0) { Debug.LogError($"{path}: no takes"); continue; }
             var take = takes[0];
+            // Clips authored in ArtSource/Blender/*_clips.py open with one REST-POSE LEAD-IN frame.
+            // It is there to give an armature-only FBX a correct bind pose - without it Unity builds
+            // the clip's avatar from the clip's own first pose, and every frame retargets to the
+            // body's T-pose plus a delta (straight elbows, arms out sideways, a flat shield). The
+            // lead-in itself must never play, and the exporter names its take "restlead" to say so.
+            bool restLead = take.takeName != null && take.takeName.Contains("restlead");
             var wanted = new List<ModelImporterClipAnimation>();
             foreach (var (state, loop) in kv.Value)
             {
                 var c = new ModelImporterClipAnimation();
                 c.takeName = take.takeName;
                 c.name = state;
-                c.firstFrame = take.firstFrame; c.lastFrame = take.lastFrame;
+                c.firstFrame = take.firstFrame + (restLead ? 1 : 0); c.lastFrame = take.lastFrame;
                 c.loopTime = loop;
                 c.loopPose = false;
                 c.lockRootRotation = true;         // bake orientation into the pose
@@ -295,7 +301,7 @@ public static class CrucibleMixamoSetup
                 c.keepOriginalPositionY = true;
                 c.lockRootPositionXZ = false;      // XZ stays root motion: not applied by the Animator, so in place
                 c.keepOriginalPositionXZ = false;
-                if (Trims.TryGetValue(state, out var t)) { c.firstFrame = t.first; c.lastFrame = t.last; }
+                if (Trims.TryGetValue(state, out var t)) { c.firstFrame = t.first + (restLead ? 1 : 0); c.lastFrame = t.last; }
                 else if (state.StartsWith("Dash_"))
                 {   // one stride = the first half of the walk cycle
                     c.lastFrame = take.firstFrame + (take.lastFrame - take.firstFrame) * 0.5f;

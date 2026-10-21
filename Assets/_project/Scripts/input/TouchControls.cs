@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// On-screen touch controls (faded buttons) for phones and the web build. Built from code on the
 /// GameMangers object. Shown on mobile platforms and in WebGL (or when <see cref="forceShow"/> is on for
 /// testing with the mouse). Against the AI, Player 1 gets the whole screen: move and dash on the left,
-/// strikes and block on the right. In Local Play on one device each player gets a half, mirrored.
+/// strikes and block on the right. In a two-player match on one device each player gets a half, mirrored.
 /// <see cref="InputManager"/> merges the snapshot with keyboard and pad input.
 /// </summary>
 public class TouchControls : MonoBehaviour

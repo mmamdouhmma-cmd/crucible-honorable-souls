@@ -30,6 +30,10 @@ RIGHT = FWD.cross(UP).normalized()
 ARMS_R = ["RightShoulder", "RightArm", "RightForeArm", "RightHand"]
 ARMS_L = ["LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand"]
 
+# The scene name becomes the FBX take name, and that is how CrucibleMixamoSetup recognises a clip
+# whose frame 0 is a rest-pose lead-in rather than animation (see rest_lead_in below).
+REST_LEAD_SCENE = "restlead"
+
 
 
 def load():
@@ -214,8 +218,57 @@ def render_frames(arm, name, frames, view="front"):
     print("  rendered", name, view, frames)
 
 
+def shift_keys(arm, by=1):
+    """Move every keyframe in the current action along by `by` frames."""
+    ad = arm.animation_data
+    act = ad.action
+    try:
+        curves = act.layers[0].strips[0].channelbag(ad.action_slot).fcurves
+    except (AttributeError, IndexError):
+        curves = act.fcurves
+    for c in curves:
+        for k in c.keyframe_points:
+            k.co.x += by
+            k.handle_left.x += by
+            k.handle_right.x += by
+        c.update()
+
+
+def rest_lead_in(arm):
+    """Key the rig's REST pose at frame 0 and push the clip itself to frame 1 onward.
+
+    Blender writes the pose at the FIRST exported frame as the file's node transforms and bakes
+    the animation relative to them. An armature-only FBX carries no skin, so there is no bind
+    pose to say otherwise, and Unity builds the clip's avatar from exactly those transforms: a
+    clip that opens in the guard makes THE GUARD the T-pose, and every retargeted frame then
+    comes out as the body's own T-pose plus a delta. Measured on Salaadin's guard idle, whose
+    arms barely move: the whole clip played back as the bind T-pose - elbows locked straight,
+    arms out sideways, the shield lying flat. Richard's clips carry the same offset; it only
+    hides there because his authored moves travel far enough to still read.
+
+    So frame 0 holds the real rest pose, the clip runs 1..last+1, and the scene is renamed
+    restlead - CrucibleMixamoSetup drops frame 0 by that name, so the lead-in never plays.
+    """
+    shift_keys(arm, 1)
+    for pb in arm.pose.bones:
+        # clear and key in the same breath: a view_layer.update() in between re-evaluates the
+        # action and puts the posed values straight back, so the lead-in would key the pose again
+        pb.matrix_basis = Matrix()
+        pb.keyframe_insert("rotation_quaternion", frame=0)
+        if pb.name.split(":")[-1] == "Hips":
+            pb.keyframe_insert("location", frame=0)
+    # and leave the rig EVALUATED on the lead-in frame: the exporter takes the file's node
+    # transforms from the depsgraph as it finds it, so whatever is posed here becomes the bind
+    # pose. Sitting on frame 0 is what makes that the rest pose instead of the last frame built.
+    bpy.context.scene.frame_set(0)
+    bpy.context.view_layer.update()
+    bpy.context.scene.name = REST_LEAD_SCENE
+
+
 def export(arm, name, last):
     out = os.path.join(OUT_DIR, name + ".fbx")
+    rest_lead_in(arm)
+    last += 1
     bpy.context.scene.frame_start, bpy.context.scene.frame_end = 0, last
     bpy.ops.object.select_all(action='DESELECT')
     arm.select_set(True)
@@ -363,8 +416,8 @@ for name, build in BUILDERS.items():
     arm = load()
     new_action(arm, name)
     last = build(arm)
-    export(arm, name, last)
-    if CHECK:
+    if CHECK:   # before the export, which inserts the rest-pose lead-in and shifts every key
         render_frames(arm, name, [int(last * f) for f in (0.0, 0.25, 0.45, 0.6, 1.0)])
         render_frames(arm, name, [int(last * 0.45)], view="side")
+    export(arm, name, last)
 print("CLIPS-OK")

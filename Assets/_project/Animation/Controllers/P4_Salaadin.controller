@@ -44,7 +44,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -623603649343465320, guid: 38f59a257d4e54c4daf7b5096c9be3a6, type: 3}
+  m_Motion: {fileID: -5812743650383702295, guid: 38f59a257d4e54c4daf7b5096c9be3a6, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -153,8 +153,8 @@ AnimatorState:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Salaadin_Medium_CrescentSlash
-  m_Speed: 3.1200004
+  m_Name: Salaadin_Medium_ShinCut
+  m_Speed: 2.7200003
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4285678766431743475}
@@ -167,7 +167,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 0052ee52a3d93204cafe0249dc7310ee, type: 3}
+  m_Motion: {fileID: -5812743650383702295, guid: 73c4cbccb6f651f45b4470faee3bd8ee, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -308,7 +308,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Back
-  m_Speed: 0.78431374
+  m_Speed: 1.0256411
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -1568160562201859980}
@@ -673,7 +673,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -623603649343465320, guid: 231e31be0c89358429fb9dd709bb1dc9, type: 3}
+  m_Motion: {fileID: -5812743650383702295, guid: b267ee7a2073d5549838462b535cb6a9, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1013,8 +1013,8 @@ AnimatorState:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Salaadin_Special_WhirlingSaif
-  m_Speed: 1.8039216
+  m_Name: Salaadin_Special_HattinCleave
+  m_Speed: 2.7058825
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1027,7 +1027,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -623603649343465320, guid: 1dbe58e2a6a059b44a433bc4539b72b1, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: 74a18121118683b439f367f46992dcef, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1273,8 +1273,8 @@ AnimatorState:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Salaadin_Heavy_HattinCleave
-  m_Speed: 4.058824
+  m_Name: Salaadin_Heavy_WhirlingSaif
+  m_Speed: 2.7058825
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}
@@ -1287,7 +1287,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 74a18121118683b439f367f46992dcef, type: 3}
+  m_Motion: {fileID: -5812743650383702295, guid: 1dbe58e2a6a059b44a433bc4539b72b1, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1325,8 +1325,8 @@ AnimatorState:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Salaadin_Special_BreakingKick
-  m_Speed: 2.4545455
+  m_Name: Salaadin_Special_CrescentSlash
+  m_Speed: 1.7727274
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1339,7 +1339,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -623603649343465320, guid: 4389196e461280b42842204721347557, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: 0052ee52a3d93204cafe0249dc7310ee, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1384,7 +1384,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Forward
-  m_Speed: 1.0294118
+  m_Speed: 1.3461539
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1357148640049868881}
@@ -1647,7 +1647,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -623603649343465320, guid: 178ab7bc84b65f24292a6f1c0a57cf51, type: 3}
+  m_Motion: {fileID: -5812743650383702295, guid: 178ab7bc84b65f24292a6f1c0a57cf51, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 

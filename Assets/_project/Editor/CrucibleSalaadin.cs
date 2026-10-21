@@ -11,10 +11,15 @@
 //   Crucible > Animation > Use Mixamo packs          (his clips: the Pro Sword and Shield pack)
 //   Crucible > Combat    > Wire combo strings
 //
-// He strikes ONLY with slashes and kicks - no thrusts, no shield bashes; that is what separates him
-// from Richard, who shares the sword-and-shield pack with him. Richard holds the pack's one kick and
-// its only settled idle, so Salaadin's kicks and his guard stance are keyed by hand in
-// ArtSource/Blender/salaadin_clips.py, and his three cuts come from clips Richard does not use.
+// He strikes ONLY with the falchion - no thrusts, no shield bashes, no kicks; that is what separates
+// him from Richard, who shares the sword-and-shield pack with him. Richard holds the pack's only
+// settled idle, so Salaadin's guard stance and the three cuts the pack cannot give him are keyed by
+// hand in ArtSource/Blender/salaadin_clips.py; the rest come from clips Richard does not use.
+//
+// His MEDIUM and HEAVY are the two showpieces (the shin cut and the full turn) and the two compact
+// pack swings sit on SP + Medium and SP + Heavy - the reverse of how he was first built. The frame
+// data and the costs did NOT move with them: they belong to the slot, so a normal still costs a
+// normal's stamina.
 //
 // The table below is the SHAPE of each move - its name, trigger, height, which dash evades it,
 // its hitbox and its aim. The numbers (damage, stamina, frames, hitstun) live in
@@ -59,15 +64,19 @@ public static class CrucibleSalaadin
                    range = 2.9f, size = new Vector3(1.1f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
-        // Wide and flat - the widest normal box on the roster, because the swing is horizontal.
-        new Move { asset = "Salaadin_Medium_CrescentSlash", name = "Crescent Slash", trigger = "MediumAttack",
-                   height = Mid, type = Medium, comesFrom = FromLeft, hitSide = HitRight, aim = AimFull,
-                   range = 3.0f, size = new Vector3(1.5f, 0.9f, 1f), offset = new Vector3(0f, 1f, 0f),
+        // MEDIUM: the low cut across the shins (Custom/Salaadin_ShinCut). Low, so a dash over it
+        // beats it, and the box sits down at knee height where the blade actually travels.
+        new Move { asset = "Salaadin_Medium_ShinCut", name = "Shin Cut", trigger = "MediumAttack",
+                   height = Low, type = Medium, comesFrom = FromRight, hitSide = HitLeft, aim = AimFull,
+                   range = 2.8f, size = new Vector3(1.3f, 1.0f, 1f), offset = new Vector3(0f, 0.6f, 0f),
                    lunge = -1f, weapon = true },
 
-        new Move { asset = "Salaadin_Heavy_HattinCleave", name = "Hattin Cleave", trigger = "HeavyAttack",
-                   height = Overhead, type = Heavy, comesFrom = FromOverhead, hitSide = HitStraight, aim = AimYaw,
-                   range = 3.1f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),
+        // HEAVY: the full turn with two cuts in it (Custom/Salaadin_WhirlingSaif). One hit, on the
+        // second cut - the engine gives a swing one hit, and the second is the one that reads.
+        // AimYaw so the turn keeps its own facing instead of being snapped at the opponent.
+        new Move { asset = "Salaadin_Heavy_WhirlingSaif", name = "Whirling Saif", trigger = "HeavyAttack",
+                   height = Mid, type = Heavy, comesFrom = FromLeft, hitSide = HitRight, aim = AimYaw,
+                   range = 3.1f, size = new Vector3(1.5f, 1.2f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
         // SP + Light: the shield leads the dash, the saber comes up underneath it
@@ -77,18 +86,16 @@ public static class CrucibleSalaadin
                    aim = AimFull, range = 3.2f, size = new Vector3(1.0f, 1.3f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 2.4f, weapon = true },
 
-        // SP + Medium: a front kick that staggers, carried into a low cut (Custom/Salaadin_BreakingKick).
-        // The kick sells it; the cut is the hit, so the active window sits on the blade.
-        new Move { asset = "Salaadin_Special_BreakingKick", name = "Breaking Kick", trigger = "SpecialMedium",
-                   height = Low, type = Special, specialButton = Medium, comesFrom = FromRight, hitSide = HitLeft,
-                   aim = AimFull, range = 2.8f, size = new Vector3(1.3f, 1.0f, 1f), offset = new Vector3(0f, 0.6f, 0f),
+        // SP + Medium: the flat, wide swing. Widest box on him, because the cut is horizontal.
+        new Move { asset = "Salaadin_Special_CrescentSlash", name = "Crescent Slash", trigger = "SpecialMedium",
+                   height = Mid, type = Special, specialButton = Medium, comesFrom = FromLeft, hitSide = HitRight,
+                   aim = AimFull, range = 3.0f, size = new Vector3(1.5f, 0.9f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.2f, weapon = true },
 
-        // SP + Heavy: a full turn with two cuts in it (Custom/Salaadin_WhirlingSaif). One hit, on the
-        // second cut - the engine gives a swing one hit, and the second is the one that reads.
-        new Move { asset = "Salaadin_Special_WhirlingSaif", name = "Whirling Saif", trigger = "SpecialHeavy",
-                   height = Mid, type = Special, specialButton = Heavy, comesFrom = FromLeft, hitSide = HitRight,
-                   aim = AimYaw, range = 3.1f, size = new Vector3(1.5f, 1.2f, 1f), offset = new Vector3(0f, 1f, 0f),
+        // SP + Heavy: the big diagonal that comes down the centre.
+        new Move { asset = "Salaadin_Special_HattinCleave", name = "Hattin Cleave", trigger = "SpecialHeavy",
+                   height = Overhead, type = Special, specialButton = Heavy, comesFrom = FromOverhead, hitSide = HitStraight,
+                   aim = AimYaw, range = 3.1f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.2f, weapon = true },
 
         new Move { asset = "Salaadin_Riposte_Dash", name = "Falcon Riposte", trigger = "RiposteDash",
@@ -96,11 +103,12 @@ public static class CrucibleSalaadin
                    range = 2.9f, size = new Vector3(1.2f, 1.1f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
-        // A heel kick, like the other three parry ripostes: judged by the body box, not the blade.
-        new Move { asset = "Salaadin_Riposte_Parry", name = "Heel Riposte", trigger = "RiposteParry",
-                   height = Mid, type = Medium, comesFrom = FromThrust, hitSide = HitStraight, aim = AimOff,
-                   range = 1.9f, size = new Vector3(1.0f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
-                   lunge = -1f, weapon = false },
+        // A short saber counter, NOT a boot: the other three fighters answer a parry with a kick and
+        // he does not kick at all, so this one is judged on the blade like the rest of his set.
+        new Move { asset = "Salaadin_Riposte_Parry", name = "Saber Riposte", trigger = "RiposteParry",
+                   height = Mid, type = Medium, comesFrom = FromThrust, hitSide = HitStraight, aim = AimFull,
+                   range = 2.6f, size = new Vector3(1.1f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
+                   lunge = -1f, weapon = true },
     };
 
     [MenuItem("Crucible/Characters/Salaadin/1 Create move set")]
@@ -134,6 +142,20 @@ public static class CrucibleSalaadin
             EditorUtility.SetDirty(asset);
         }
 
+        // Anything left in his Attacks folder that the table above no longer names is a move he
+        // used to have. Delete it, or a renamed slot leaves its old asset behind for the combo
+        // wiring and the Moves screen to find.
+        foreach (var guid in AssetDatabase.FindAssets("t:AttackData", new[] { AttackDir }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            string stem = Path.GetFileNameWithoutExtension(path);
+            if (!Moves.Any(m => m.asset == stem))
+            {
+                Debug.Log($"Salaadin: dropping {stem}, no longer in the move set");
+                AssetDatabase.DeleteAsset(path);
+            }
+        }
+
         // Damage, stamina cost, frames, hitstun and his FighterData are NOT written here: they
         // are the roster-wide table in CrucibleBalance, so the four archetypes stay comparable.
         CrucibleBalance.Apply();
@@ -150,13 +172,13 @@ public static class CrucibleSalaadin
         ("Richard_Walk_Forward",         "Salaadin_Walk_Forward"),
         ("Richard_Walk_Back",            "Salaadin_Walk_Back"),
         ("Richard_Light_Thrust",         "Salaadin_Light_SaifCut"),
-        ("Richard_Medium_Slash",         "Salaadin_Medium_CrescentSlash"),
-        ("Richard_Heavy_Overhead",       "Salaadin_Heavy_HattinCleave"),
+        ("Richard_Medium_Slash",         "Salaadin_Medium_ShinCut"),
+        ("Richard_Heavy_Overhead",       "Salaadin_Heavy_WhirlingSaif"),
         ("Richard_Riposte_Dash",         "Salaadin_Riposte_Dash"),
         ("Richard_Riposte_Parry",        "Salaadin_Riposte_Parry"),
         ("Richard_Special_ShieldCharge", "Salaadin_Special_VeiledRush"),
-        ("Richard_Special_ShieldBash",   "Salaadin_Special_BreakingKick"),
-        ("Richard_Special_DoubleHigh",   "Salaadin_Special_WhirlingSaif"),
+        ("Richard_Special_ShieldBash",   "Salaadin_Special_CrescentSlash"),
+        ("Richard_Special_DoubleHigh",   "Salaadin_Special_HattinCleave"),
     };
 
     [MenuItem("Crucible/Characters/Salaadin/2 Build controller")]
@@ -222,18 +244,7 @@ public static class CrucibleSalaadin
         if (dataProp != null && data != null) dataProp.objectReferenceValue = data;
         sf.ApplyModifiedProperties();
 
-        var combat = go.GetComponent(Type("CombatSystem"));
-        var sc = new SerializedObject(combat);
-        SetList(sc.FindProperty("attacks"), "Salaadin_Light_SaifCut", "Salaadin_Medium_CrescentSlash",
-                                            "Salaadin_Heavy_HattinCleave");
-        SetList(sc.FindProperty("specials"), "Salaadin_Special_VeiledRush", "Salaadin_Special_BreakingKick",
-                                             "Salaadin_Special_WhirlingSaif");
-        sc.FindProperty("dashRiposte").objectReferenceValue = Attack("Salaadin_Riposte_Dash");
-        sc.FindProperty("parryRiposte").objectReferenceValue = Attack("Salaadin_Riposte_Parry");
-        sc.ApplyModifiedProperties();
-
-        var anim = go.GetComponent<Animator>();
-        anim.runtimeAnimatorController = AssetDatabase.LoadAssetAtPath<AnimatorController>(P4Ctrl);
+        WireCombat(go);   // move set + the animator controller
 
         // His off hand carries the shield, so there is no second grip on the hilt to solve.
         var grip = go.GetComponent(Type("TwoHandGrip"));
@@ -243,6 +254,40 @@ public static class CrucibleSalaadin
         UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(go.scene);
         Debug.Log("Player4 (Salaadin) cloned from Player3. Now run " +
                   "'Crucible > Characters > Rebuild Player4 (Salaadin body)' to put his model on it.");
+    }
+
+    /// <summary>
+    /// Point Player4's CombatSystem and Animator at the move set above. Its own menu item too,
+    /// because the scene holds both by GUID: renaming a slot's move leaves it on the old asset,
+    /// and "2 Build controller" writes a FRESH P4_Salaadin.controller whose GUID is new, so the
+    /// Animator's reference goes null and he stands in the bind T-pose. Re-running "3 Add to the
+    /// scene" would fix either, but only by rebuilding the whole fighter.
+    /// </summary>
+    [MenuItem("Crucible/Characters/Salaadin/4 Rewire Player4 to the move set")]
+    public static void RewirePlayer4()
+    {
+        var go = GameObject.Find("Player4");
+        if (go == null) { Debug.LogError("Player4 not found in the open scene"); return; }
+        WireCombat(go);
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(go.scene);
+        Debug.Log("Player4: controller, attacks, specials and both ripostes re-pointed at Salaadin's move set.");
+    }
+
+    static void WireCombat(GameObject go)
+    {
+        var anim = go.GetComponent<Animator>();
+        var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(P4Ctrl);
+        if (ctrl == null) Debug.LogError($"{P4Ctrl} is missing; run '2 Build controller'");
+        else anim.runtimeAnimatorController = ctrl;
+
+        var sc = new SerializedObject(go.GetComponent(Type("CombatSystem")));
+        SetList(sc.FindProperty("attacks"), "Salaadin_Light_SaifCut", "Salaadin_Medium_ShinCut",
+                                            "Salaadin_Heavy_WhirlingSaif");
+        SetList(sc.FindProperty("specials"), "Salaadin_Special_VeiledRush", "Salaadin_Special_CrescentSlash",
+                                             "Salaadin_Special_HattinCleave");
+        sc.FindProperty("dashRiposte").objectReferenceValue = Attack("Salaadin_Riposte_Dash");
+        sc.FindProperty("parryRiposte").objectReferenceValue = Attack("Salaadin_Riposte_Parry");
+        sc.ApplyModifiedProperties();
     }
 
     static void SetList(SerializedProperty arr, params string[] names)

@@ -60,12 +60,11 @@ The session log lives in `Sessions.md` (repo root) — this file was past its ch
 **Append new session entries to the bottom of `Sessions.md`**, as `### YYYY-MM-DD — <title>`.
 Durable facts belong up here instead; the log is for narrative and for the gotchas of a day.
 
-## Where things stand (end of 2026-10-20)
+## Where things stand (end of 2026-10-21)
 
-- **The game has a front end.** Boot (logo, press any button) -> main menu -> Quick Battle /
-  Local Play (1P or 2P, character select, arena select, difficulty) / Online / Practice / Move
-  List / Settings / Quit, with a restyled pause and KO screen, wipe transitions and an ember-lit
-  backdrop. Built from code in `Scripts/UI/{GameMenu,MenuArt,MenuStage}.cs`; run
+- **The game has a front end.** Boot (logo, press any button) -> main menu -> Battle Now (1P or
+  2P, character select, arena select, difficulty) / Online / Practice / Move List / Settings /
+  Quit, with a restyled pause and KO screen, wipe transitions and an ember-lit backdrop. Built from code in `Scripts/UI/{GameMenu,MenuArt,MenuStage}.cs`; run
   `Crucible > Front End > Set up the front end` once on a fresh clone.
 - **Matches open with READY - 3 - 2 - 1 - FIGHT** (`GameMenu.CountInRoutine`). Until the last
   beat `inMatch` is false, the fighters are frozen and input is off - and `SetAi` is deliberately
@@ -99,25 +98,55 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   and has no `TwoHandGrip`.
 - **Four fighters now.** Salaadin (falchion + round shield, the balanced one: 95 hp, 115 stamina,
   18 armour, x0.92 damage, walk 4.1) lives on `Player4` with `P4_Salaadin.controller` and
-  `salaadin_data`. His move set is the table in `Editor/CrucibleSalaadin.cs` (normals are slashes,
-  every special is a kick or a turn); build him with `Crucible > Characters > Salaadin > 1/2/3`,
-  then `Rebuild Player4 (Salaadin body)`, then the shared menu items. **His folder is lowercase
+  `salaadin_data`. His move set is the table in `Editor/CrucibleSalaadin.cs`; build him with
+  `Crucible > Characters > Salaadin > 1/2/3`, then `Rebuild Player4 (Salaadin body)`, then the
+  shared menu items, then `Salaadin > 4 Rewire Player4 to the move set` (the scene holds his
+  AttackData by GUID, so a renamed slot needs re-pointing without rebuilding the fighter).
+  **He strikes with the falchion and nothing else** - no thrusts, no shield bashes, no kicks, and
+  his parry riposte is a saber counter where the other three answer with a boot. His two
+  showpieces are the NORMALS (Medium = Shin Cut, Heavy = Whirling Saif) and the two compact pack
+  swings sit on the specials (SP+Medium = Crescent Slash, SP+Heavy = Hattin Cleave); the frame
+  data and costs stayed with the SLOT, so the normals play those long clips at about x2.7. **His folder is lowercase
   `Characters/salaadin`** - renaming it deadlocks the Editor if any shell is sitting in it, so
   `Folder()` in `CrucibleBalance.cs` and `CharDir()` in `CrucibleCharacterSetup.cs` handle it in
-  code. He shares only Richard's two WALK clips; his idle, both kicks and two specials are keyed
-  in `ArtSource/Blender/salaadin_clips.py`.
+  code. He shares only Richard's two WALK clips; his idle, his shin cut, his spin, his rush and
+  his saber riposte are keyed in `ArtSource/Blender/salaadin_clips.py`; the light, both specials
+  and the dodge riposte are pack clips Richard does not use.
 - **Porting a hand-keyed clip to another character's rig: convert, never scale by height.**
   Learned on Salaadin, whose rig is 1.00 tall against Richard's 1.85 but whose arms are half
   human proportion:
-  - Hand and foot targets go in **fractions of that limb's own reach from its own joint**, which
-    is what `pose()` and `kick()` in `salaadin_clips.py` take. Height-scaled metres miss.
-  - Swing a limb with the **two-bone IK**, not by rotating a bone about its own axis - bone roll
-    differs per rig, and a kick keyed that way comes out sideways.
+  - Limb targets go in **fractions of that limb's own reach from its own joint**, which is what
+    `pose()` in `salaadin_clips.py` takes. Height-scaled metres miss.
+  - Swing a limb with the **two-bone IK** (`reach()`), not by rotating a bone about its own axis -
+    bone roll differs per rig, and a limb keyed that way comes out sideways.
   - **Hip travel from a pack clip is in the PACK rig's units** (those armatures are scaled 0.01).
     Carry it as a fraction of the source's rest hip height. The check is `RootT.y` on the imported
     clip: healthy clips sit near 0.8-1.0, and a broken one read -52.4.
   - A weapon's mount decides its `aim()` arguments: Salaadin's shield has its boss on `-palm`, so
-    `(UP, -FWD)` where Richard's shield takes `(UP, FWD)`.
+    `(UP, -FWD)` where Richard's shield takes `(UP, FWD)`. His falchion is mounted with a -20 deg
+    tweak, so `pose()` turns the wrist back by `BLADE_LEAN` before aiming - without it the guard
+    carries the edge 20 deg behind straight down and every cut slices a little with the spine.
+  - **The elbow pole must sit BELOW the shoulder.** Richard's is taken from the hips, which are
+    most of an arm's length down; Salaadin's was written from the shoulder with no vertical term,
+    and both arms came out poled level - wings.
+- **An armature-only clip FBX has no bind pose, so Blender's exporter hands Unity the pose it is
+  evaluated on as the file's rest.** Unity then builds the clip's avatar from that pose, and every
+  retargeted frame comes out as the body's own T-pose plus a delta. A clip whose arms barely move
+  (Salaadin's guard idle) therefore played back as the pure bind T-pose: elbows locked straight,
+  arms out sideways, the shield lying flat. `rest_lead_in()` in both `*_clips.py` fixes it at the
+  source - it keys the real rest pose at frame 0, shifts the clip to 1.., and leaves the rig
+  EVALUATED on frame 0 so that is what the exporter writes. The scene is renamed `restlead`, which
+  becomes the FBX take name, and `CrucibleMixamoSetup` drops frame 0 from any take by that name.
+  **Richard's four authored clips still carry the old offset** - they read far enough to pass, but
+  rebuilding them through `richard_clips.py` (already fixed) would set them straight.
+- **Salaadin's avatar clamps his authored poses, and the Editor hides it.** `clip.SampleAnimation`
+  on Player4 reproduces Blender exactly; the same clip through the runtime Animator comes out
+  tighter (guard elbow 97 deg against the authored 113, shield boss 76 deg off square). The live
+  `HumanPose` says why: `Forearm Stretch` pinned at 0.98 and both hand muscles at 0.00, because
+  Unity's hand has two DOF and no twist - wrist roll has to ride `Forearm Twist In-Out`. His rig is
+  1.0 tall with half-length arms, so the avatar Unity generated for him has limits that do not fit.
+  **Measure a pose through the Animator in PLAY mode, never through `SampleAnimation`**, and fix a
+  clamped pose on `Salaadin_BodyAvatar`'s human limits rather than by re-authoring the clip.
 - **The scene holds the whole roster; the menu benches whoever is not fighting.**
   `GameMenu.ApplySides(first, second)` switches the non-participants off and calls
   `Fighter.RefreshOpponent()` on the pair — `FindOpponent` used to take the first other Fighter in

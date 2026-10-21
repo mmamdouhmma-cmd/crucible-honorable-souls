@@ -10,27 +10,27 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
-  m_Name: Salaadin_Special_WhirlingSaif
+  m_Name: Salaadin_Special_CrescentSlash
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
-  attackName: Whirling Saif
-  damage: 16
-  staminaCost: 45
-  armorPierce: 10
-  startupFrames: 26
+  attackName: Crescent Slash
+  damage: 14
+  staminaCost: 40
+  armorPierce: 8
+  startupFrames: 20
   activeFrames: 5
-  recoveryFrames: 20
+  recoveryFrames: 19
   animationClip: {fileID: 0}
-  animatorTriggerName: SpecialHeavy
+  animatorTriggerName: SpecialMedium
   attackHeight: 1
   attackType: 3
-  specialButton: 2
+  specialButton: 1
   comesFrom: 1
   hitSide: 2
-  hitstunFrames: 14
-  hitboxRange: 3.1
+  hitstunFrames: 13
+  hitboxRange: 3
   hitboxOffset: {x: 0, y: 1, z: 0}
-  hitboxSize: {x: 1.5, y: 1.2, z: 1}
-  aimMode: 1
+  hitboxSize: {x: 1.5, y: 0.9, z: 1}
+  aimMode: 0
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: 1.2

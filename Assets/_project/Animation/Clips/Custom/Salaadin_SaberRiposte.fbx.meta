@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 231e31be0c89358429fb9dd709bb1dc9
+guid: b267ee7a2073d5549838462b535cb6a9
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
@@ -32,10 +32,10 @@ ModelImporter:
     clipAnimations:
     - serializedVersion: 16
       name: Salaadin_Riposte_Parry
-      takeName: Scene
-      internalID: -623603649343465320
-      firstFrame: 0
-      lastFrame: 22
+      takeName: restlead
+      internalID: -5812743650383702295
+      firstFrame: 1
+      lastFrame: 23
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

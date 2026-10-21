@@ -38,7 +38,7 @@ MonoBehaviour:
   comboLinks:
   - input: 1
     withSpecialModifier: 0
-    followUp: {fileID: 11400000, guid: 17368dddc27b53e48a9ee75b2f6fa19f, type: 2}
+    followUp: {fileID: 11400000, guid: 450ed3e3ec4029848a251b7588f1fd84, type: 2}
     requires: 0
     openerOnly: 1
   cancelStartFrame: -1

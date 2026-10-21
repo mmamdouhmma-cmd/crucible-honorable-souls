@@ -6097,7 +6097,7 @@ Animator:
   m_GameObject: {fileID: 1826393536}
   m_Enabled: 1
   m_Avatar: {fileID: 9000000, guid: 3793da643b28a8d49a7aae29c7df0cc7, type: 3}
-  m_Controller: {fileID: 9100000, guid: 4385cb12912ad7640bf06db23f5c10cf, type: 2}
+  m_Controller: {fileID: 9100000, guid: 9f5cf1c45a480f24dae75012aa868bf5, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -6150,12 +6150,12 @@ MonoBehaviour:
   currentAttackTime: 0
   attacks:
   - {fileID: 11400000, guid: 667f3ba954913b44a858d5847db8ff9f, type: 2}
-  - {fileID: 11400000, guid: 17368dddc27b53e48a9ee75b2f6fa19f, type: 2}
-  - {fileID: 11400000, guid: 584c42476f1e942479cfc9513103f3c4, type: 2}
+  - {fileID: 11400000, guid: 450ed3e3ec4029848a251b7588f1fd84, type: 2}
+  - {fileID: 11400000, guid: bddc427dc5e1faf4fa3980d21826cb4f, type: 2}
   specials:
   - {fileID: 11400000, guid: 3f38675a7eabd504a86fa9b88e8ddb96, type: 2}
-  - {fileID: 11400000, guid: 2019903a664945546a60d6f8b6b81e43, type: 2}
-  - {fileID: 11400000, guid: 3cfe7ec098b35e949ae366c8e55fb95b, type: 2}
+  - {fileID: 11400000, guid: 7e5b25337311da34a9766685fa2f635c, type: 2}
+  - {fileID: 11400000, guid: fa7b9d3442dd5f147a4fba9312289218, type: 2}
   dashRiposte: {fileID: 11400000, guid: dda391665854539468fe0112e8dbe3b5, type: 2}
   parryRiposte: {fileID: 11400000, guid: 5b3ba040a3ca8224e8c04cdbc022def9, type: 2}
   hitDetector: {fileID: 329369971}
@@ -6201,11 +6201,11 @@ MonoBehaviour:
     healedThisRound: 0
   combatSystem: {fileID: 1826393541}
   characterName: Salaadin
-  dashDistance: 2
-  dashDuration: 0.34
-  dashStaminaCost: 16
-  blockDamageReduction: 85
-  blockStaminaDrainPerSecond: 2
+  dashDistance: 2.3
+  dashDuration: 0.26
+  dashStaminaCost: 15
+  blockDamageReduction: 82
+  blockStaminaDrainPerSecond: 2.5
   parryWindow: 0.12
   parryCooldown: 1
   parryStaminaCost: 8
@@ -6215,7 +6215,7 @@ MonoBehaviour:
   parryCounterDamageMultiplier: 1.5
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 14
+  staminaRecoveryPerSecond: 16
   healthRegenPerSecond: 1
   healOnDodge: 0.02
   healOnParry: 0.02

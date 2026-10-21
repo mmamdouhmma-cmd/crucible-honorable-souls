@@ -118,14 +118,17 @@ public static class CrucibleBalance
 
         // Every start-up sits between Miyamoto's and Bjorn's; the damage is Miyamoto's, a point
         // dearer on the medium and heavy because they are slower than his.
+        // His medium and heavy traded moves with SP + Medium and SP + Heavy; the numbers did NOT
+        // go with them. A row here is a SLOT, so a normal still costs a normal's stamina however
+        // showy the swing that now sits in it.
         ["Salaadin"] = new[]
         {                                          // dmg stam pierce  start act rec  hitstun
             N("Salaadin_Light_SaifCut",                7,  14,  0,      8,  3,  7,   7),
-            N("Salaadin_Medium_CrescentSlash",         8,  16,  2,     12,  4,  9,   8),
-            N("Salaadin_Heavy_HattinCleave",          10,  19,  5,     17,  4, 13,  10),
+            N("Salaadin_Medium_ShinCut",               8,  16,  2,     12,  4,  9,   8),
+            N("Salaadin_Heavy_WhirlingSaif",          10,  19,  5,     17,  4, 13,  10),
             N("Salaadin_Special_VeiledRush",          13,  36,  5,     20,  5, 18,  12),
-            N("Salaadin_Special_BreakingKick",        14,  40,  8,     20,  5, 19,  13),
-            N("Salaadin_Special_WhirlingSaif",        16,  45, 10,     26,  5, 20,  14),
+            N("Salaadin_Special_CrescentSlash",       14,  40,  8,     20,  5, 19,  13),
+            N("Salaadin_Special_HattinCleave",        16,  45, 10,     26,  5, 20,  14),
             N("Salaadin_Riposte_Dash",                 9,  12,  0,     12,  4, 14,   9),
             N("Salaadin_Riposte_Parry",                8,  12,  0,     12,  4, 14,   9),
         },

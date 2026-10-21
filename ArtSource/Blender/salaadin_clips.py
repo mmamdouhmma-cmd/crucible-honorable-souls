@@ -2,8 +2,9 @@
 
 Usage: blender -b --python salaadin_clips.py -- <Salaadin_Body.fbx> <pack_dir> <out_dir> <render_dir> [name ...]
 
-Richard already holds the pack's only settled idle and its one kick, and Salaadin's move set is
-slashes and kicks, so his guard stance and all three of his kicks are built here. Two tools do it:
+Richard already holds the pack's only settled idle, and Salaadin strikes with the falchion and
+nothing else - no thrusts, no shield bashes, no kicks - so his guard stance and the three cuts the
+pack cannot give him are built here. Two tools do it:
 
   pose()   analytic two-bone IK: the hand is put on a target point in the fighter's own frame
            (fwd / lateral / up metres from the hips) and the wrist is aimed so the blade points
@@ -33,6 +34,13 @@ UP = Vector((0, 0, 1))
 RIGHT = FWD.cross(UP).normalized()
 ARMS_R = ["RightShoulder", "RightArm", "RightForeArm", "RightHand"]
 ARMS_L = ["LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand"]
+
+# The scene name becomes the FBX take name, and that is how CrucibleMixamoSetup recognises a clip
+# whose frame 0 is a rest-pose lead-in rather than animation (see rest_lead_in below).
+REST_LEAD_SCENE = "restlead"
+
+# degrees the falchion's spine sits off the hand's thumb axis, from its mount (see pose())
+BLADE_LEAN = -20.0
 
 
 
@@ -137,15 +145,15 @@ def to_armature_space(arm, head_world, rot3):
 
 
 ARM = ("Arm", "ForeArm", "Hand")
-LEG = ("UpLeg", "Leg", "Foot")
+LEG = ("UpLeg", "Leg", "Foot")        # for a leg move, should one ever come back
 
 
 def reach(arm, side, target, pole, chain=ARM):
     """Analytic two-bone IK, so the end of the chain lands on target (world space).
 
-    The arms use it through pose(); the legs use it through kick(), because a kick keyed by
-    rotating the leg bones about their own axes swings sideways on this rig - the first build
-    came out as a crouch with no leg in front of him.
+    The arms use it through pose(). It takes a chain because a limb keyed by rotating its bones
+    about their own axes swings sideways on this rig - bone roll differs per rig, and the first
+    build of a leg move came out as a crouch with no leg in front of him.
     """
     uarm, farm, hand = (B(arm, side + n) for n in chain)
     s = arm.matrix_world.to_scale()[0]
@@ -208,13 +216,25 @@ def pose(arm, right=None, left=None, blade=None, shield=None, yaw=0.0):
         v = (fwd * tgt[0] + lat * tgt[1] + UP * tgt[2]) * span
         if v.length > 0.97 * span:
             v = v.normalized() * 0.97 * span
-        pole = shoulder + (lat * 0.6 * pole_sign - fwd * 0.5) * span
+        # The elbow hangs BELOW the shoulder line and a little behind it. Richard's pole is taken
+        # from the hips, which are most of an arm's length under his shoulders; written from the
+        # shoulder it has to carry that drop explicitly, or the elbow is poled out level and both
+        # arms read as wings.
+        pole = shoulder + (lat * 0.45 * pole_sign - fwd * 0.40 - UP * 0.85) * span
         miss = reach(arm, side, shoulder + v, pole)
         if miss > 0.04 * span:
             print(f"    {side.lower()} hand miss {miss / span:.2f} of reach")
     if blade:
-        aim(arm, "Right", (rot @ blade[0]).normalized(), (rot @ blade[1]).normalized())
+        hilt, palm = (rot @ blade[0]).normalized(), (rot @ blade[1]).normalized()
+        # salaadin_body.py mounts the falchion with a -20 deg tweak, so its spine sits BLADE_LEAN
+        # out of the hand's thumb axis and its edge the same amount out of square. Turning the
+        # wrist back by that much about the palm puts the blade itself where the move asks for it,
+        # with the edge perpendicular - without it the guard carries the edge 20 deg behind
+        # straight down and every cut slices a little with the spine (measured).
+        hilt = (Matrix.Rotation(math.radians(BLADE_LEAN), 4, palm) @ hilt).normalized()
+        aim(arm, "Right", hilt, palm)
     if shield:
+        # no lean to undo here: the shield's boss sits exactly on -palm and its top on the thumb
         aim(arm, "Left", (rot @ shield[0]).normalized(), (rot @ shield[1]).normalized())
 
 
@@ -270,8 +290,57 @@ def render_frames(arm, name, frames, view="front"):
     print("  rendered", name, view, frames)
 
 
+def shift_keys(arm, by=1):
+    """Move every keyframe in the current action along by `by` frames."""
+    ad = arm.animation_data
+    act = ad.action
+    try:
+        curves = act.layers[0].strips[0].channelbag(ad.action_slot).fcurves
+    except (AttributeError, IndexError):
+        curves = act.fcurves
+    for c in curves:
+        for k in c.keyframe_points:
+            k.co.x += by
+            k.handle_left.x += by
+            k.handle_right.x += by
+        c.update()
+
+
+def rest_lead_in(arm):
+    """Key the rig's REST pose at frame 0 and push the clip itself to frame 1 onward.
+
+    Blender writes the pose at the FIRST exported frame as the file's node transforms and bakes
+    the animation relative to them. An armature-only FBX carries no skin, so there is no bind
+    pose to say otherwise, and Unity builds the clip's avatar from exactly those transforms: a
+    clip that opens in the guard makes THE GUARD the T-pose, and every retargeted frame then
+    comes out as the body's own T-pose plus a delta. Measured on Salaadin's guard idle, whose
+    arms barely move: the whole clip played back as the bind T-pose - elbows locked straight,
+    arms out sideways, the shield lying flat. Richard's clips carry the same offset; it only
+    hides there because his authored moves travel far enough to still read.
+
+    So frame 0 holds the real rest pose, the clip runs 1..last+1, and the scene is renamed
+    restlead - CrucibleMixamoSetup drops frame 0 by that name, so the lead-in never plays.
+    """
+    shift_keys(arm, 1)
+    for pb in arm.pose.bones:
+        # clear and key in the same breath: a view_layer.update() in between re-evaluates the
+        # action and puts the posed values straight back, so the lead-in would key the pose again
+        pb.matrix_basis = Matrix()
+        pb.keyframe_insert("rotation_quaternion", frame=0)
+        if pb.name.split(":")[-1] == "Hips":
+            pb.keyframe_insert("location", frame=0)
+    # and leave the rig EVALUATED on the lead-in frame: the exporter takes the file's node
+    # transforms from the depsgraph as it finds it, so whatever is posed here becomes the bind
+    # pose. Sitting on frame 0 is what makes that the rest pose instead of the last frame built.
+    bpy.context.scene.frame_set(0)
+    bpy.context.view_layer.update()
+    bpy.context.scene.name = REST_LEAD_SCENE
+
+
 def export(arm, name, last):
     out = os.path.join(OUT_DIR, name + ".fbx")
+    rest_lead_in(arm)
+    last += 1
     bpy.context.scene.frame_start, bpy.context.scene.frame_end = 0, last
     bpy.ops.object.select_all(action='DESELECT')
     arm.select_set(True)
@@ -299,10 +368,11 @@ GUARD = os.path.join(PACK, "sword and shield block idle.fbx")
 # and low, shield up and square. Fractions of arm reach from the shoulder (see pose()).
 G_RIGHT = (0.35, 0.35, -0.75)
 G_LEFT = (0.80, -0.25, 0.05)
-G_BLADE = (FWD, -RIGHT)
-# aim() takes (thumb axis, palm axis). His shield mounts with its top on the thumb and its BOSS on
-# -palm (salaadin_body.py), so the palm argument points AWAY from the opponent: Richard's (UP, FWD)
-# would show the enemy the back of the shield, which is exactly what the first render did.
+# pose() takes (where the BLADE points, where the palm faces) and squares the edge to it. Tip at
+# the opponent and tilted down a little, so the edge leads any cut he opens with.
+G_BLADE = (FWD - 0.35 * UP, -RIGHT)
+# The shield's BOSS - the decorated face - sits on -palm (salaadin_body.py), so the palm argument
+# points AWAY from the opponent: Richard's (UP, FWD) would show the enemy the shield's back.
 G_SHIELD = (UP, -FWD)
 
 
@@ -312,45 +382,6 @@ def guard_pose(arm, guard, yaw=0.0, **over):
     spec = dict(right=G_RIGHT, left=G_LEFT, blade=G_BLADE, shield=G_SHIELD, yaw=yaw)
     spec.update(over)
     pose(arm, **spec)
-
-
-def kick(arm, foot, side="Right", toe=None):
-    """Put a foot at (fwd, lateral, up) in units of that leg's reach, measured from its hip.
-
-    Same model as the hands in pose(), and for the same reason: nothing here depends on how this
-    rig's leg bones happen to be rolled. The knee is poled forward, so it never hyperextends
-    backwards, and toe aims the foot along a world direction for the frames where it shows.
-    """
-    scale = max(arm.matrix_world.to_scale()[0], 1e-6)
-    hip = wpos(arm, B(arm, side + "UpLeg"))
-    span = (B(arm, side + "UpLeg").bone.length + B(arm, side + "Leg").bone.length) * scale
-    v = (FWD * foot[0] + RIGHT * foot[1] + UP * foot[2]) * span
-    if v.length > 0.97 * span:
-        v = v.normalized() * 0.97 * span
-    miss = reach(arm, side, hip + v, hip + (FWD * 1.2 + UP * 0.2) * span, chain=LEG)
-    if miss > 0.04 * span:
-        print(f"    {side.lower()} foot miss {miss / span:.2f} of reach")
-    if toe:
-        set_bone_world(arm, B(arm, side + "Foot"), toe, UP)
-
-
-def kick_keys(arm, guard, f0, chamber=5, hit=11, hold=15, back=20, down=26, extend=0.86):
-    """A front kick on the right leg: chamber the knee, drive the foot out, take it back.
-
-    The pack has exactly one kick and Richard uses it, so both of Salaadin's are built here. The
-    arms stay in the guard through it - he kicks to open a hole, he does not wind up with the saber.
-    """
-    for df, foot, toe in ((0, None, None),
-                          (chamber, (0.45, 0.10, -0.52), None),            # knee up, heel tucked
-                          (hit, (extend, 0.06, -0.26), FWD),               # driven out, toe leading
-                          (hold, (extend, 0.06, -0.26), FWD),
-                          (back, (0.42, 0.10, -0.58), None),               # pulled back in
-                          (down, None, None)):                             # foot back under him
-        guard_pose(arm, guard)
-        if foot:
-            kick(arm, foot, toe=toe)
-        key(arm, f0 + df)
-    return f0 + down
 
 
 def clip_guard_idle(arm, name="Salaadin_GuardIdle", n=72):
@@ -403,18 +434,20 @@ def clip_veiled_rush(arm, name="Salaadin_VeiledRush"):
     return f
 
 
-def clip_breaking_kick(arm, name="Salaadin_BreakingKick"):
-    """SP + Medium: a front kick to break the guard, carried into a low cut.
+def clip_shin_cut(arm, name="Salaadin_ShinCut"):
+    """His MEDIUM: a low saber cut across the shins, dropped under a high guard.
 
-    The kick sells it, the cut is the hit - the same division of labour as Richard's bash, where
-    the active window sits on the blade rather than on the body.
+    This was the back half of the old Breaking Kick, whose front kick is gone - he fights with the
+    falchion only now, so the move is the cut on its own, opened out so it still fills a swing: a
+    deeper wind back, a step down into the cut, and a slower recovery to the guard.
     """
     guard = take(GUARD)[0]
-    f = kick_keys(arm, guard, 0)
-    for df, spec in ((6,  dict(right=(-0.20, 0.55, -0.65), blade=(-FWD, -RIGHT))), # wind the saber back low
-                     (6,  dict(right=(0.85, 0.20, -0.35), blade=(FWD, -RIGHT))),   # the low cut lands
-                     (5,  dict(right=(0.45, -0.45, -0.55), blade=(-RIGHT, UP))),   # follow through across the shins
-                     (11, dict(right=G_RIGHT, blade=G_BLADE))):
+    f = 0
+    for df, spec in ((7,  dict(right=(-0.30, 0.60, -0.60), blade=(-FWD, -RIGHT))),  # wind the saber back low and wide
+                     (4,  dict(right=(0.10, 0.55, -0.80), blade=(-FWD - UP, -RIGHT))),  # drop under the guard
+                     (6,  dict(right=(0.88, 0.20, -0.40), blade=(FWD, -RIGHT))),    # the low cut lands
+                     (5,  dict(right=(0.45, -0.45, -0.55), blade=(-RIGHT, UP))),    # follow through across the shins
+                     (12, dict(right=G_RIGHT, blade=G_BLADE))):
         f += df
         guard_pose(arm, guard, **spec)
         key(arm, f)
@@ -447,21 +480,30 @@ def clip_whirling_saif(arm, name="Salaadin_WhirlingSaif"):
     return keys[-1][0]
 
 
-def clip_heel_kick(arm, name="Salaadin_HeelKick"):
-    """The parry riposte: the same boot, shorter and meaner, with no cut after it.
+def clip_saber_riposte(arm, name="Salaadin_SaberRiposte"):
+    """The parry riposte: a short saber counter straight off the catch. No kick - he has none.
 
-    Judged by the body box, not the blade (hitsWithWeapon is off on Salaadin_Riposte_Parry).
+    Shorter and tighter than any of his normals, because it is paid for by the parry: the blade
+    barely leaves the guard before it comes back across the opponent's centre.
     """
     guard = take(GUARD)[0]
-    return kick_keys(arm, guard, 0, chamber=4, hit=9, hold=12, back=16, down=22, extend=0.92)
+    f = 0
+    for df, spec in ((4,  dict(right=(0.15, 0.55, -0.35), blade=(-FWD + UP, -RIGHT))),  # cock the wrist, blade up and back
+                     (5,  dict(right=(0.85, 0.05, 0.10), blade=(FWD, -RIGHT))),         # the counter, straight through centre
+                     (4,  dict(right=(0.50, -0.45, 0.20), blade=(-RIGHT, UP))),         # across and out to his left
+                     (9,  dict(right=G_RIGHT, blade=G_BLADE))):
+        f += df
+        guard_pose(arm, guard, **spec)
+        key(arm, f)
+    return f
 
 
 BUILDERS = {
     "Salaadin_GuardIdle": clip_guard_idle,
     "Salaadin_VeiledRush": clip_veiled_rush,
-    "Salaadin_BreakingKick": clip_breaking_kick,
+    "Salaadin_ShinCut": clip_shin_cut,
     "Salaadin_WhirlingSaif": clip_whirling_saif,
-    "Salaadin_HeelKick": clip_heel_kick,
+    "Salaadin_SaberRiposte": clip_saber_riposte,
 }
 
 for name, build in BUILDERS.items():
@@ -471,8 +513,8 @@ for name, build in BUILDERS.items():
     arm = load()
     new_action(arm, name)
     last = build(arm)
-    export(arm, name, last)
-    if CHECK:
+    if CHECK:   # before the export, which inserts the rest-pose lead-in and shifts every key
         render_frames(arm, name, [int(last * f) for f in (0.0, 0.25, 0.45, 0.6, 1.0)])
         render_frames(arm, name, [int(last * 0.45)], view="side")
+    export(arm, name, last)
 print("CLIPS-OK")

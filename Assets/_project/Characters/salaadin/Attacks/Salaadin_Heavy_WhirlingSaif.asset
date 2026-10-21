@@ -10,30 +10,30 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
-  m_Name: Salaadin_Special_BreakingKick
+  m_Name: Salaadin_Heavy_WhirlingSaif
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
-  attackName: Breaking Kick
-  damage: 14
-  staminaCost: 40
-  armorPierce: 8
-  startupFrames: 20
-  activeFrames: 5
-  recoveryFrames: 19
+  attackName: Whirling Saif
+  damage: 10
+  staminaCost: 19
+  armorPierce: 5
+  startupFrames: 17
+  activeFrames: 4
+  recoveryFrames: 13
   animationClip: {fileID: 0}
-  animatorTriggerName: SpecialMedium
-  attackHeight: 2
-  attackType: 3
-  specialButton: 1
-  comesFrom: 2
-  hitSide: 1
-  hitstunFrames: 13
-  hitboxRange: 2.8
-  hitboxOffset: {x: 0, y: 0.6, z: 0}
-  hitboxSize: {x: 1.3, y: 1, z: 1}
-  aimMode: 0
+  animatorTriggerName: HeavyAttack
+  attackHeight: 1
+  attackType: 2
+  specialButton: 0
+  comesFrom: 1
+  hitSide: 2
+  hitstunFrames: 10
+  hitboxRange: 3.1
+  hitboxOffset: {x: 0, y: 1, z: 0}
+  hitboxSize: {x: 1.5, y: 1.2, z: 1}
+  aimMode: 1
   aimMaxAngle: -1
   lungeStopDistance: -1
-  lungeMaxDistance: 1.2
+  lungeMaxDistance: -1
   hitsWithWeapon: 1
   comboLinks:
   - input: 0
@@ -41,6 +41,11 @@ MonoBehaviour:
     followUp: {fileID: 11400000, guid: 667f3ba954913b44a858d5847db8ff9f, type: 2}
     requires: 0
     openerOnly: 1
+  - input: 0
+    withSpecialModifier: 1
+    followUp: {fileID: 11400000, guid: 3f38675a7eabd504a86fa9b88e8ddb96, type: 2}
+    requires: 1
+    openerOnly: 0
   cancelStartFrame: -1
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1

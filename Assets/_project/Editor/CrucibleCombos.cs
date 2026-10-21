@@ -127,31 +127,31 @@ public static class CrucibleCombos
         ("Richard_Special_DoubleHigh",     new[] { new Link(L, false, "Richard_Light_Thrust", true, Always) }),
     };
 
-    // Salaadin. Same three shapes, but every special he can dial is a kick or a turn rather than a
-    // shield blow: the light buys the kick, the medium buys the spin, the heavy buys the rush, and
-    // each special hands a normal back so a riposte can keep going.
+    // Salaadin. Same three shapes as the rest of the roster. His showpieces sit on the normals now
+    // (the shin cut, the full turn) and the compact pack swings on the specials, so a string that
+    // dials a special finishes on a flat crescent or a diagonal cleave rather than on a spin.
     static readonly (string attack, Link[] links)[] Salaadin =
     {
         ("Salaadin_Light_SaifCut", new[]
         {
-            new Link(M, false, "Salaadin_Medium_CrescentSlash", true,  Always),
-            new Link(M, true,  "Salaadin_Special_BreakingKick", false, HitOrBlock),
+            new Link(M, false, "Salaadin_Medium_ShinCut",       true,  Always),
+            new Link(M, true,  "Salaadin_Special_CrescentSlash", false, HitOrBlock),
         }),
-        ("Salaadin_Medium_CrescentSlash", new[]
+        ("Salaadin_Medium_ShinCut", new[]
         {
-            new Link(H, false, "Salaadin_Heavy_HattinCleave",   true,  Always),
-            new Link(H, true,  "Salaadin_Special_WhirlingSaif", false, HitOrBlock),
+            new Link(H, false, "Salaadin_Heavy_WhirlingSaif",   true,  Always),
+            new Link(H, true,  "Salaadin_Special_HattinCleave", false, HitOrBlock),
         }),
-        ("Salaadin_Heavy_HattinCleave", new[]
+        ("Salaadin_Heavy_WhirlingSaif", new[]
         {
             new Link(L, false, "Salaadin_Light_SaifCut",        true,  Always),
             new Link(L, true,  "Salaadin_Special_VeiledRush",   false, HitOrBlock),
         }),
-        ("Salaadin_Riposte_Dash",          new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
-        ("Salaadin_Riposte_Parry",         new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
-        ("Salaadin_Special_VeiledRush",    new[] { new Link(M, false, "Salaadin_Medium_CrescentSlash", true, Always) }),
-        ("Salaadin_Special_BreakingKick",  new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
-        ("Salaadin_Special_WhirlingSaif",  new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
+        ("Salaadin_Riposte_Dash",           new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
+        ("Salaadin_Riposte_Parry",          new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
+        ("Salaadin_Special_VeiledRush",     new[] { new Link(M, false, "Salaadin_Medium_ShinCut", true, Always) }),
+        ("Salaadin_Special_CrescentSlash",  new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
+        ("Salaadin_Special_HattinCleave",   new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
     };
 
     [MenuItem("Crucible/Combat/Wire combo strings")]
