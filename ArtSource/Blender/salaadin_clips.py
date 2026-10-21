@@ -39,6 +39,11 @@ ARMS_L = ["LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand"]
 # whose frame 0 is a rest-pose lead-in rather than animation (see rest_lead_in below).
 REST_LEAD_SCENE = "restlead"
 
+# A second, empty object exported beside the armature, so the armature is not hoisted to the
+# file root and the clip's avatar keeps the body's scale chain (see export()). It must not share a
+# name with anything load() brings in, or Blender renames it and the FBX carries a stray '.001'.
+BODY_NODE = "Salaadin_ClipRoot"
+
 # degrees the falchion's spine sits off the hand's thumb axis, from its mount (see pose())
 BLADE_LEAN = -20.0
 
@@ -342,11 +347,24 @@ def export(arm, name, last):
     rest_lead_in(arm)
     last += 1
     bpy.context.scene.frame_start, bpy.context.scene.frame_end = 0, last
+    # An FBX whose only object is the armature has no wrapper: Unity makes the ARMATURE the file
+    # root, so the 100x scale Blender writes on it lands on the avatar's root. The body FBX carries
+    # a mesh too, so there it is root(1) -> Salaadin_Rig(100) -> Hips. Unity reads an avatar's human
+    # scale in ROOT space, so that one missing level made the clip's avatar believe the rig was 100x
+    # smaller than the body's - and retargeting across two human scales quietly rewrites every
+    # stretched or twisted joint: the guard arrived with the elbows 16 deg tighter and the shield
+    # rolled 76 deg off square, while the clip itself measured perfect. Exporting one empty object
+    # beside the armature keeps the armature a CHILD of the file root, and the two avatars match.
+    tag = bpy.data.objects.get(BODY_NODE)
+    if tag is None or tag.type != 'EMPTY':
+        tag = bpy.data.objects.new(BODY_NODE, None)
+        bpy.context.scene.collection.objects.link(tag)
     bpy.ops.object.select_all(action='DESELECT')
     arm.select_set(True)
+    tag.select_set(True)
     bpy.context.view_layer.objects.active = arm
     bpy.ops.export_scene.fbx(
-        filepath=out, use_selection=True, object_types={'ARMATURE'},
+        filepath=out, use_selection=True, object_types={'ARMATURE', 'EMPTY'},
         add_leaf_bones=False, armature_nodetype='NULL', bake_anim=True,
         bake_anim_use_all_bones=True, bake_anim_use_nla_strips=False,
         bake_anim_use_all_actions=False, bake_anim_force_startend_keying=True,

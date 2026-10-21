@@ -254,6 +254,31 @@ public static class CrucibleMixamoSetup
     }
 
 
+    /// <summary>
+    /// The avatar an authored clip must be imported against: `Clips/Custom/&lt;Name&gt;_*.fbx` belongs to
+    /// &lt;Name&gt;, whose rig it was keyed on. Null for the shared pack clips, which keep their own.
+    /// Salaadin's character folder is lowercase on disk, so the lookup tries both spellings.
+    /// </summary>
+    static Avatar OwnerAvatar(string path)
+    {
+        if (Path.GetFileName(Path.GetDirectoryName(path)) != "Custom") return null;
+        string stem = Path.GetFileNameWithoutExtension(path);
+        int cut = stem.IndexOf('_');
+        if (cut <= 0) return null;
+        string name = stem.Substring(0, cut);
+        foreach (var dir in new[] { name, name.ToLowerInvariant() })
+        {
+            string body = $"Assets/_project/Characters/{dir}/Model/{name}_Body.fbx";
+            if (!File.Exists(body)) continue;
+            var av = AssetDatabase.LoadAllAssetsAtPath(body).OfType<Avatar>().FirstOrDefault();
+            if (av != null) return av;
+            Debug.LogWarning($"{body} has no Avatar; {stem} keeps its own");
+            return null;
+        }
+        Debug.LogWarning($"no body FBX found for {stem}; it keeps its own avatar");
+        return null;
+    }
+
     static void ImportPack(string pack, (string state, string pack, string clip, bool loop)[] map) { ImportAll(map); }
 
     // One importer can hold several clips cut from the same take (walk + dash from one walk file, and the same
@@ -275,7 +300,35 @@ public static class CrucibleMixamoSetup
             var mi = AssetImporter.GetAtPath(path) as ModelImporter;
             bool dirty = false;
             if (mi.animationType != ModelImporterAnimationType.Human) { mi.animationType = ModelImporterAnimationType.Human; dirty = true; }
-            if (mi.avatarSetup != ModelImporterAvatarSetup.CreateFromThisModel) { mi.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel; dirty = true; }
+            // A clip authored in ArtSource/Blender/*_clips.py is built on ONE character's rig, so it
+            // can share that character's avatar outright - and it must. Retargeting from a clip's own
+            // auto-built avatar onto the body's is an identity only if the two agree exactly, and even
+            // on the same skeleton they did not: the wrist twist did not survive the hop and Salaadin's
+            // guard arrived with the shield rolled 67 deg off square. Copying removes the hop. Pack
+            // clips keep their own avatar - they are shared by fighters with different bodies.
+            var owner = OwnerAvatar(path);
+            if (owner != null)
+            {
+                if (mi.avatarSetup != ModelImporterAvatarSetup.CopyFromOther) { mi.avatarSetup = ModelImporterAvatarSetup.CopyFromOther; dirty = true; }
+                if (mi.sourceAvatar != owner) { mi.sourceAvatar = owner; dirty = true; }
+            }
+            else if (mi.avatarSetup != ModelImporterAvatarSetup.CreateFromThisModel) { mi.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel; dirty = true; }
+            // A copied avatar only validates if the clip's node chain matches the body's, which is
+            // what the EMPTY exported beside the armature is for (see export() in *_clips.py). A clip
+            // built before that lands here with no takes at all, so put it back on its own avatar
+            // rather than leave a state pointing at nothing.
+            if (dirty && owner != null)
+            {
+                mi.SaveAndReimport(); dirty = false;
+                if (mi.defaultClipAnimations.Length == 0)
+                {
+                    Debug.LogWarning($"{Path.GetFileName(path)}: {owner.name} does not fit it - rebuild the clip " +
+                                     "through ArtSource/Blender/*_clips.py. Falling back to its own avatar.");
+                    mi.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
+                    mi.sourceAvatar = null;
+                    mi.SaveAndReimport();
+                }
+            }
             if (mi.materialImportMode != ModelImporterMaterialImportMode.None) { mi.materialImportMode = ModelImporterMaterialImportMode.None; dirty = true; }
             var takes = mi.defaultClipAnimations;
             if (takes.Length == 0) { Debug.LogError($"{path}: no takes"); continue; }
@@ -296,7 +349,15 @@ public static class CrucibleMixamoSetup
                 c.loopTime = loop;
                 c.loopPose = false;
                 c.lockRootRotation = true;         // bake orientation into the pose
-                c.keepOriginalOrientation = false; // based upon body orientation
+                // Based Upon: ORIGINAL for a clip we authored, BODY ORIENTATION for a pack clip.
+                // "Body orientation" makes Unity work out which way the character faces from the
+                // posed body and bake the difference into every frame - right for mocap that was
+                // captured facing anywhere, wrong for a clip keyed facing a known direction. On
+                // Salaadin's bladed guard it read the turned shoulders as the facing and yawed the
+                // WHOLE skeleton 66.6 deg: the shield came out edge-on to the opponent and the
+                // sabre pointed across him, while the clip itself sampled perfectly. The tell is
+                // that every bone is off by the same angle.
+                c.keepOriginalOrientation = owner != null;
                 c.lockRootHeightY = true;          // bake Y
                 c.keepOriginalPositionY = true;
                 c.lockRootPositionXZ = false;      // XZ stays root motion: not applied by the Animator, so in place
@@ -314,6 +375,7 @@ public static class CrucibleMixamoSetup
             {
                 var a = current[i]; var b = wanted[i];
                 same = a.name == b.name && a.loopTime == b.loopTime && a.lockRootPositionXZ == b.lockRootPositionXZ && a.lockRootRotation == b.lockRootRotation
+                       && a.keepOriginalOrientation == b.keepOriginalOrientation
                     && Mathf.Abs(a.firstFrame - b.firstFrame) < 0.01f && Mathf.Abs(a.lastFrame - b.lastFrame) < 0.01f;
             }
             if (!same) { mi.clipAnimations = wanted.ToArray(); dirty = true; }

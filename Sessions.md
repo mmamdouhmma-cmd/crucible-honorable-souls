@@ -1801,18 +1801,46 @@ changes and the scene's Animator reference goes null - Player4 then stands in th
 no animation at all, which looks exactly like the bug above. `RewirePlayer4` now reassigns the
 controller as well as the move set, and says so.
 
-**What is still not exact: Unity clamps the guard.** The clip is provably right - sampled onto
-Player4 in the Editor it reproduces Blender to two decimals at every frame (elbow 113°, shield
-boss . forward **1.00**). The same clip through the runtime Animator settles at elbow 97° and the
-shield boss **76° off** square. Reading the live `HumanPose`: `Left/Right Forearm Stretch` are both
-pinned at **0.98**, and `Left Hand Down-Up` / `Left Hand In-Out` are **0.01 / 0.00** - the wrist roll
-that presents the shield is not representable (Unity's hand has two DOF and no twist; roll has to
-live on `Forearm Twist In-Out`, which sits at -0.19). Salaadin's rig is 1.0 tall with half-length
-arms, so the avatar Unity auto-generated for him has limits that do not fit it. The fix is to
-configure `Salaadin_BodyAvatar`'s human limits (or rebuild the avatar from a proper T-pose), NOT to
-re-author the clip - re-authoring would only push harder against the clamp. Not done this session.
+**The shield, chased to the bottom.** With the bind pose fixed the guard still arrived with the
+shield 76 deg off square, while the clip sampled onto Player4 in the Editor reproduced Blender to
+two decimals. Three things were wrong, found in this order, and the first diagnosis was wrong:
 
-Verified in play mode (Salaadin vs Miyamoto, Al-Quds): both elbows bent with the arms in front of
-the body, the shield up and its decorated face presented forward, **blade edge . forward = 0.96**
-(sharp side leading, as asked), every animator state pointing at its clip, the Move List reading
+1. **A dead end worth recording.** `HumanPoseHandler(avatar, root)` on these fighters returns the
+   SAME muscle values whatever the rig is doing - identical left and right arms, unchanged between
+   the idle and a mid-spin. The `Forearm Stretch = 0.98` it reported was not a clamped limit, it
+   was noise. Muscle values from it prove nothing here; compare bone rotations instead.
+2. **The clip's avatar thought the rig was 100x too small.** An armature-only FBX has one object,
+   so Unity makes the armature the file ROOT and the 100x scale Blender writes on it lands on the
+   avatar's root - where the body FBX, which carries a mesh too, has root(1) -> Salaadin_Rig(100)
+   -> Hips. Human scale is read in root space, so the two avatars disagreed by 100x and every
+   stretched joint was rewritten in the retarget: the elbows came out 16 deg tighter than authored.
+   `export()` now writes an empty named `<Name>_ClipRoot` beside the armature, which keeps the
+   armature a child of the file root. That fixed the elbows exactly (113.3 / 125.7 against the
+   authored 113.4 / 124) - and, as a bonus, made `CopyFromOther` validate, which it never had.
+   `ImportAll` now gives every authored clip its character's own avatar (`OwnerAvatar()`), so the
+   retarget is a literal identity. Pack clips keep their own; they are shared between bodies.
+3. **And the shield was still 66 deg off even then** - because a SHARED avatar was never the
+   problem. Every bone was off by the same 66.6 deg, which is the signature of a ROOT ORIENTATION
+   offset, not a joint fault. `Root Transform Rotation -> Based Upon: Body Orientation` makes Unity
+   work out which way the fighter faces from the posed body and bake the difference into every
+   frame. Salaadin's guard is bladed, so Unity read his turned shoulders as his facing and yawed
+   the whole skeleton. Authored clips now import `Based Upon: Original`; pack clips, which really
+   are captured facing anywhere, keep Body Orientation.
+
+Measured live after all three, against the clip as authored: **shield boss . forward 1.00**, blade
+tip . forward 0.94, edge . down 0.94, elbows 113/128, and every bone within the idle's own breath
+(hands and spine 0.0 deg, left arm 2.8 deg). From dead in front he presents the full face of the
+shield - crescent boss, star pattern, studded rim - square at the opponent.
+
+**Two lessons worth the scar tissue**: `clip.SampleAnimation` does NOT go through the Animator's
+retarget, so it shows a clip as authored and hides both faults above - measure in PLAY mode off the
+live rig. And when every bone is off by the same angle, stop looking at joints.
+
+**Richard's four clips were rebuilt too**, through the same fixed script, so his thrust, charge,
+bash and double-high no longer carry the old bind-pose offset either; `ImportAll` falls back to a
+clip's own avatar with a warning if a copied one does not fit, so an un-rebuilt clip can never
+silently lose its animation.
+
+Verified in play mode (Salaadin vs Richard and vs Miyamoto, Al-Quds): the guard matching the
+authored clip bone for bone, both fighters' 22 animator states pointing at a clip, the Move List reading
 the new set off the live AttackData, and the main menu showing Battle Now with no Quick Battle row.

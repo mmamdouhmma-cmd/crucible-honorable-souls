@@ -106,7 +106,9 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   his parry riposte is a saber counter where the other three answer with a boot. His two
   showpieces are the NORMALS (Medium = Shin Cut, Heavy = Whirling Saif) and the two compact pack
   swings sit on the specials (SP+Medium = Crescent Slash, SP+Heavy = Hattin Cleave); the frame
-  data and costs stayed with the SLOT, so the normals play those long clips at about x2.7. **His folder is lowercase
+  data and costs stayed with the SLOT, so the normals play those long clips at about x2.7.
+  His guard is play-verified against the authored clip: shield boss . forward **1.00**, blade edge
+  . forward **0.94**, elbows 113/128, every bone within the idle's own breath. **His folder is lowercase
   `Characters/salaadin`** - renaming it deadlocks the Editor if any shell is sitting in it, so
   `Folder()` in `CrucibleBalance.cs` and `CharDir()` in `CrucibleCharacterSetup.cs` handle it in
   code. He shares only Richard's two WALK clips; his idle, his shin cut, his spin, his rush and
@@ -137,16 +139,32 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   source - it keys the real rest pose at frame 0, shifts the clip to 1.., and leaves the rig
   EVALUATED on frame 0 so that is what the exporter writes. The scene is renamed `restlead`, which
   becomes the FBX take name, and `CrucibleMixamoSetup` drops frame 0 from any take by that name.
-  **Richard's four authored clips still carry the old offset** - they read far enough to pass, but
-  rebuilding them through `richard_clips.py` (already fixed) would set them straight.
-- **Salaadin's avatar clamps his authored poses, and the Editor hides it.** `clip.SampleAnimation`
-  on Player4 reproduces Blender exactly; the same clip through the runtime Animator comes out
-  tighter (guard elbow 97 deg against the authored 113, shield boss 76 deg off square). The live
-  `HumanPose` says why: `Forearm Stretch` pinned at 0.98 and both hand muscles at 0.00, because
-  Unity's hand has two DOF and no twist - wrist roll has to ride `Forearm Twist In-Out`. His rig is
-  1.0 tall with half-length arms, so the avatar Unity generated for him has limits that do not fit.
-  **Measure a pose through the Animator in PLAY mode, never through `SampleAnimation`**, and fix a
-  clamped pose on `Salaadin_BodyAvatar`'s human limits rather than by re-authoring the clip.
+  Richard's four authored clips were rebuilt through the fixed `richard_clips.py` too.
+- **An authored clip must share its character's avatar AND keep its own orientation.** Both are set
+  by `CrucibleMixamoSetup.ImportAll` for anything under `Clips/Custom/` whose name starts with a
+  character's, via `OwnerAvatar()`; pack clips, shared between fighters with different bodies, keep
+  `CreateFromThisModel` and `Based Upon: Body Orientation`.
+  - **Root Transform Rotation -> Based Upon: ORIGINAL** (`keepOriginalOrientation = true`). "Body
+    orientation" makes Unity work out which way the character faces FROM THE POSED BODY and bake
+    the difference into every frame. That is right for mocap captured facing anywhere and wrong for
+    a clip keyed facing a known direction: on Salaadin's bladed guard it read the turned shoulders
+    as his facing and yawed the whole skeleton **66.6 deg**, so the shield stood edge-on to the
+    opponent and the sabre pointed across him. **The tell is that every bone is off by the same
+    angle** - check that before blaming a wrist, a limit or a pole vector.
+  - **Copy the body's avatar** (`CopyFromOther`), which only validates if the clip's node chain
+    matches the body's - see the `*_ClipRoot` empty in `export()` below.
+  - **`clip.SampleAnimation` does NOT go through the Animator's retarget**, so it shows the clip as
+    authored and hides both faults. Measure a pose in PLAY mode, off the live rig.
+  - `HumanPoseHandler(avatar, root)` on these fighters returns a FIXED pose whatever the rig is
+    doing, so its muscle values prove nothing. Compare bone rotations instead.
+- **An armature-only clip FBX needs a second, empty object exported beside the armature.** With the
+  armature alone, Unity makes it the file root and the 100x scale Blender writes on it lands on the
+  avatar's ROOT, where the body FBX (which carries a mesh too) has root(1) -> `<Name>_Rig`(100) ->
+  Hips. Unity reads an avatar's human scale in root space, so that one missing level made the
+  clip's avatar believe the rig was 100x smaller, and retargeting across two human scales rewrote
+  every stretched joint - the guard arrived with the elbows 16 deg tighter. `export()` in both
+  `*_clips.py` now exports an empty named `<Name>_ClipRoot` beside the armature; it must not share
+  a name with anything `load()` brings in or Blender appends a `.001`.
 - **The scene holds the whole roster; the menu benches whoever is not fighting.**
   `GameMenu.ApplySides(first, second)` switches the non-participants off and calls
   `Fighter.RefreshOpponent()` on the pair — `FindOpponent` used to take the first other Fighter in
