@@ -195,6 +195,17 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
 - **Open, and only the user's phone can answer it**: frame rate, whether the on-screen buttons
   fall under a real thumb, online latency. Two touch-layout questions are written up in the lite
   plan and deliberately not changed blind.
+- **Salaadin's rig is being re-rigged and the current one is known bad** - see
+  `Design/Salaadin_Rerig.md`. Mixamo's auto-rigger put his elbow markers 41% of the way from
+  shoulder to wrist instead of ~52%, so his upper arm is 8.0% of his height against Richard's
+  14.6% and shorter than his own forearm, and his knee markers left him bound at 149/135 deg
+  instead of a straight symmetric T-pose. The MESH is fine; this is a re-rig, not a re-model, and
+  nothing downstream caused it - the raw Mixamo download measures the same as the game. The user
+  is redoing the Mixamo pass; when `ArtSource/Characters/Mixamo/Salaadin_Rigged.fbx` is replaced,
+  rebuild with `salaadin_body.py` -> `salaadin_clips.py` -> the Salaadin menu chain, and check the
+  `MOUNT` offsets in `salaadin_body.py` (metres against a 1.04-tall rig, so new proportions can
+  move the falchion and shield off the hand; the IK targets in `salaadin_clips.py` are fractions
+  of limb reach and carry over by themselves).
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `parryCounterDamageMultiplier` is serialized 1.5 against `BalanceConfig`'s
