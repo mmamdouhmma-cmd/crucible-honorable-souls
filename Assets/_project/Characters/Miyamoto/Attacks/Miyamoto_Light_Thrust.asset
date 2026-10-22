@@ -15,7 +15,7 @@ MonoBehaviour:
   attackName: Mid Thrust
   damage: 7
   staminaCost: 12
-  armorPierce: 0
+  armorPierce: 8
   startupFrames: 6
   activeFrames: 3
   recoveryFrames: 6

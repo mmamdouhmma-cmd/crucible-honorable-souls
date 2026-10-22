@@ -15,7 +15,7 @@ MonoBehaviour:
   attackName: Nukitsuke
   damage: 13
   staminaCost: 34
-  armorPierce: 5
+  armorPierce: 18
   startupFrames: 9
   activeFrames: 4
   recoveryFrames: 9

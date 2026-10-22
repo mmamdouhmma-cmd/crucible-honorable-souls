@@ -15,7 +15,7 @@ MonoBehaviour:
   attackName: Nito Cross
   damage: 14
   staminaCost: 38
-  armorPierce: 5
+  armorPierce: 20
   startupFrames: 14
   activeFrames: 5
   recoveryFrames: 15
@@ -30,7 +30,7 @@ MonoBehaviour:
   hitboxRange: 2.8
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1.6, y: 1.5, z: 1}
-  aimMode: 2
+  aimMode: 3
   aimMaxAngle: -1
   lungeStopDistance: -1
   lungeMaxDistance: 1.2

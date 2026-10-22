@@ -739,6 +739,38 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   requirement. The only real risk with a bought pack is the auto-mapper failing on its naming, and
   that is one look at the Rig tab.
 
+- **The off-hand `LeftGrip` socket belongs on the haft AXIS - local (0, 0, z) - not on the mesh
+  bounds' CENTRE.** A weapon mounts at its hand bone's origin, so the weapon's own origin IS the
+  right fist and local (0,0,z) runs straight down the haft through it. The bounds centre is the
+  middle of a box drawn round the whole weapon, and on anything whose mass is not centred on the
+  haft it sits well off it: **0.357 world units on Miyamoto's katana** (long curved blade) and
+  **0.148 on Bjorn's axe** (head on one end). `SetupWeapon` took the centre, so Miyamoto's off hand
+  was solved a third of a metre off the hilt, up at his chest - it read as him not holding the
+  sword at all, and `TwoHandGrip` reported `OffHandMiss` 1.6e-07 the whole time because the wrist
+  was faithfully on a socket that was in the wrong place. Bjorn had the same fault at half the
+  size, and it is most likely what `PalmOffset()` was quietly compensating for.
+  **The tell is a photograph, not the miss.** Both fighters' fists sit stacked on the haft now.
+- **Judge a fist against a shield by the WORST vertex, not the centroid.** Richard's left-hand
+  centroid measured 0.065 BEHIND the shield's front face while his worst knuckle stood **0.090
+  PROUD of it** - a fist through the paint. Pushing the disc 0.125 further along its own normal
+  (`ShieldWeaponMount`) put the worst vertex 0.035 behind the face. Measure as
+  `dot(vertex - discCentre, normal) - halfThickness` over every vertex weighted to `LeftHand*`.
+- **Miyamoto and Bjorn have NO move table**, so unlike Richard (`CrucibleRichard`) and Salaadin
+  (`CrucibleSalaadin`) their `aimMode`, `comesFrom`, `hitSide` and box geometry live ONLY in the
+  `.asset`. `Apply the roster balance` writes just damage/stamina/pierce/frames/hitstun, so an aim
+  change on those two is an asset edit and nothing regenerates it. `Miyamoto_Special_NitoCross`
+  (SP+Medium) was `AimMode.Off`, which leaves the clip's own wheel alone and reads as a spinning
+  back FIST; `Level` gives the same cure it gave Kuruma - measured through the move, the blade
+  swings from **84 deg elevation down to 0.0 deg** across the hit window (frames 20-32) and holds
+  flat there, on a 356 deg pelvis sweep.
+- **Miyamoto's ARMOUR PIERCE was 0 on every normal** - the katana fighter pierced LEAST in the
+  roster, which is backwards. Pierce is a PERCENTAGE off the defender's armour (DamageCalculator
+  step 2). He is the leader on every slot now (8/10/16 normals, 18-24 specials, 8 ripostes) against
+  Richard's best of 12.
+- **A transform edited in PLAY mode is discarded when play stops.** Mounts and sockets solved in
+  play have to be re-applied in EDIT mode and the scene saved
+  (`EditorSceneManager.SaveScene`) - solving them live and walking away loses the lot.
+
 ## Measuring a move from the CLI (the harness that works)
 
 - **`Time.captureDeltaTime = 1f/60f` makes one rendered frame equal one 60 fps game frame**, so a

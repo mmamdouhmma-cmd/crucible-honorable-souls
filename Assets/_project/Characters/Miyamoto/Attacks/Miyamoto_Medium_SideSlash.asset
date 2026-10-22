@@ -15,7 +15,7 @@ MonoBehaviour:
   attackName: Side Slash
   damage: 7
   staminaCost: 14
-  armorPierce: 0
+  armorPierce: 10
   startupFrames: 9
   activeFrames: 4
   recoveryFrames: 8

@@ -15,7 +15,7 @@ MonoBehaviour:
   attackName: Overhead Slash
   damage: 9
   staminaCost: 16
-  armorPierce: 0
+  armorPierce: 16
   startupFrames: 16
   activeFrames: 4
   recoveryFrames: 12

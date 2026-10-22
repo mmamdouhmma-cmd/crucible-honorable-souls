@@ -15,7 +15,7 @@ MonoBehaviour:
   attackName: Iaijutsu
   damage: 15
   staminaCost: 42
-  armorPierce: 10
+  armorPierce: 24
   startupFrames: 10
   activeFrames: 5
   recoveryFrames: 12

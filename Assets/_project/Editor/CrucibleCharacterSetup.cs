@@ -457,7 +457,7 @@ public static class CrucibleCharacterSetup
         // grip boss in his hand - nearest shield vertex to the fingertip centre 0.083 -> 0.017. The
         // ROTATION is untouched, so the hard-won facing (and the 180 deg roll that stopped him
         // showing the enemy the enarmes) still stands: a translation cannot turn a shield round.
-        { "Richard_Shield_L", (new Vector3(0.000962f, 0.001816f, 0.000096f), new Vector3(0.53f, 122.11f, 164.30f)) },
+        { "Richard_Shield_L",  (new Vector3(0.000856f, 0.002563f, -0.000085f), new Vector3(0.53f, 122.11f, 164.30f)) },   // pushed 0.125 further out along the disc's own normal: the worst LEFT-HAND vertex went from 0.090 PROUD of the front face to 0.035 behind it, so no fist shows through the paint
         { "Salaadin_Shield_L", (new Vector3(0.000209f, 0.000563f, -0.000347f), new Vector3(0.75f, 181.74f, 355.40f)) },
     };
 
@@ -565,7 +565,16 @@ public static class CrucibleCharacterSetup
         }
 
         float gripY = b.min.z + spec.leftGripFrac * b.size.z;
-        socket.localPosition = new Vector3(b.center.x, b.center.y, gripY);
+        // ON THE HAFT AXIS, which is x = y = 0 - NOT the mesh bounds' centre. A weapon mounts at its
+        // hand bone's ORIGIN, so the weapon's own origin IS the right fist and local (0,0,z) runs
+        // straight down the haft through it. The bounds CENTRE is a different thing entirely: it is
+        // the middle of a box drawn round the whole weapon, and on anything whose mass is not
+        // centred on the haft it sits well off it - 0.357 world units on Miyamoto's katana (a long
+        // curved blade) and 0.148 on Bjorn's axe (a head on one end). Taking it put Miyamoto's off
+        // hand a third of a metre off the hilt, up at his chest, where it read as him not holding
+        // the sword at all; Bjorn's was the same fault at half the size, and is most likely what
+        // PalmOffset() in TwoHandGrip was quietly compensating for.
+        socket.localPosition = new Vector3(0f, 0f, gripY);
         var rightHand = rootAnim.GetBoneTransform(HumanBodyBones.RightHand);
         socket.rotation = rightHand != null ? rightHand.rotation : weapon.transform.rotation;
 

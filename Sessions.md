@@ -2960,3 +2960,36 @@ at x0.96 / x1.02 / x1.00 / x1.02 / x0.67 / x1.07.
 Also corrected a claim from earlier in the day: **a bought animation pack does not need Mixamo bone
 names.** Pack clips import `CreateFromThisModel`, so any FBX that maps as Humanoid retargets fine -
 which widens what is worth buying considerably.
+
+### 2026-10-22 - Both hands on the hilt, a shield that hides the fist, and a katana that pierces
+
+Four from a play test, all four measured and photographed.
+
+**Richard's shield is 0.125 further out.** The metric that mattered was the WORST left-hand vertex,
+not the centroid: the centroid read 0.065 behind the front face while his worst knuckle stood 0.090
+PROUD of it, which is the fist showing through the paint. Pushed along the disc's own normal, the
+worst vertex now sits 0.035 behind the face and the shield presents the lion and cross clean.
+
+**Miyamoto now holds the katana with both hands, and the bug was a good one.** His left fist was
+solved up at his chest, nowhere near the hilt - while `TwoHandGrip` reported `OffHandMiss` 1.6e-07,
+because the wrist was faithfully on its socket and the SOCKET was wrong. `SetupWeapon` placed
+`LeftGrip` at the weapon mesh's bounds CENTRE in x/y, and on a long curved blade that centre sits
+**0.357 world units off the haft**. The socket belongs on the haft AXIS, local (0,0,z), because a
+weapon mounts at its hand bone's origin so the weapon origin IS the right fist. Bjorn had the same
+fault at 0.148 - half the size, same cause - and is fixed with him; it is probably what
+`PalmOffset()` in `TwoHandGrip` had been compensating for. Both now photograph with the fists
+stacked on the haft.
+
+**Miyamoto's armour pierce was 0 on every normal** - the katana fighter pierced least in the whole
+roster. Now 8/10/16 on the normals, 18/20/24/24 on the specials and 8 on the ripostes, against
+Richard's best of 12. Pierce is a percentage off the defender's armour.
+
+**SP+Medium (Nito Cross) was a spinning back fist because its `aimMode` was `Off`**, which leaves
+the clip's own wheel alone. `Level` is the same cure Kuruma got: measured through the move the
+blade drops from **84 deg of elevation to 0.0 deg** across the hit window (frames 20-32) and holds
+flat, on a 356 deg pelvis sweep - about the 90 degrees of sword angle the user asked for. It
+photographs as a horizontal slash with the edge leading.
+
+Worth remembering: **Miyamoto and Bjorn have no move table**, so their aim and box geometry live
+only in the `.asset` - nothing regenerates them. And a transform solved in PLAY mode is thrown away
+when play stops; all three scene fixes had to be re-applied in edit mode and the scene saved.

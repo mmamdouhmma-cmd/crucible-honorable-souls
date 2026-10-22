@@ -15,7 +15,7 @@ MonoBehaviour:
   attackName: Push Kick Riposte
   damage: 8
   staminaCost: 10
-  armorPierce: 0
+  armorPierce: 8
   startupFrames: 20
   activeFrames: 4
   recoveryFrames: 6

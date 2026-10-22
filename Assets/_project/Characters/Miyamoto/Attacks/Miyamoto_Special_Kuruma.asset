@@ -15,7 +15,7 @@ MonoBehaviour:
   attackName: Kuruma
   damage: 15
   staminaCost: 42
-  armorPierce: 10
+  armorPierce: 24
   startupFrames: 10
   activeFrames: 4
   recoveryFrames: 10
