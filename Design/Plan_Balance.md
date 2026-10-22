@@ -116,6 +116,34 @@ Spread the reductions so guard is a real per-character decision. Direction, not 
 Richard stays highest, Bjorn comes DOWN (aggression should not also carry the second-best guard),
 Salaadin sits between, Miyamoto stays lowest and is paid back in parry and dodge.
 
+### 2.5 Dash i-frames per fighter
+
+Today `DASH_IFRAME_DURATION = 0.15 s` is a single global constant with **no per-fighter field at
+all** — every fighter is invulnerable for exactly the same slice of their dash. It needs a
+serialized field on `Fighter` and a column in `CrucibleBalance`, exactly like the parry fields.
+
+**The number that matters is COVERAGE — i-frames as a fraction of that fighter's dash duration —
+not the absolute i-frame time.** Dash durations already differ, so the fixed 0.15 s is already
+producing a ranking by accident, and in the right direction:
+
+| | dash duration | i-frames now | coverage now | proposed | coverage |
+|---|---|---|---|---|---|
+| Miyamoto | 0.22 s | 0.15 s | **68%** | 0.18 s | 82% |
+| Salaadin | 0.26 s | 0.15 s | 58% | 0.16 s | 62% |
+| Bjorn | 0.30 s | 0.15 s | 50% | 0.14 s | 47% |
+| Richard | 0.34 s | 0.15 s | 44% | 0.12 s | 35% |
+
+Dash SPEED already ranks correctly and should be left alone: 11.8 / 8.8 / 7.3 / 5.9 world units
+per second.
+
+Two things to watch:
+
+- **Coverage must stay clearly under 100%.** A dash nobody can hit is a free escape that needs no
+  read, which is the opposite of what the dodge game is for. Miyamoto at 0.20 s on a 0.22 s dash
+  would be 91% — effectively invincible while dashing. 0.18 s keeps a punishable head and tail.
+- **It interacts with a stamina refund on a successful dodge.** High coverage plus a refund makes
+  dashing nearly free for Miyamoto. Pick one of the two to be generous, not both.
+
 ---
 
 ## 3. Signature axis per fighter
@@ -176,8 +204,10 @@ Suggested order:
 2. Low-stamina rule (2.3). Small, and reverses a one-line change made 2026-10-23.
 3. Block spread (2.4). One column in `CrucibleBalance`.
 4. Salaadin's combo freedom AND his damage cut, together (2.2).
-5. Per-fighter parry and dash i-frames. New serialized fields, plus a `CrucibleBalance` column so
-   the whole roster stays in one table.
+5. Per-fighter parry and dash i-frames (2.5). New serialized fields on `Fighter`, plus a
+   `CrucibleBalance` column so the whole roster stays in one table. These two are what give
+   Miyamoto his axis, so they are not optional trimming - without them his damage cut in neutral
+   buys him nothing and he stays the fighter who loses every matchup.
 
 ---
 
