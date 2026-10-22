@@ -1014,7 +1014,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Special_DoubleHigh
-  m_Speed: 1.0000001
+  m_Speed: 1.4
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1027,7 +1027,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 94cebd1d604977c4d8bd9a7a39fdf174, type: 3}
+  m_Motion: {fileID: 4061839508520268033, guid: f34b975db2a11be478fda794e6d25726, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1326,7 +1326,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Special_ShieldBash
-  m_Speed: 0.9999999
+  m_Speed: 1.6
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1339,7 +1339,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 0052ee52a3d93204cafe0249dc7310ee, type: 3}
+  m_Motion: {fileID: 4061839508520268033, guid: 1b911dac86fe53341bc0c29227f70fc5, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1634,7 +1634,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Special_ShieldCharge
-  m_Speed: 0.99999994
+  m_Speed: 1.2333332
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5648808868077471529}
@@ -1647,7 +1647,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 009979577f0e3e14182c5c493aba4de6, type: 3}
+  m_Motion: {fileID: 831972226715816293, guid: a072b107c38a1054da46d270f79dd078, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 

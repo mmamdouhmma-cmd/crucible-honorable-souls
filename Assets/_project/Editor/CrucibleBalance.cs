@@ -115,9 +115,9 @@ public static class CrucibleBalance
             N("Richard_Light_Thrust",                  7,  15,  5,     11,  3,  9,   7),
             N("Richard_Medium_Slash",                  9,  18,  2,     15,  4, 11,   9),
             N("Richard_Heavy_Overhead",               11,  21,  8,     22,  5, 17,  11),
-            N("Richard_Special_ShieldCharge",         14,  38, 10,     11,  4, 15,  13),   // 30 f = twice the draw cut's 15-frame core, so it plays at x1.00
-            N("Richard_Special_ShieldBash",           15,  43, 12,     14,  5, 13,  13),   // 32 f = twice the spin's 16-frame core
-            N("Richard_Special_DoubleHigh",           16,  48, 10,     18,  5, 17,  14),   // 40 f; the window comes from a per-STATE contact, not the shared trim
+            N("Richard_Special_ShieldCharge",         14,  38, 10,     11,  4, 15,  13),   // the three specials run a little longer than the normals whose clips they play
+            N("Richard_Special_ShieldBash",           15,  43, 12,     15,  5, 14,  13),
+            N("Richard_Special_DoubleHigh",           16,  48, 10,     22,  5, 17,  14),   // 44 f, the same total as the Heavy, so the window maths match it exactly
             N("Richard_Riposte_Dash",                  9,  12,  0,     12,  4, 14,   9),
             N("Richard_Riposte_Parry",                 8,  12,  0,     12,  4, 14,   9),
         },

@@ -47,6 +47,11 @@ public class FightCamera : MonoBehaviour
     [Tooltip("Shake amplitude (world units) for a hit that does 10 damage. Scales with damage.")]
     [SerializeField] private float shakePerTenDamage = 0.12f;
     [SerializeField] private float shakeDuration = 0.18f;
+    [Tooltip("A landed SPECIAL shakes this many times harder than a heavy of the same damage. "
+           + "Richard's three specials play the same animation as his normals, so the camera is "
+           + "what tells them apart - this is the whole difference on screen.")]
+    [SerializeField] private float specialShakeMultiplier = 2.4f;
+    [SerializeField] private float specialShakeDuration = 0.32f;
     [Tooltip("Degrees of field-of-view punch-in on a heavy hit.")]
     [SerializeField] private float heavyPunchIn = 4f;
     [SerializeField] private float punchDuration = 0.22f;
@@ -167,7 +172,13 @@ public class FightCamera : MonoBehaviour
         // available (punchIn / slowMo toggles) but off: the fight reads cleaner without them.
         if (blocked || (type != AttackType.Heavy && type != AttackType.Special)) return;
 
-        Shake(shakePerTenDamage * (Mathf.Max(damage, 1) / 10f), shakeDuration);
+        // A special hits the camera harder and holds it longer. Shake() normalises its decay by
+        // shakeDuration, so a longer time here holds full amplitude first and then falls off -
+        // which is the shape a heavy landing wants anyway.
+        bool special = type == AttackType.Special;
+        float amplitude = shakePerTenDamage * (Mathf.Max(damage, 1) / 10f);
+        if (special) amplitude *= specialShakeMultiplier;
+        Shake(amplitude, special ? specialShakeDuration : shakeDuration);
         if (punchInOnHeavy) PunchIn(heavyPunchIn, punchDuration);
         if (slowMoOnHeavy) SlowMo(heavySlowMo, slowMoDuration);
     }

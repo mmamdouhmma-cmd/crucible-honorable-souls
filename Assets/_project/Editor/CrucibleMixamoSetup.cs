@@ -129,7 +129,12 @@ public static class CrucibleMixamoSetup
         // as Richard going down on one knee with the shield planted - a buff, not a strike. The
         // measurement said "overhead, 2.22 of drop" because that is the sword lowering as he kneels.
         // Judge a clip from a PHOTOGRAPH of the trimmed window in play, never from its numbers.
-        ("Richard_Special_ShieldCharge",   "SwordShieldPack", "draw sword 2",                false),
+        // Each special now plays the clip of the NORMAL on the same button - the user's call, after
+        // the pack ran out of standing strikes that were not spins or gestures. What makes a special
+        // read as one is the camera: FightCamera.OnImpact shakes harder and longer for a Special.
+        // A trim is keyed by CLIP, so these share the normals' trims; the per-STATE contacts in
+        // swing_contacts.json keep each special's own window and speed.
+        ("Richard_Special_ShieldCharge",   "Custom",          "Richard_Thrust",              false),
         // The user's call after play-testing: both authored specials read as "melty", so they take
         // pack clips untouched. Two rounds of picking. Measure yaw with clip_curves, which UNWRAPS it -
         // clip_measure wraps, which is how "attack (3)" passed as a 36 deg cut when it is really a full
@@ -138,13 +143,13 @@ public static class CrucibleMixamoSetup
         // overheads and are not strikes at all: photographed in play they hold the sword up across the
         // chest, a spell-cast gesture. So these share with Salaadin, as the walks and slash (5) already
         // do - both are real swings, no spin, no travel.
-        ("Richard_Special_ShieldBash",     "SwordShieldPack", "sword and shield attack (2)", false),  // horizontal spin cut, 40 f, core 8-24
+        ("Richard_Special_ShieldBash",     "SwordShieldPack", "sword and shield slash (5)",  false),  // his Medium's diagonal cut
         // Back to a spliced clip, on the user's call: a single pack chop here reads as BJORN's
         // special - his Blood Eagle is "standing melee run jump attack" and this pack's "attack" is
         // an overhead+leap too, so the two look the same whatever the weapon. Twin Hew is two high
         // swings, which is what the move is named for. See clip_double_high: pack frames verbatim,
         // only the four-frame join is authored.
-        ("Richard_Special_DoubleHigh",     "SwordShieldPack", "sword and shield attack (3)", false),  // diagonal-down spin cut, 53 f
+        ("Richard_Special_DoubleHigh",     "SwordShieldPack", "sword and shield slash",      false),  // his Heavy's overhead
         ("Richard_Riposte_Dash",           "SwordShieldPack", "sword and shield attack (4)", false),  // 31 f, the shortest cut in the pack
         ("Richard_Riposte_Parry",          "SwordShieldPack", "sword and shield kick",       false),  // a BOOT: hitsWithWeapon is off
         ("React_Front",                    "SwordShieldPack", "sword and shield impact",     false),

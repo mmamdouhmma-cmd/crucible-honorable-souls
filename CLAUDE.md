@@ -706,9 +706,38 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `len = max(speed * total * 0.5, 6)` and the shared core is ignored entirely. Widening
   `sword and shield attack (3)`'s core for Richard's SP+Heavy would have re-timed Salaadin's
   MEDIUM, which is the same shared-trim trap that once dropped his Hattin Cleave to x0.43.
-- **A full-turn special crosses its legs and that is the move, not a fault.** Richard's two new
-  spins cross for 11 and 34 frames with pelvis sweeps of 263 and 279 degrees. Leg crossing is only
-  a defect in a move that holds ONE stance (the thrust) - judge it against the pelvis sweep.
+- **A full-turn special crosses its legs and that is the move, not a fault.** Measured on two spins
+  that are no longer wired: 11 and 34 crossed frames at pelvis sweeps of 263 and 279 degrees. Leg
+  crossing is only a defect in a move that holds ONE stance (the thrust) - judge it against the
+  pelvis sweep.
+- **Richard's three specials play the SAME CLIPS as his three normals, and the CAMERA is what tells
+  them apart.** The user's call, after the SwordShieldPack ran out of standing strikes that were
+  neither spins nor buff gestures. SP+Light plays `Richard_Thrust`, SP+Medium `slash (5)`,
+  SP+Heavy `slash` - each its own normal's clip, at the same speed (x1.23/x1.60/x1.40 against the
+  normals' x1.21/x1.60/x1.40), because each special carries a per-STATE contact copied from the
+  normal that owns the clip. Three things this depends on:
+  - **A trim is keyed by CLIP, so a special sharing its normal's clip shares its trim.** The window
+    and speed have to come from `swing_contacts.json`, which is keyed by STATE. Same mechanism that
+    keeps Richard's SP+Heavy off Salaadin's Medium.
+  - **A special that plays a normal's animation must take that normal's HIT GEOMETRY too** -
+    `height`, `comesFrom`, `hitSide`, `aim`, `size`, `offset`. A box that does not match the swing
+    on screen is what reads as unfair. Only `range`, `lunge`, damage and stamina stay special.
+  - **`FightCamera.OnImpact` already shook for Heavy and Special and treated them identically**, so
+    there was nothing on screen to separate them. `specialShakeMultiplier` (2.4) and
+    `specialShakeDuration` (0.32 s) now split them. Measured in play: Heavy 0.108 over 0.18 s,
+    SP+Heavy **0.374 over 0.32 s** - 3.5x, because the multiplier compounds with the damage the
+    amplitude already scales by (13 against 9). **Light and Medium shake not at all** (0.000, by
+    design - only Heavy and Special move the camera), so their specials go from no shake to a full
+    one, which is the clearest tell of the three.
+  - `Shake()` normalises its decay by the serialized `shakeDuration`, not by the seconds passed in,
+    so a longer duration HOLDS full amplitude and then falls off. That is the right shape for a
+    special landing; it is not a bug.
+- **A new animation pack does NOT need Mixamo bone names.** `PackDir` is just
+  `Clips/Mixamo/<pack>`, and pack clips import `CreateFromThisModel`, which builds an avatar from
+  whatever skeleton the FBX carries. Any FBX that maps as Humanoid retargets onto these fighters;
+  the Mixamo naming is a convention inherited from where the current packs came from, not a
+  requirement. The only real risk with a bought pack is the auto-mapper failing on its naming, and
+  that is one look at the Rig tab.
 
 ## Measuring a move from the CLI (the harness that works)
 

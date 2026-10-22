@@ -2926,3 +2926,37 @@ keyed by STATE, so Richard's window is set there and Salaadin's medium still mea
 The asset names (`Richard_Special_ShieldCharge`, `_ShieldBash`, `_DoubleHigh`) are deliberately
 unchanged so the scene's GUID references survive; only the clips, the displayed names and the
 frame budgets moved.
+
+### 2026-10-22 - Richard's specials are his normals, and the camera makes the difference
+
+The user's call, and the right one: the SwordShieldPack has no more standing strikes that are not
+spins or buff gestures, so rather than keep hunting, each special now plays the clip of the NORMAL
+on the same button - SP+Light `Richard_Thrust`, SP+Medium `slash (5)`, SP+Heavy `slash` - and a
+heavier camera shake tells them apart.
+
+Renamed to read as the bigger version of the same swing: **Lionheart Thrust**, **Crusader Cross**,
+**Judgement**. Asset names are unchanged so the scene's GUID references survive.
+
+Three things the change turned on:
+
+- **Per-STATE contacts.** A trim is keyed by CLIP, so a special sharing its normal's clip shares
+  its trim; the window and speed come from `swing_contacts.json` instead, copied from the normal
+  (15.0/x1.3, 17.4/x1.6, 17.7/x1.4). The specials measure x1.23 / x1.60 / x1.40 against the
+  normals' x1.21 / x1.60 / x1.40 - the same swing at the same speed.
+- **The hit geometry moved with the clip.** `height`, `comesFrom`, `hitSide`, `aim`, `size` and
+  `offset` are now each normal's, because a box that does not match what is on screen reads as
+  unfair. Only `range`, `lunge`, damage and stamina stay special.
+- **The camera.** `OnImpact` already shook for Heavy and Special and treated them the same, so
+  nothing on screen separated them. `specialShakeMultiplier` 2.4 and `specialShakeDuration` 0.32 s
+  now do. Measured: Heavy 0.108 over 0.18 s, SP+Heavy **0.374 over 0.32 s**; Light and Medium shake
+  **0.000** where their specials shake 0.346-0.374. The light and medium specials are the ones this
+  sells hardest - no shake at all becomes a big one.
+
+Verification pass: all six moves 0 frames below the floor, 0 crossed frames, hips 1.46-1.63 (no
+leap), and each special's numbers now match its normal exactly (SP+Light ankle gap 0.797 = Light's
+0.797; SP+Heavy 1.651 = Heavy's 1.651). Salaadin re-checked after the shared menu run and unchanged
+at x0.96 / x1.02 / x1.00 / x1.02 / x0.67 / x1.07.
+
+Also corrected a claim from earlier in the day: **a bought animation pack does not need Mixamo bone
+names.** Pack clips import `CreateFromThisModel`, so any FBX that maps as Humanoid retargets fine -
+which widens what is worth buying considerably.

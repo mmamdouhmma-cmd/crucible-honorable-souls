@@ -69,8 +69,16 @@
     "speed": 1.2
   },
   "Richard_Special_DoubleHigh": {
-    "contact": 25.2,
-    "speed": 1.0
+    "contact": 17.7,
+    "speed": 1.4
+  },
+  "Richard_Special_ShieldBash": {
+    "contact": 17.4,
+    "speed": 1.6
+  },
+  "Richard_Special_ShieldCharge": {
+    "contact": 15.0,
+    "speed": 1.3
   },
   "_comment": "source frame (30 fps) where the weapon TIP crosses the opponent's centre line in front, measured with BladeTrace at 8% speed (2026-10-12); CrucibleMixamoSetup re-cuts each window around it. An object form adds the playback speed: {\"contact\": f, \"speed\": s}"
 }

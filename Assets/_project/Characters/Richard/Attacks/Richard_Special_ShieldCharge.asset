@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
   m_Name: Richard_Special_ShieldCharge
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
-  attackName: Rising Draw
+  attackName: Lionheart Thrust
   damage: 14
   staminaCost: 38
   armorPierce: 10
@@ -29,7 +29,7 @@ MonoBehaviour:
   hitstunFrames: 13
   hitboxRange: 3.2
   hitboxOffset: {x: 0, y: 1, z: 0}
-  hitboxSize: {x: 1, y: 1.2, z: 1}
+  hitboxSize: {x: 0.9, y: 1, z: 1}
   aimMode: 0
   aimMaxAngle: -1
   lungeStopDistance: -1

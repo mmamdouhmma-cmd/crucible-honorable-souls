@@ -64,25 +64,26 @@ public static class CrucibleRichard
                    range = 3.1f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
-        // SP + Light: a rising draw cut thrown from a stand (SwordShieldPack/draw sword 2).
-        // The ASSET name is kept on all three so the scene's GUID references survive - only the
-        // clip, the displayed name and the frame budget changed.
-        new Move { asset = "Richard_Special_ShieldCharge", name = "Rising Draw", trigger = "SpecialLight",
+        // The three specials play their OWN NORMAL's animation, so each one takes that normal's hit
+        // geometry too - a box that does not match the swing on screen is the thing that reads as
+        // unfair. They stay specials in every other respect: damage, stamina, and the heavier
+        // camera shake FightCamera gives an unblocked Special.
+        // The ASSET names are kept so the scene's GUID references survive.
+        // SP + Light: his Lion Thrust (Custom/Richard_Thrust).
+        new Move { asset = "Richard_Special_ShieldCharge", name = "Lionheart Thrust", trigger = "SpecialLight",
                    height = Mid, type = Special, specialButton = Light, comesFrom = FromThrust, hitSide = HitStraight,
-                   aim = AimFull, range = 3.2f, size = new Vector3(1.0f, 1.2f, 1f), offset = new Vector3(0f, 1f, 0f),
-                   lunge = 1.0f, weapon = true },      // not a charge any more, so no charging lunge
+                   aim = AimFull, range = 3.2f, size = new Vector3(0.9f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
+                   lunge = 1.0f, weapon = true },
 
-        // SP + Medium: a horizontal spinning cut (SwordShieldPack/attack (2)). The spin carries the
-        // blade round the body, so the box is wide and the lunge stays short.
-        new Move { asset = "Richard_Special_ShieldBash", name = "Wheel Cut", trigger = "SpecialMedium",
-                   height = Mid, type = Special, specialButton = Medium, comesFrom = FromOverhead, hitSide = HitStraight,
-                   aim = AimFull, range = 2.9f, size = new Vector3(1.4f, 1.0f, 1f), offset = new Vector3(0f, 0.6f, 0f),
+        // SP + Medium: his Cross Slash (SwordShieldPack/slash (5)).
+        new Move { asset = "Richard_Special_ShieldBash", name = "Crusader Cross", trigger = "SpecialMedium",
+                   height = Mid, type = Special, specialButton = Medium, comesFrom = FromRight, hitSide = HitLeft,
+                   aim = AimFull, range = 3.0f, size = new Vector3(1.3f, 1.1f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.2f, weapon = true },
 
-        // SP + Heavy: a diagonal-down spinning cut (SwordShieldPack/attack (3)) - a full turn with
-        // the hips flat on the floor, replacing the splice that leapt.
+        // SP + Heavy: his Crusader Hew (SwordShieldPack/slash), the pack's true overhead.
         new Move { asset = "Richard_Special_DoubleHigh", name = "Judgement", trigger = "SpecialHeavy",
-                   height = High, type = Special, specialButton = Heavy, comesFrom = FromOverhead, hitSide = HitStraight,
+                   height = Overhead, type = Special, specialButton = Heavy, comesFrom = FromOverhead, hitSide = HitStraight,
                    aim = AimYaw, range = 3.1f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.2f, weapon = true },
 
