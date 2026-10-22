@@ -91,18 +91,23 @@ public static class CrucibleSalaadin
                    range = 3.1f, size = new Vector3(1.2f, 1.6f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
-        // SP + Light: the big committed overhead that comes in off a leap (SwordShieldPack
-        // "sword and shield attack"), freed up by the spinning jump taking SP + Heavy. It replaces
-        // slash (2), which the user read as an incomplete animation - and measurably was: its tip
-        // NEVER rose above the hips (tipHi 0.07, the only strike in four packs like that) across
-        // 107 frames, so there was no arc to see. This clip has the highest tip in the shield pack
-        // at 1.45 and 86 deg of yaw, so it is a clean chop rather than a turn. It leaps (hips 3.63,
-        // foot^ -0.29), which suits a move called Rush. Geometry follows: Overhead/FromOverhead,
-        // HitStraight, and a tall box where the blade actually comes down.
-        new Move { asset = "Salaadin_Special_VeiledRush", name = "Veiled Rush", trigger = "SpecialLight",
-                   height = Overhead, type = Special, specialButton = Light, comesFrom = FromOverhead, hitSide = HitStraight,
-                   aim = AimFull, range = 3.2f, size = new Vector3(1.0f, 1.6f, 1f), offset = new Vector3(0f, 1f, 0f),
-                   lunge = 2.4f, weapon = true },
+        // SP + Light: the barbarian REVERSE slash (AxePack "standing melee attack backhand") -
+        // the user's pick, 2026-10-23, over the committed overhead that briefly held this slot and
+        // over slash (2) before it. 245 deg of turn, tip arc 1.40 (the highest of any strike in the
+        // four packs) and foot^ -0.72, so the feet stay PLANTED. Richard's SP + Light and Bjorn's
+        // both play this same clip; a trim is keyed by CLIP and shared, so all three take their
+        // window and speed from their own per-STATE entry in swing_contacts.json instead.
+        // Geometry follows the swing, not the slot's history: Mid rather than Overhead, FromLeft /
+        // HitRight because it comes back across him, a wide flat box, and AimLevel - a turning
+        // swing aimed Full points the tip DOWN at the chest from a raised hand, which is what read
+        // as a spinning back FIST on Kuruma and the Nito Cross.
+        // The LUNGE drops 2.4 -> 1.2: this clip plants its feet and travels 0.02 of its own, so the
+        // old rush distance would have slid him across the floor with his boots still. The ASSET
+        // name is kept - the scene holds it by GUID - but the displayed name follows the move.
+        new Move { asset = "Salaadin_Special_VeiledRush", name = "Veiled Reversal", trigger = "SpecialLight",
+                   height = Mid, type = Special, specialButton = Light, comesFrom = FromLeft, hitSide = HitRight,
+                   aim = AimLevel, range = 3.2f, size = new Vector3(1.4f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
+                   lunge = 1.2f, weapon = true },
 
         // SP + Medium: the flat, wide swing. Widest box on him, because the cut is horizontal.
         new Move { asset = "Salaadin_Special_CrescentSlash", name = "Crescent Slash", trigger = "SpecialMedium",

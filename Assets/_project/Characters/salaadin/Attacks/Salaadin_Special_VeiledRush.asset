@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
   m_Name: Salaadin_Special_VeiledRush
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
-  attackName: Veiled Rush
+  attackName: Veiled Reversal
   damage: 13
   staminaCost: 36
   armorPierce: 5
@@ -21,20 +21,20 @@ MonoBehaviour:
   recoveryFrames: 18
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialLight
-  attackHeight: 3
+  attackHeight: 1
   attackType: 3
   specialButton: 0
-  comesFrom: 0
-  hitSide: 0
+  comesFrom: 1
+  hitSide: 2
   hitstunFrames: 12
   hitboxRange: 3.2
   hitboxOffset: {x: 0, y: 1, z: 0}
-  hitboxSize: {x: 1, y: 1.6, z: 1}
-  aimMode: 0
+  hitboxSize: {x: 1.4, y: 1, z: 1}
+  aimMode: 3
   aimMaxAngle: -1
   aimRollDegrees: 0
   lungeStopDistance: -1
-  lungeMaxDistance: 2.4
+  lungeMaxDistance: 1.2
   hitsWithWeapon: 1
   comboLinks:
   - input: 1

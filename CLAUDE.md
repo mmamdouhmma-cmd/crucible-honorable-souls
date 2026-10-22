@@ -114,11 +114,16 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   His whole LIGHT and SPECIAL set was re-pointed later the same day, on the user's picks:
   Light = AxePack `combo attack ver. 2` (a flat sweep; its tip arc is only 0.29 and that was
   flagged before the choice), SP+Light = `sword and shield attack` (the committed overhead, tip
-  arc 1.45, replacing the tip-never-rises `slash (2)`), SP+Heavy = `slash (4)`, **the spinning
-  jumping slash the user asked for by name** - the clip his Heavy gave up that morning. Verified in
-  play: Light 118 deg pelvis / hips 1.39, SP+Light 144 / 2.80, SP+Heavy **443 / 2.09**. The big hop
-  moved from SP+Heavy to SP+Light - `sword and shield attack` leaps higher (2.80) than the
-  spin-jump does (2.09).
+  arc 1.45) and then, on a second pass the same day, the BARBARIAN REVERSE SLASH (AxePack
+  `standing melee attack backhand`) - both replacing the tip-never-rises `slash (2)`;
+  SP+Heavy = `slash (4)`, **the spinning jumping slash the user asked for by name** - the clip his
+  Heavy gave up that morning. Verified in play: Light 118 deg pelvis / hips 1.39,
+  SP+Light **351 / 1.52** (hand 1.42 above the hips down to -0.17: a full sweep, feet planted),
+  SP+Heavy **443 / 2.09**. **His SP+Heavy is now his only leaping move** - the overhead that
+  briefly held SP+Light hopped to 2.80, and the reverse slash does not leave the ground.
+  **Three states share `standing melee attack backhand`** - Bjorn's SP+Light (2.0), Richard's
+  SP+Light (1.3) and Salaadin's (2.0) - each on its own per-STATE contact. It is the clearest
+  proof that clip sharing costs nothing but the look.
   His guard is play-verified against the authored clip: shield boss . forward **1.00**, blade edge
   . forward **0.94**, elbows 113/128, every bone within the idle's own breath. **His folder is lowercase
   `Characters/salaadin`** - renaming it deadlocks the Editor if any shell is sitting in it, so

@@ -3120,3 +3120,31 @@ by GUID.
 
 Worth knowing: **`Richard_Thrust` is now an orphan.** Both states that played it moved to the
 barbarian pack, so Richard has no thrust at all any more. The clip and its generator still exist.
+
+### 2026-10-23 - Salaadin's SP+Light takes the reverse slash too
+
+A one-line follow-up that turned into the cleanest demonstration of the sharing rule.
+
+The committed overhead went into SP+Light earlier today and the user preferred the reverse slash
+Richard had just been given, so Salaadin takes `standing melee attack backhand` as well. **Three
+states now play that one clip** - Bjorn's SP+Light at 2.0, Richard's at 1.3, Salaadin's at 2.0 -
+each timed by its own per-STATE entry in `swing_contacts.json`, and neither of the other two moved.
+
+Measured in play it is the better move for the slot on every count that was in question: pelvis
+sweep **351 deg**, hand **1.42** above the hips down to **-0.17** (a full sweep, where the
+complaint about `slash (2)` was a tip that never rose at all), and `maxHipsAboveRoot` **1.52**
+against the overhead's 2.80 - the feet stay on the ground. **That leaves SP+Heavy as his only
+leaping move.**
+
+Two things followed the clip rather than staying put. The hit geometry went Mid / FromLeft /
+HitRight with a wide flat box and **AimLevel**, because a turning swing aimed Full points the tip
+down at the chest from a raised hand - the Kuruma and Nito Cross lesson. And the **lunge dropped
+2.4 -> 1.2**: this clip plants its feet and travels 0.02 of its own, so the old rush distance would
+have slid him across the floor with his boots still. The displayed name is "Veiled Reversal" now;
+the asset name is untouched, because the scene holds it by GUID.
+
+The `HTTP 400` trap caught the combined write again - `CreateMoves` + `Apply` + `UseMixamo` in one
+eval returned 400 and wrote **nothing**, and the read-back is the only reason it was caught. Split
+into separate evals it went through. Also worth noting: the Editor came back in PLAY mode twice
+after a recompile, and editor-only calls fail with "This cannot be used during play mode" - check
+`editor_status` before a write pass.
