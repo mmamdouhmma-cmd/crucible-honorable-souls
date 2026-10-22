@@ -600,6 +600,40 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   while the clips' own frames sit +0.18 to +0.31 clear. Judge a clip by its own frames before
   blaming the authoring.
 
+- **`clip_measure.py` WRAPS hip yaw; `clip_curves.py` unwraps it. Only the second can tell a cut
+  from a spin.** `attack (3)` reads as 36 deg in one and **396** in the other - it is a full turn
+  plus 36. Every clip chosen off `clip_measure`'s yaw column is suspect; re-check with
+  `clip_curves.py` (which also reports the swing core, the contact candidate and a silhouette
+  guess) before wiring a state. The SwordShieldPack is mostly spins: attack (2) 429, slash (2) 507,
+  slash (4) 391, attack (3) 396.
+- **A clip can measure as a strike and not be one.** "power up" and "casting" are the only two
+  SwordShieldPack clips no fighter uses, both classify as overheads with a real tip drop, and
+  photographed in play they are spell-cast gestures - the sword held up across the chest, no swing.
+  Measurement narrows the field; the photograph decides.
+- **`AimMode.Level` (AttackData + WeaponAim) holds a blade horizontal AND pointed at the opponent.**
+  For a spin, `Full` aims at the opponent's CHEST, which from a raised hand points the tip DOWN
+  (Kuruma measured -41 to -7 deg, which is what reads as a back fist), and `YawOnly` leaves the
+  clip's own wheel alone (-36 to +39). Level flattens the desired direction to the horizon first:
+  0.2-3.2 deg through the hit window. **The enum is appended, never reordered** - its values
+  serialize by index on every AttackData asset. The aim only holds while WeaponAim's weight is up
+  (startup + active, then `fadeOut`), so the follow-through is still the clip's.
+- **`Apply the roster balance` writes AttackData in memory and does NOT save it to disk**, so a
+  frame-budget change survives only until the next domain reload - and `Use Mixamo packs`, run in
+  the same breath, fits windows against the NEW numbers while the assets still hold the old ones.
+  Richard's charge kept its 47-frame budget through a whole verification pass and the window cut
+  the first nine frames off the run. Call `AssetDatabase.SaveAssets()` after Apply and read the
+  `.asset` back before trusting a state speed.
+- **A frozen borrowed stance IS the clip's whole footing, so check the frame you borrow.** The
+  authored thrust re-applies one pose at every key; it took the pack's `block idle`, a FENCING
+  stance whose ankles sit at -0.535 along the hip joints' own axis - one boot on the wrong side of
+  the other, which is "his legs cross". `attack (4)` frame 15 is a standing cut with both boots
+  planted: +0.531. Two near misses worth knowing: his own idle stands him upright, which moves the
+  shoulder back and puts the thrust target 0.189 beyond his reach, and overlaying the guard's torso
+  on the idle's hips doubles the lean and bends him double.
+- **Measure left-versus-right against the HIP JOINTS' own axis** (`LeftUpperLeg - RightUpperLeg`),
+  never `transform.right`. A fighter's root, his pelvis and the Blender import each have their own
+  idea of "right", and three rounds of contradictory readings here all came from that.
+
 ## Measuring a move from the CLI (the harness that works)
 
 - **`Time.captureDeltaTime = 1f/60f` makes one rendered frame equal one 60 fps game frame**, so a
