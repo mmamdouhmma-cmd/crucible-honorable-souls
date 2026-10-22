@@ -224,6 +224,139 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   toward rest, keeping the shape of the stance and taking the span out: 94 -> 50 deg, against
   Richard's 56. Verified across his states: idle 50, walk 31, shin cut 50, whirling saif 50,
   veiled rush 35; guard still shield boss . forward 0.98, blade edge . forward 0.94, elbows 118/129.
+- **After re-pointing a state, READ THE CONTROLLER BACK.** `Use Mixamo packs` is the only menu
+  item that writes a state's motion, it times out over the CLI on every run, and a run that
+  returns `HTTP 400` writes NOTHING while the console still shows clip-fitting lines from an
+  earlier run. A whole evening's clip reassignment was reported as done and never reached
+  `P4_Salaadin.controller`. Load the AnimatorController and print each state's `motion` and the
+  FBX it came from; a console message is not evidence, and neither is a screenshot of a pose you
+  expected to change.
+- **The whole roster is rigged the same way now: a Rigify metarig, 79 bones.** Salaadin's was
+  hand-built by the user; Richard, Bjorn and Miyamoto are fitted by construction with
+  `ArtSource/Blender/fit_metarig.py` (metarig in, 92 face bones out, joints placed against human
+  targets, body skinned) and converted by `metarig_to_mixamo.py` (Rigify names -> Mixamo, spare
+  seventh spine bone dissolved, 13 leaf bones, hand roll, project export options). Rebuild chain:
+  `fit_metarig.py` -> `metarig_to_mixamo.py` (overwrite the FBX **in place**, the GUID matters)
+  -> `Rebuild Player<N>` -> `Use Mixamo packs` -> `Wire special and riposte states` ->
+  `Wire combo strings` -> `Salaadin > 4 Rewire` -> `Apply the roster balance`. The metarig blends
+  live in `ArtSource/Blender/metarigs/`; the pre-re-rig bodies are in
+  `ArtSource/Characters/_backup_20261022/premetarig_bodies/`. **None of it is in git** - the
+  Model folders are gitignored - so a fresh clone re-runs the chain.
+  - The existing rig is the ANCHOR, not a thing to discard: it knows where a shoulder sits inside
+    a fur mantle and where a knuckle is inside a closed fist. Only the measured faults are
+    corrected on top of it, and the left side is mirrored onto the right so `asym` is 0.
+  - **Do NOT skin with `parent_set(type='ARMATURE_AUTO')`.** Bone-heat returned "failed to find
+    solution" on Miyamoto and left all 119,952 verts unweighted, and where it works it throws
+    away Tripo's costume weights and the hand-built finger chains. TRANSFER the old vertex groups
+    instead (twist bones fold into the limb they twist about) - 0 unweighted verts on all three.
+  - **`object.parent = None` does not preserve a world transform.** Blender keeps `matrix_basis`
+    and drops the parent's contribution, so a body parented to a scaled armature lands at a new
+    size - Richard's came out 42.75x and the next script reported his ankle at 50% of height.
+    Capture `matrix_world` and put it back.
+- **Unity's humanoid auto-mapper is a name heuristic and is NOT exhaustive.** With the whole
+  roster on Mixamo names and both hands fully boned it took 30/30 fingers on three fighters and
+  26/30 on Miyamoto, dropping RightRing/RightLittle intermediate and distal whose bones exist and
+  are mirror images of the left ones it did take. `CrucibleCharacterSetup.FillMissingHumanBones`
+  now fills any slot left empty whose Mixamo-named bone is in the hierarchy. It only ever ADDS.
+- **A hand-tuned grip OFFSET does not survive a re-rig, and a rotation usually does.**
+  `Richard_Sword` carried `(0.0386, 0.1908, -0.0029)` against the old hand bone; the re-rig threw
+  the sword 33.18 world units off his hand. Every other weapon mounts at its hand bone's ORIGIN,
+  which is the tell that such an offset is compensating for the rig and not for the weapon.
+  Check it by measuring the nearest weapon vertex to the hand bone: healthy is 0.02-0.24.
+- **A rig change puts every authored clip back on its own avatar, and `ImportAll` says so.**
+  `CopyFromOther` only validates while the clip's node chain matches the body's, so changing bone
+  names or count invalidates it - `Transform 'mixamorig:Hips' for human bone 'Hips' not found`.
+  The fallback keeps the clip playing rather than leaving a state empty, but the retarget quality
+  goes, and the fix is to re-export through `*_clips.py` against the new body. Check which states
+  actually care: after the 2026-10-22 re-rig only 5 of 90 states still used a custom clip.
+- **Fighter SIZE is a per-character table, and three different "heights" are in play.**
+  `CrucibleCharacterSetup.StandingHeight` sets how tall each one stands, in the order the user
+  wants them read: Richard, Bjorn, Salaadin, Miyamoto. The scale is SET from the bind-pose skinned
+  bounds box, so the table is CALIBRATED, not literal. Measure **stature, crown MINUS sole** - it
+  is the only one of the three that depends on the child scale alone. The mesh's own vertical span
+  is wrong (Richard's cape and Salaadin's coat hang below their heels and buy them height they do
+  not appear to have); the crown above the floor is wrong too (GroundOffset lifts it). And scale
+  off the SKINNED renderers only - including the weapons shrank Salaadin to 2.10 against the
+  others' 2.7 because two thirds of a metre of his bounds was falchion and shield.
+  **GroundOffset anchors on the SOLES** - the lowest baked vertex whose dominant bone is a foot,
+  toe or ankle - not the lowest vertex, which rests the cloth on the floor and leaves the man
+  hovering. A re-rig moves statures 5-10%, so re-calibrate both after one.
+- **A weapon mounted on a hand bone needs a POSITION as well as a rotation.** `ShieldWeaponMount`
+  held `(0,0,0)` for Salaadin's shield, which puts the hand bone in the disc's own mid-plane;
+  nothing animates his fingers, so the open hand ran through the face and stood 0.106 world units
+  proud of it. Measure it by taking the verts weighted to `LeftHand*` and expressing them in the
+  WEAPON's own frame - that gives the miss in-plane and along the normal separately. His fist
+  spans 0.215 along the normal where the disc is 0.129 thick, so it can never sit inside: the
+  mount slides the boss onto the fist and pushes the disc 0.120 forward, into the boss hollow.
+- **A state's SPEED is the diagnostic for a bad animation window.** `Use Mixamo packs` sets
+  `state.speed = clip.length / (frames/60)`, so anything far from x1 means the clip and the
+  AttackData budget disagree. Well ABOVE 1 = the clip is not in `swing_trims.json` and plays whole
+  against a short budget. Well BELOW 1 = an over-tight trim core: `ComputeTrims` uses
+  `len = max(core_end - core_start, 6)` SOURCE frames, so a 5-frame core is clamped to 6 and then
+  stretched over the whole budget. Salaadin's SP+Medium sat at **x0.27** - six frames smeared over
+  44 - and widening that clip's core to 22 frames put it at x1.00. Fix the core, not the clip.
+- **Choose a pack clip by MEASUREMENT.** `ArtSource/Blender/clip_measure.py` reports, per clip,
+  the weapon hand's path length, vertical drop, forward/lateral travel, total hip yaw, the
+  RIGHT SHOULDER's travel, the hand's highest and lowest point measured FROM THE HIPS (`hiTop` /
+  `hiLow`) and `vert` = drop/side, all normalised by hips-to-head. **`drop` alone cannot tell a
+  chop from a spin** - a big turn also drops a long way; `vert` plus `hipYaw` can (a plain
+  overhead is vert 3.07 with 9 deg of yaw, the spin was 3.63 with 43). `hiTop` is what identifies
+  a LOW slash: the pack's one low cut never lifts the hand above 0.69 where every other strike
+  reaches 1.3+. It settles arguments that otherwise go in
+  circles: a wandering idle is hand travel 2.54 against a settled one's 0.22; "the shoulder does
+  not lead" is 0.97 against 4.50; an overhead that reads is a 4.00 drop where everything else in
+  the pack is under 1.8. Run it before re-pointing a state.
+- **A flat slab's facing is its THINNEST local axis** - that is how to check a shield without
+  knowing the mount convention. Dot it with the fighter's forward: upright and facing out reads
+  near +-1 forward and ~0 up. Salaadin's block read 0.12 forward / 0.98 up (face to the sky)
+  because his mount was squared against his old hand-keyed guard, and the pack's block idle rolls
+  the left hand differently. Fixed in `ShieldWeaponMount`.
+- **`SetupWeapon` only ever finds the BLADE** (it matches `WeaponSpec`), so an off-hand shield
+  entry in `ShieldWeaponMount` was never applied until a second pass over the model's mesh
+  renderers was added. Check that pass exists before trusting any off-hand mount value.
+- **The same cache exists on every CLIP importer, and that is how a rig change silently kills an
+  animation.** A clip imported `CopyFromOther` stores its own copy of the rig configuration, and
+  Unity builds the clip's avatar from THAT, not from the source avatar. Change the body's bone
+  count and each clip goes on demanding the bones that are gone: deleting Salaadin's four toe
+  bones made all five authored clips import with **no takes and no AnimationClip at all**
+  (`Rig Error: Copied Avatar Rig Configuration mis-match. Transform 'mixamorig:LeftToeBase' for
+  human bone 'LeftToes' not found`), so the animator states fell back to PACK clips with no error
+  at the state level - he just fought in a stranger's idle. **Clearing the cache is not the fix**
+  (an empty one gives `No human bone found. Ensure both rig type match`); it must be OVERWRITTEN
+  with the body importer's `humanDescription`. `CrucibleMixamoSetup.ImportAll` now does this
+  whenever the two disagree. **Before trusting any pose measurement, check the authored clip is
+  really the one playing** - the fallback produced a 21 deg stance and 97 deg knees that had
+  nothing to do with the rig.
+- **`GroundOffset` in `CrucibleCharacterSetup.cs` is per character and dies with a rig change.**
+  Move a fighter's ankles and he sinks: Salaadin's dropped from 12% to 3.1% of height and his feet
+  ended up 0.866 world units under the floor. Recompute it live as `floor + ankleHeight - footY`,
+  where `ankleHeight = ankleFraction * childScale * rootScale`. Salaadin's is `-0.600f / 3f` as of
+  the metarig (2026-10-22). **Measure it as the lowest BAKED skinned vertex in play**
+  (`SkinnedMeshRenderer.BakeMesh`): a SkinnedMeshRenderer's `bounds` is a loose box that does NOT
+  track the pose and read his 0.64 world units wrong. Verified at idle +0.0028.
+- **Salaadin's rig is the user's own, re-rigged in Blender as a RIGIFY METARIG, and it lives in
+  `ArtSource/Blender/salahtest_rigged.blend`.** `ArtSource/Blender/salaadin_metarig.py` is the one
+  script that turns it into a Mixamo-named rigged FBX the rest of the pipeline can eat. It is a
+  good rig: symmetric, hips 51.5% of height, ankles 5.5%, a 163.5 deg knee break and a 164.9 deg
+  elbow break (the old one's were collinear, giving the retargeter no hint). The script renames to
+  Mixamo, bakes the armature's unapplied 0.48 scale, fills 384 unweighted verts from their nearest
+  weighted neighbour, adds the `*_End` / `*4` leaves, and sets both hand bones' roll so bone-Z
+  points at the floor - `salaadin_body.py`'s `hand_frame()` convention. **All 65 pack-rig bones
+  exist on it by name.** `salaadin_fixrig.py`, `salaadin_rig_v2.py`, `salaadin_clips.py` and
+  `Salaadin_Studio.blend` all belong to the SUPERSEDED rig; do not run them against this one.
+  Animate in `Salaadin_Studio_v3.blend`. Previous rigs/bodies/clips are under
+  `ArtSource/Characters/_backup_20261021/` and `_backup_20261022/`.
+- **Unity's humanoid auto-mapper can wire an avatar ONE BONE OFF and report valid=True human=True.**
+  The metarig's spine is SEVEN bones against the humanoid's six slots; leaving the spare in with a
+  neutral name did not save it - the mapper walks the chain greedily, took the spare for **Head**
+  and put the real head bone in the **RIGHT EYE** slot, with no error anywhere. `salaadin_metarig.py`
+  dissolves the spare (weights to the parent, parent's tail extended). **After any rig change,
+  print the slot->bone table** (`ModelImporter.humanDescription.human`), do not just check the
+  avatar is valid. His reads 52 mapped, 30/30 fingers, toes mapped, only the eyes and jaw absent.
+- **`matrix_world` is DERIVED, so the order of a transform bake matters.** Assigning
+  `object.matrix_world` solves for `matrix_basis` against the parent inverse as it stands; clearing
+  the parent inverse afterwards put the 1/0.48 straight back and the body re-imported at half the
+  skeleton's size. Clear the parent inverse FIRST. `salaadin_metarig.py` asserts the body's height.
 - **`humanDescription.skeleton` caches every bone's position and Unity builds the avatar from the
   CACHE, not the file.** Re-export an FBX with a joint in a new place and nothing changes at
   runtime - the Animator keeps posing the old skeleton. The tell is maddening: the same hierarchy
@@ -231,10 +364,14 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   mode reads the avatar. `avatarSetup = CreateFromThisModel` does NOT refresh it; the stored arrays
   must be cleared (`hd.skeleton = new SkeletonBone[0]; hd.human = new HumanBone[0]`) before the
   reimport. `Rebuild Player<N>` in `CrucibleCharacterSetup.cs` now does that every time.
-- **Rebuilding Salaadin end to end**: `salaadin_fixrig.py` (Salaadin_Rigged.fbx ->
-  Salaadin_Rigged_Fixed.fbx) -> `salaadin_body.py` -> `salaadin_clips.py` -> in Unity
-  `Rebuild Player4`, `Use Mixamo packs`, `Wire special and riposte states`, `Wire combo strings`,
-  `Salaadin > 4 Rewire`, `Apply the roster balance`. **His corrected rig is NOT in git**:
+- **Rebuilding Salaadin end to end** (2026-10-22): `salaadin_metarig.py` (salahtest_rigged.blend ->
+  `ArtSource/Characters/Mixamo/Salaadin_Rigged_V3.fbx`) -> `salaadin_body.py` (mounts the falchion
+  and shield, writes `Salaadin_Body.fbx`) -> in Unity `Rebuild Player4`, `Use Mixamo packs`,
+  `Wire special and riposte states`, `Wire combo strings`, `Salaadin > 4 Rewire`,
+  `Apply the roster balance`. `salaadin_clips.py` is NOT in the chain any more - every one of his
+  states is a pack clip. **Run the Unity steps through `eval`, not the menu bridge**: the menu
+  returned `HTTP 400` and wrote nothing, twice now, and the only way to know is to read back.
+  **His rig is NOT in git**:
   `Characters/*/Model/` and `ArtSource/Characters/` are both gitignored, so the FBXs live only on
   this machine and a fresh clone must re-run that chain. `Design/Salaadin_Rerig.md` has the numbers.
 - **There is a Blender file to ANIMATE each shielded fighter in**: `ArtSource/Blender/
@@ -263,6 +400,141 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   worst x3.78, and Bjorn and Miyamoto hold 28 of them. `Use Mixamo packs` sets
   `state.speed = clip.length / (frames/60)`, so a clip keyed to that length plays at x1.00 - and
   a hand-edited state speed is overwritten the next time that menu item runs.
+- **Unity's humanoid IK does NOTHING on these fighters, and that is why the off hand held air.**
+  Measured 2026-10-21 on all four: layer IK Pass on, layer weight 1, `OnAnimatorIK` running
+  (thousands of calls), `GetIKPosition` reading the goal back correctly - and a 15 cm lift asked of
+  the left hand moved it **0 cm**. Richard (humanScale 1.01) fails exactly like the three 100x rigs
+  (humanScale 0.51-0.58), so it is not an avatar fault. `TwoHandGrip` therefore solves the off arm
+  **itself**, analytically, in `LateUpdate` (`SolveTwoBone`): elbow onto the circle both bone
+  lengths allow, swung toward `leftElbowHint`, then each bone aimed in turn. Off-hand miss went
+  from 0.29-0.56 world units (12-25% of body height) to **0.0000**, elbow 78-102 deg. It carries
+  `[DefaultExecutionOrder(100)]` so it runs AFTER `WeaponAim` places the weapon. `strikeReachWeight`
+  is 0 on both fighters, so the right-arm reach path is still on the (inert) built-in IK - port it
+  the same way if it is ever turned on.
+- **Rig health, measured per bone against the geometry it actually drives** (perpendicular distance
+  from the bone axis to the centroid of its own weighted vertices, as % of body height; script was
+  a headless Blender pass over each `<Name>_Body.fbx`):
+  - **Salaadin is the worst by far**: LeftUpLeg **14.6%**, RightUpLeg 11.8%, LeftLeg 11.3%,
+    RightLeg 10.9%, Spine1 7.5%. His whole leg chain runs down inside the CLOAK, 0.09-0.10 behind
+    the legs (body 1.0 tall), converging only at the ankle. His foot bone splays **30.2 deg** where
+    the shoe's own heel-to-toe axis is **8.1 deg**; his ankle sits at 12% of height (human ~4%);
+    thigh:shin is 1.42 (human ~1.05); the toe bone ends 0.075 PAST the toe tip and at y=-0.022,
+    below the floor. His torso chain leans **19.5 deg back** (Unity's zero-muscle T-pose: pelvis to
+    chest -0.333 in z against Richard's -0.044) and every retargeted clip inherits that lean. His
+    knees AND elbows are perfectly collinear in the T-pose - no bend hint for the retargeter, where
+    Richard has a 13 deg knee break and a 22 deg elbow break.
+  - Miyamoto: **his whole left forearm chain was OUTSIDE the mesh**, L_ForearmTwist01 7.1%
+    off-limb. Bjorn: L_Forearm marginally out. **Both are FIXED** - see the Tripo arm bullet.
+  - The `Root` bone reading "outside" on the Tripo rigs is correct - it is the motion root under
+    the feet. Ignore it. So are the leaf bones (`*_End`, `*Thumb4`/`Index4`/...): a fingertip or
+    toe-tip marker legitimately sits at the surface. On Richard and Salaadin they read 0.00-0.19%
+    out and mean nothing.
+  - **Measure containment with SIX rays and a majority vote, not one.** `rig_audit.py`'s single-ray
+    parity gave false positives; the 6-ray probe (`inside.py`/`inside_mix.py` in the scratchpad)
+    returns a clean 0/6 or 6/6 on a real verdict and 2-4/6 where the answer is genuinely murky.
+    **And join every SKINNED mesh before probing** - probing the largest single mesh reported
+    Richard's entire skeleton as 10-84% outside, because it picked one piece of him.
+  - **The off-limb metric lies wherever a character wears cloth.** It measures a bone's axis
+    against the centroid of the vertices it drives, so a coat skirt, a fur mantle or shoulder
+    plates drag the centroid out of the limb. It is what made Salaadin's thigh read 14.6% off and
+    Bjorn's mid-upper-arm ask to move 6.9% of his height. Trust it on a bare sleeve; on anything
+    costumed, check containment instead.
+- **Tripo lays an arm out as a straight line, so its joints end up outside the sleeve.** The
+  shoulder->elbow->wrist chain is interpolated, and on a bent or asymmetric arm the elbow leaves
+  the mesh: Miyamoto's left elbow sat **2.67% of body height clear of the surface**, driving his
+  whole forearm from a pivot in open air. All four arms' bones sat ~2-3% of height forward of their
+  own flesh in x. `ArtSource/Blender/fix_tripo_arms.py` re-centres each forearm joint on the
+  cross-section of the flesh it drives, in EDIT mode so Tripo's weights survive, restoring roll
+  afterwards. Result: **every arm bone on both fighters is now inside the mesh**, 1.2-3.8% deep,
+  and the upper:forearm ratio is 0.86-0.99 (no snake arm). Run it, then `Rebuild Player1/2`.
+  - **It deliberately does NOT touch the upper arm** - those vertex groups carry Bjorn's fur and
+    Miyamoto's shoulder plates, so the centroid there is in the costume, not the arm.
+  - Re-exporting a body FBX must use the project's options (`object_types={'ARMATURE','MESH'}`,
+    `armature_nodetype='NULL'`, `apply_unit_scale`, `FBX_SCALE_NONE`, `-Z`/`Y`) or Unity reimports
+    the body lying down at a hundredth of its size. Overwrite the FBX **in place** so the .meta,
+    the GUID and every scene reference survive; the originals are in
+    `ArtSource/Characters/_backup_20261021/tripo_bodies/`.
+- **Richard's hips are ~10 points of height too low and forward of his ankles - NOT yet fixed.**
+  They sit at **38.8% of his rig's span where Salaadin's corrected hips sit at 48.8%** (human ~52%),
+  and 1.54% (left) / 2.31% (right) of height forward of the ankle - the same geometry that gave
+  Salaadin the splits. Left alone on purpose: the 6-ray probe is ambiguous there (2-3/6, not the
+  clean 0/6 that justified Miyamoto's elbow), his clips are play-verified, and moving a hip 9% of
+  body height re-times every retargeted clip. Doing it needs the same stance-verification pass
+  Salaadin got.
+- **Bjorn and Miyamoto came off Tripo with NO finger bones** - 41 bones stopping at
+  `L_Hand`/`R_Hand`, one rigid mitt sculpted half open, which is why the off hand could sit exactly
+  on the haft and still read as holding air. **Both LEFT hands now have a full five-finger chain**
+  (56 bones each) built by `ArtSource/Blender/add_fingers.py`. Their right hands are still mitts;
+  Bjorn's right-hand mesh never separates into fingers, so it cannot be traced the same way.
+  - The fingers ARE modelled, they just **fuse into the palm below the last knuckle** - they only
+    separate into four components at t>=0.74 (Bjorn) / 0.92 (Miyamoto) of the hand bone. So the
+    tips are measurable and the knuckles are not; the script finds the tip clusters, gives each
+    finger the lateral band it owns, and walks that band's centroid in from the tip.
+  - **Track each finger from its TIP inward, never by slicing the hand.** These are curled claws:
+    a slice at one station holds the finger AND the palm under it, and their joint centroid lands
+    in the gap between them. That first attempt put whole chains outside the mesh.
+  - Tracing gets the shape right but cannot guarantee containment, so every joint is then **pushed
+    to a verified interior point** (`pull_inside`), and a degenerate trace falls back to a straight
+    knuckle->tip run. All 30 joints across both hands test **6/6 inside**.
+  - Weights are **redistributed from `*_Hand`, never rebuilt**: each vertex keeps the total weight
+    it had, split between its two nearest bones, so the hand deforms as before until a finger bends.
+  - Name them `L_Index1..3`, `L_Middle`, `L_Ring`, `L_Pinky`, `L_Thumb` and Unity's auto-mapper
+    fills all **15/15** humanoid finger slots on its own - no explicit `hd.human` needed.
+- **Nothing in the game animates fingers** (every clip predates those bones), so `TwoHandGrip`
+  closes them itself each frame, and this is where the real bug was hiding:
+  - **The off hand was being placed BESIDE the haft, not around it.** `offHandMiss` read 0.0000 the
+    whole time because the wrist was exactly on its goal - but the knuckles sat 0.09-0.26 world
+    units off the haft axis with fingers only 0.06-0.11 long, so no amount of closing could ever
+    have reached it. `PalmOffset()` now measures where the knuckle line actually landed and
+    re-solves the arm onto the haft; knuckles came in to 0.01-0.19.
+  - **A finger curls about the plane that faces the haft, not about the haft's own direction.**
+    Turning it about the haft axis only sweeps it round a cone, and these fingers lie partly ALONG
+    the haft, so that barely closed them (gaps 0.20 -> 0.08). The bend axis is
+    `cross(fingerDir, toHaftPerp)`.
+  - The search runs on a **copy of the joint positions** (`Simulate`), so the sweep costs vector
+    maths instead of a hierarchy update per step; the bones are written once with the answer.
+  - Verified in play: `offHandMiss` 0.0000 and finger gap 0.039-0.071 at rest, **0.047 mid-swing**.
+- **The physics capsule must have its bottom ON THE SOLES, or the fighter floats and climbs.**
+  It was a fixed 2.1 high centred at 0.8-1.0, which hangs 0.20 (Bjorn, root scale 4) to 0.75
+  (everyone else, scale 3) world units BELOW the feet. Gravity rests that overhang on the arena and
+  leaves the man hovering by exactly that much, and an overhang that deep catches on every step and
+  ledge and walks him up it. `Rebuild Player<N>` now fits it from `Stature` (sole-to-crown, the
+  number `StandingHeight` is calibrated to produce): `height = stature / rootScale`,
+  `center.y = height / 2`. **`GroundOffset` and the capsule are ONE system** - the old offsets were
+  negative because they pushed the MODEL down from a root floating on that overhang; measure them
+  against the root only once the capsule bottom IS the root origin. **Verify against the arena, not
+  y = 0**: the floor under the marks runs -0.065 to -0.267.
+- **`ShieldWeaponMount` is now the mount table for ALL FOUR fighters, not just the shielded pair.**
+  Its application used to sit inside `if (!twoHanded)`, so a Bjorn or Miyamoto entry was silently
+  never applied - Miyamoto's katana had an entry written and still pointed backward through his
+  chest. The gate was there because those two were TRIPO rigs mounted via `WeaponMount` +
+  `HandGripPoint` (Tripo hand-bone units, ~220x scale); the 2026-10-22 re-rig made all four Mixamo
+  metarig exports, so `WeaponMount` is dead and one table serves everyone.
+- **A re-rig invalidates every weapon mount, because the hand bone's orientation changes.** Two
+  separate places get this wrong:
+  - `fit_metarig.py` re-parents the weapons to the new hand bones. Computing a
+    `matrix_parent_inverse` from the new bone's frame RE-SEATS the weapon on that bone's axes and
+    throws away the placement the FBX authored. Capture `matrix_world`, assign the parent, restore
+    `matrix_world`, and assert it did not move.
+  - Even then the bind pose is only half of it: the retarget drives the hand to a different world
+    orientation than the old rig did, so the mount has to be re-solved in the POSE the fighter
+    stands in. Solve it in play against a stated target and read the local euler back; do not guess
+    eulers.
+- **`offHandMiss` near zero proves the wrist is on its goal, NOT that the grip is right.** It read
+  ~1e-7 on Miyamoto the whole time his blade was behind him - the hand was faithfully following a
+  socket that was in the wrong place. The grip's real tells are the blade's direction against the
+  fighter's own forward, and where the off hand lands laterally relative to the chest.
+- **A flat slab's facing is its thinnest local axis, and that is how to catch a shield worn
+  backwards.** Richard's read -0.82 against his own forward (face toward himself) with his fist
+  0.240 PROUD of it, and he had no mount entry at all. The fix is the one Salaadin got: aim the
+  facing along the fighter's forward with the long axis up, slide the boss onto the fist IN-PLANE,
+  then seat the disc so the fist sits ~0.02 inside the front face.
+- **A move that carries its weapon AROUND the body needs a lunge override, not a smaller hitbox.**
+  Bjorn's two spins scored at a hitbox range of 3.2-3.5 while the default lunge stops at
+  `BalanceConfig.ATTACK_LUNGE_STOP` 1.7, so the axe was nowhere near the man when the damage landed.
+  `LungeOverride` in `CrucibleBalance.cs` carries per-move `(stop, max)`; the spins take
+  `(0.9, 2.6)`, which is inside the sum of the two bodies, so the spin travels THROUGH and the head
+  sweeps the torso. Verified: Medium closes 3.00 -> 1.63 with the axe 0.344 from the spine.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `parryCounterDamageMultiplier` is serialized 1.5 against `BalanceConfig`'s

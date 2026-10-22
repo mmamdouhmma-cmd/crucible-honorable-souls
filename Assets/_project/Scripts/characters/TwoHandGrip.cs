@@ -1,11 +1,20 @@
 using UnityEngine;
 
 /// <summary>
-/// Keeps the off hand on the weapon in every animation: Humanoid IK pulls the left hand to a socket
+/// Keeps the off hand on the weapon in every animation: the left arm is solved onto a socket
 /// transform on the weapon ("LeftGrip", placed on the haft / tsuka by the character setup). Lets a
-/// one-handed Mixamo clip read as a two-handed grip. Needs "IK Pass" on the animator layer; the
-/// setup menu turns it on.
+/// one-handed Mixamo clip read as a two-handed grip.
+///
+/// The arm is solved HERE, analytically, not by Unity's humanoid IK. SetIKPosition registers the
+/// goal on these rigs but never moves the arm: measured 2026-10-21 on all four fighters, with the
+/// layer's IK Pass on, layer weight 1, OnAnimatorIK running and GetIKPosition reading the goal
+/// back correctly, a 15 cm lift asked of the left hand moved it 0 cm. That is what left the off
+/// hand holding air. A two-bone solve in LateUpdate is deterministic and rig-independent.
+///
+/// Runs after WeaponAim (execution order) so the grip lands on the weapon's FINAL position each
+/// frame; the other way round the hand chases where the weapon was.
 /// </summary>
+[DefaultExecutionOrder(100)]
 [RequireComponent(typeof(Animator))]
 public class TwoHandGrip : MonoBehaviour
 {
@@ -53,6 +62,21 @@ public class TwoHandGrip : MonoBehaviour
     [Tooltip("Where the haft sits in the OFF hand's own bone space (the palm), in the hand bone's local " +
              "units. The right hand's weapon mount is at (0.0001, 0.0005, 0); the left is its mirror.")]
     [SerializeField] private Vector3 offHandPalmLocal = Vector3.zero;
+
+    [Tooltip("Close the off hand's fingers on the haft. 0 = leave them in the clip's pose. Does nothing on a rig " +
+             "with no finger bones.")]
+    [Range(0f, 1f)] [SerializeField] private float fingerCurlWeight = 1f;
+    [Tooltip("Most a finger may close, in degrees, summed over its three joints.")]
+    [SerializeField] private float fingerCurl = 150f;
+    [Tooltip("Most the thumb may close. It lies across the haft rather than round it, so it takes less.")]
+    [SerializeField] private float thumbCurl = 95f;
+    [Tooltip("Haft radius in world units. 0 = work it out from the hand's own size, which keeps it right " +
+             "whatever the fighter is scaled to in the scene.")]
+    [SerializeField] private float haftRadius = 0f;
+    [Range(0.1f, 1.5f)] [SerializeField] private float haftRadiusScale = 0.45f;
+    [Tooltip("Where the knuckles ride, as a multiple of the haft radius. 1 = knuckles on the surface; a little " +
+             "over 1 leaves the thickness of the fingers between the bone and the wood.")]
+    [Range(0.5f, 3f)] [SerializeField] private float knuckleStandoff = 1.25f;
 
     private void Awake()
     {
@@ -147,21 +171,293 @@ public class TwoHandGrip : MonoBehaviour
         if (offHandBone == null) offHandBone = animator.GetBoneTransform(HumanBodyBones.LeftHand);
         if (offHandBone != null) { PreIkOffHand = offHandBone.position; HasPreIkOffHand = true; }
         LastPreIkDistance = (PreIkOffHand - leftGrip.position).magnitude;
-        // Aim the PALM at the haft, not the wrist joint. The IK goal is the hand BONE, which sits at the
-        // wrist; putting that on the haft centreline leaves the shaft running through the side of the hand
-        // (the baked fist then grips air next to it). The weapon mount tells us where the right hand holds
-        // the haft in its own bone space - the off hand is the mirror of that.
+    }
+
+    /// <summary>
+    /// Where the hand BONE must end up. Aim the PALM at the haft, not the wrist joint: the bone sits
+    /// at the wrist, so putting that on the haft centreline leaves the shaft running through the side
+    /// of the hand (the baked fist then grips air next to it). The weapon mount tells us where the
+    /// right hand holds the haft in its own bone space - the off hand is the mirror of that.
+    /// </summary>
+    private Vector3 OffHandGoal()
+    {
         Vector3 goal = leftGrip.position;
         if (offHandBone != null && offHandPalmLocal.sqrMagnitude > 1e-12f)
             goal -= offHandBone.TransformVector(offHandPalmLocal);
-        animator.SetIKPositionWeight(AvatarIKGoal.LeftHand, positionWeight);
-        animator.SetIKPosition(AvatarIKGoal.LeftHand, goal);
-        animator.SetIKRotationWeight(AvatarIKGoal.LeftHand, rotationWeight);
-        animator.SetIKRotation(AvatarIKGoal.LeftHand, leftGrip.rotation);
-        if (leftElbowHint != null)
+        return goal;
+    }
+
+    private void LateUpdate()
+    {
+        if (animator == null || leftGrip == null || positionWeight <= 0f) return;
+        if (offHandBone == null) offHandBone = animator.GetBoneTransform(HumanBodyBones.LeftHand);
+        var upper = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm);
+        var fore = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+        if (upper == null || fore == null || offHandBone == null) return;
+
+        Vector3 goal = OffHandGoal();
+        Vector3 pole = leftElbowHint != null ? leftElbowHint.position : Vector3.zero;
+        SolveTwoBone(upper, fore, offHandBone, goal, leftElbowHint != null, pole, positionWeight);
+        if (rotationWeight > 0f)
+            offHandBone.rotation = Quaternion.Slerp(offHandBone.rotation, leftGrip.rotation, rotationWeight);
+
+        // Put the PALM on the haft, not just the wrist near it. offHandPalmLocal is a fixed guess
+        // made in the hand's own space; once there are knuckles to look at we can see where the
+        // grip actually landed, and the answer was that it landed beside the haft - the knuckles
+        // sat 0.09-0.26 world units off the axis with fingers only 0.06-0.11 long, so no amount
+        // of closing could ever have reached it. Measure the miss and re-solve onto it.
+        for (int pass = 0; pass < 2; pass++)
         {
-            animator.SetIKHintPositionWeight(AvatarIKHint.LeftElbow, 1f);
-            animator.SetIKHintPosition(AvatarIKHint.LeftElbow, leftElbowHint.position);
+            Vector3 corr = PalmOffset();
+            if (corr.sqrMagnitude < 1e-8f) break;
+            goal -= corr;
+            SolveTwoBone(upper, fore, offHandBone, goal, leftElbowHint != null, pole, positionWeight);
+        }
+
+        OffHandMiss = (offHandBone.position - goal).magnitude;
+        CloseFingers();
+    }
+
+    /// <summary>
+    /// How far the knuckle line is from where it should sit on the haft, as a world vector
+    /// perpendicular to the haft. Zero when the fighter has no fingers to go by.
+    /// </summary>
+    private Vector3 PalmOffset()
+    {
+        if (!fingersChecked) FindFingers();
+        if (fingers == null || fingers.Length < 2) return Vector3.zero;
+        Vector3 axis = HaftAxis();
+        Vector3 onHaft = leftGrip.position;
+
+        // the four finger knuckles; the thumb is last and sits across the grip, so leave it out
+        int n = fingers.Length == 5 ? 4 : fingers.Length;
+        Vector3 palm = Vector3.zero;
+        for (int i = 0; i < n; i++) palm += fingers[i][0].position;
+        palm /= n;
+
+        Vector3 v = palm - onHaft;
+        v -= axis * Vector3.Dot(v, axis);
+        float cur = v.magnitude;
+        if (cur < 1e-5f) return Vector3.zero;
+
+        float want = (haftRadius > 0f ? haftRadius : hand_to_knuckle() * haftRadiusScale) * knuckleStandoff;
+        return v / cur * (cur - want);
+    }
+
+    // ---- closing the off hand on the haft -------------------------------------------------
+    //
+    // Bjorn and Miyamoto were rigged by Tripo with no finger bones at all: the hand was one rigid
+    // mitt, sculpted half open, so the off hand could sit exactly on the haft and still read as
+    // holding air. They now carry a traced five-finger chain in the left hand (add_fingers.py) -
+    // but nothing animates it, because every clip in the game predates those bones. So the grip
+    // closes them here.
+    //
+    // Each phalanx turns about the HAFT'S OWN AXIS, which is what a finger wrapping a cylinder
+    // does. That axis is measured from the two hands, both of which are on the haft, so this needs
+    // no agreement with the rig about which local axis bends a finger - the one thing a Tripo rig,
+    // a Mixamo rig and a hand-built chain would each answer differently.
+
+    private Transform[][] fingers;      // [finger][proximal, intermediate, distal]
+    private float[] fingerSpan;         // rest distal-from-knuckle, to scale each finger's curl
+    private bool fingersChecked;
+
+    private static readonly HumanBodyBones[][] LeftFingerBones =
+    {
+        new[]{ HumanBodyBones.LeftIndexProximal,  HumanBodyBones.LeftIndexIntermediate,  HumanBodyBones.LeftIndexDistal  },
+        new[]{ HumanBodyBones.LeftMiddleProximal, HumanBodyBones.LeftMiddleIntermediate, HumanBodyBones.LeftMiddleDistal },
+        new[]{ HumanBodyBones.LeftRingProximal,   HumanBodyBones.LeftRingIntermediate,   HumanBodyBones.LeftRingDistal   },
+        new[]{ HumanBodyBones.LeftLittleProximal, HumanBodyBones.LeftLittleIntermediate, HumanBodyBones.LeftLittleDistal },
+        new[]{ HumanBodyBones.LeftThumbProximal,  HumanBodyBones.LeftThumbIntermediate,  HumanBodyBones.LeftThumbDistal  },
+    };
+
+    private void FindFingers()
+    {
+        fingersChecked = true;
+        var found = new System.Collections.Generic.List<Transform[]>();
+        foreach (var chain in LeftFingerBones)
+        {
+            var t = new Transform[3];
+            bool all = true;
+            for (int j = 0; j < 3; j++)
+            {
+                t[j] = animator.GetBoneTransform(chain[j]);
+                if (t[j] == null) { all = false; break; }
+            }
+            if (all) found.Add(t);
+        }
+        if (found.Count == 0) return;                   // a rig with no fingers: nothing to close
+        fingers = found.ToArray();
+        fingerSpan = new float[fingers.Length];
+        for (int i = 0; i < fingers.Length; i++)
+            fingerSpan[i] = Vector3.Distance(fingers[i][0].position, fingers[i][2].position);
+    }
+
+    /// <summary>The haft's direction, taken from the two points we know are on it: the main hand
+    /// and the off-hand socket. Falls back to the weapon's own long axis if they coincide.</summary>
+    private Vector3 HaftAxis()
+    {
+        var main = animator.GetBoneTransform(HumanBodyBones.RightHand);
+        if (main != null)
+        {
+            Vector3 d = leftGrip.position - main.position;
+            if (d.sqrMagnitude > 1e-6f) return d.normalized;
+        }
+        return weapon != null ? weapon.up : transform.up;
+    }
+
+    private void CloseFingers()
+    {
+        if (fingerCurlWeight <= 0f) return;
+        if (!fingersChecked) FindFingers();
+        if (fingers == null) return;
+
+        Vector3 axis = HaftAxis();
+        Vector3 onHaft = leftGrip.position;
+        float radius = haftRadius > 0f
+            ? haftRadius
+            : hand_to_knuckle() * haftRadiusScale;
+
+        for (int i = 0; i < fingers.Length; i++)
+        {
+            bool thumb = i == fingers.Length - 1 && fingers.Length == 5;
+            Curl(fingers[i], axis, onHaft, radius, thumb ? thumbCurl : fingerCurl);
+        }
+    }
+
+    private float hand_to_knuckle()
+    {
+        var idx = animator.GetBoneTransform(HumanBodyBones.LeftIndexProximal);
+        return idx != null && offHandBone != null
+            ? Vector3.Distance(idx.position, offHandBone.position)
+            : 0f;
+    }
+
+    /// <summary>
+    /// Turn a finger about the haft until its last joint lies on the haft's surface. The angle is
+    /// found on a copy of the joint positions - no transform is written until the answer is known,
+    /// so the search costs a handful of vector operations instead of a hierarchy update per step.
+    /// </summary>
+    private void Curl(Transform[] f, Vector3 haft, Vector3 onHaft, float radius, float maxDeg)
+    {
+        Vector3[] rest = { f[0].position, f[1].position, f[2].position };
+        float at0 = PerpDistance(rest[2], onHaft, haft);
+        if (at0 <= radius) return;                      // already on the haft (or inside it)
+
+        // The finger bends in the plane that actually faces the haft. Turning it about the haft's
+        // own direction only sweeps it round a cone, and these fingers lie partly ALONG the haft,
+        // so that barely closed them at all: the plane through the finger and the shaft is the one
+        // that carries the tip at the wood.
+        Vector3 dir = rest[2] - rest[0];
+        Vector3 to = onHaft - rest[0];
+        to -= haft * Vector3.Dot(to, haft);             // straight at the shaft, square to it
+        Vector3 bend = Vector3.Cross(dir, to);
+        if (bend.sqrMagnitude < 1e-10f) bend = Vector3.Cross(dir, haft);
+        if (bend.sqrMagnitude < 1e-10f) return;
+        bend.Normalize();
+
+        // sweep and keep the angle that seats the last joint on the surface
+        float bestA = 0f, bestErr = Mathf.Abs(at0 - radius);
+        const int STEPS = 24;
+        for (int s = 1; s <= STEPS; s++)
+        {
+            float a = maxDeg * s / STEPS;
+            float err = Mathf.Abs(PerpDistance(Simulate(rest, bend, a)[2], onHaft, haft) - radius);
+            if (err < bestErr) { bestErr = err; bestA = a; }
+        }
+        float total = bestA * fingerCurlWeight;
+        if (total <= 0.5f) return;
+
+        float[] share = Split(total);
+        for (int j = 0; j < 3; j++)
+            f[j].rotation = Quaternion.AngleAxis(share[j], bend) * f[j].rotation;
+    }
+
+    private static float[] Split(float total)
+    {
+        // a finger does not bend evenly: the middle knuckle closes hardest, the last the least
+        const float a = 0.40f, b = 0.38f, c = 0.22f;
+        return new[] { total * a, total * b, total * c };
+    }
+
+    /// <summary>Joint positions after turning each phalanx about <paramref name="axis"/>, as pure
+    /// maths on a copy - the real bones are only written once, with the answer.</summary>
+    private static Vector3[] Simulate(Vector3[] rest, Vector3 axis, float total)
+    {
+        float[] share = Split(total);
+        Vector3[] p = { rest[0], rest[1], rest[2] };
+        for (int j = 0; j < 3; j++)
+        {
+            var r = Quaternion.AngleAxis(share[j], axis);
+            for (int k = j + 1; k < 3; k++) p[k] = r * (p[k] - p[j]) + p[j];
+        }
+        return p;
+    }
+
+    private static float PerpDistance(Vector3 p, Vector3 onAxis, Vector3 axis)
+    {
+        Vector3 d = p - onAxis;
+        return (d - axis * Vector3.Dot(d, axis)).magnitude;
+    }
+
+    /// <summary>Debug: how far each finger's last joint is from the haft surface after closing.</summary>
+    public float FingerGapMax()
+    {
+        if (fingers == null || leftGrip == null) return -1f;
+        Vector3 axis = HaftAxis();
+        float radius = haftRadius > 0f ? haftRadius : hand_to_knuckle() * haftRadiusScale;
+        float worst = 0f;
+        foreach (var f in fingers)
+            worst = Mathf.Max(worst, Mathf.Abs(PerpDistance(f[2].position, leftGrip.position, axis) - radius));
+        return worst;
+    }
+
+    /// <summary>Debug: how far the off hand still is from the haft after the solve. ~0 when it grips.</summary>
+    public float OffHandMiss { get; private set; }
+
+    /// <summary>
+    /// Analytic two-bone IK on a shoulder -> elbow -> wrist chain, in world space.
+    /// Places the elbow on the circle where both bone lengths are satisfied, swung toward
+    /// <paramref name="pole"/>, then aims each bone in turn - so the wrist lands exactly on
+    /// <paramref name="target"/> whenever the target is inside the arm's reach, and the arm
+    /// straightens toward it when it is not.
+    /// </summary>
+    private static void SolveTwoBone(Transform root, Transform mid, Transform tip,
+                                     Vector3 target, bool usePole, Vector3 pole, float weight)
+    {
+        Vector3 a = root.position, b = mid.position, c = tip.position;
+        float lab = Vector3.Distance(a, b);
+        float lcb = Vector3.Distance(b, c);
+        if (lab < 1e-5f || lcb < 1e-5f) return;
+
+        Quaternion rootWas = root.rotation, midWas = mid.rotation;
+
+        Vector3 toTarget = target - a;
+        float lat = Mathf.Clamp(toTarget.magnitude, 1e-4f, lab + lcb - 1e-4f);
+        Vector3 dir = toTarget.sqrMagnitude > 1e-10f ? toTarget.normalized : (c - a).normalized;
+
+        // the elbow sits at distance d along the shoulder->target line, h out to the side of it
+        float d = (lat * lat + lab * lab - lcb * lcb) / (2f * lat);
+        float h = Mathf.Sqrt(Mathf.Max(0f, lab * lab - d * d));
+
+        // which side it swings to: the hint if there is one, otherwise the bend plane the clip
+        // already poses, so a missing or degenerate hint never flips the elbow inside out.
+        Vector3 side = usePole ? pole - a : b - a;
+        side -= dir * Vector3.Dot(side, dir);
+        if (side.sqrMagnitude < 1e-8f)
+        {
+            side = (b - a) - dir * Vector3.Dot(b - a, dir);
+            if (side.sqrMagnitude < 1e-8f) side = Vector3.Cross(dir, root.up);
+            if (side.sqrMagnitude < 1e-8f) return;
+        }
+        Vector3 elbow = a + dir * d + side.normalized * h;
+
+        root.rotation = Quaternion.FromToRotation(b - a, elbow - a) * root.rotation;
+        mid.rotation = Quaternion.FromToRotation(tip.position - mid.position, target - elbow) * mid.rotation;
+
+        if (weight < 1f)
+        {
+            root.rotation = Quaternion.Slerp(rootWas, root.rotation, weight);
+            mid.rotation = Quaternion.Slerp(midWas, mid.rotation, weight);
         }
     }
 }

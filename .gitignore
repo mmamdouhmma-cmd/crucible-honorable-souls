@@ -85,6 +85,12 @@ ArtSource/Characters/
 
 # Generated animation masters (anim_rig.py rebuilds them from the body FBX) and Python cache
 ArtSource/Blender/*_AnimMaster.blend
+# The metarig blends for the two TRIPO fighters carry their 1M-vert meshes: 23 MB (Bjorn) and
+# 20 MB (Miyamoto) against Richard's 1.2 MB, which is committed. Same call as Characters/*/Model/
+# and ArtSource/Characters/ - too heavy for a repo with no LFS, and a fresh clone re-runs the
+# rebuild chain (fit_metarig.py -> metarig_to_mixamo.py -> Rebuild Player<N>) anyway.
+ArtSource/Blender/metarigs/Bjorn_Meta.blend
+ArtSource/Blender/metarigs/Miyamoto_Meta.blend
 ArtSource/Blender/__pycache__/
 
 # relay server dependencies

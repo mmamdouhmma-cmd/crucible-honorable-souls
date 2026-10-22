@@ -1,4 +1,4 @@
-// Swaps a fighter's model in the open scene for a new prepared body FBX
+﻿// Swaps a fighter's model in the open scene for a new prepared body FBX
 // (ArtSource/Blender/prep_body.py + attach_weapons.py output: body mesh + weapons bone-parented
 // to the hands, textures in <Name>_Body.fbm and Weapons/<W>.fbm).
 //
@@ -17,16 +17,141 @@ public static class CrucibleCharacterSetup
 {
     const float TargetHeight = 2.9f;   // world units, matches the previous fighters (~1.75 m at 0.6 m/unit)
 
+    /// <summary>
+    /// How tall each fighter STANDS, feet to crown, in world units - the body only, no weapon.
+    /// The roster is meant to read biggest to smallest as Richard, Bjorn, Salaadin, Miyamoto,
+    /// which is also the order of their armour (22 / 14 / 18 / 8) and the opposite of their speed.
+    /// They used to come out Miyamoto 2.78, Bjorn 2.74, Richard 2.69, Salaadin 2.10 - the first
+    /// three near enough identical and in the wrong order, and Salaadin a head shorter than anyone
+    /// because the old code scaled the model's bounds WITH HIS WEAPONS IN THEM.
+    /// These are cosmetic: the hitboxes hang off the Player root, not the model, so changing a
+    /// height moves the body relative to its own boxes and nothing else. GroundOffset DOES depend
+    /// on this - re-measure it whenever a height changes.
+    ///
+    /// CAREFUL: the number here is the BIND-POSE skinned bounds target, which is NOT what the
+    /// fighter measures on screen - the box is loose and every idle stands with bent knees. These
+    /// values are CALIBRATED so that the fighters' STATURE, sole to crown, averaged over the idle
+    /// cycle, comes out at:
+    ///     Richard 3.25, Bjorn 3.05, Salaadin 2.80, Miyamoto 2.55.
+    /// Two traps, both of which produced a confidently wrong ranking before this comment existed:
+    ///  1. Do NOT measure the mesh's own vertical span (lowest vertex to highest). Richard's cape
+    ///     and Salaadin's coat hang BELOW their heels, so that credits them with height they do
+    ///     not appear to have - it called Richard the tallest while on screen Bjorn stood over him.
+    ///  2. Do NOT measure the crown above the floor either, because GroundOffset lifts the crown
+    ///     along with the body: change an offset and every crown moves. Stature (crown MINUS sole)
+    ///     is the only one of the three that depends on the child scale alone, so it is the one
+    ///     that can be solved independently. Set these first, then re-measure the soles and set
+    ///     GroundOffset to drop each sole onto the floor.
+    /// Measure in Play mode, per fighter in his OWN idle, from BAKED skinned vertices:
+    ///     stature = max(vertex y) - min(vertex y over verts whose dominant bone is foot/toe/ankle).
+    /// Re-measure whenever a fighter's idle clip or rig changes - the 2026-10-22 re-rig moved all
+/// three of the re-rigged fighters by 5-10% even though the table had just been calibrated.
+    /// </summary>
+    static readonly System.Collections.Generic.Dictionary<string, float> StandingHeight = new System.Collections.Generic.Dictionary<string, float>
+    {
+        { "Richard",  3.753f },   // -> stature 3.25
+        { "Bjorn",    3.498f },   // -> stature 3.05
+        { "Salaadin", 3.857f },   // -> stature 2.80  (his idle crouches hardest, so the box has to be tallest)
+        { "Miyamoto", 2.824f },   // -> stature 2.55
+    };
+
+    static float HeightOf(string charName) =>
+        StandingHeight.TryGetValue(charName, out float h) ? h : TargetHeight;
+
+    /// <summary>
+    /// What each fighter MEASURES, sole to crown, once StandingHeight has been calibrated - the
+    /// number the physics capsule has to match. StandingHeight is the bind-pose box target that
+    /// produces it and is always the larger of the two.
+    /// </summary>
+    static readonly System.Collections.Generic.Dictionary<string, float> Stature = new System.Collections.Generic.Dictionary<string, float>
+    {
+        { "Richard",  3.25f },
+        { "Bjorn",    3.05f },
+        { "Salaadin", 2.80f },
+        { "Miyamoto", 2.55f },
+    };
+
+    static float StandingStature(string charName) =>
+        Stature.TryGetValue(charName, out float h) ? h : TargetHeight;
+
+    /// <summary>
+    /// Unity fills the humanoid slots from a NAME HEURISTIC, and the heuristic is not exhaustive:
+    /// with the whole roster on Mixamo names and both hands fully boned, it took 30/30 fingers on
+    /// Bjorn, Richard and Salaadin and only 26/30 on Miyamoto - dropping RightRing and RightLittle
+    /// intermediate and distal, whose bones exist, are correctly named, and are mirror images of
+    /// the left ones it DID take. So after the reimport, any slot still empty whose Mixamo-named
+    /// bone is sitting right there in the hierarchy gets mapped explicitly.
+    /// Only ever ADDS: a slot the mapper filled is left exactly as it found it.
+    /// </summary>
+    static void FillMissingHumanBones(string fbxPath, string charName)
+    {
+        var mi = (ModelImporter)AssetImporter.GetAtPath(fbxPath);
+        if (mi == null || mi.animationType != ModelImporterAnimationType.Human) return;
+        var fbx = AssetDatabase.LoadAssetAtPath<GameObject>(fbxPath);
+        if (fbx == null) return;
+
+        var inHierarchy = new System.Collections.Generic.Dictionary<string, string>();
+        foreach (var t in fbx.GetComponentsInChildren<Transform>(true))
+        {
+            var leaf = t.name.Contains(":") ? t.name.Substring(t.name.LastIndexOf(':') + 1) : t.name;
+            if (!inHierarchy.ContainsKey(leaf)) inHierarchy[leaf] = t.name;
+        }
+
+        var hd = mi.humanDescription;
+        var taken = new System.Collections.Generic.HashSet<string>();
+        var usedBones = new System.Collections.Generic.HashSet<string>();
+        foreach (var hb in hd.human) { taken.Add(hb.humanName); usedBones.Add(hb.boneName); }
+
+        var added = new System.Collections.Generic.List<HumanBone>(hd.human);
+        var names = new System.Collections.Generic.List<string>();
+        foreach (var human in HumanTrait.BoneName)
+        {
+            if (taken.Contains(human)) continue;
+            // "Right Ring Intermediate" -> the Mixamo bone "RightHandRing2"
+            var w = human.Split(' ');
+            if (w.Length != 3) continue;
+            string side = w[0], finger = w[1] == "Little" ? "Pinky" : w[1];
+            int joint = w[2] == "Proximal" ? 1 : w[2] == "Intermediate" ? 2 : w[2] == "Distal" ? 3 : 0;
+            if (joint == 0 || (side != "Left" && side != "Right")) continue;
+            var leaf = $"{side}Hand{finger}{joint}";
+            if (!inHierarchy.TryGetValue(leaf, out var bone) || usedBones.Contains(bone)) continue;
+            var nb = new HumanBone { humanName = human, boneName = bone };
+            nb.limit.useDefaultValues = true;
+            added.Add(nb);
+            usedBones.Add(bone);
+            names.Add($"{human} <- {leaf}");
+        }
+        if (names.Count == 0) return;
+        hd.human = added.ToArray();
+        mi.humanDescription = hd;
+        mi.SaveAndReimport();
+        Debug.Log($"{charName}: filled {names.Count} humanoid slot(s) the auto-mapper missed: {string.Join(", ", names)}");
+    }
+
     // Vertical offset of the model child under the Player root, in root-local units, so the animated feet rest
     // on the floor (y = 0). The roots sit where the physics capsule lands (P1 0.20, P2 0.75 world) and the
     // Humanoid idle puts the feet a little below the rest pose; measured in Play mode on 2026-10-12 as the
     // renderer-bounds minimum: Bjorn 0.136 world under root scale 4, Miyamoto 0.623 under root scale 3.
     static readonly System.Collections.Generic.Dictionary<string, float> GroundOffset = new System.Collections.Generic.Dictionary<string, float>
     {
-        { "Bjorn", -0.136f / 4f },
-        { "Miyamoto", -0.623f / 3f },
-        { "Richard", -0.480f / 3f },
-        { "Salaadin", -0.555f / 3f },  // his rest-pose feet sat 0.555 world above the floor at root scale 3
+        { "Bjorn", 0.119f / 4f },
+        { "Miyamoto", 0.117f / 3f },
+        { "Richard", 0.146f / 3f },
+        // Re-measure this whenever a fighter's RIG or his IDLE CLIP changes - it depends on both.
+        // Salaadin's moved twice on 2026-10-21: once when the rig was hand-edited (ankles from 12%
+        // to 3.1% of height) and again when his idle went from the crouched hand-keyed guard to the
+        // pack's upright one, which stands 1.1 world units taller and left him hovering.
+        // 2026-10-22b: ALL FOUR moved again when the per-character StandingHeight table came in,
+        // because the ground offset is a root-local lift and every child scale changed with it.
+        // Measure it on the SOLES - the lowest baked vertex whose dominant bone is a foot, toe
+        // or ankle - and NOT on the lowest vertex of the whole body. Richard's cape and
+        // Salaadin's coat hang below their heels, so anchoring on the lowest vertex rests the
+        // CLOTH on the floor and leaves the man hovering half a unit over it.
+        // 2026-10-22, the user's Rigify metarig: ankles went 3.1% -> 5.5% of height and he sank
+        // again. Measured in play on Salaadin_Idle as the lowest BAKED skinned vertex (a
+        // SkinnedMeshRenderer's bounds are a loose box that does not track the pose, so they read
+        // this wrong by half a metre): -0.1085 world, which is 0.0362 of root-local at root scale 3.
+        { "Salaadin", 0.109f / 3f },
     };
 
     /// <summary>
@@ -109,6 +234,8 @@ public static class CrucibleCharacterSetup
         if (reimport) mi.humanDescription = hd;
         if (reimport) { mi.SaveAndReimport(); Debug.Log($"{charName}: importer set to Humanoid, reimported"); }
 
+        FillMissingHumanBones(fbxPath, charName);
+
         var fbx = AssetDatabase.LoadAssetAtPath<GameObject>(fbxPath);
         var avatar = AssetDatabase.LoadAllAssetsAtPath(fbxPath).OfType<Avatar>().FirstOrDefault();
         if (fbx == null || avatar == null) { Debug.LogError($"{charName}: FBX or avatar failed to load ({fbx != null}, {avatar != null}); is the rig valid?"); return; }
@@ -126,14 +253,42 @@ public static class CrucibleCharacterSetup
         inst.transform.localPosition = Vector3.zero;
         inst.transform.localRotation = Quaternion.identity;
         inst.transform.localScale = Vector3.one;
+        // Scale off the BODY, never the whole model. Taking the bounds of every renderer measures
+        // the weapons too, so a fighter holding a sword up gets shrunk until the sword fits the
+        // target and a fighter whose blade hangs down barely shrinks at all. That is what left
+        // Salaadin standing 2.10 world units against the others' 2.69-2.78: his model bounds were
+        // a true 2.90, but two thirds of a metre of it was falchion and shield.
         var rends = inst.GetComponentsInChildren<Renderer>(true);
-        var bounds = rends[0].bounds;
-        foreach (var r in rends) bounds.Encapsulate(r.bounds);
-        float h = bounds.size.y / Mathf.Max(player.transform.lossyScale.y, 1e-4f) * 1f; // height in root-local units at child scale 1
-        float childScale = TargetHeight / Mathf.Max(bounds.size.y, 1e-4f);
+        // The body is the SKINNED renderer; the weapons are plain MeshRenderers bone-parented to a
+        // hand. Measuring only the skinned ones is the whole fix - and do NOT try to derive the
+        // height from sharedMesh.bounds instead, because a skinned mesh's vertices are not in its
+        // renderer transform's space and that reads Salaadin as a third of his real size.
+        var skinned = inst.GetComponentsInChildren<SkinnedMeshRenderer>(true).Cast<Renderer>().ToArray();
+        var measure = skinned.Length > 0 ? skinned : rends;
+        var bounds = measure[0].bounds;
+        foreach (var r in measure) bounds.Encapsulate(r.bounds);
+        float want = HeightOf(charName);
+        float childScale = want / Mathf.Max(bounds.size.y, 1e-4f);
         inst.transform.localScale = Vector3.one * childScale;
         if (GroundOffset.TryGetValue(charName, out float gy)) inst.transform.localPosition = new Vector3(0f, gy, 0f);
-        Debug.Log($"{charName}: model height {bounds.size.y:F3} world units at child scale 1 under root scale {player.transform.lossyScale.y}; child scale set to {childScale:F3} for {TargetHeight} units, ground offset {inst.transform.localPosition.y:F3}");
+
+        // Fit the physics capsule to the BODY, bottom at the root origin. It used to be a fixed
+        // 2.1 high centred at 0.8-1.0, which hangs 0.20 (Bjorn) to 0.75 (everyone else) world
+        // units BELOW the feet: gravity rests that overhang on the arena and leaves the fighter
+        // hovering by exactly that much, and an overhang that deep catches on every step and
+        // ledge and walks him up it. With the bottom on the soles the root lands on the floor,
+        // which is also what makes GroundOffset's measured-against-the-root values correct.
+        var cap = player.GetComponent<CapsuleCollider>();
+        if (cap != null)
+        {
+            float rootScale = Mathf.Max(player.transform.lossyScale.y, 1e-4f);
+            float h = StandingStature(charName) / rootScale;
+            Undo.RecordObject(cap, "capsule");
+            cap.height = h;
+            cap.center = new Vector3(0f, h * 0.5f, 0f);
+            Debug.Log($"{charName}: capsule fitted to height {h:F3} root-local ({h * rootScale:F3} world), bottom on the soles");
+        }
+        Debug.Log($"{charName}: BODY height {bounds.size.y:F3} world units at child scale 1 under root scale {player.transform.lossyScale.y}; child scale set to {childScale:F3} for {want} units, ground offset {inst.transform.localPosition.y:F3}");
 
         // 4. animators
         foreach (var a in inst.GetComponentsInChildren<Animator>(true)) a.enabled = false;
@@ -223,6 +378,57 @@ public static class CrucibleCharacterSetup
     /// <summary>Where the hand grips, in R_Hand local units (the palm point attach_weapons.py mounts to).</summary>
     static readonly Vector3 HandGripPoint = new Vector3(0.0001f, 0.0005f, 0f);
 
+    /// <summary>
+    /// The shield fighters' weapons, whose mount is baked in Blender by &lt;Name&gt;_body.py: the local transform
+    /// under the hand bone, re-applied after a rebuild so a tweak is not lost to the next reimport. These are
+    /// Mixamo rigs, so they do NOT share <see cref="HandGripPoint"/> - that is in the Tripo hand bones' units,
+    /// which carry a ~220x scale, and is three orders of magnitude away from these.
+    /// Tuned 2026-10-21 against the live rigs: Richard's hilt sat 0.08 world ABOVE his fist (the hand closed on
+    /// air below the grip), and the falchion was rolled edge-up, so every cut led with the spine.
+    /// </summary>
+    static readonly System.Collections.Generic.Dictionary<string, (Vector3 localPos, Vector3 localEuler)> ShieldWeaponMount =
+        new System.Collections.Generic.Dictionary<string, (Vector3, Vector3)>
+    {
+        // The 2026-10-22 re-rig moved every hand bone, and a hand-tuned grip OFFSET does not survive
+        // that: this one was (0.0386, 0.1908, -0.0029) against the old rig and threw the sword 33
+        // world units off his hand. Every other weapon on the roster mounts at the origin of its
+        // hand bone, so the offset was compensating for the old rig, not for the sword.
+        { "Richard_Sword",     (Vector3.zero, new Vector3(340f, 270f,   0f)) },
+        // Miyamoto's katana had NO mount entry, so it sat at whatever rest rotation the FBX gave it
+        // under the hand bone - and the re-rig changed that bone's orientation, which left the blade
+        // pointing BACKWARD (blade . forward -0.94) straight through his chest, nearest vertex 0.038
+        // from his torso axis. His off hand then followed the hilt onto the wrong side of him, which
+        // is what read as handcuffed. Solved in play rather than guessed: the rotation that aims the
+        // blade forward, up and slightly out. Clears the torso by 0.396 and keeps the grip at 0.057.
+        { "Miyamoto_Katana",  (Vector3.zero, new Vector3(357.54f, 351.35f, 357.28f)) },
+        { "Salaadin_Falchion", (new Vector3(0.0000f, 0.0003f,  0.0001f), new Vector3(340f, 270f, 180f)) },
+        // His round shield was mounted with axis_y="-palm", squared up against his OLD hand-keyed
+        // guard. On the pack's block idle the left hand rolls differently and the shield lay FLAT,
+        // face to the sky. Solved in play against Block_Hold by swinging the disc normal onto the
+        // fighter's forward and then rolling the boss upright: face.forward 0.12 -> 1.00,
+        // face.up 0.98 -> 0.00. Re-solve this if his block clip ever changes.
+        // Re-solved 2026-10-22 for the Rigify metarig, whose LeftHand carries a different roll
+        // (salaadin_metarig.py sets bone Z to the floor): it read 0.91 / 0.12 and is now 1.00 /
+        // 0.00 with the disc's top straight up. Measure it in BLOCK_HOLD, never in the idle - a
+        // shield at rest hangs off the arm and reads about 0.70 / 0.67 however it is mounted.
+        // The POSITION was (0,0,0), which put the hand bone in the disc's own mid-plane: nothing
+        // animates his fingers, so the open hand ran straight through the face and stood out
+        // 0.106 world units in front of it. Solved in Block_Hold by measuring the fist's vertices
+        // (those weighted to LeftHand*) in the SHIELD's own frame: the fist sat 0.093 off the boss
+        // in-plane and 0.090 ahead of the disc. This offset slides the boss onto the fist and
+        // pushes the disc 0.120 forward along its normal, so the fist sits in the boss hollow the
+        // way a centre grip is actually held - in-plane 0.000 off the boss, front-most vertex
+        // +0.050 against a front face of +0.064. The facing is unchanged at 1.00 / 1.00.
+        // Richard's shield had NO entry at all, so it sat wherever the FBX left it. After the re-rig
+        // that was BACKWARDS - its thinnest axis (a flat slab's facing) read -0.82 against his own
+        // forward, so he carried the face toward himself - and his fist stood 0.240 PROUD of it,
+        // more than twice the miss that was fixed on Salaadin. Solved in play: aim the facing along
+        // his forward with the kite's long axis up, slide the boss onto the fist in-plane, then seat
+        // the disc so the fist sits 0.020 inside the front face (Salaadin's snug fit is 0.025).
+        { "Richard_Shield_L", (new Vector3(0.000955f, 0.001064f, -0.000167f), new Vector3(0.53f, 122.11f, 344.30f)) },
+        { "Salaadin_Shield_L", (new Vector3(0.000209f, 0.000563f, -0.000347f), new Vector3(0.75f, 181.74f, 355.40f)) },
+    };
+
     static void SetupWeapon(GameObject player, GameObject inst, string charName, Animator rootAnim)
     {
         var weapon = inst.GetComponentsInChildren<MeshRenderer>(true).FirstOrDefault(r => WeaponSpec.Keys.Any(k => r.name.StartsWith(k)));
@@ -257,6 +463,38 @@ public static class CrucibleCharacterSetup
         }
         var oldBox = player.transform.Find("Hitbox");
         if (oldBox != null && oldBox.gameObject.activeSelf) { Undo.RecordObject(oldBox.gameObject, "park hitbox"); oldBox.gameObject.SetActive(false); }
+
+        // Put each weapon back where it was tuned, for EVERY fighter. WeaponAim caches this local
+        // transform in Awake and restores it every LateUpdate, so the value sitting here at play time
+        // IS the mount - which also means a runtime tweak lasts exactly one frame, and the change has
+        // to be made on the scene.
+        // This used to be inside the !twoHanded branch, which silently skipped Bjorn and Miyamoto, so
+        // Miyamoto's katana entry never reached him and his blade stayed pointing through his chest.
+        // The gate was there because the two-handed pair were TRIPO rigs, mounted through WeaponMount
+        // in Tripo hand-bone units (HandGripPoint, ~220x scale); the 2026-10-22 re-rig made all four
+        // Mixamo metarig exports, so one table in world-sane units now serves the whole roster.
+        var mountKey2 = ShieldWeaponMount.Keys.FirstOrDefault(k => weapon.name.StartsWith(k));
+        if (mountKey2 != null)
+        {
+            var sm = ShieldWeaponMount[mountKey2];
+            Undo.RecordObject(weapon.transform, "weapon mount");
+            weapon.transform.localPosition = sm.localPos;
+            weapon.transform.localRotation = Quaternion.Euler(sm.localEuler);
+            Debug.Log($"{charName}: {weapon.name} mounted at {sm.localPos} / {sm.localEuler}");
+        }
+        // The off hand's gear is not the weapon found above - SetupWeapon picks the BLADE, by
+        // WeaponSpec - so without its own pass a shield entry in the table would never be applied.
+        foreach (var r in inst.GetComponentsInChildren<MeshRenderer>(true))
+        {
+            if (r.transform == weapon.transform) continue;
+            var offKey = ShieldWeaponMount.Keys.FirstOrDefault(k => r.name.StartsWith(k));
+            if (offKey == null) continue;
+            var om = ShieldWeaponMount[offKey];
+            Undo.RecordObject(r.transform, "off-hand mount");
+            r.transform.localPosition = om.localPos;
+            r.transform.localRotation = Quaternion.Euler(om.localEuler);
+            Debug.Log($"{charName}: {r.name} mounted at {om.localPos} / {om.localEuler}");
+        }
 
         bool twoHanded = TwoHanded.Contains(charName);
         if (!twoHanded)

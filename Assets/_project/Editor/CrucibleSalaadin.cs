@@ -71,12 +71,16 @@ public static class CrucibleSalaadin
                    range = 2.8f, size = new Vector3(1.3f, 1.0f, 1f), offset = new Vector3(0f, 0.6f, 0f),
                    lunge = -1f, weapon = true },
 
-        // HEAVY: the full turn with two cuts in it (Custom/Salaadin_WhirlingSaif). One hit, on the
-        // second cut - the engine gives a swing one hit, and the second is the one that reads.
-        // AimYaw so the turn keeps its own facing instead of being snapped at the opponent.
-        new Move { asset = "Salaadin_Heavy_WhirlingSaif", name = "Whirling Saif", trigger = "HeavyAttack",
-                   height = Mid, type = Heavy, comesFrom = FromLeft, hitSide = HitRight, aim = AimYaw,
-                   range = 3.1f, size = new Vector3(1.5f, 1.2f, 1f), offset = new Vector3(0f, 1f, 0f),
+        // HEAVY: a plain overhead - saber up and straight down the centre (SwordShieldPack
+        // "slash (4)"). It used to be the whirling turn, which the user could not read as a cut;
+        // the clip now has 9 deg of hip turn instead of 43, so the move data has to follow it:
+        // Overhead/FromOverhead so the right dashes evade it, HitStraight so the defender takes
+        // the straight reaction rather than a side one, and AimFull because there is no turn left
+        // to protect - he should face the man he is chopping. The asset NAME is deliberately
+        // unchanged: the scene holds these by GUID and a rename needs "Salaadin > 4 Rewire".
+        new Move { asset = "Salaadin_Heavy_WhirlingSaif", name = "Falling Saif", trigger = "HeavyAttack",
+                   height = Overhead, type = Heavy, comesFrom = FromOverhead, hitSide = HitStraight, aim = AimFull,
+                   range = 3.1f, size = new Vector3(1.2f, 1.6f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
         // SP + Light: the shield leads the dash, the saber comes up underneath it

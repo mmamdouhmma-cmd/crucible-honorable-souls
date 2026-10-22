@@ -129,17 +129,17 @@ public static class CrucibleMixamoSetup
     // left. The walks ARE shared - the pack has two and Richard has both (the user's call).
     static readonly (string state, string pack, string clip, bool loop)[] P4Map =
     {
-        ("Salaadin_Idle",                  "Custom",          "Salaadin_GuardIdle",            true),   // block idle's stance with a breath keyed on top: fight-ready, and it does not wander
+        ("Salaadin_Idle",                  "SwordShieldPack", "sword and shield idle (4)",     true),   // the pack's ONLY settled idle: hand travels 0.22 against "idle"'s 2.54, which reads as wandering
         ("Salaadin_Walk_Forward",          "SwordShieldPack", "sword and shield walk",         true),   // shared with Richard
         ("Salaadin_Walk_Back",             "SwordShieldPack", "sword and shield walk (2)",     true),   // shared with Richard
-        ("Salaadin_Light_SaifCut",         "SwordShieldPack", "sword and shield slash (3)",    false),  // 48 f, the most compact cut left in the pack
-        ("Salaadin_Medium_ShinCut",        "Custom",          "Salaadin_ShinCut",              false),  // the low cut, keyed by hand (the pack has nothing below the waist)
-        ("Salaadin_Heavy_WhirlingSaif",    "Custom",          "Salaadin_WhirlingSaif",         false),
-        ("Salaadin_Special_VeiledRush",    "Custom",          "Salaadin_VeiledRush",           false),
-        ("Salaadin_Special_CrescentSlash", "SwordShieldPack", "sword and shield attack (2)",   false),  // 40 f and only 0.5 of vertical travel: the flat, wide swing
-        ("Salaadin_Special_HattinCleave",  "SwordShieldPack", "sword and shield slash (4)",    false),  // 70 f, 1.87 of drop: the big diagonal
-        ("Salaadin_Riposte_Dash",          "SwordShieldPack", "sword and shield attack (3)",   false),  // 53 f
-        ("Salaadin_Riposte_Parry",         "Custom",          "Salaadin_SaberRiposte",         false),  // a saber counter, not a boot - he has no kicks
+        ("Salaadin_Light_SaifCut",         "SwordShieldPack", "sword and shield attack (2)",   false),  // 40 f and the strongest shoulder lead in the pack (4.50 against slash (3)'s 0.97): he turns INTO a sideways cut instead of swinging arm-only
+        ("Salaadin_Medium_ShinCut",        "SwordShieldPack", "sword and shield attack (3)",   false),  // 53 f, shoulder 4.17 and 36 deg of hip turn: the body goes with the sword
+        ("Salaadin_Heavy_WhirlingSaif",    "SwordShieldPack", "sword and shield slash (4)",    false),  // a PLAIN overhead: vert 3.07 (drop/side) with only 9 deg of hip turn, hand from 1.32 above the belt down to -0.54. "attack" also drops a long way but turns the hips 43 deg and travels the shoulder 6.53, which is what read as a spin
+        ("Salaadin_Special_VeiledRush",    "SwordShieldPack", "sword and shield slash (2)",    false),  // 107 f and a 21.14 hand path: the longest flourish in the pack, so the special reads as one
+        ("Salaadin_Special_CrescentSlash", "SwordShieldPack", "sword and shield slash (5)",    false),  // the pack's LOW slash: the hand never rises above 0.69 of a hips-to-head (every other strike reaches 1.3+) and sweeps 2.01 sideways against 1.04 of drop. See swing_trims.json - its core had to be widened or it played as a 6-frame smear
+        ("Salaadin_Special_HattinCleave",  "SwordShieldPack", "sword and shield attack",       false),  // the big committed chop freed up by the heavy: 4.00 of drop, 43 deg of hip turn and the pack's longest shoulder travel at 6.53 - too much body for a normal, right for a special
+        ("Salaadin_Riposte_Dash",          "SwordShieldPack", "sword and shield slash (3)",    false),  // 48 f
+        ("Salaadin_Riposte_Parry",         "SwordShieldPack", "sword and shield attack (4)",   false),  // 31 f, the shortest cut in the pack: a saber counter, not a boot - he has no kicks
         ("React_Front",                    "SwordShieldPack", "sword and shield impact",       false),  // only three impacts exist; shared
         ("React_Left",                     "SwordShieldPack", "sword and shield impact (2)",   false),
         ("React_Right",                    "SwordShieldPack", "sword and shield impact (3)",   false),
@@ -322,6 +322,34 @@ public static class CrucibleMixamoSetup
             {
                 if (mi.avatarSetup != ModelImporterAvatarSetup.CopyFromOther) { mi.avatarSetup = ModelImporterAvatarSetup.CopyFromOther; dirty = true; }
                 if (mi.sourceAvatar != owner) { mi.sourceAvatar = owner; dirty = true; }
+                // The clip importer CACHES the copied rig configuration, and Unity builds the clip's
+                // avatar from that CACHE, not from the source avatar - the same trap humanDescription
+                // sets on a body (see Rebuild Player<N>). Re-rig a body with a different bone count and
+                // every clip goes on demanding the bones that are gone. Salaadin's hand-edited rig
+                // dropped the four toe bones and all five authored clips died with "Transform
+                // 'mixamorig:LeftToeBase' for human bone 'LeftToes' not found", importing with NO takes
+                // and no AnimationClip at all - so the states silently fell back to pack clips and he
+                // fought in a stranger's idle. Clearing the cache is NOT the fix: an empty one gives
+                // "No human bone found. Ensure both rig type match". It has to be overwritten with the
+                // body's own description.
+                var bodyMi = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(owner)) as ModelImporter;
+                if (bodyMi != null)
+                {
+                    var bhd = bodyMi.humanDescription;
+                    var chd = mi.humanDescription;
+                    bool match = chd.human.Length == bhd.human.Length && chd.skeleton.Length == bhd.skeleton.Length;
+                    for (int i = 0; match && i < bhd.human.Length; i++)
+                        match = chd.human[i].humanName == bhd.human[i].humanName
+                             && chd.human[i].boneName == bhd.human[i].boneName;
+                    // POSITIONS too, not just names. The cache stores where every joint sits, and a
+                    // re-rig that keeps the bone list identical but moves a knee leaves the clip
+                    // retargeting onto the OLD skeleton with no error of any kind - the same trap
+                    // that made Salaadin's corrected elbow invisible, one level further out.
+                    for (int i = 0; match && i < bhd.skeleton.Length; i++)
+                        match = chd.skeleton[i].name == bhd.skeleton[i].name
+                             && (chd.skeleton[i].position - bhd.skeleton[i].position).sqrMagnitude < 1e-10f;
+                    if (!match) { mi.humanDescription = bhd; dirty = true; }
+                }
             }
             else if (mi.avatarSetup != ModelImporterAvatarSetup.CreateFromThisModel) { mi.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel; dirty = true; }
             // A copied avatar only validates if the clip's node chain matches the body's, which is

@@ -1,4 +1,4 @@
-// The whole roster's numbers, in one table.
+﻿// The whole roster's numbers, in one table.
 //
 // Crucible > Combat > Apply the roster balance
 //
@@ -183,9 +183,31 @@ public static class CrucibleBalance
         so.FindProperty("activeFrames").intValue = m.active;
         so.FindProperty("recoveryFrames").intValue = m.recovery;
         so.FindProperty("hitstunFrames").intValue = m.hitstun;
+        if (LungeOverride.TryGetValue(m.asset, out var lg))
+        {
+            so.FindProperty("lungeStopDistance").floatValue = lg.stop;
+            so.FindProperty("lungeMaxDistance").floatValue = lg.max;
+        }
         so.ApplyModifiedProperties();
         EditorUtility.SetDirty(asset);
     }
+
+    /// <summary>
+    /// Moves that have to CLOSE rather than reach. The default lunge stops at
+    /// BalanceConfig.ATTACK_LUNGE_STOP (1.7 centre to centre) and may travel
+    /// BalanceConfig.ATTACK_LUNGE_MAX (0.9) to get there, which is fine for a move that strikes
+    /// out in front - but Bjorn's two SPINS carry the axe round his body, so at 1.7 apart the head
+    /// is nowhere near the opponent while the hitbox (range 3.2-3.5) still scores. The axe missing
+    /// visibly while damage lands is that gap, and the fix the game wants is for the spin to travel
+    /// THROUGH the man rather than for the hitbox to shrink. stop 0.9 is inside the sum of the two
+    /// bodies, so he ends the turn overlapping and the head sweeps through.
+    /// </summary>
+    static readonly System.Collections.Generic.Dictionary<string, (float stop, float max)> LungeOverride =
+        new System.Collections.Generic.Dictionary<string, (float, float)>
+    {
+        { "Bjorn_Medium_SpinningSlash", (0.9f, 2.6f) },
+        { "Bjorn_Heavy_SpinOverhead",   (0.9f, 2.6f) },
+    };
 
     // His art folder was created lowercase; every other fighter's matches the character name.
     static string Folder(string character) => character == "Salaadin" ? "salaadin" : character;

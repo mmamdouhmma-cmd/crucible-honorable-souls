@@ -32,6 +32,11 @@ os.makedirs(os.path.dirname(OUT), exist_ok=True)
 # The tweak is a rotation in the weapon's own frame AFTER the axis mapping, and because the mapping
 # is written in the hand bone's axes it means the same thing in every pose: Rx(t) swings the weapon's
 # +Z from the axis_z direction toward -axis_y (t > 0) or +axis_y (t < 0).
+# NOTE (2026-10-21): the final say on this mount is Unity's, not this table. CrucibleCharacterSetup's
+# ShieldWeaponMount re-applies a tuned local transform to the weapon after every Rebuild Player<N>, because
+# the mount had to be solved against the LIVE rig (Richard's hilt sat 0.08 world above his fist; the falchion
+# was rolled edge-up). Re-running this script is still safe - the Unity override lands on top of whatever it
+# bakes - but change the numbers THERE, not here, or the two will disagree.
 MOUNT = {
     # HIS RIG IS 1.04 UNITS TALL, not Richard's 1.85 - Tripo exported the two meshes at different
     # sizes, so every length and offset here is Richard's scaled by 1.04/1.85 = 0.56, and his
