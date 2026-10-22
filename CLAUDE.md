@@ -576,6 +576,56 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   Shrinking Richard 11% left him hovering 0.027; his is `0.119f / 3f` as of 2026-10-22.
   Statures in play after the change: Richard 2.887, Salaadin 2.795, Bjorn 2.746, Miyamoto 2.570.
 
+- **`swing_contacts.json` is keyed by STATE, not by clip, and a contact entry OVERRIDES the
+  measured core.** Re-point a state at a different clip and the old clip's contact frame silently
+  re-cuts the new one: Miyamoto's heavy kept `contact 36.2, speed 2.0` from the spin it used to
+  play, which against `great sword casting` (swing peak at source frame 66) chose the window
+  18-50 - it missed the cut entirely and pinned playback at 2.0x. Removing the stale entry and
+  widening the core to budget/2 (16 source frames, 57-73) put it at **x1.00** with the peak on the
+  hit frame. **Whenever a state's clip changes, delete or re-measure its contact entry.** Without a
+  contact the window is `len = max(core_end - core_start, 6)` SOURCE frames, so
+  `speed = 2 x core / total` - core = total/2 is the recipe for x1.00.
+- **A clip authored from pack frames can put a foot through the floor, and the fix belongs in the
+  authoring, not the importer.** `plant_feet()` in `richard_clips.py` runs inside `key()`: it
+  measures the lower ankle and lifts the HIPS when it is below `REST_ANKLE_Z * 0.55`. The legs are
+  plain FK children there (`reach()` solves the arms by setting bones, not constraints), so lifting
+  the hips lifts both feet by exactly the lift and one pass is exact. It only ever LIFTS, so a
+  clean frame is untouched. Measured with it off: thrust 0.055 and charge 0.018 (both above the
+  floor, both play-verified good), bash **-0.187** and double-high **-0.183** (both underground).
+  Set the threshold from that spread, not by feel, and keep the cap above the worst violation or it
+  binds and silently under-corrects.
+- **What is left after that is the TRANSITION, and it is not the clip.** Blending a standing idle
+  into a crouched move interpolates the root height faster than the legs reposition, so a foot dips
+  for a frame or two: Richard's light 1 frame at -0.016 and his shield bash 4 frames at -0.096,
+  while the clips' own frames sit +0.18 to +0.31 clear. Judge a clip by its own frames before
+  blaming the authoring.
+
+## Measuring a move from the CLI (the harness that works)
+
+- **`Time.captureDeltaTime = 1f/60f` makes one rendered frame equal one 60 fps game frame**, so a
+  sample index IS an attack frame number whatever the Editor's real frame rate is. This is what
+  makes frame budgets readable off a series, and it beats the old `timeScale 0.02` plus round-trip
+  guessing outright.
+- **Sample inside a coroutine and write a CSV**, rather than one eval per frame: a local iterator
+  function in `eval` plus `menu.StartCoroutine(...)` runs across consecutive frames (verified:
+  frames 66, 67, 68) and `System.IO.File.WriteAllText` at the end keeps it out of the console,
+  which otherwise blows the token budget on one `console get`.
+- **Disable `DebugTimeScale` BEFORE setting the scale.** It re-applies the Settings game speed the
+  moment the scale returns to ~1, so `Time.timeScale = 1f` alone leaves it at 0.7 and every sample
+  is 0.7 of an attack frame.
+- **A lunge only closes to `ATTACK_LUNGE_STOP` (1.7), so re-space the pair before EVERY move.**
+  Once one swing has closed the gap, every later move measures zero travel and looks like a move
+  that cannot move - Richard's shield charge read `travel 0.00` until the pair were re-spaced to
+  4.2, when it charged **1.77**.
+- **Identical consecutive frames in a series are HIT-STOP, not a frozen animation.** Miyamoto's
+  heavy holds 5 frames at the strike because it connected; that is the game working. The pause the
+  user reported in the shield charge was 22 frames with the LEGS alone frozen - a different shape.
+- **A KO silently ends the pass.** Six landed attacks is enough to kill: Bjorn's verification run
+  left Miyamoto at 0/80, and every move in Miyamoto's own pass then reported "NOT FIRED". Re-run
+  `StartMatch` and check `Stats.currentHealth` before trusting an empty result.
+- Spin or slash is settled by the **pelvis sweep, unwrapped through its wraps**: Salaadin's light
+  was 429 deg as a spin clip and is 16 deg now; Miyamoto's heavy is 16 deg, his Kuruma 100 deg.
+
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `parryCounterDamageMultiplier` is serialized 1.5 against `BalanceConfig`'s

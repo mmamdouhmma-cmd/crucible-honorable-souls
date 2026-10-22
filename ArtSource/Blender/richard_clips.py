@@ -43,6 +43,15 @@ BODY_NODE = "Richard_ClipRoot"
 
 TARGET_HIP_H = None        # Richard's own rest hip height, in world units; set by load()
 TARGET_ARM_SCALE = 1.0     # his armature object's world scale - the unit a bone translation is in
+REST_ANKLE_Z = None        # ankle height with the soles on the floor
+LIFTED = [0.0]             # most a clip had to be lifted, for the build log
+MIN_ANKLE = [9.9]          # lowest ankle a clip reached, for the build log
+# Measured with the clamp off: the thrust's lowest ankle is 0.055 and the charge's 0.018,
+# both ABOVE the floor and both verified good in play, while the bash and the double-high
+# drive it to -0.187. 0.55 of rest therefore leaves the two good clips untouched and
+# catches only the two that are genuinely underground.
+PLANT_K = float(os.environ.get('PLANT_K', '0.55'))
+PLANT_CAP = float(os.environ.get('PLANT_CAP', '0.30'))   # above the worst violation, so it never binds
 
 
 def rest_hip_height(arm):
@@ -52,7 +61,7 @@ def rest_hip_height(arm):
 
 
 def load():
-    global TARGET_HIP_H, TARGET_ARM_SCALE
+    global TARGET_HIP_H, TARGET_ARM_SCALE, REST_ANKLE_Z
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.wm.fbx_import(filepath=BODY)
     arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
@@ -61,7 +70,9 @@ def load():
     bpy.context.scene.render.fps = 30
     TARGET_HIP_H = rest_hip_height(arm)
     TARGET_ARM_SCALE = arm.matrix_world.to_scale().z
-    print(f"  body rest hip height {TARGET_HIP_H:.4f}, armature scale {TARGET_ARM_SCALE:.4f}")
+    REST_ANKLE_Z = min(wpos(arm, B(arm, "LeftFoot")).z, wpos(arm, B(arm, "RightFoot")).z)
+    print(f"  body rest hip height {TARGET_HIP_H:.4f}, armature scale {TARGET_ARM_SCALE:.4f},"
+          f" rest ankle {REST_ANKLE_Z:.4f}")
     return arm
 
 
@@ -207,7 +218,35 @@ def pose(arm, right=None, left=None, blade=None, shield=None):
         aim(arm, "Left", shield[0], shield[1])
 
 
+def plant_feet(arm):
+    """Keep the planted boot out of the arena floor.
+
+    The legs of these clips come from a pack take through apply_frame, and a pose that reads fine
+    on the pack rig can put Richard's ankle BELOW the ground once it is retargeted onto his own
+    proportions - his shield bash buried the planted boot for five frames while the other leg was
+    1.47 world units up. The legs are plain FK children of the hips here (reach() solves the arms
+    by setting bones, not by constraints), so lifting the hips lifts both feet by exactly the same
+    amount and one pass is enough. It only ever LIFTS, so a frame that was already clean is left
+    untouched, and the lift is capped so one bad frame cannot launch him.
+    """
+    if REST_ANKLE_Z is None:
+        return
+    lo = min(wpos(arm, B(arm, "LeftFoot")).z, wpos(arm, B(arm, "RightFoot")).z)
+    MIN_ANKLE[0] = min(MIN_ANKLE[0], lo)
+    floor = REST_ANKLE_Z * PLANT_K        # some heel lift and ankle roll is legitimate
+    if lo >= floor:
+        return
+    lift = min(floor - lo, PLANT_CAP)
+    hips = B(arm, "Hips")
+    m = hips.matrix.copy()
+    m.translation.z += lift
+    hips.matrix = m
+    bpy.context.view_layer.update()
+    LIFTED[0] = max(LIFTED[0], lift)
+
+
 def key(arm, frame, bones=None):
+    plant_feet(arm)
     for pb in arm.pose.bones:
         short = pb.name.split(":")[-1]
         if bones and not any(short.endswith(s) for s in bones):
@@ -307,6 +346,9 @@ def rest_lead_in(arm):
 
 
 def export(arm, name, last):
+    print(f"  foot-plant {name}: lift {LIFTED[0]:.4f}, lowest ankle {MIN_ANKLE[0]:.4f}"
+          f" (rest {REST_ANKLE_Z:.4f})")
+    LIFTED[0] = 0.0; MIN_ANKLE[0] = 9.9
     out = os.path.join(OUT_DIR, name + ".fbx")
     rest_lead_in(arm)
     last += 1

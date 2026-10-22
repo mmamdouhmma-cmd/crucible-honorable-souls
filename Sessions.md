@@ -2717,3 +2717,51 @@ that drops Bjorn just under Salaadin, where he used to stand over him.
 
 Richard's grip closed too: the sword's axis now runs exactly through the hand bone (off-axis
 0.174 -> **0.000**) and the nearest blade vertex to his forearm went 0.005 -> **0.131**.
+
+### 2026-10-22 — The verification pass: what careful testing found after "done"
+
+The nine items were reported done and committed. The user asked for a slow, precise pass over
+them — "precision is the key to what i want" — and it paid for itself twice.
+
+**What the pass confirmed, measured frame-exact in play** (`Time.captureDeltaTime = 1/60`, one
+rendered frame per game frame, sampled from a coroutine into a CSV):
+
+| # | item | the measurement |
+|---|------|-----------------|
+| 1 | Salaadin's light is a slash | `Salaadin_Light_SaifCut`, pelvis sweep **16°** against the old clip's 429° |
+| 2 | Miyamoto's heavy is a slash | `Miyamoto_Heavy_Overhead`, 16° of pelvis, hand descends 0.97 → 0.14; the thrust now only appears as a combo ender |
+| 3 | SP+Light quicker | Nukitsuke, 30 frames, **x1.00** |
+| 4 | SP+Heavy swapped and quicker | Kuruma on SP+Heavy, 36 frames, x0.81 |
+| 5 | Richard's grip | off-axis **0.000**, along the blade 0.090, nearest vertex to the forearm 0.131 |
+| 6 | the charge runs | 3 lead-foot swaps ~22 frames apart, blade forward 0.78–0.99 throughout, travels **1.77** |
+| 7 | the shield faces out | thin-axis dot **1.000**, forearm 0.402 *behind* the face, cross photographed facing the enemy |
+| 8 | no melting | light and medium both upright, root exactly on the floor |
+| 9 | sizes | Richard **2.878**, Salaadin 2.790, Bjorn 2.746, Miyamoto 2.551 — both cuts land at −11% |
+
+**And two things it caught that "done" had missed.**
+
+*A stale contact entry was re-cutting Miyamoto's new heavy.* `swing_contacts.json` is keyed by
+STATE, so moving that state onto `great sword casting` left behind the contact frame measured
+against the spin it used to play. The window landed on source frames 18–50 of a clip whose swing
+peaks at 66 — the cut was outside the window entirely — and the entry pinned playback at 2.0x,
+which is exactly the "too slow/too fast" class of complaint the user had raised about the specials.
+Removing it and widening the core to half the budget put the state at **x1.00** with the peak on
+the hit frame.
+
+*Richard buried a boot.* The shield bash drove its planted ankle 0.066 world units under the arena
+for five frames while the other foot was 1.47 up — the clear outlier across all 24 moves measured.
+Rather than tune that one clip, `plant_feet()` now runs inside `key()` in `richard_clips.py`: it
+lifts the hips whenever the lower ankle falls below 0.55 of its rest height. The threshold came
+from measuring with the clamp off — thrust 0.055, charge 0.018, bash **−0.187**, double-high
+**−0.183** — so the two good clips are untouched and only the two that were underground move.
+Afterwards: **zero frames below the floor on 22 of 24 moves**, and the two that remain (Richard's
+light, 1 frame at −0.016; his bash, 4 frames at −0.096) are the idle→crouch BLEND, not the clips,
+whose own frames sit +0.18 to +0.31 clear.
+
+All four stand with their capsule bottoms exactly on the floor and their soles within ±5 mm of it.
+
+**Three ways this kind of testing lies, all hit in one evening.** A lunge only closes to
+`ATTACK_LUNGE_STOP`, so after the first swing every later move reads `travel 0.00` and the shield
+charge looked like it could not move — re-space before each one. Five bit-identical frames in a
+series is hit-stop, which is the game working, not a freeze. And a KO silently ends the run: six
+landed attacks put Miyamoto at 0/80, after which every move in his own pass reported NOT FIRED.
