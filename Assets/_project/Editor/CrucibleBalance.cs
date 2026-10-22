@@ -85,20 +85,25 @@ public static class CrucibleBalance
             // PERCENTAGE off the defender's armour (DamageCalculator step 2), and his normals were
             // the only ones in the roster sitting at 0 - the katana fighter pierced LEAST, which is
             // backwards. He is the pierce leader on every slot now; Richard's best is 12.
-            N("Miyamoto_Light_Thrust",                 7,  12,  8,      6,  3,  6,   7),
-            N("Miyamoto_Medium_SideSlash",             7,  14,  10,      9,  4,  8,   8),
-            N("Miyamoto_Heavy_Overhead",               9,  16,  16,     16,  4, 12,  10),   // was 23 start: the slowest heavy in the game, on the fastest fighter
-            N("Miyamoto_Special_Nukitsuke",           13,  34,  18,      9,  4,  9,  12),   // SP+Light: was 18/5/20 = 0.72s. The user's call - too slow, and it is the pack's slowest strike (peak tip 0.286) so the clip could not carry that budget either
-            N("Miyamoto_Special_NitoCross",           14,  38,  20,     14,  5, 15,  12),
+            // EVERY Miyamoto move is quicker, on the user's call - normals and ripostes this time,
+            // not just the specials. About 17-19% off each total, taken out of startup and recovery
+            // with every ACTIVE window left exactly as it was, so nothing starts whiffing. A budget
+            // change also re-times the clip (Use Mixamo packs sets state.speed = clip.length /
+            // (frames/60)), so each of these animations now plays faster on screen too.
+            N("Miyamoto_Light_Thrust",                 7,  12,  8,      5,  3,  5,   7),
+            N("Miyamoto_Medium_SideSlash",             7,  14,  10,      7,  4,  6,   8),
+            N("Miyamoto_Heavy_Overhead",               9,  16,  16,     13,  4,  9,  10),   // was 23 start: the slowest heavy in the game, on the fastest fighter
+            N("Miyamoto_Special_Nukitsuke",           13,  34,  18,      7,  4,  7,  12),   // SP+Light: was 18/5/20 = 0.72s. The user's call - too slow, and it is the pack's slowest strike (peak tip 0.286) so the clip could not carry that budget either
+            N("Miyamoto_Special_NitoCross",           14,  38,  20,     11,  5, 12,  12),
             // SP+Heavy. The 30-frame draw WAS deliberate and the user's verdict is that it does not
             // play: 0.50s of windup before the first active frame. Kuruma (the spin charge handed
             // down from the normal heavy) takes the slot at 0.53s total.
-            N("Miyamoto_Special_Kuruma",              15,  42, 24,     10,  4, 10,  14),
+            N("Miyamoto_Special_Kuruma",              15,  42, 24,      8,  4,  8,  14),
             // The double thrust, now reachable ONLY as the last hit of a string, so it needs no
             // tell - a confirmed finisher is paid for by the hit that opened the cancel window.
-            N("Miyamoto_Special_Iaijutsu",            15,  42, 24,     10,  5, 12,  14),   // all four specials cut about a quarter on the user's call: 30/47/32/36 frames -> 22/34/24/27
-            N("Miyamoto_Riposte_Dash",                 9,  10,  8,     12,  4, 14,   9),
-            N("Miyamoto_Riposte_Parry",                8,  10,  8,     20,  4,  6,   9),
+            N("Miyamoto_Special_Iaijutsu",            15,  42, 24,      8,  5,  9,  14),   // all four specials cut about a quarter on the user's call: 30/47/32/36 frames -> 22/34/24/27
+            N("Miyamoto_Riposte_Dash",                 9,  10,  8,     10,  4, 11,   9),
+            N("Miyamoto_Riposte_Parry",                8,  10,  8,     16,  4,  5,   9),
         },
 
         ["Bjorn"] = new[]

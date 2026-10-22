@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 7
   staminaCost: 12
   armorPierce: 8
-  startupFrames: 6
+  startupFrames: 5
   activeFrames: 3
-  recoveryFrames: 6
+  recoveryFrames: 5
   animationClip: {fileID: -203655887218126122, guid: 3d3b606c4d2454f4ca3fea5db63d0d97, type: 3}
   animatorTriggerName: LightAttack
   attackHeight: 1
@@ -32,6 +32,7 @@ MonoBehaviour:
   hitboxSize: {x: 0.6, y: 0.8, z: 1}
   aimMode: 0
   aimMaxAngle: -1
+  aimRollDegrees: 0
   lungeStopDistance: -1
   lungeMaxDistance: -1
   hitsWithWeapon: 1

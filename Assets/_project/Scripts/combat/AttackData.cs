@@ -179,6 +179,14 @@ public class AttackData : ScriptableObject
     [Tooltip("Largest aim correction in degrees for this attack. -1 = the WeaponAim component's own cap.")]
     [SerializeField] private float aimMaxAngle = -1f;
 
+    [Tooltip("Roll the blade this many degrees about its OWN long axis while the aim is up. The aim modes " +
+             "above only decide where the tip POINTS - nothing else in the game turns a blade about its own " +
+             "spine, so a clip that swings the FLAT of the sword into the target cuts with the side of the " +
+             "blade however it is aimed. That is what a spin reads as when it looks like a back fist rather " +
+             "than a slash. Positive rolls one way, negative the other; the sign is the 'side' the edge " +
+             "leads with, and it is a per-move number because it depends on how that clip holds the wrist.")]
+    [Range(-180f, 180f)] [SerializeField] private float aimRollDegrees = 0f;
+
     [Header("Lunge")]
     [Tooltip("During the startup the attacker steps toward the opponent until they are this far apart (centre to centre, " +
              "world units), so the strike reaches whatever the clip does. -1 = BalanceConfig.ATTACK_LUNGE_STOP.")]
@@ -278,6 +286,8 @@ public class AttackData : ScriptableObject
     public AimMode AimMode => aimMode;
     /// <summary>Aim cap for this attack, or -1 to use the component's.</summary>
     public float AimMaxAngle => aimMaxAngle;
+    /// <summary>Degrees to roll the blade about its own long axis while aiming (edge orientation).</summary>
+    public float AimRollDegrees => aimRollDegrees;
 
     /// <summary>Centre-to-centre distance the lunge closes to (world units).</summary>
     public float LungeStopDistance => lungeStopDistance < 0f ? BalanceConfig.ATTACK_LUNGE_STOP : lungeStopDistance;

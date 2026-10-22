@@ -211,7 +211,7 @@ public class WeaponAim : MonoBehaviour
         else target = opponent.transform.position + Vector3.up * 1.5f;
         var atk = combat.CurrentAttack;
         AimMode mode = atk != null ? atk.AimMode : AimMode.Full;
-        if (mode == AimMode.Off) return;
+        if (mode == AimMode.Off) { ApplyRoll(atk, w); return; }
         float cap = atk != null && atk.AimMaxAngle >= 0f ? atk.AimMaxAngle : maxAngle;
         Vector3 grip = weapon.position;
         Vector3 current = weapon.TransformDirection(bladeAxisLocal).normalized;
@@ -252,6 +252,24 @@ public class WeaponAim : MonoBehaviour
             rot = Quaternion.AngleAxis(applied, Vector3.Cross(current, desired).normalized);
         }
         RotateAbout(weapon.position, rot);   // the mount puts the origin at the hand, so this is the grip
-        if (debugLogs) Debug.Log($"{name} aim: off by {ang:F0} deg, applied {applied:F0} (w {w:F2})");
+        ApplyRoll(atk, w);
+        if (debugLogs) Debug.Log($"{name} aim: off by {ang:F0} deg, applied {applied:F0} (w {w:F2}), roll {atk.AimRollDegrees * w:F0}");
+    }
+
+    /// <summary>
+    /// Rolls the blade about its OWN long axis, so the edge - not the flat - leads the cut.
+    /// The aim modes only choose where the tip POINTS; none of them turns the sword about its spine,
+    /// which is why a spin can be aimed perfectly and still slap with the side of the blade. Rolling
+    /// about the blade axis cannot move the tip, so it never fights the aim above, and it pivots on
+    /// the hand so the grip stays put.
+    /// </summary>
+    private void ApplyRoll(AttackData atk, float w)
+    {
+        if (atk == null) return;
+        float roll = atk.AimRollDegrees * w;
+        if (Mathf.Abs(roll) < 0.01f) return;
+        Vector3 axis = weapon.TransformDirection(bladeAxisLocal).normalized;
+        if (axis.sqrMagnitude < 1e-6f) return;
+        RotateAbout(Pivot, Quaternion.AngleAxis(roll, axis));
     }
 }

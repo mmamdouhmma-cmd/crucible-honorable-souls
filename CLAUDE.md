@@ -771,6 +771,39 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   play have to be re-applied in EDIT mode and the scene saved
   (`EditorSceneManager.SaveScene`) - solving them live and walking away loses the lot.
 
+- **`AimMode` only decides where the TIP POINTS. Nothing in the game turned a blade about its own
+  spine until now**, which is why a spin could be aimed perfectly and still slap the target with the
+  FLAT of the sword - the thing that reads as a back fist rather than a slash. `AttackData.
+  aimRollDegrees` + `WeaponAim.ApplyRoll` roll the weapon about its own long axis while the aim
+  weight is up. It is applied for EVERY mode including `Off` (edge orientation is independent of
+  pointing), and rolling about the blade axis cannot move the tip, so it never fights the aim.
+  Miyamoto's Nito Cross is **+100**.
+- **Find a blade's cutting edge from the MESH: the edge tapers thin, the spine stays thick.**
+  Sample the verts in the middle of the blade's length, split them by the width axis, and compare
+  mean half-thickness along the flat normal. Miyamoto's katana: local z is the blade, y the width,
+  x the flat normal, and the **edge is +y** (0.000031 against the spine's 0.000046). Do NOT try to
+  read it off the bounds box alone - a katana's local bounds are 0.0009 x 0.0038 x 0.0057, so the
+  blade axis is only 1.5x the width and the box looks nothing like a sword.
+- **Measure the roll a cut needs with the opponent OUT OF REACH.** It is the signed angle about the
+  blade axis from the edge direction to the tip's VELOCITY, both projected perpendicular to the
+  blade. Measured in range it is worthless - hit-stop freezes the velocity and the lunge adds the
+  body's travel, and the answer swings between -88 and +88 from frame to frame. Spaced to 9 units
+  the same move reads monotonic: +84.5 at the first active frame through +101 at contact to +125.9
+  at the last. **A single roll cannot hold the edge leading through a full-turn spin** (the swing
+  direction rotates under it); take the value at the CONTACT frame and accept the ends.
+- **A contact's pinned `speed` in `swing_contacts.json` IS the final state speed, so cutting a frame
+  budget shortens the MOVE without touching the animation's playback rate.** Five of Miyamoto's nine
+  states are pinned (1.2-2.4x); cutting every budget ~18% left those rates alone and simply showed a
+  narrower window around the contact - which is what "faster" should mean. The two states with a
+  bare contact number and the one with none take `2 x core / total` instead, so they DID speed up
+  (Light and Medium both to 1.80). Decide which of the two you want before changing a budget.
+- **A paused Game view does not re-render, so a camera moved after the pause photographs the OLD
+  frame.** Place the camera inside the coroutine, BEFORE `isPaused = true`. And a probe camera needs
+  `depth` ABOVE the fight camera's or the capture just shows the match view - `-10` renders behind
+  it. Two different poses coming out byte-identical is this, not a change that failed.
+- **The `console` tool's `grep` did not filter** in this session - it returned the whole tail both
+  times, at ~20k tokens a call. Write diagnostics to a file in the scratchpad and `cat` it.
+
 ## Measuring a move from the CLI (the harness that works)
 
 - **`Time.captureDeltaTime = 1f/60f` makes one rendered frame equal one 60 fps game frame**, so a

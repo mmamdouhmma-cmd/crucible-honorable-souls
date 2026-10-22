@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 15
   staminaCost: 42
   armorPierce: 24
-  startupFrames: 10
+  startupFrames: 8
   activeFrames: 4
-  recoveryFrames: 10
+  recoveryFrames: 8
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialKuruma
   attackHeight: 0
@@ -32,6 +32,7 @@ MonoBehaviour:
   hitboxSize: {x: 0.7, y: 0.9, z: 1.2}
   aimMode: 3
   aimMaxAngle: -1
+  aimRollDegrees: 0
   lungeStopDistance: 0.9
   lungeMaxDistance: 2.6
   hitsWithWeapon: 1

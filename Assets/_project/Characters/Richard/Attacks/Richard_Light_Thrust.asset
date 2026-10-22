@@ -32,6 +32,7 @@ MonoBehaviour:
   hitboxSize: {x: 0.9, y: 1, z: 1}
   aimMode: 0
   aimMaxAngle: -1
+  aimRollDegrees: 0
   lungeStopDistance: -1
   lungeMaxDistance: -1
   hitsWithWeapon: 1

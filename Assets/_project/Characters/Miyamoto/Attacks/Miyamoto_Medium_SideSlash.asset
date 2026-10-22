@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 7
   staminaCost: 14
   armorPierce: 10
-  startupFrames: 9
+  startupFrames: 7
   activeFrames: 4
-  recoveryFrames: 8
+  recoveryFrames: 6
   animationClip: {fileID: -203655887218126122, guid: 2de9179e990a1a345b11117e930a2952, type: 3}
   animatorTriggerName: MediumAttack
   attackHeight: 1
@@ -32,6 +32,7 @@ MonoBehaviour:
   hitboxSize: {x: 1.5, y: 1, z: 1}
   aimMode: 0
   aimMaxAngle: -1
+  aimRollDegrees: 0
   lungeStopDistance: -1
   lungeMaxDistance: -1
   hitsWithWeapon: 1

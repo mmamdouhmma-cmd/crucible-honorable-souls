@@ -2993,3 +2993,47 @@ photographs as a horizontal slash with the edge leading.
 Worth remembering: **Miyamoto and Bjorn have no move table**, so their aim and box geometry live
 only in the `.asset` - nothing regenerates them. And a transform solved in PLAY mode is thrown away
 when play stops; all three scene fixes had to be re-applied in edit mode and the scene saved.
+
+### 2026-10-22 - The katana cuts with its edge, and every Miyamoto move comes out quicker
+
+Two things from a play test: the Nito Cross blade was turned "90 degrees but to the wrong side",
+and all of Miyamoto's attacks were to be faster.
+
+**The blade was never a pointing problem, which is why two rounds of aim modes could not fix it.**
+Measured through the hit window, `Level` held the sword horizontal (elevation 0.0) but left its
+bearing 86-143 degrees off the opponent, and `YawOnly` was worse - bearing 144 with the tip 70
+degrees up. Photographed at the contact frame the real fault was obvious and had nothing to do with
+either: the katana was presenting its **broad face** to the swing. It was slapping with the flat.
+`AimMode` only ever decided where the tip POINTS; nothing in the game turned a weapon about its own
+spine. So `AttackData.aimRollDegrees` and `WeaponAim.ApplyRoll` now do, for every aim mode including
+`Off`, pivoting on the hand - and because a roll about the blade axis cannot move the tip, it never
+fights the aim above it.
+
+Picking the value by measurement rather than by eye, and the two traps in it:
+- **The cutting edge comes off the mesh**: an edge tapers to nothing and a spine does not. Mid-blade
+  verts split by the width axis gave 0.000031 on +y against 0.000046 on -y, so the edge is local +y.
+- **The roll must be measured out of reach.** In range, hit-stop freezes the tip's velocity and the
+  lunge adds the body's travel, and the needed roll swung between -88 and +88 frame to frame -
+  noise I nearly took for a real answer. Spaced to 9 units it is monotonic: +84.5 at the first
+  active frame, **+101 at contact**, +125.9 at the last. Set to **+100**, and the photograph shows
+  the blade edge-on with the cutting edge leading where roll 0 showed the full broad face.
+  A single roll cannot hold the edge through a 356-degree spin; the contact frame is what to centre.
+
+**Every Miyamoto attack is shorter** - normals and ripostes this time, not just the specials. About
+17-19% off each total, taken out of startup and recovery with every ACTIVE window left exactly as it
+was so nothing starts whiffing: 15/21/32 -> 13/17/26 on the normals, 22/34/24/27 -> 18/28/20/22 on
+the specials, 30/30 -> 25/25 on the ripostes. Worth knowing for next time: **five of his nine states
+carry a pinned `speed` in `swing_contacts.json`, and that pin IS the final state speed**, so those
+moves got shorter without the animation turning into a blur. The three without a pin take
+`2 x core / total` and did speed up - Light and Medium are both 1.80 now.
+
+Read back from the controller and the assets on disk, not from the console. Only
+`P2_Miyamoto.controller` changed and the other three fighters' fastest states are where they were
+(Bjorn 2.20, Richard 1.60, Salaadin 1.11), so the shared `Use Mixamo packs` run cost nobody else.
+The roster-wide `.asset` churn in the diff is the new serialized field landing in every AttackData
+at its default 0.
+
+Two harness notes that cost real time: **a paused Game view does not re-render**, so a camera moved
+after the pause photographs the previous frame - two poses came out byte-identical before I spotted
+it; place the camera before pausing. And the `console` tool's `grep` returned the entire tail both
+times it was used, about 20k tokens a call - diagnostics belong in a scratchpad file.
