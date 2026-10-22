@@ -49,8 +49,12 @@ public static class CrucibleCharacterSetup
     /// </summary>
     static readonly System.Collections.Generic.Dictionary<string, float> StandingHeight = new System.Collections.Generic.Dictionary<string, float>
     {
-        { "Richard",  3.753f },   // -> stature 3.25
-        { "Bjorn",    3.498f },   // -> stature 3.05
+        // 2026-10-22: the user's call after play-testing all four together - Richard and Bjorn read
+        // as "way too big for Miyamoto and Salaadin", so both come down 11%. That DOES invert the
+        // intended ranking (Bjorn now stands below Salaadin, 2.71 against 2.80); the brief was the
+        // two big men against the two small ones, not the order among them.
+        { "Richard",  3.340f },   // -> stature 2.89  (was 3.753 -> 3.25, -11%)
+        { "Bjorn",    3.113f },   // -> stature 2.71  (was 3.498 -> 3.05, -11%)
         { "Salaadin", 3.857f },   // -> stature 2.80  (his idle crouches hardest, so the box has to be tallest)
         { "Miyamoto", 2.824f },   // -> stature 2.55
     };
@@ -65,8 +69,8 @@ public static class CrucibleCharacterSetup
     /// </summary>
     static readonly System.Collections.Generic.Dictionary<string, float> Stature = new System.Collections.Generic.Dictionary<string, float>
     {
-        { "Richard",  3.25f },
-        { "Bjorn",    3.05f },
+        { "Richard",  2.89f },
+        { "Bjorn",    2.71f },
         { "Salaadin", 2.80f },
         { "Miyamoto", 2.55f },
     };
@@ -136,7 +140,9 @@ public static class CrucibleCharacterSetup
     {
         { "Bjorn", 0.119f / 4f },
         { "Miyamoto", 0.117f / 3f },
-        { "Richard", 0.146f / 3f },
+        // 2026-10-22c: re-measured after the -11% size change. GroundOffset is a FIXED root-local
+        // lift, so shrinking the body left the same lift under shorter legs and he hovered 0.027.
+        { "Richard", 0.119f / 3f },
         // Re-measure this whenever a fighter's RIG or his IDLE CLIP changes - it depends on both.
         // Salaadin's moved twice on 2026-10-21: once when the rig was hand-edited (ankles from 12%
         // to 3.1% of height) and again when his idle went from the crouched hand-keyed guard to the
@@ -393,7 +399,12 @@ public static class CrucibleCharacterSetup
         // that: this one was (0.0386, 0.1908, -0.0029) against the old rig and threw the sword 33
         // world units off his hand. Every other weapon on the roster mounts at the origin of its
         // hand bone, so the offset was compensating for the old rig, not for the sword.
-        { "Richard_Sword",     (Vector3.zero, new Vector3(340f, 270f,   0f)) },
+        // The ROTATION survived the re-rig; the POSITION did not exist and needed to. Measured in
+        // play: the hand bone sat 0.174 world units OFF the sword's own axis, and the nearest blade
+        // vertex was 0.005 from the forearm segment - the sword ran through his forearm instead of
+        // sitting in his palm. This offset puts the blade's axis through the hand bone (the hand
+        // still grips at 0.09 of the blade's length from the hilt, which is the grip).
+        { "Richard_Sword",     (new Vector3(0.000369f, 0.001012f, -0.000003f), new Vector3(340f, 270f, 0f)) },
         // Miyamoto's katana had NO mount entry, so it sat at whatever rest rotation the FBX gave it
         // under the hand bone - and the re-rig changed that bone's orientation, which left the blade
         // pointing BACKWARD (blade . forward -0.94) straight through his chest, nearest vertex 0.038
@@ -425,7 +436,14 @@ public static class CrucibleCharacterSetup
         // more than twice the miss that was fixed on Salaadin. Solved in play: aim the facing along
         // his forward with the kite's long axis up, slide the boss onto the fist in-plane, then seat
         // the disc so the fist sits 0.020 inside the front face (Salaadin's snug fit is 0.025).
-        { "Richard_Shield_L", (new Vector3(0.000955f, 0.001064f, -0.000167f), new Vector3(0.53f, 122.11f, 344.30f)) },
+        // ...and then it was still worn INSIDE OUT. The geometry test cannot catch this one: both
+        // faces of a kite shield are flat, so "the arm is behind the face that looks at the enemy"
+        // read as correct while the enemy was being shown the ENARMES - the arm straps and the grip
+        // buckle - and the red cross and gold lion faced Richard. Photographed from both sides to
+        // be sure, since no measurement sees paint. Rolled 180 deg about the shield's own LONG
+        // axis (z: 344.30 -> 164.30), which swaps the faces and leaves it upright, then re-seated
+        // so the fist still sits 0.020 inside the front face.
+        { "Richard_Shield_L", (new Vector3(0.000951f, 0.001069f, -0.000166f), new Vector3(0.53f, 122.11f, 164.30f)) },
         { "Salaadin_Shield_L", (new Vector3(0.000209f, 0.000563f, -0.000347f), new Vector3(0.75f, 181.74f, 355.40f)) },
     };
 

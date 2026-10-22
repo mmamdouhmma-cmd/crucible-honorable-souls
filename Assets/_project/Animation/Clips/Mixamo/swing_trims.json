@@ -94,8 +94,8 @@
   "last": 57,
   "fps": 30,
   "peak": 33,
-  "core_start": 1,
-  "core_end": 57,
+  "core_start": 9,
+  "core_end": 22,
   "peak_speed_m_per_frame": 0.2164
  },
  "great sword impact": {
@@ -229,10 +229,10 @@
  },
  "Richard_ShieldCharge": {
   "first": 1,
-  "last": 41,
+  "last": 33,
   "fps": 30,
-  "peak": 25,
-  "core_start": 18,
+  "peak": 26,
+  "core_start": 14,
   "core_end": 30
  },
  "Richard_ShieldBash": {
@@ -250,5 +250,53 @@
   "peak": 47,
   "core_start": 35,
   "core_end": 55
+ },
+ "sword and shield attack": {
+  "first": 1,
+  "last": 71,
+  "fps": 30,
+  "peak": 35,
+  "core_start": 23,
+  "core_end": 49
+ },
+ "sword and shield attack (2)": {
+  "first": 1,
+  "last": 40,
+  "fps": 30,
+  "peak": 20,
+  "core_start": 8,
+  "core_end": 24
+ },
+ "sword and shield attack (3)": {
+  "first": 1,
+  "last": 53,
+  "fps": 30,
+  "peak": 24,
+  "core_start": 18,
+  "core_end": 30
+ },
+ "sword and shield slash (2)": {
+  "first": 1,
+  "last": 107,
+  "fps": 30,
+  "peak": 38,
+  "core_start": 28,
+  "core_end": 50
+ },
+ "sword and shield slash (4)": {
+  "first": 1,
+  "last": 70,
+  "fps": 30,
+  "peak": 42,
+  "core_start": 34,
+  "core_end": 51
+ },
+ "great sword casting": {
+  "first": 1,
+  "last": 145,
+  "fps": 30,
+  "peak": 66,
+  "core_start": 64,
+  "core_end": 73
  }
 }

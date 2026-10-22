@@ -41,13 +41,27 @@ BODY_NODE = "Richard_ClipRoot"
 
 
 
+TARGET_HIP_H = None        # Richard's own rest hip height, in world units; set by load()
+TARGET_ARM_SCALE = 1.0     # his armature object's world scale - the unit a bone translation is in
+
+
+def rest_hip_height(arm):
+    """World height of a rig's hip bone in its REST pose - the yardstick hip travel is carried in."""
+    bone = next(b for b in arm.data.bones if b.name.endswith("Hips"))
+    return (arm.matrix_world @ bone.head_local).z
+
+
 def load():
+    global TARGET_HIP_H, TARGET_ARM_SCALE
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.wm.fbx_import(filepath=BODY)
     arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
     for b in arm.pose.bones:
         b.rotation_mode = 'QUATERNION'
     bpy.context.scene.render.fps = 30
+    TARGET_HIP_H = rest_hip_height(arm)
+    TARGET_ARM_SCALE = arm.matrix_world.to_scale().z
+    print(f"  body rest hip height {TARGET_HIP_H:.4f}, armature scale {TARGET_ARM_SCALE:.4f}")
     return arm
 
 
@@ -66,12 +80,34 @@ def take(path):
     src = next(o for o in set(bpy.data.objects) - before if o.type == 'ARMATURE')
     act = src.animation_data.action
     f0, f1 = int(act.frame_range[0]), int(act.frame_range[1])
+    # HIP TRAVEL IS IN THE PACK RIG'S UNITS. Those armatures are scaled 0.01 and the re-rigged body
+    # runs root(1) -> Richard_Rig(100) -> Hips, so copying a hips matrix_basis straight across put
+    # the whole skeleton 25-54 units UNDER the floor (RootT.y -25.4 on the thrust, -54.2 on the
+    # bash, against a healthy ~1). Carry it as a fraction of the source's own rest hip height,
+    # which is the only scale-free way to say "the hips dropped a tenth of their standing height".
+    # TWO factors, and the second is the one that bit. A pose bone's translation is in BONE-LOCAL
+    # units, whose size follows the ARMATURE OBJECT's scale: the pack rigs are scaled 0.01 and the
+    # re-rigged Richard is 1.0, so a hip offset copied straight across arrived a HUNDRED times too
+    # big - RootT.y -23.4 where -0.23 was meant, which retargeted him two thirds size with his feet
+    # a metre under the arena. Convert the units first, then carry the travel as a fraction of the
+    # source's own rest hip height so a taller man does not crouch further.
+    src_hip = rest_hip_height(src)
+    unit = src.matrix_world.to_scale().z / (TARGET_ARM_SCALE or 1.0)
+    ratio = unit * ((TARGET_HIP_H / src_hip) if (src_hip and TARGET_HIP_H) else 1.0)
     frames = []
     for f in range(f0, f1 + 1):
         bpy.context.scene.frame_set(f)
         bpy.context.view_layer.update()
-        frames.append({b.name.split(":")[-1]: (b.matrix_basis.copy(), b.location.copy())
-                       for b in src.pose.bones})
+        snap = {}
+        for b in src.pose.bones:
+            short = b.name.split(":")[-1]
+            mb = b.matrix_basis.copy()
+            loc = b.location.copy()
+            if short.endswith("Hips"):
+                mb.translation = mb.translation * ratio
+                loc = loc * ratio
+            snap[short] = (mb, loc)
+        frames.append(snap)
     for o in set(bpy.data.objects) - before:
         bpy.data.objects.remove(o)
     print(f"  take {os.path.basename(path)}: {len(frames)} frames")
@@ -396,28 +432,32 @@ def clip_double_high(arm, name="Richard_DoubleHigh"):
 
 
 def clip_charge(arm, name="Richard_ShieldCharge"):
-    """SP + Light: shield up, run in, and finish on the thrust."""
+    """SP + Light: three running strides behind the shield, the sword already out when it lands.
+
+    The first version ran for 18 frames and then FROZE the legs on the run's last pose for 22 more
+    while only the arms moved. On screen that reads as a pause in the middle of the run, which is
+    exactly what the user reported ("he runs, pauses in the running animation, then thrusts").
+    The legs now run the WHOLE clip - the pack run is one cycle, i.e. two steps, so it is sampled
+    cyclically for three steps, the user's stated maximum - and the sword is driven forward over
+    the first half so it is fully extended BEFORE the last stride lands, rather than being pushed
+    out from a standstill afterwards.
+    """
     run = take(os.path.join(PACK, "sword and shield run.fbx"))
-    guard = take(GUARD)[0]
-    n_run = min(len(run), 18)
-    f = 0
-    for i in range(n_run):
-        apply_frame(arm, run[i])
-        # shield carried high and square through the run-in
-        pose(arm, left=(0.34, -0.20, 0.30), shield=(UP, FWD),
-             right=(-0.02, 0.30, 0.12), blade=(FWD, -RIGHT))
+    cycle = len(run)
+    n = int(round(cycle * 1.5))                 # three steps
+    CARRY = (-0.02, 0.30, 0.12)                 # sword back, shield leading
+    OUT = (0.46, 0.08, 0.33)                    # arm extended, point forward
+    hit = int(round(n * 0.75))                  # the stride the point arrives on
+    for f in range(n):
+        apply_frame(arm, run[f % cycle])
+        t = min(1.0, f / float(max(hit - 2, 1)))
+        t = t * t * (3 - 2 * t)                 # smoothstep, so the arm does not snap out
+        right = tuple(CARRY[i] + (OUT[i] - CARRY[i]) * t for i in range(3))
+        pose(arm, left=(0.32, -0.21, 0.30), shield=(UP, FWD),
+             right=right, blade=(FWD, -RIGHT))
         key(arm, f)
-        f += 1
-    # the stab, with the legs still carrying the run's last pose
-    for i, (df, spec) in enumerate((
-            (6, dict(right=(0.46, 0.08, 0.33), left=(0.30, -0.22, 0.30))),
-            (4, dict(right=(0.46, 0.08, 0.33), left=(0.30, -0.22, 0.30))),
-            (12, dict(right=(0.12, 0.26, 0.16), left=(0.26, -0.24, 0.26))))):
-        f += df
-        apply_frame(arm, run[n_run - 1], only=["Hips", "UpLeg", "Leg", "Foot", "ToeBase", "Spine"])
-        pose(arm, blade=(FWD, -RIGHT), shield=(UP, FWD), **spec)
-        key(arm, f)
-    return f
+    print(f"  charge: {n} frames from a {cycle}-frame run cycle x1.5, point out by frame {hit}")
+    return n - 1
 
 
 BUILDERS = {

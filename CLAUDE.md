@@ -548,6 +548,34 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `LungeOverride` in `CrucibleBalance.cs` carries per-move `(stop, max)`; the spins take
   `(0.9, 2.6)`, which is inside the sum of the two bodies, so the spin travels THROUGH and the head
   sweeps the torso. Verified: Medium closes 3.00 -> 1.63 with the axe 0.344 from the spine.
+- **A pose bone's TRANSLATION is in bone-local units that scale with the ARMATURE OBJECT's scale,
+  and that is the deepest of the clip-porting traps.** The pack rigs are scaled 0.01 and the
+  re-rigged bodies are 1.0, so hip travel copied by `apply_frame` arrives a HUNDRED times too big.
+  The symptom is not subtle and it is not obviously about hips: the fighter retargets about two
+  thirds his own size with his feet a metre under the arena - what the user calls "melting into the
+  floor". **The tell is `RootT.y` on the imported clip**: healthy is 0.8-1.0, Richard's four read
+  -23.4, -50.0, -22.8 and -8.5. Convert by BOTH factors - `src_armature_scale / tgt_armature_scale`
+  first, then the rest hip-height ratio - which is what `richard_clips.py` does now. The hip-height
+  ratio alone (the Salaadin lesson) only moved -25.4 to -23.4.
+  - **Do NOT reach for the importer's root-height setting to rescue a sunk clip.** "Root Transform
+    Position Y -> Based Upon: FEET" is the obvious move, it does not work, and it would hide the
+    real fault on every clip after it. Authored clips stay on **Original**, like the pack clips.
+  - **`CrucibleMixamoSetup` reimports only when its `wanted` clip settings differ from the ones on
+    disk, so every setting it writes must be in that comparison.** `keepOriginalPositionY` and
+    `lockRootHeightY` were not, so changing them wrote nothing and the console said nothing - the
+    same shape of failure as the menu bridge's silent `HTTP 400`. Read the importer back.
+- **A flat slab's facing must be measured SIGNED, and paint cannot be measured at all.** Richard's
+  shield passed an `Mathf.Abs(dot)` check while worn backwards; the signed dot was -0.82 and the
+  photograph showed the enemy his arm straps. When a face is a face only because of what is painted
+  on it, take the picture.
+- **`Rebuild Player<N>`, the mounts and `StandingHeight` all write to the SCENE, which the CLI does
+  not save for you.** The scene showed clean in `git status` with the whole size change and both
+  weapon mounts live only in the loaded editor scene. Save it (`EditorSceneManager.SaveScene`)
+  before committing, and check `git status -- Assets/_project/Scenes/`.
+- **`GroundOffset` is a fixed root-local lift, so it dies with a SIZE change as surely as a re-rig.**
+  Shrinking Richard 11% left him hovering 0.027; his is `0.119f / 3f` as of 2026-10-22.
+  Statures in play after the change: Richard 2.887, Salaadin 2.795, Bjorn 2.746, Miyamoto 2.570.
+
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `parryCounterDamageMultiplier` is serialized 1.5 against `BalanceConfig`'s

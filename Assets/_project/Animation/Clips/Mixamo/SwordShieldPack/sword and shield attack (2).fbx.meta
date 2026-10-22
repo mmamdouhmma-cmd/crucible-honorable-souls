@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Salaadin_Light_SaifCut
+      name: Salaadin_Riposte_Parry
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 0
-      lastFrame: 39
+      firstFrame: 12.533333
+      lastFrame: 28.533333
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

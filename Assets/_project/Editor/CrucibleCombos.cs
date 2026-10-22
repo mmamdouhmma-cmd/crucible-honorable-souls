@@ -87,16 +87,22 @@ public static class CrucibleCombos
             new Link(H, false, "Miyamoto_Heavy_Overhead",        true,  Always),
             new Link(L, true,  "Miyamoto_Special_Nukitsuke",     false, HitOrBlock),
         }),
+        // The heavy is a plain overhead slash now; SP+Heavy at the end of a string is what turns it
+        // into a thrust. That is the whole of the user's "it should only be a thrust if it is the
+        // last hit of a combo": Iaijutsu is shadowed on a cold SP+Heavy press by Kuruma, so the
+        // double thrust exists only here and on the light's branch.
         ("Miyamoto_Heavy_Overhead", new[]
         {
             new Link(L, false, "Miyamoto_Light_Thrust",          true,  Always),
             new Link(M, true,  "Miyamoto_Special_NitoCross",     false, HitOrBlock),
+            new Link(H, true,  "Miyamoto_Special_Iaijutsu",      false, HitOrBlock),
         }),
         ("Miyamoto_Riposte_Dash",     new[] { new Link(L, false, "Miyamoto_Light_Thrust",     true, Always) }),
         ("Miyamoto_Riposte_Parry",    new[] { new Link(L, false, "Miyamoto_Light_Thrust",     true, Always) }),
         ("Miyamoto_Special_Nukitsuke", new[] { new Link(M, false, "Miyamoto_Medium_SideSlash", true, Always) }),
         ("Miyamoto_Special_NitoCross", new[] { new Link(L, false, "Miyamoto_Light_Thrust",     true, Always) }),
         ("Miyamoto_Special_Iaijutsu",  new[] { new Link(L, false, "Miyamoto_Light_Thrust",     true, Always) }),
+        ("Miyamoto_Special_Kuruma",    new[] { new Link(L, false, "Miyamoto_Light_Thrust",     true, Always) }),
     };
 
 

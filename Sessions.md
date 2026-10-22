@@ -2652,3 +2652,68 @@ No drop at the count-in and nothing standing in the air on the select screens.
 
 Still carried: Richard's four authored clips want re-exporting through `richard_clips.py` against
 his new body.
+
+### 2026-10-22 — Nine play-test notes, and the hip travel that hid under all of them
+
+The user played the build and came back with a list: Salaadin's light attack was a spin, Miyamoto's
+heavy had become a thrust, two of Miyamoto's specials were too slow, Richard's sword sat in his
+forearm, his shield faced the wrong way, his running attack paused mid-run before the thrust, his
+light and medium attacks melted into the arena floor, and Bjorn and Richard towered over the other
+two. All nine are done.
+
+The quick ones first. **Salaadin's light** was `sword and shield attack (2)`, which `clip_measure.py`
+reads as yaw 428.8 deg, spin=True — a literal spin; it is now `attack (4)`, and while fixing it I
+found that none of his five attack clips had a `swing_trims.json` entry at all, so every one of them
+was playing whole at 4.06–4.93x. Measured cores for all five put his set at 0.96–1.11.
+**Miyamoto's heavy** was `great sword high spin attack` with a core of 1–57, i.e. the whole clip
+including its 2.34-unit forward charge, so what you saw was the charge and it read as a lunging
+thrust. The heavy is now `great sword casting`, a slash; the thrust (Iaijutsu) survives as a
+combo ender only, which `FindAttack` gives for free since it returns the FIRST array match.
+**Nukitsuke** came down to 12/4/14 (0.50 s) and the old heavy clip was re-cut to 9–22 and promoted
+to a new move, **Kuruma**, on SP+Heavy at 0.43 s.
+
+**Richard's shield** was on backwards — and this is worth remembering because the first measurement
+said it was fine. `Mathf.Abs(dot)` on the slab's thinnest axis hides a 180 deg flip; the signed dot
+read -0.82, and the photograph settled it: the enemy saw the arm straps and the buckle, the cross
+and the lion faced Richard himself. **Paint cannot be measured** — when a face has a front and a
+back only to a human eye, take the picture.
+
+**The melting, which was four bugs in a trench coat.** All four of Richard's hand-keyed clips
+(light thrust, shield charge, shield bash, double-high) imported `CreateFromThisModel` with a null
+source avatar: they had been authored against his PRE-metarig skeleton, so `CopyFromOther` no longer
+validated and the fallback quietly retargeted them as garbage. Re-exporting through
+`richard_clips.py` against the new body put them back on `Richard_BodyAvatar` — and he still played
+a metre underground, two thirds his own size. The real fault was in the hip travel:
+
+- `apply_frame` copies a pack frame's pose-bone `matrix_basis` across, and **a pose bone's
+  translation is in bone-LOCAL units, whose magnitude follows the ARMATURE OBJECT's scale**. The
+  pack rigs are scaled 0.01; the re-rigged Richard is 1.0. Every hip offset therefore arrived a
+  hundred times too big. `RootT.y` on the imported clips read **-23.4 (thrust), -50.0 (bash),
+  -22.8 (double-high)** against the healthy 0.8–1.0 this file already records.
+- The hip-height ratio CLAUDE.md prescribes for Salaadin is the SECOND of two factors and on its own
+  moved the number from -25.4 to -23.4. The first is `src_armature_scale / target_armature_scale`.
+  With both, the four clips came in at **0.57–1.08** and he thrusts standing up.
+- **"Based Upon: Feet" is not the rescue it looks like.** With the clip still broken, flipping the
+  importer's root-height reference was the obvious move and it was wrong: it shifted him slightly
+  and left him underground, and it would have masked the real fault on every clip afterwards. It is
+  back to Original. Measure `RootT.y` on the clip before touching the importer.
+- And the fix did not take the first time, for a reason worth its own line: `CrucibleMixamoSetup`
+  decides whether to reimport by comparing the clip settings it is about to write against the ones
+  on disk, and **that comparison did not include the fields it had just changed**. It judged the
+  clip unchanged, wrote nothing, and the console said nothing. Both root-height fields are in the
+  test now.
+
+**The running attack** froze its legs on `run[n_run - 1]` for 22 frames while only the arms moved —
+exactly the pause the user described. `clip_charge` now samples the 22-frame run cycle x1.5 for
+three strides, the user's stated maximum, and smoothsteps the sword out so the point is extended by
+frame 25 of 33, before the last stride lands. Verified in play: the feet alternate the whole way
+(fore/aft gap -0.86 -> +0.51 -> +1.81 -> +1.16) and the sword hand travels forward monotonically.
+
+**Sizes**: Richard and Bjorn came down 11% (`StandingHeight` 3.753 -> 3.340 and 3.498 -> 3.113,
+`Stature` to 2.89 and 2.71). Richard's `GroundOffset` had to come down with it — it is a fixed
+root-local lift and shorter legs left him hovering 0.027 — to `0.119f / 3f`. Measured in play
+afterwards: **Richard 2.887, Salaadin 2.795, Bjorn 2.746, Miyamoto 2.570**. Worth the user's eye:
+that drops Bjorn just under Salaadin, where he used to stand over him.
+
+Richard's grip closed too: the sword's axis now runs exactly through the hand bone (off-axis
+0.174 -> **0.000**) and the nearest blade vertex to his forearm went 0.005 -> **0.131**.

@@ -60,11 +60,11 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
-      name: Salaadin_Riposte_Parry
+      name: Salaadin_Light_SaifCut
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 10.333333
-      lastFrame: 20.333332
+      firstFrame: 9.722222
+      lastFrame: 19.722221
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

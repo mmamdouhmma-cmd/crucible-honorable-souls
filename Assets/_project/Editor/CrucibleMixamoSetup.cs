@@ -73,13 +73,21 @@ public static class CrucibleMixamoSetup
         // light = horizontal middle slash, medium = overhead diagonal, heavy = spinning strike
         ("Miyamoto_Light_Thrust",        "GreatSwordPack", "great sword slash (3)",     false),
         ("Miyamoto_Medium_SideSlash",    "GreatSwordPack", "great sword slash",         false),
-        ("Miyamoto_Heavy_Overhead",      "GreatSwordPack", "great sword high spin attack", false),
+        // The user's call after play-testing: a standalone heavy must read as a SLASH. "great sword
+        // high spin attack" measures as diagonal-up+spin+advancing - 416 deg of hip yaw and 2.34
+        // units of forward charge - and its stored trim core was the WHOLE clip (1-57), so what
+        // played at x2 was mostly the charge: it read as a lunging THRUST, which is exactly the
+        // complaint. It moves to SP+Heavy (Kuruma) where that much body is right. "great sword
+        // casting" is the only non-spinning overhead left in the pack: yaw 23 deg, hips 0.00,
+        // spin=False, tip coming down 0.62 over a 10-frame core.
+        ("Miyamoto_Heavy_Overhead",      "GreatSwordPack", "great sword casting",       false),
         // SPECIALS (SP + button)
         ("Miyamoto_Riposte_Dash",        "GreatSwordPack", "great sword kick",          false),   // spinning kick, ends square
         ("Miyamoto_Riposte_Parry",       "GreatSwordPack", "great sword kick (2)",      false),   // front push kick; contact is at the very end of the clip
         ("Miyamoto_Special_Nukitsuke",   "GreatSwordPack", "great sword slash (5)",     false),   // rising reverse cut: a silhouette none of his normals have
         ("Miyamoto_Special_NitoCross",   "GreatSwordPack", "great sword slash (4)",     false),   // full-turn rising cut - keeps Nito Cross a katana move (no wakizashi exists)
-        ("Miyamoto_Special_Iaijutsu",    "GreatSwordPack", "great sword attack",        false),   // the DOUBLE THRUST: f12-17 pushes, f18-23 retracts, f24-36 drives deeper
+        ("Miyamoto_Special_Iaijutsu",    "GreatSwordPack", "great sword attack",        false),   // the DOUBLE THRUST: f12-17 pushes, f18-23 retracts, f24-36 drives deeper. COMBO-ONLY now (see CrucibleCombos): it sits AFTER Kuruma in the scene's specials array, and FindAttack returns the first match, so SP+Heavy pressed cold throws Kuruma and only a live string can reach the thrust
+        ("Miyamoto_Special_Kuruma",      "GreatSwordPack", "great sword high spin attack", false), // the wheel: the spin charge that used to be the normal heavy
         ("React_Front",                  "GreatSwordPack", "great sword impact",        false),
         ("React_Left",                   "GreatSwordPack", "great sword impact (2)",    false),
         ("React_Right",                  "GreatSwordPack", "great sword impact (3)",    false),
@@ -132,14 +140,18 @@ public static class CrucibleMixamoSetup
         ("Salaadin_Idle",                  "SwordShieldPack", "sword and shield idle (4)",     true),   // the pack's ONLY settled idle: hand travels 0.22 against "idle"'s 2.54, which reads as wandering
         ("Salaadin_Walk_Forward",          "SwordShieldPack", "sword and shield walk",         true),   // shared with Richard
         ("Salaadin_Walk_Back",             "SwordShieldPack", "sword and shield walk (2)",     true),   // shared with Richard
-        ("Salaadin_Light_SaifCut",         "SwordShieldPack", "sword and shield attack (2)",   false),  // 40 f and the strongest shoulder lead in the pack (4.50 against slash (3)'s 0.97): he turns INTO a sideways cut instead of swinging arm-only
+        // The user's call: his light was SPINNING. Measured, "attack (2)" is horizontal+spin+advancing
+        // with 428.8 deg of hip yaw and 2.87 units of travel - a full turn, not a cut, and it had no
+        // trim entry either so it played whole at x4.33. "attack (4)" is the pack's most compact
+        // clean cut: diagonal-down, yaw 63.2 deg, hips 0.01, an 11-frame core in a 31-frame clip.
+        ("Salaadin_Light_SaifCut",         "SwordShieldPack", "sword and shield attack (4)",   false),
         ("Salaadin_Medium_ShinCut",        "SwordShieldPack", "sword and shield attack (3)",   false),  // 53 f, shoulder 4.17 and 36 deg of hip turn: the body goes with the sword
         ("Salaadin_Heavy_WhirlingSaif",    "SwordShieldPack", "sword and shield slash (4)",    false),  // a PLAIN overhead: vert 3.07 (drop/side) with only 9 deg of hip turn, hand from 1.32 above the belt down to -0.54. "attack" also drops a long way but turns the hips 43 deg and travels the shoulder 6.53, which is what read as a spin
         ("Salaadin_Special_VeiledRush",    "SwordShieldPack", "sword and shield slash (2)",    false),  // 107 f and a 21.14 hand path: the longest flourish in the pack, so the special reads as one
         ("Salaadin_Special_CrescentSlash", "SwordShieldPack", "sword and shield slash (5)",    false),  // the pack's LOW slash: the hand never rises above 0.69 of a hips-to-head (every other strike reaches 1.3+) and sweeps 2.01 sideways against 1.04 of drop. See swing_trims.json - its core had to be widened or it played as a 6-frame smear
         ("Salaadin_Special_HattinCleave",  "SwordShieldPack", "sword and shield attack",       false),  // the big committed chop freed up by the heavy: 4.00 of drop, 43 deg of hip turn and the pack's longest shoulder travel at 6.53 - too much body for a normal, right for a special
         ("Salaadin_Riposte_Dash",          "SwordShieldPack", "sword and shield slash (3)",    false),  // 48 f
-        ("Salaadin_Riposte_Parry",         "SwordShieldPack", "sword and shield attack (4)",   false),  // 31 f, the shortest cut in the pack: a saber counter, not a boot - he has no kicks
+        ("Salaadin_Riposte_Parry",         "SwordShieldPack", "sword and shield attack (2)",   false),  // a saber counter, not a boot - he has no kicks. It takes the 428 deg spin the light gave up: a parry answer is the one place that much turn reads as flourish rather than as a mistake
         ("React_Front",                    "SwordShieldPack", "sword and shield impact",       false),  // only three impacts exist; shared
         ("React_Left",                     "SwordShieldPack", "sword and shield impact (2)",   false),
         ("React_Right",                    "SwordShieldPack", "sword and shield impact (3)",   false),
@@ -398,6 +410,12 @@ public static class CrucibleMixamoSetup
                 // that every bone is off by the same angle.
                 c.keepOriginalOrientation = owner != null;
                 c.lockRootHeightY = true;          // bake Y
+                // Based Upon: ORIGINAL, for authored clips too. When Richard's four came in at
+                // RootT.y -23 to -50 against a healthy ~1 and his skeleton played a metre under the
+                // arena - the "melting into the floor" - FEET looked like the fix and is not: it
+                // moved him a little and left him underground, because the fault was in the clip,
+                // not the reference. See the unit conversion in richard_clips.py. Measure the clip's
+                // RootT.y before touching this: a healthy clip does not need rescuing here.
                 c.keepOriginalPositionY = true;
                 c.lockRootPositionXZ = false;      // XZ stays root motion: not applied by the Animator, so in place
                 c.keepOriginalPositionXZ = false;
@@ -413,8 +431,13 @@ public static class CrucibleMixamoSetup
             for (int i = 0; same && i < wanted.Count; i++)
             {
                 var a = current[i]; var b = wanted[i];
+                // keepOriginalPositionY and lockRootHeightY belong in this test: without them a
+                // changed root-height setting is judged "same", nothing is reimported, and the fix
+                // silently does not happen - which is how the melting survived its first fix.
                 same = a.name == b.name && a.loopTime == b.loopTime && a.lockRootPositionXZ == b.lockRootPositionXZ && a.lockRootRotation == b.lockRootRotation
                        && a.keepOriginalOrientation == b.keepOriginalOrientation
+                       && a.keepOriginalPositionY == b.keepOriginalPositionY
+                       && a.lockRootHeightY == b.lockRootHeightY
                     && Mathf.Abs(a.firstFrame - b.firstFrame) < 0.01f && Mathf.Abs(a.lastFrame - b.lastFrame) < 0.01f;
             }
             if (!same) { mi.clipAnimations = wanted.ToArray(); dirty = true; }

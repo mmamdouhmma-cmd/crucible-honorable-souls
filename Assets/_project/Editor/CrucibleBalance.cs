@@ -84,9 +84,15 @@ public static class CrucibleBalance
             N("Miyamoto_Light_Thrust",                 7,  12,  0,      6,  3,  6,   7),
             N("Miyamoto_Medium_SideSlash",             7,  14,  0,      9,  4,  8,   8),
             N("Miyamoto_Heavy_Overhead",               9,  16,  0,     16,  4, 12,  10),   // was 23 start: the slowest heavy in the game, on the fastest fighter
-            N("Miyamoto_Special_Nukitsuke",           13,  34,  5,     18,  5, 20,  12),
+            N("Miyamoto_Special_Nukitsuke",           13,  34,  5,     12,  4, 14,  12),   // SP+Light: was 18/5/20 = 0.72s. The user's call - too slow, and it is the pack's slowest strike (peak tip 0.286) so the clip could not carry that budget either
             N("Miyamoto_Special_NitoCross",           14,  38,  5,     20,  5, 22,  12),
-            N("Miyamoto_Special_Iaijutsu",            15,  42, 10,     30,  4,  8,  14),   // the draw is slow on purpose
+            // SP+Heavy. The 30-frame draw WAS deliberate and the user's verdict is that it does not
+            // play: 0.50s of windup before the first active frame. Kuruma (the spin charge handed
+            // down from the normal heavy) takes the slot at 0.53s total.
+            N("Miyamoto_Special_Kuruma",              15,  42, 10,     14,  5, 13,  14),
+            // The double thrust, now reachable ONLY as the last hit of a string, so it needs no
+            // tell - a confirmed finisher is paid for by the hit that opened the cancel window.
+            N("Miyamoto_Special_Iaijutsu",            15,  42, 10,     14,  5, 17,  14),
             N("Miyamoto_Riposte_Dash",                 9,  10,  0,     12,  4, 14,   9),
             N("Miyamoto_Riposte_Parry",                8,  10,  0,     20,  4,  6,   9),
         },
