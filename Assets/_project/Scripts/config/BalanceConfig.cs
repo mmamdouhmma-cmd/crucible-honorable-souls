@@ -59,8 +59,17 @@ public static class BalanceConfig
     public const float PARRY_COUNTER_WINDOW = 0.5f;
     public const float COMBO_INPUT_WINDOW = 0.5f;
 
+    // ==================== LOW STAMINA ====================
+    // Below LOW_STAMINA_FRACTION of the bar, passive recovery runs at
+    // LOW_STAMINA_RECOVERY_MULTIPLIER of its normal rate, so running the bar right down costs
+    // longer to come back from than spending down to a comfortable level. The user's call
+    // (2026-10-23): "stamina recovers slower by 25% when its less than 20%".
+    public const float LOW_STAMINA_FRACTION = 0.20f;
+    public const float LOW_STAMINA_RECOVERY_MULTIPLIER = 0.75f;
+
     // ==================== ATTACK CHAIN LIMIT (anti-spam) ====================
-    // All three post-move lockouts are the SAME beat (0.85 s, the user's call on 2026-10-21):
+    // All three post-move lockouts are the SAME beat (0.5 s, the user's call on 2026-10-23, down
+    // from the 0.85 s set on 2026-10-21):
     // whatever a fighter just finished - a repeat, a string or a special - the gap before he
     // can swing again reads the same. They were 1.5 / 1.5 / 1.0, which played as a stall.
     // The same attack can be thrown at most SAME_ATTACK_CHAIN_LIMIT times in a row. After the last
@@ -69,14 +78,14 @@ public static class BalanceConfig
     // A different attack, or a gap longer than ATTACK_CHAIN_WINDOW after the previous attack ended,
     // starts a fresh chain and is free to swing.
     public const int SAME_ATTACK_CHAIN_LIMIT = 2;
-    public const float ATTACK_CHAIN_LOCKOUT = 0.85f;
+    public const float ATTACK_CHAIN_LOCKOUT = 0.5f;
 
     /// <summary>
     /// Seconds a fighter cannot attack after finishing a STRING (combo). A combo must not be a way
     /// to swing more often than single attacks do - that is what made the two-way Miyamoto links
     /// spammable.
     /// </summary>
-    public const float STRING_LOCKOUT = 0.85f;  // seconds locked out of every attack after the last repeat
+    public const float STRING_LOCKOUT = 0.5f;  // seconds locked out of every attack after the last repeat
     public const float ATTACK_CHAIN_WINDOW = 0.6f;    // gap after an attack ends that still counts as the same chain
 
     /// <summary>
@@ -84,7 +93,7 @@ public static class BalanceConfig
     /// 2.5x the stamina of the matching normal; the lockout is what stops it being opened with
     /// every time the bar allows, and leaves the beat that makes a whiffed one punishable.
     /// </summary>
-    public const float SPECIAL_LOCKOUT = 0.85f;
+    public const float SPECIAL_LOCKOUT = 0.5f;
 
     // ---- Strings (combos) ----
     // A press that arrives while the fighter is mid-attack is held for this long and comes out on

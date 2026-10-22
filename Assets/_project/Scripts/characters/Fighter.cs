@@ -1318,7 +1318,15 @@ private bool WouldCollideWithOpponent(Vector3 desiredMove)
         // Guarding pauses recovery (unless allowed per character), so block has a real cost.
         if (!isBlocking || staminaRecoversWhileBlocking)
         {
-            stats.RecoverStamina(Time.deltaTime, staminaRecoveryPerSecond);
+            // Running the bar right down costs more to come back from than spending to a
+            // comfortable level: under LOW_STAMINA_FRACTION, recovery runs at a fraction of rate.
+            float rate = staminaRecoveryPerSecond;
+            if (stats.maxStamina > 0 &&
+                stats.currentStamina < stats.maxStamina * BalanceConfig.LOW_STAMINA_FRACTION)
+            {
+                rate *= BalanceConfig.LOW_STAMINA_RECOVERY_MULTIPLIER;
+            }
+            stats.RecoverStamina(Time.deltaTime, rate);
         }
 
         if (healthRegenDelayTimer > 0f)

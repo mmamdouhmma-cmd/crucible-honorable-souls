@@ -104,9 +104,13 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   AttackData by GUID, so a renamed slot needs re-pointing without rebuilding the fighter).
   **He strikes with the falchion and nothing else** - no thrusts, no shield bashes, no kicks, and
   his parry riposte is a saber counter where the other three answer with a boot. His two
-  showpieces are the NORMALS (Medium = Shin Cut, Heavy = Whirling Saif) and the two compact pack
+  showpieces are the NORMALS (Medium = Shin Cut, Heavy = Falling Saif) and the two compact pack
   swings sit on the specials (SP+Medium = Crescent Slash, SP+Heavy = Hattin Cleave); the frame
-  data and costs stayed with the SLOT, so the normals play those long clips at about x2.7.
+  data and costs stayed with the SLOT.
+  **His Medium and Heavy were FULL-TURN SPINS until 2026-10-23** - `attack (3)` and `slash (4)`,
+  which `clip_measure` reports as 36 and 9 degrees of hip yaw and `clip_curves` UNWRAPS to 395.7
+  and 391.4. They are plain cuts now (`slash (5)`, the pack's low slash, and `slash`, its plain
+  overhead), measured in play at **12 and 132 degrees of pelvis sweep against the old ~390**.
   His guard is play-verified against the authored clip: shield boss . forward **1.00**, blade edge
   . forward **0.94**, elbows 113/128, every bone within the idle's own breath. **His folder is lowercase
   `Characters/salaadin`** - renaming it deadlocks the Editor if any shell is sitting in it, so
@@ -803,6 +807,34 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   it. Two different poses coming out byte-identical is this, not a change that failed.
 - **The `console` tool's `grep` did not filter** in this session - it returned the whole tail both
   times, at ~20k tokens a call. Write diagnostics to a file in the scratchpad and `cat` it.
+
+- **A spin is a fault in a NORMAL and a flourish in a SPECIAL**, and that is how to spend the
+  SwordShieldPack: it holds only five non-spin strikes (`slash (5)` 40.6, `attack (4)` 63.2,
+  `slash` 84.9, `attack` 86.1, `slash (3)` 108.7 degrees of UNWRAPPED yaw) against four spins
+  (`slash (4)` 391, `attack (3)` 396, `attack (2)` 429, `slash (2)` 507). Put the plain cuts on the
+  normals and let the specials and the parry riposte carry the turns. Salaadin had it backwards -
+  two of his three normals were full turns, which is what the user saw as "his normal attacks
+  have changed".
+- **Two fighters can share a clip and keep different speeds, and this is the pattern.** Salaadin's
+  Medium and Heavy now play Richard's two clips (`slash (5)`, `slash`). A trim is keyed by CLIP so
+  it is shared; the SPEED comes from a per-STATE contact in `swing_contacts.json`. Richard stayed
+  at 1.60/1.40 while Salaadin's land at 1.00/1.00 off the same two files. **Always add the contact
+  in the same pass as the re-point** - without one the shared trim governs and a 5-frame core gets
+  clamped to 6 and smeared (that is the x0.27 failure).
+- **"Same speed as X" means the pinned contact speed, not the frame budget.** Salaadin's specials
+  were already SHORTER than Bjorn's in frames (43/44/51 against 43/49/53) and still played at half
+  the pace, because he had no contact entries at all and Bjorn's are pinned. Matching them slot for
+  slot (2.0 / 2.0 / 2.2) was five lines of JSON and no budget change.
+- **Salaadin's SP+Heavy LEAPS**: `maxHipsAboveRoot` 2.80 against an idle's ~1.6 and his other
+  moves' 1.35. It is the `sword and shield attack` clip ("overhead+leap") and it predates the
+  2026-10-23 speed change - but it now plays at x2.2, so the hop is faster. Not touched; the user
+  has not called it out, and the pack has nothing else that size.
+- **All three post-move lockouts are 0.5 s** (the user's call, 2026-10-23, down from 0.85). They
+  are still deliberately ONE beat - `ATTACK_CHAIN_LOCKOUT`, `STRING_LOCKOUT`, `SPECIAL_LOCKOUT`.
+- **Stamina recovers at x0.75 below 20% of the bar** (`BalanceConfig.LOW_STAMINA_FRACTION` and
+  `LOW_STAMINA_RECOVERY_MULTIPLIER`, applied in `Fighter.HandleStaminaRecovery`), so emptying the
+  bar costs more to come back from than spending down to a comfortable level. Verified in play over
+  60 frames: 11 points gained from half a bar against 8 from a tenth of one.
 
 ## Measuring a move from the CLI (the harness that works)
 

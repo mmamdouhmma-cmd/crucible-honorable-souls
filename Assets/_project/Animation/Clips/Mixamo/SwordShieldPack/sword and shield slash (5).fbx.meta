@@ -89,11 +89,11 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
-      name: Salaadin_Special_CrescentSlash
+      name: Salaadin_Medium_ShinCut
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 7.75
-      lastFrame: 29.75
+      firstFrame: 10.4
+      lastFrame: 22.9
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

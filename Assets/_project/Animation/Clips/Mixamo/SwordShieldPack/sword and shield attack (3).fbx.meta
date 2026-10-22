@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Salaadin_Medium_ShinCut
+      name: Salaadin_Special_CrescentSlash
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 17.28
-      lastFrame: 29.28
+      firstFrame: 2.7000012
+      lastFrame: 46.7
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

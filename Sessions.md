@@ -3037,3 +3037,40 @@ Two harness notes that cost real time: **a paused Game view does not re-render**
 after the pause photographs the previous frame - two poses came out byte-identical before I spotted
 it; place the camera before pausing. And the `console` tool's `grep` returned the entire tail both
 times it was used, about 20k tokens a call - diagnostics belong in a scratchpad file.
+
+### 2026-10-23 - Salaadin stops spinning on his normals, and the bar punishes running dry
+
+Four from a play test, and the first one was a measurement the notes already had and had read the
+wrong way round.
+
+**Salaadin's Medium and Heavy were full-turn SPINS.** The user said his normal attacks had changed
+and asked for a normal slashing animation. They had not changed - they had always been
+`sword and shield attack (3)` and `slash (4)`, and the comment in the clip map called the second
+"a PLAIN overhead ... only 9 deg of hip turn". That 9 was `clip_measure`'s WRAPPED yaw.
+`clip_curves` unwraps the pair to **395.7 and 391.4 degrees** - a full turn each. They are plain
+cuts now: Medium takes `slash (5)`, the pack's low slash, which is what "Shin Cut" was always meant
+to be, and Heavy takes `slash`, its plain overhead, which suits "Falling Saif". Measured in play,
+pelvis sweep went **396 -> 12** on the Medium and **391 -> 132** on the Heavy, with the Light
+unchanged at 66. SP+Medium inherited the spin the Medium gave up - a full turn is a fault in a
+normal and a flourish in a special.
+
+Both new clips are RICHARD's, and he did not move: a trim is keyed by CLIP and shared, so the speed
+has to come from a per-STATE contact. Richard stayed at 1.60/1.40 while Salaadin's land at
+1.00/1.00 off the same two files.
+
+**His specials now play at Bjorn's pace** - 2.00 / 2.00 / 2.20 against the 1.02 / 1.00 / 1.02 they
+were, matched slot for slot. The interesting part: his specials were already SHORTER than Bjorn's
+in frames (43/44/51 against 43/49/53) and still played at half the speed, because Bjorn's three are
+pinned by contact entries and Salaadin had none at all. Five lines of JSON, no budget change.
+
+**The post-move lockout is 0.5 s**, down from 0.85. All three stay one beat - chain, string and
+special - as they were set on 2026-10-21.
+
+**Stamina recovers 25% slower below 20% of the bar** (`LOW_STAMINA_FRACTION`,
+`LOW_STAMINA_RECOVERY_MULTIPLIER`, applied in `Fighter.HandleStaminaRecovery`), so running the bar
+right down costs more than spending to a comfortable level. Verified over 60 frames: 11 points
+gained from half a bar against 8 from a tenth of one.
+
+One thing left alone and worth a look: **his SP+Heavy leaps** - hips 2.80 above the root against an
+idle's ~1.6 and his other moves' 1.35. It is the clip's own hop, it predates today, and it now
+plays at x2.2 so it is quicker than it was. The pack has nothing else that size for that slot.

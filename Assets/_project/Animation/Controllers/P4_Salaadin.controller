@@ -154,7 +154,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Medium_ShinCut
-  m_Speed: 0.96
+  m_Speed: 1
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4285678766431743475}
@@ -167,7 +167,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 94cebd1d604977c4d8bd9a7a39fdf174, type: 3}
+  m_Motion: {fileID: -2061910772549006292, guid: 1b911dac86fe53341bc0c29227f70fc5, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1014,7 +1014,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Special_HattinCleave
-  m_Speed: 1.0196078
+  m_Speed: 2.2
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1274,7 +1274,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Heavy_WhirlingSaif
-  m_Speed: 0.9999999
+  m_Speed: 1
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}
@@ -1287,7 +1287,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 74a18121118683b439f367f46992dcef, type: 3}
+  m_Motion: {fileID: -2061910772549006292, guid: f34b975db2a11be478fda794e6d25726, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1326,7 +1326,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Special_CrescentSlash
-  m_Speed: 1
+  m_Speed: 2
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1339,7 +1339,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -2061910772549006292, guid: 1b911dac86fe53341bc0c29227f70fc5, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: 94cebd1d604977c4d8bd9a7a39fdf174, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1634,7 +1634,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Special_VeiledRush
-  m_Speed: 1.0232558
+  m_Speed: 2.0000002
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5648808868077471529}
