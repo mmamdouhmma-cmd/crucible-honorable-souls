@@ -31,6 +31,14 @@
     "last": 34,
     "peak": 15
   },
+  "draw sword 2": {
+    "core_end": 17,
+    "core_start": 2,
+    "first": 1,
+    "fps": 30,
+    "last": 24,
+    "peak": 11
+  },
   "great sword attack": {
     "core_end": 23,
     "core_start": 1,

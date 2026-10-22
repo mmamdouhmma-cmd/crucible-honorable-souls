@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
   m_Name: Richard_Special_ShieldCharge
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
-  attackName: Shield Charge
+  attackName: Rising Draw
   damage: 14
   staminaCost: 38
   armorPierce: 10
-  startupFrames: 28
-  activeFrames: 5
+  startupFrames: 11
+  activeFrames: 4
   recoveryFrames: 15
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialLight
@@ -33,7 +33,7 @@ MonoBehaviour:
   aimMode: 0
   aimMaxAngle: -1
   lungeStopDistance: -1
-  lungeMaxDistance: 2.4
+  lungeMaxDistance: 1
   hitsWithWeapon: 1
   comboLinks:
   - input: 1

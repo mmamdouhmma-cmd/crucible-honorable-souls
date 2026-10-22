@@ -34,8 +34,8 @@ ModelImporter:
       name: Richard_Special_ShieldBash
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 0
-      lastFrame: 71
+      firstFrame: 5.25
+      lastFrame: 27.25
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

@@ -84,15 +84,15 @@ public static class CrucibleBalance
             N("Miyamoto_Light_Thrust",                 7,  12,  0,      6,  3,  6,   7),
             N("Miyamoto_Medium_SideSlash",             7,  14,  0,      9,  4,  8,   8),
             N("Miyamoto_Heavy_Overhead",               9,  16,  0,     16,  4, 12,  10),   // was 23 start: the slowest heavy in the game, on the fastest fighter
-            N("Miyamoto_Special_Nukitsuke",           13,  34,  5,     12,  4, 14,  12),   // SP+Light: was 18/5/20 = 0.72s. The user's call - too slow, and it is the pack's slowest strike (peak tip 0.286) so the clip could not carry that budget either
-            N("Miyamoto_Special_NitoCross",           14,  38,  5,     20,  5, 22,  12),
+            N("Miyamoto_Special_Nukitsuke",           13,  34,  5,      9,  4,  9,  12),   // SP+Light: was 18/5/20 = 0.72s. The user's call - too slow, and it is the pack's slowest strike (peak tip 0.286) so the clip could not carry that budget either
+            N("Miyamoto_Special_NitoCross",           14,  38,  5,     14,  5, 15,  12),
             // SP+Heavy. The 30-frame draw WAS deliberate and the user's verdict is that it does not
             // play: 0.50s of windup before the first active frame. Kuruma (the spin charge handed
             // down from the normal heavy) takes the slot at 0.53s total.
-            N("Miyamoto_Special_Kuruma",              15,  42, 10,     14,  5, 13,  14),
+            N("Miyamoto_Special_Kuruma",              15,  42, 10,     10,  4, 10,  14),
             // The double thrust, now reachable ONLY as the last hit of a string, so it needs no
             // tell - a confirmed finisher is paid for by the hit that opened the cancel window.
-            N("Miyamoto_Special_Iaijutsu",            15,  42, 10,     14,  5, 17,  14),
+            N("Miyamoto_Special_Iaijutsu",            15,  42, 10,     10,  5, 12,  14),   // all four specials cut about a quarter on the user's call: 30/47/32/36 frames -> 22/34/24/27
             N("Miyamoto_Riposte_Dash",                 9,  10,  0,     12,  4, 14,   9),
             N("Miyamoto_Riposte_Parry",                8,  10,  0,     20,  4,  6,   9),
         },
@@ -115,9 +115,9 @@ public static class CrucibleBalance
             N("Richard_Light_Thrust",                  7,  15,  5,     11,  3,  9,   7),
             N("Richard_Medium_Slash",                  9,  18,  2,     15,  4, 11,   9),
             N("Richard_Heavy_Overhead",               11,  21,  8,     22,  5, 17,  11),
-            N("Richard_Special_ShieldCharge",         14,  38, 10,     28,  5, 15,  13),   // 48 f: slow enough not to read as "looney toons", short enough that the run is not a journey
-            N("Richard_Special_ShieldBash",           15,  43, 12,     22,  5, 20,  13),
-            N("Richard_Special_DoubleHigh",           16,  48, 10,     52,  5, 15,  14),   // 72 f for TWO swings; the hit is the second one, so the startup covers the first
+            N("Richard_Special_ShieldCharge",         14,  38, 10,     11,  4, 15,  13),   // 30 f = twice the draw cut's 15-frame core, so it plays at x1.00
+            N("Richard_Special_ShieldBash",           15,  43, 12,     14,  5, 13,  13),   // 32 f = twice the spin's 16-frame core
+            N("Richard_Special_DoubleHigh",           16,  48, 10,     18,  5, 17,  14),   // 40 f; the window comes from a per-STATE contact, not the shared trim
             N("Richard_Riposte_Dash",                  9,  12,  0,     12,  4, 14,   9),
             N("Richard_Riposte_Parry",                 8,  12,  0,     12,  4, 14,   9),
         },

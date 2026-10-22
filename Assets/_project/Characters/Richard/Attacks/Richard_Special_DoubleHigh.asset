@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
   m_Name: Richard_Special_DoubleHigh
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
-  attackName: Twin Hew
+  attackName: Judgement
   damage: 16
   staminaCost: 48
   armorPierce: 10
-  startupFrames: 52
+  startupFrames: 18
   activeFrames: 5
-  recoveryFrames: 15
+  recoveryFrames: 17
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialHeavy
   attackHeight: 0

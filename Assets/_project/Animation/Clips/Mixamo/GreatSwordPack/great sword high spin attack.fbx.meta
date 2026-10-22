@@ -63,8 +63,8 @@ ModelImporter:
       name: Miyamoto_Special_Kuruma
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 26.296875
-      lastFrame: 39.296875
+      firstFrame: 26.5
+      lastFrame: 39.5
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

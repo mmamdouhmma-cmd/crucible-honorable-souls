@@ -1045,7 +1045,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Special_Iaijutsu
-  m_Speed: 1.2444444
+  m_Speed: 1.4259261
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1357,7 +1357,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Special_NitoCross
-  m_Speed: 2.255319
+  m_Speed: 2.4000003
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1415,7 +1415,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Special_Kuruma
-  m_Speed: 0.81250006
+  m_Speed: 1.0833335
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 5095289648131785075}
@@ -1714,7 +1714,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Special_Nukitsuke
-  m_Speed: 1
+  m_Speed: 1.2500001
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5648808868077471529}

@@ -64,22 +64,24 @@ public static class CrucibleRichard
                    range = 3.1f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
-        // SP + Light: shield up, run in, and finish on the thrust (Custom/Richard_ShieldCharge).
-        new Move { asset = "Richard_Special_ShieldCharge", name = "Shield Charge", trigger = "SpecialLight",
+        // SP + Light: a rising draw cut thrown from a stand (SwordShieldPack/draw sword 2).
+        // The ASSET name is kept on all three so the scene's GUID references survive - only the
+        // clip, the displayed name and the frame budget changed.
+        new Move { asset = "Richard_Special_ShieldCharge", name = "Rising Draw", trigger = "SpecialLight",
                    height = Mid, type = Special, specialButton = Light, comesFrom = FromThrust, hitSide = HitStraight,
                    aim = AimFull, range = 3.2f, size = new Vector3(1.0f, 1.2f, 1f), offset = new Vector3(0f, 1f, 0f),
-                   lunge = 2.4f, weapon = true },
+                   lunge = 1.0f, weapon = true },      // not a charge any more, so no charging lunge
 
-        // SP + Medium: the shield strike that carries into a low cut (Custom/Richard_ShieldBash).
-        // The bash sells it; the cut is the hit, so the active window sits on the blade.
-        new Move { asset = "Richard_Special_ShieldBash", name = "Shield Bash", trigger = "SpecialMedium",
-                   height = Low, type = Special, specialButton = Medium, comesFrom = FromRight, hitSide = HitLeft,
+        // SP + Medium: a horizontal spinning cut (SwordShieldPack/attack (2)). The spin carries the
+        // blade round the body, so the box is wide and the lunge stays short.
+        new Move { asset = "Richard_Special_ShieldBash", name = "Wheel Cut", trigger = "SpecialMedium",
+                   height = Mid, type = Special, specialButton = Medium, comesFrom = FromOverhead, hitSide = HitStraight,
                    aim = AimFull, range = 2.9f, size = new Vector3(1.4f, 1.0f, 1f), offset = new Vector3(0f, 0.6f, 0f),
                    lunge = 1.2f, weapon = true },
 
-        // SP + Heavy: two high swings spliced into one move (Custom/Richard_DoubleHigh). One hit, on
-        // the second swing - the engine gives a swing one hit, and the second is the one that reads.
-        new Move { asset = "Richard_Special_DoubleHigh", name = "Twin Hew", trigger = "SpecialHeavy",
+        // SP + Heavy: a diagonal-down spinning cut (SwordShieldPack/attack (3)) - a full turn with
+        // the hips flat on the floor, replacing the splice that leapt.
+        new Move { asset = "Richard_Special_DoubleHigh", name = "Judgement", trigger = "SpecialHeavy",
                    height = High, type = Special, specialButton = Heavy, comesFrom = FromOverhead, hitSide = HitStraight,
                    aim = AimYaw, range = 3.1f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.2f, weapon = true },

@@ -2887,3 +2887,42 @@ stopped him showing the enemy the enarmes) stands: a translation cannot turn a s
 One more measuring trap for the file: these weapon meshes have `isReadable` FALSE, and
 `mesh.vertices` on a non-readable mesh returns an EMPTY array at runtime instead of throwing, so a
 min-distance loop keeps its sentinel. A column of 9999 is that, not a weapon that flew away.
+
+### 2026-10-22 - Three new specials for Richard, and Miyamoto's four cut a quarter
+
+**Miyamoto's specials are all faster.** Totals cut about 25% - Nukitsuke 30 -> 22 frames,
+Nito Cross 47 -> 34, Kuruma 32 -> 24, Iaijutsu 36 -> 27 - and the two with pinned playback speeds
+raised with them (Nukitsuke 1.00 -> 1.25, Iaijutsu 1.30 -> 1.50). Measured state speeds afterwards:
+Kuruma x0.81 -> x1.08, Nukitsuke x1.00 -> x1.25, Iaijutsu x1.24 -> x1.43, Nito Cross x2.26 -> x2.40.
+Kuruma had been playing SLOWER than authored, which is likely what read as sluggish.
+
+**All three of Richard's specials are new clips: no running, no jumping.** The charge and the
+leaping splice are both gone.
+
+- **SP+Light "Rising Draw"** - `draw sword 2`, a rising draw cut from a stand. 34 frames,
+  pelvis sweep 16 deg, hips 1.42-1.64.
+- **SP+Medium "Wheel Cut"** - `sword and shield attack (2)`, a horizontal spinning cut.
+  36 frames, sweep 263 deg, hips 1.43-1.57.
+- **SP+Heavy "Judgement"** - `sword and shield attack (3)`, a diagonal-down spinning cut.
+  44 frames, sweep 279 deg, hips 1.08-1.47.
+
+All three play at **x1.00**, none puts a foot through the floor, and none leaves the ground - the
+splice that replaced read 2.97 on that last column.
+
+**The first attempt was wrong and the mistake is the useful part.** Screening the pack for "no
+running" on the clips' own TRAVEL column eliminated every real strike and left only `casting` and
+`power up`, whose numbers look like big overheads. Photographed through their trimmed windows, both
+are buff gestures: Richard goes down on one knee with the shield planted. Two things came out of
+that: **root motion is discarded on these clips, so a clip's travel never reaches the game** - the
+AttackData lunge moves him, and "advancing" is not running - and **a jump is the HIPS RISING**,
+which is body animation and does reach the game. Screening on `maxHipsAboveRoot` instead reopened
+the two standing spins, which is what he now has.
+
+**One trap avoided rather than hit, for once.** `attack (3)` is also Salaadin's MEDIUM, and a trim
+is keyed by CLIP - widening its core for Richard would have re-timed Salaadin's move, exactly as
+the shared `sword and shield attack` trim once dropped his Hattin Cleave to x0.43. A CONTACT is
+keyed by STATE, so Richard's window is set there and Salaadin's medium still measures x0.96.
+
+The asset names (`Richard_Special_ShieldCharge`, `_ShieldBash`, `_DoubleHigh`) are deliberately
+unchanged so the scene's GUID references survive; only the clips, the displayed names and the
+frame budgets moved.

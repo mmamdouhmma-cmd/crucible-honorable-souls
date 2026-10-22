@@ -112,7 +112,24 @@ public static class CrucibleMixamoSetup
         ("Richard_Light_Thrust",           "Custom",          "Richard_Thrust",              false),
         ("Richard_Medium_Slash",           "SwordShieldPack", "sword and shield slash (5)",  false),  // diagonal-down, 42 f, the cleanest quick cut in the pack
         ("Richard_Heavy_Overhead",         "SwordShieldPack", "sword and shield slash",      false),  // the pack's true overhead: tip drops 1.44, fastest tip in the set
-        ("Richard_Special_ShieldCharge",   "Custom",          "Richard_ShieldCharge",        false),
+        // All three of his specials were re-cast on the user's call: no running and no jumping.
+        // That rules out most of the pack - measured travel over the clip, "attack (2)" advances
+        // 2.87, "attack (3)" 2.41, "slash (2)" 2.45 with a leap, "slash (4)" leaps too, and the run
+        // clips are what the charge was built from. Only four strike clips in the whole
+        // SwordShieldPack are thrown from a standing start: "casting" (travel 0.00, a 2.22 overhead
+        // descent), "power up" (0.00, 1.40 descent), "draw sword 1/2" (0.08, a rising draw cut) and
+        // "kick" (0.00, already his parry riposte).
+        // ...and that first screen was too strict, because ROOT MOTION IS DISCARDED on these clips
+        // (the same reason Bjorn's Blood Eagle throws away 3.64 m): a clip's own travel never
+        // reaches the game, the AttackData lunge does. So "advancing" is not running. What IS
+        // reproduced is the hips RISING, because that is body animation - so the test for "no
+        // jumping" is maxHipsAboveRoot in play, not the clip's travel. That reopened the two
+        // standing spins below, and both measure flat.
+        // The gesture-named clips really are unusable: "casting" trimmed to its descent photographs
+        // as Richard going down on one knee with the shield planted - a buff, not a strike. The
+        // measurement said "overhead, 2.22 of drop" because that is the sword lowering as he kneels.
+        // Judge a clip from a PHOTOGRAPH of the trimmed window in play, never from its numbers.
+        ("Richard_Special_ShieldCharge",   "SwordShieldPack", "draw sword 2",                false),
         // The user's call after play-testing: both authored specials read as "melty", so they take
         // pack clips untouched. Two rounds of picking. Measure yaw with clip_curves, which UNWRAPS it -
         // clip_measure wraps, which is how "attack (3)" passed as a 36 deg cut when it is really a full
@@ -121,13 +138,13 @@ public static class CrucibleMixamoSetup
         // overheads and are not strikes at all: photographed in play they hold the sword up across the
         // chest, a spell-cast gesture. So these share with Salaadin, as the walks and slash (5) already
         // do - both are real swings, no spin, no travel.
-        ("Richard_Special_ShieldBash",     "SwordShieldPack", "sword and shield slash (3)",  false),  // diagonal-up, 48 f, yaw 109, travel 0.01. Salaadin's dodge riposte - the lowest-visibility clip to share
+        ("Richard_Special_ShieldBash",     "SwordShieldPack", "sword and shield attack (2)", false),  // horizontal spin cut, 40 f, core 8-24
         // Back to a spliced clip, on the user's call: a single pack chop here reads as BJORN's
         // special - his Blood Eagle is "standing melee run jump attack" and this pack's "attack" is
         // an overhead+leap too, so the two look the same whatever the weapon. Twin Hew is two high
         // swings, which is what the move is named for. See clip_double_high: pack frames verbatim,
         // only the four-frame join is authored.
-        ("Richard_Special_DoubleHigh",     "Custom",          "Richard_DoubleHigh",          false),
+        ("Richard_Special_DoubleHigh",     "SwordShieldPack", "sword and shield attack (3)", false),  // diagonal-down spin cut, 53 f
         ("Richard_Riposte_Dash",           "SwordShieldPack", "sword and shield attack (4)", false),  // 31 f, the shortest cut in the pack
         ("Richard_Riposte_Parry",          "SwordShieldPack", "sword and shield kick",       false),  // a BOOT: hitsWithWeapon is off
         ("React_Front",                    "SwordShieldPack", "sword and shield impact",     false),

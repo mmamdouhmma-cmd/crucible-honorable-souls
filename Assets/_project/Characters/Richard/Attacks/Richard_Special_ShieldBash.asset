@@ -12,20 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
   m_Name: Richard_Special_ShieldBash
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
-  attackName: Shield Bash
+  attackName: Wheel Cut
   damage: 15
   staminaCost: 43
   armorPierce: 12
-  startupFrames: 22
+  startupFrames: 14
   activeFrames: 5
-  recoveryFrames: 20
+  recoveryFrames: 13
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialMedium
-  attackHeight: 2
+  attackHeight: 1
   attackType: 3
   specialButton: 1
-  comesFrom: 2
-  hitSide: 1
+  comesFrom: 0
+  hitSide: 0
   hitstunFrames: 13
   hitboxRange: 2.9
   hitboxOffset: {x: 0, y: 0.6, z: 0}

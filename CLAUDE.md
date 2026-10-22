@@ -689,6 +689,27 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   EMPTY array at runtime rather than throwing.** Any min-distance loop over it silently keeps its
   sentinel - a column of 9999 in a CSV is this, not a weapon that moved to infinity.
 
+- **ROOT MOTION IS DISCARDED on these clips, so a clip's own travel never reaches the game.** The
+  AttackData `lunge` moves the fighter; the clip's forward displacement does not (the same reason
+  Bjorn's Blood Eagle throws away 3.64 m). So `clip_curves`'s `travel` column, and its "advancing"
+  tag, do NOT mean a move will run - screening on them threw away every usable strike in the
+  SwordShieldPack and left only buff gestures. What IS reproduced is the hips RISING, because that
+  is body animation: **the test for "no jumping" is `maxHipsAboveRoot` in play**, not the clip's
+  travel. Richard's spins measure 1.43-1.57 against an idle's ~1.6; the splice that leapt read 2.97.
+- **"casting" and "power up" are BUFF gestures and cannot be used as strikes.** Trimmed to its
+  measured descent, `sword and shield casting` photographs as Richard going down on one knee with
+  the shield planted on the floor. The measurement said "overhead, 2.22 of drop" because that is
+  the sword lowering as he kneels. A silhouette guess from curves cannot tell a chop from a kneel -
+  photograph the TRIMMED window in play before casting any clip into a slot.
+- **A trim is keyed by CLIP and shared; a contact is keyed by STATE and is not.** To re-time one
+  fighter's state onto a clip another fighter also uses, add a contact entry - with one,
+  `len = max(speed * total * 0.5, 6)` and the shared core is ignored entirely. Widening
+  `sword and shield attack (3)`'s core for Richard's SP+Heavy would have re-timed Salaadin's
+  MEDIUM, which is the same shared-trim trap that once dropped his Hattin Cleave to x0.43.
+- **A full-turn special crosses its legs and that is the move, not a fault.** Richard's two new
+  spins cross for 11 and 34 frames with pelvis sweeps of 263 and 279 degrees. Leg crossing is only
+  a defect in a move that holds ONE stance (the thrust) - judge it against the pelvis sweep.
+
 ## Measuring a move from the CLI (the harness that works)
 
 - **`Time.captureDeltaTime = 1f/60f` makes one rendered frame equal one 60 fps game frame**, so a
