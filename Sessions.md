@@ -3148,3 +3148,39 @@ eval returned 400 and wrote **nothing**, and the read-back is the only reason it
 into separate evals it went through. Also worth noting: the Editor came back in PLAY mode twice
 after a recompile, and editor-only calls fail with "This cannot be used during play mode" - check
 `editor_status` before a write pass.
+
+### 2026-10-23 - Three front-end fixes: a VS screen facing the right way, a logo that exhales, and room to breathe
+
+**The VS pair stood back to back, and it was one sign.** `StageFighters` rotates each fighter as
+`LookRotation(toCam) * Euler(0, yaw, 0)`, so the yaw turns him off camera-facing. Positive Y
+carries +Z toward +X, and `screenRight` is **-X** with the camera on +Z - so `+turn` on the
+screen-left fighter and `-turn` on the right swung both of them OUTWARD. Negated they square up:
+measured `dot(forward, toOpponent)` = **0.996** on all three pairings, **5.2 deg** short of a pure
+profile, which keeps a little of each face to the camera.
+
+**The logo never exhaled.** It faded in over 1.1 s and was then cut away mid-glow by the wipe.
+`BootExitRoutine` is the other half - 0.45 s out, logo and prompt together, the logo drifting from
+1.00 to 1.04 as the mirror of the 1.08 -> 1.00 settle on the way in. `bootExiting` keeps
+`UpdateBoot` off the colours while it runs. Verified through the real key path: alpha
+1.00 -> 0.40 -> 0.23 -> 0.11 -> 0.04 -> 0.00, then the wipe to Main.
+
+**They started inside each other's reach.** The arena's authored marks are **2.30** apart and the
+roster's longest reach is **3.10-3.50**, so a swing on the first frame of FIGHT landed before
+either man moved - exactly what the user reported. `BalanceConfig.MATCH_START_GAP` is 5.0 now and
+`ResolveSpawns` spreads the two fighting sides to it about the midpoint of the marks, along the
+marks' own axis, with the height still raycast at the new spot. Three pairings verified: 5.00 at
+placement, 5.00 after settling (so nobody is falling), standing Heavy whiffs for all. A lunging
+special still reaches, deliberately.
+
+**And the prompt blinked rather than breathed.** "PRESS ANY BUTTON" pulsed on
+`Abs(Sin(t * 1.6))`, which is fast twice over: `Abs` folds the sine's negative half up, halving
+the period to ~1.96 s, and it leaves a hard cusp at the bottom that reads as a blink. A plain sine
+mapped into 0..1 over a 4 s `BootPromptPeriod` has neither. Measured in play: **3.99 s**
+peak-to-peak, **4.02 s** trough-to-trough, alpha 0.30 to 1.00.
+
+Two harness notes. **`simulate_key` does not reach `AnyButton()`** - it reads legacy `Input` and
+`Gamepad.all`, and a sampler sat on the boot screen for 260 frames with the press never landing.
+A virtual `InputSystem.AddDevice<Gamepad>()` plus a queued `GamepadState` does drive it. And
+**invoking a coroutine by reflection skips the teardown the real path does**: calling
+`BootExitRoutine` without `StopCoroutine(bootRoutine)` left the fade-in alive and the alpha snapped
+back to 1.0 after the fade - an artifact of the test, absent from the genuine press.

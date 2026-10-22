@@ -883,6 +883,44 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   the idle, taken while the coroutine was still in its 70-frame settle. Poll
   `EditorApplication.isPaused` before capturing.
 
+- **The VS screen posed the pair BACK TO BACK, and the cause was one sign.** `StageFighters`
+  builds each fighter's rotation as `LookRotation(toCam) * Euler(0, yaw, 0)`, so the yaw turns him
+  off camera-facing. A positive Y rotation carries +Z toward +X, while `screenRight` works out to
+  **-X** when the camera sits on +Z - so `+turn` on the screen-LEFT fighter and `-turn` on the
+  right swung BOTH of them outward. Negated, P1 turns right and P2 turns left. A fighter facing
+  the camera at this framing is already ~25 deg off a pure profile, so the 60 deg yaw lands them
+  **5.2 deg** short of square on, which keeps a little of each face to camera instead of two flat
+  profiles. Measured on all three pairings as `dot(forward, toOpponent)` = 0.996.
+- **`MATCH_START_GAP` (BalanceConfig, 5.0) is the opening distance, and the authored marks were
+  never it.** The scene's two marks sit **2.30** apart while every fighter's longest reach is
+  **3.10-3.50**, so a swing thrown on the first frame of FIGHT connected before anyone had moved.
+  `ResolveSpawns` now spreads the two FIGHTING sides to that gap about the midpoint of the marks,
+  along the axis the marks establish - taking both from the marks keeps it right in an arena whose
+  marks are elsewhere or at an angle, and the height is still a raycast at the NEW spot. Verified
+  on three pairings: 5.00 at placement, 5.00 after settling, a standing Heavy whiffs for all.
+  A LUNGING special still reaches (Bjorn travels 2.6, landing 2.4 away inside his 3.5) and that is
+  deliberate; past **6.1** nothing at all would connect.
+- **The boot logo fades OUT on the press now** (`BootExitRoutine`, 0.45 s, the mirror of
+  `BootRoutine`'s fade in) instead of being cut away mid-glow by the wipe. `bootExiting` makes
+  `UpdateBoot` stand off the colours while it runs, and `BuildBoot` clears the flag so a second
+  visit to Boot does not start muted.
+- **`Mathf.Abs(Mathf.Sin(t * w))` runs at TWICE the period you wrote, and it blinks.** Abs folds
+  the sine's negative half upward, so the cycle is pi/w rather than 2*pi/w, and it leaves a hard
+  cusp at the bottom that reads as a blink rather than a fade. The boot prompt's breathe was
+  `Abs(Sin(t * 1.6))` - a ~1.96 s cusped pulse - and is now a plain sine mapped into 0..1 over
+  `BootPromptPeriod` (4 s). Measured in play: **3.99 s** peak-to-peak, alpha 0.30-1.00.
+- **`simulate_key` does NOT reach `GameMenu.AnyButton()`**, which reads legacy `Input.anyKeyDown`,
+  touches and `Gamepad.all`. A sampler sat on the boot screen for 260 frames with `bootReady` true
+  and the press never registered. What works is a virtual device:
+  `InputSystem.AddDevice<Gamepad>()`, then `InputSystem.QueueStateEvent(pad, new GamepadState()
+  .WithButton(GamepadButton.South))`, and `RemoveDevice` afterwards - that drives the real
+  `UpdateBoot -> AnyButton -> exit` path.
+- **Driving a menu coroutine by hand skips the teardown the real path does.** Invoking
+  `BootExitRoutine` through reflection without `StopCoroutine(bootRoutine)` first left the old
+  fade-in alive, and the logo alpha snapped back to 1.0 the frame after the fade finished. It is
+  an artifact of the test, not the code - the genuine key-press path holds 0.000 all the way into
+  the wipe. **Reproduce a bug through the real entry point before believing it.**
+
 ## Measuring a move from the CLI (the harness that works)
 
 - **`Time.captureDeltaTime = 1f/60f` makes one rendered frame equal one 60 fps game frame**, so a

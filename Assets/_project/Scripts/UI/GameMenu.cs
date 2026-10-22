@@ -292,16 +292,38 @@ public class GameMenu : MonoBehaviour
         return float.IsNaN(best) ? fallback : best;
     }
 
-    /// <summary>Spawn marks for the sides as they are now, each fighter keeping its own height.</summary>
+    /// <summary>
+    /// Spawn marks for the sides as they are now, each fighter keeping its own height.
+    /// The fighting pair is pushed out to <see cref="BalanceConfig.MATCH_START_GAP"/> about the
+    /// midpoint of the two authored marks, along the line those marks already establish - the
+    /// authored pair sit 2.30 apart, inside everybody's reach, so a swing on the first frame of
+    /// FIGHT landed before either man had moved. Taking the axis and the midpoint from the marks
+    /// rather than hard-coding one keeps this working in an arena whose marks are somewhere else
+    /// or at an angle, and the height still comes from a raycast at the NEW spot.
+    /// </summary>
     void ResolveSpawns()
     {
+        Vector3 markA = sideMark.Length > 0 ? sideMark[0] : Vector3.zero;
+        Vector3 markB = sideMark.Length > 1 ? sideMark[1] : Vector3.zero;
+        Vector3 mid = (markA + markB) * 0.5f;
+        Vector3 axis = markB - markA;
+        axis.y = 0f;
+        if (axis.sqrMagnitude < 0.0001f) axis = Vector3.right;   // marks stacked: pick an axis
+        axis.Normalize();
+        float half = BalanceConfig.MATCH_START_GAP * 0.5f;
+
         for (int i = 0; i < roster.Length; i++)
         {
             int side = Mathf.Clamp(roster[i].PlayerNumber - 1, 0, Mathf.Max(0, sideMark.Length - 1));
-            // X/Z from the side's mark, Y from this fighter's own root: the two roots sit at
-            // different heights (0.24 / 0.75) because each model has its own ground offset, and
-            // averaging them is what left both fighters floating once before.
-            spawnPos[i] = new Vector3(sideMark[side].x, GroundedY(sideMark[side], ownY[i]), sideMark[side].z);
+            // Only the two FIGHTING sides are spread; anything else keeps its own mark, since a
+            // benched fighter is switched off and never placed anyway.
+            Vector3 mark = side == 0 ? mid - axis * half
+                         : side == 1 ? mid + axis * half
+                         : sideMark[side];
+            // X/Z from the mark, Y from a raycast with this fighter's own root as the fallback:
+            // the two roots sit at different heights because each model has its own ground
+            // offset, and averaging them is what left both fighters floating once before.
+            spawnPos[i] = new Vector3(mark.x, GroundedY(mark, ownY[i]), mark.z);
             spawnRot[i] = sideRot[side];
         }
     }
@@ -921,6 +943,7 @@ public class GameMenu : MonoBehaviour
     void BuildBoot()
     {
         bootPrompt.text = MenuArt.Track("PRESS ANY BUTTON", 2);
+        bootExiting = false;                   // a second visit must not start muted
         if (bootRoutine != null) StopCoroutine(bootRoutine);
         bootRoutine = StartCoroutine(BootRoutine());
     }
@@ -943,18 +966,58 @@ public class GameMenu : MonoBehaviour
     }
 
     bool bootReady;
+    bool bootExiting;
     Coroutine bootRoutine;
+
+    /// <summary>Seconds for one full dim-bright-dim breath of the "PRESS ANY BUTTON" prompt.</summary>
+    const float BootPromptPeriod = 4f;
 
     void UpdateBoot()
     {
-        // breathe the prompt in and out once the logo has settled
-        float a = bootReady ? 0.35f + 0.65f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 1.6f)) : 0f;
+        if (bootExiting) return;               // the exit fade owns the colours now
+
+        // A slow breathe, not a blink. The old Abs(Sin(t * 1.6)) was fast twice over: Abs folds
+        // the sine's negative half up, which HALVES the period to ~1.96 s, and it leaves a hard
+        // cusp at the bottom that reads as a blink rather than a fade. A plain sine mapped into
+        // 0..1 has neither, and the period is then just BootPromptPeriod.
+        float phase = Time.unscaledTime * (Mathf.PI * 2f / BootPromptPeriod);
+        float a = bootReady ? 0.30f + 0.70f * (0.5f + 0.5f * Mathf.Sin(phase)) : 0f;
         bootPrompt.color = MenuArt.Fade(MenuArt.Bone, a);
 
         if (!bootReady || inputGuard > 0f) return;
         if (!AnyButton()) return;
 
         bootReady = false;
+        bootExiting = true;
+        if (bootRoutine != null) StopCoroutine(bootRoutine);
+        bootRoutine = StartCoroutine(BootExitRoutine());
+    }
+
+    /// <summary>
+    /// The other half of <see cref="BootRoutine"/>. The logo fades IN on arrival and used to be
+    /// cut away mid-glow by the wipe; a press now fades it back out first, so the landing page
+    /// breathes out. The logo drifts very slightly larger as it goes, the mirror of the 1.08 -> 1
+    /// settle on the way in.
+    /// </summary>
+    IEnumerator BootExitRoutine()
+    {
+        var logoRect = bootLogo != null ? bootLogo.rectTransform : null;
+        float fade = 0.45f;
+        for (float k = 0f; k < 1f; k += Time.unscaledDeltaTime / fade)
+        {
+            float e = MenuArt.EaseOut(k);
+            float a = 1f - e;
+            if (bootLogo != null) bootLogo.color = MenuArt.Fade(Color.white, a);
+            if (bootTitle != null) bootTitle.color = MenuArt.Fade(MenuArt.BronzeLit, a);
+            if (bootPrompt != null) bootPrompt.color = MenuArt.Fade(MenuArt.Bone, a);
+            if (logoRect != null) logoRect.localScale = Vector3.one * Mathf.Lerp(1f, 1.04f, e);
+            yield return null;
+        }
+        if (bootLogo != null) bootLogo.color = MenuArt.Fade(Color.white, 0f);
+        if (bootTitle != null) bootTitle.color = MenuArt.Fade(MenuArt.BronzeLit, 0f);
+        if (bootPrompt != null) bootPrompt.color = MenuArt.Fade(MenuArt.Bone, 0f);
+
+        bootExiting = false;
         history.Clear();
         GoWiped(Screen.Main);
     }
@@ -1687,8 +1750,17 @@ public class GameMenu : MonoBehaviour
         // The chosen fighter stands a step forward, which reads as "this one" without a spotlight.
         if (vs)
         {
-            PlaceStaged(p1Character, mid - screenRight * spread, camPos, turn);
-            PlaceStaged(p2Character, mid + screenRight * spread, camPos, -turn);
+            // The yaw is applied AFTER LookRotation(toCam), so it turns each fighter off
+            // camera-facing - and the SIGN was inverted. A positive Y rotation carries +Z toward
+            // +X, while screenRight works out to -X when the camera sits on +Z, so "+turn" swung
+            // the screen-LEFT fighter further left and "-turn" swung the right one further right:
+            // both outward, shoulders to the middle, which is the back-to-back look.
+            // Negated, P1 (screen left) turns right and P2 turns left. At this framing a fighter
+            // facing the camera is already about 25 deg off a pure profile, so 60 deg lands them
+            // ~5 deg short of square on - still a little of each face to camera, which reads
+            // better than two flat profiles.
+            PlaceStaged(p1Character, mid - screenRight * spread, camPos, -turn);
+            PlaceStaged(p2Character, mid + screenRight * spread, camPos, turn);
         }
         else
         {

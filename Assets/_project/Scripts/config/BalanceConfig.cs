@@ -59,6 +59,18 @@ public static class BalanceConfig
     public const float PARRY_COUNTER_WINDOW = 0.5f;
     public const float COMBO_INPUT_WINDOW = 0.5f;
 
+    // ==================== OPENING DISTANCE ====================
+    /// <summary>
+    /// How far apart, in world units, the two fighters stand when FIGHT is called. The arena's
+    /// authored marks sit 2.30 apart, which is INSIDE every fighter's reach (3.10 Miyamoto and the
+    /// two shield fighters, 3.50 Bjorn), so a swing thrown on the first frame connected before
+    /// anyone had moved. At 5.0 the longest standing attack in the roster falls 1.5 short and both
+    /// fighters have to close first. A LUNGING special can still cover it - Bjorn's travel 2.6
+    /// leaves him 2.4 away, inside his 3.5 - which is deliberate: a committed approach should
+    /// reach, a free poke should not. Raise it past 6.1 if nothing at all should connect.
+    /// </summary>
+    public const float MATCH_START_GAP = 5.0f;
+
     // ==================== LOW STAMINA ====================
     // Below LOW_STAMINA_FRACTION of the bar, passive recovery runs at
     // LOW_STAMINA_RECOVERY_MULTIPLIER of its normal rate, so running the bar right down costs
