@@ -404,7 +404,16 @@ public static class CrucibleCharacterSetup
         // vertex was 0.005 from the forearm segment - the sword ran through his forearm instead of
         // sitting in his palm. This offset puts the blade's axis through the hand bone (the hand
         // still grips at 0.09 of the blade's length from the hilt, which is the grip).
-        { "Richard_Sword",     (new Vector3(0.000369f, 0.001012f, -0.000003f), new Vector3(340f, 270f, 0f)) },
+        // ...and then it was still held at the WRIST. That offset put the blade's axis through the
+        // HAND BONE, which is the wrist joint, so the grip and crossguard ran across the back of his
+        // hand and up his forearm while his fingers hung clear of the weapon entirely - the user's
+        // "move the sword to the tip of his fingers". Nothing closes Richard's fingers (he has no
+        // TwoHandGrip), so the only lever is where the haft sits. Slid along the wrist->fingertip
+        // vector by 0.55 of its length: the whole length puts the grip PAST his fingertips and the
+        // crossguard clear of the hand, which photographs as a sword floating beside him. At 0.55
+        // the haft runs through the hand with the fingers in front of it. Nearest weapon vertex to
+        // the fingertip centre 0.089 -> 0.045, and to the wrist 0.131 -> 0.183.
+        { "Richard_Sword",     (new Vector3(0.000429f, 0.001780f, 0.000326f), new Vector3(340f, 270f, 0f)) },
         // Miyamoto's katana had NO mount entry, so it sat at whatever rest rotation the FBX gave it
         // under the hand bone - and the re-rig changed that bone's orientation, which left the blade
         // pointing BACKWARD (blade . forward -0.94) straight through his chest, nearest vertex 0.038
@@ -443,7 +452,12 @@ public static class CrucibleCharacterSetup
         // be sure, since no measurement sees paint. Rolled 180 deg about the shield's own LONG
         // axis (z: 344.30 -> 164.30), which swaps the faces and leaves it upright, then re-seated
         // so the fist still sits 0.020 inside the front face.
-        { "Richard_Shield_L", (new Vector3(0.000951f, 0.001069f, -0.000166f), new Vector3(0.53f, 122.11f, 164.30f)) },
+        // Slid out to the fingers the same way as his sword, and for the same reason: seated on the
+        // FIST it was held at the wrist. Same 0.55 of the wrist->fingertip vector, which puts the
+        // grip boss in his hand - nearest shield vertex to the fingertip centre 0.083 -> 0.017. The
+        // ROTATION is untouched, so the hard-won facing (and the 180 deg roll that stopped him
+        // showing the enemy the enarmes) still stands: a translation cannot turn a shield round.
+        { "Richard_Shield_L", (new Vector3(0.000962f, 0.001816f, 0.000096f), new Vector3(0.53f, 122.11f, 164.30f)) },
         { "Salaadin_Shield_L", (new Vector3(0.000209f, 0.000563f, -0.000347f), new Vector3(0.75f, 181.74f, 355.40f)) },
     };
 

@@ -2860,3 +2860,30 @@ the bar up before every swing now and bails on a false return. Two smaller ones 
 `GetCurrentAnimatorClipInfo(0)[0]` can name the idle right through an attack (take the highest
 weight), and `BakeMesh` output has no bone weights, so the foot-vertex probe must read them from
 `sharedMesh`.
+
+### 2026-10-22 - Richard holds his sword and shield in his fingers, not his wrist
+
+The last item on the list, and the whole thing hinged on something that cost five identical
+photographs: **`WeaponAim` caches the weapon's rest local position at Start and writes it back
+every frame**, so every live change to the sword's transform was stamped out before the frame was
+drawn. The numbers said it had moved; the pictures said it had not. His shield has no `WeaponAim`,
+which is why that one responded and the sword would not - the asymmetry was the clue.
+
+The fault itself: his sword's mount had been tuned to put the blade's axis through the HAND BONE,
+which is the wrist joint. Photographed close up, the crossguard lay across the back of his hand,
+the grip ran up inside his forearm, and his fingers - open, since nothing closes Richard's, he has
+no `TwoHandGrip` - hung clear of the weapon entirely.
+
+Both weapons now slide along the **wrist -> fingertip** vector by **0.55** of its length. The whole
+way is wrong: at 1.0 the grip sits past his fingertips with the crossguard clear of the hand, which
+photographs as a sword floating beside him. Sliding along the weapon's own long axis is wrong too -
+it only accounts for 0.060 of the 0.245, because fingers wrap a haft perpendicular to it. Nearest
+weapon vertex to the fingertip centre: sword 0.089 -> 0.045, shield 0.083 -> 0.017, and verified
+mid-swing as well as at rest - his fist closes on the red grip with the crossguard just beyond it.
+
+The rotations were not touched, so the facing work on that shield (including the 180 deg roll that
+stopped him showing the enemy the enarmes) stands: a translation cannot turn a shield round.
+
+One more measuring trap for the file: these weapon meshes have `isReadable` FALSE, and
+`mesh.vertices` on a non-readable mesh returns an EMPTY array at runtime instead of throwing, so a
+min-distance loop keeps its sentinel. A column of 9999 is that, not a weapon that flew away.

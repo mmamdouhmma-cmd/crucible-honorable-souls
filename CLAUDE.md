@@ -667,6 +667,28 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   positions from the baked mesh; guarding on the baked mesh's own weights skips every renderer and
   the result is a silent "no feet found" rather than an error.
 
+- **`WeaponAim` CACHES the weapon's rest local position at Start and writes it back EVERY frame**
+  (`restLocalPosition`, restored in its update). So setting `weapon.transform.localPosition` in
+  play does nothing visible - the component stamps the old value back before the frame is drawn,
+  and five photographs in a row come out identical while the numbers say the transform moved. To
+  try a mount offset live, set the private `restLocalPosition` as well. From the SCENE it needs no
+  code: Start reads whatever the scene holds. Richard's shield has no `WeaponAim`, which is why it
+  moved while the sword would not - if one weapon responds and the other does not, this is why.
+- **A weapon mounted so its axis passes through the HAND BONE is held at the WRIST**, because that
+  bone is the wrist joint. Richard's sword had been fixed to put the blade's axis through the hand
+  bone, and the result was a crossguard lying across the back of his hand with the grip running up
+  his forearm and his fingers hanging clear of the weapon. The fix is to slide the weapon along the
+  **wrist -> fingertip** vector. Not the whole way: at 1.0 the grip ends up past the fingertips and
+  the sword photographs as floating beside him; **0.55 of it** puts the haft through the hand with
+  the fingers in front. Nearest weapon vertex to the fingertip centre is the number to watch -
+  sword 0.089 -> 0.045, shield 0.083 -> 0.017.
+  - Sliding along the weapon's OWN long axis barely helps (0.060 of 0.245 on the sword): the
+    fingers wrap a haft, so they sit mostly PERPENDICULAR to it.
+  - A pure translation cannot change a facing, so the hard-won shield rotations survive it intact.
+- **`sharedMesh.isReadable` is FALSE on these weapon meshes, and `mesh.vertices` then returns an
+  EMPTY array at runtime rather than throwing.** Any min-distance loop over it silently keeps its
+  sentinel - a column of 9999 in a CSV is this, not a weapon that moved to infinity.
+
 ## Measuring a move from the CLI (the harness that works)
 
 - **`Time.captureDeltaTime = 1f/60f` makes one rendered frame equal one 60 fps game frame**, so a
