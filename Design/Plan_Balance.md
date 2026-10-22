@@ -1,7 +1,7 @@
 # CRUCIBLE: Honorable Souls — Balance and feel pass
 
 Agreed 2026-10-23 in conversation, to build next session. Nothing here is implemented yet.
-Sits alongside `Design/Plan_Audio.md`; the order between the two is the user's call.
+**This pass runs BEFORE `Design/Plan_Audio.md`** - the user's call, 2026-10-23.
 
 The measured numbers below came off the live assets and the scene, not off the design intent —
 `Editor/CrucibleBalance.cs` for the table, the four `Fighter` components for the defensive fields.
@@ -83,12 +83,27 @@ the animation along with it.
 - **A MISSED attack extends recovery by a percentage of the move's own recovery**, so a whiffed
   heavy is punished harder than a whiffed light without needing a second table.
 
-### 2.2 Salaadin has the LEAST damage in the roster
+### 2.2 Salaadin's damage stands for now; Miyamoto takes the movement speed
 
-Corrects an earlier assumption that Miyamoto was the low-damage fighter. New damage order:
-**Bjorn > Richard > Miyamoto > Salaadin.** Salaadin and Miyamoto must stop sharing x0.92.
+The decision that Salaadin should carry the LEAST damage in the roster
+(**Bjorn > Richard > Miyamoto > Salaadin**, and the two of them to stop sharing x0.92) is
+**DEFERRED, not dropped**. It waits for his combo freedom, because of the dependency in section 5.
+For now his damage is untouched.
 
-His compensation is COMBO FREEDOM, not numbers: he lands more blows rather than bigger ones.
+The separation comes from the other side instead: **Miyamoto's walk speed goes up, 4.4 -> 4.8**
+(`moveSpeed` 44 -> 48 in `CrucibleBalance`). He currently leads Salaadin by 7% (4.4 against 4.1),
+which is beneath the threshold anyone notices - it is one of the five "advantages" in the table
+above that never converts into anything. At 4.8 the lead is 17%, and the roster reads
+4.8 / 4.1 / 3.8 / 3.2.
+
+**Why this side and not Salaadin's.** Not cutting Salaadin's damage is already a buff against the
+plan; giving him the movement as well would buff him twice over while Miyamoto got nothing and
+stayed the fighter who loses every matchup.
+
+It also serves Miyamoto's axis rather than just his stat line. Counters need SPACING - walking in
+and out of range to bait a whiff is how a counter fighter manufactures the opening he punishes -
+so a fast walk is a defensive tool for him, not only an approach tool. It pairs directly with the
+whiff-recovery rule in 2.1: the faster he can leave range, the more whiffs he draws.
 
 ### 2.3 Low stamina — cheaper, weaker, slower
 
@@ -153,7 +168,7 @@ the same ground and the numbers only have to be roughly even.
 
 | fighter | axis | reads as |
 |---|---|---|
-| **Miyamoto** | COUNTERS | widest parry window (0.18 against a 0.12 base), longest dash i-frames, fastest dash. Low damage in neutral; his damage comes from ripostes. |
+| **Miyamoto** | COUNTERS | widest parry window (0.18 against a 0.12 base), longest dash i-frames, fastest dash AND fastest walk (4.8). Low damage in neutral; his damage comes from ripostes, and his walk is what baits the whiffs he punishes. |
 | **Bjorn** | WEIGHT | highest damage, worst sustain, costliest swings. Candidate: his blows hurt through a guard, making him the answer to turtling. |
 | **Richard** | ATTRITION | most health, most armour, best block, least stamina, slowest. Already correct — the one archetype fully expressed today. |
 | **Salaadin** | COMBO FREEDOM | lowest damage per blow, most branches, longest combo input window, improvises mid-string. |
@@ -195,7 +210,8 @@ Checked in code this session:
 
 **Salaadin's damage cut must not ship before his combo advantage exists.** He is already the
 slowest killer in the roster (14.5 s average); taking damage off him with nothing in return makes
-him unplayable. Build the combo freedom first, or both in the same pass.
+him unplayable. Build the combo freedom first, or both in the same pass. This is why the cut is
+deferred in 2.2 and Miyamoto's walk speed carries the separation in the meantime.
 
 Suggested order:
 
@@ -203,8 +219,10 @@ Suggested order:
    so `Crucible > Animation > Use Mixamo packs` has to follow it, and the state speeds read back.
 2. Low-stamina rule (2.3). Small, and reverses a one-line change made 2026-10-23.
 3. Block spread (2.4). One column in `CrucibleBalance`.
-4. Salaadin's combo freedom AND his damage cut, together (2.2).
-5. Per-fighter parry and dash i-frames (2.5). New serialized fields on `Fighter`, plus a
+4. Miyamoto's walk speed, 44 -> 48 (2.2). One integer in `CrucibleBalance`, no animation refit -
+   `MoveSpeed` drives the walk blend, and the clip is a loop rather than a timed budget.
+5. Salaadin's combo freedom, with his deferred damage cut riding along WHENEVER that lands (2.2).
+6. Per-fighter parry and dash i-frames (2.5). New serialized fields on `Fighter`, plus a
    `CrucibleBalance` column so the whole roster stays in one table. These two are what give
    Miyamoto his axis, so they are not optional trimming - without them his damage cut in neutral
    buys him nothing and he stays the fighter who loses every matchup.
