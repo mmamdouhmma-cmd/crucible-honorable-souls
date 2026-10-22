@@ -26,6 +26,13 @@ public class MenuStage : MonoBehaviour
         Stage,
         /// <summary>Nothing but the wipe layer - used while a match is running.</summary>
         None,
+        /// <summary>
+        /// Pure black and nothing else - no watermark, no bronze glow, no grain, no embers. The
+        /// landing page, so the logo fades up out of darkness rather than out of an ember field
+        /// that is already lit. APPENDED on purpose: `backdrop` is a serialized field, so the
+        /// values above it have to keep their indices.
+        /// </summary>
+        Black,
     }
 
     // Serializable so the array survives a domain reload. Without it, recompiling while the game
@@ -154,7 +161,9 @@ public class MenuStage : MonoBehaviour
     public void SetBackdrop(Backdrop b, bool instant = false)
     {
         backdrop = b;
-        fieldTarget = b == Backdrop.Menu ? 1f : b == Backdrop.Pause ? 0.78f : b == Backdrop.Stage ? 0.42f : 0f;
+        fieldTarget = b == Backdrop.Menu || b == Backdrop.Black ? 1f
+                    : b == Backdrop.Pause ? 0.78f
+                    : b == Backdrop.Stage ? 0.42f : 0f;
         if (instant) fieldNow = fieldTarget;
         ApplyBackdrop();
     }
@@ -162,6 +171,24 @@ public class MenuStage : MonoBehaviour
     void ApplyBackdrop()
     {
         if (field == null) return;
+
+        if (backdrop == Backdrop.Black)
+        {
+            // Everything the Menu field layers over the ink - the bronze glow at 0.22, the logo
+            // watermark, the grain and the drifting embers - is what kept the landing page from
+            // being black. All of it is held at zero here, and the field itself is true black
+            // rather than MenuArt.Ink (0.039, 0.031, 0.027), which is dark but still warm.
+            field.color = MenuArt.Fade(Color.black, fieldNow);
+            if (watermark != null) watermark.color = MenuArt.Fade(Color.white, 0f);
+            watermarkGlow.color = MenuArt.Fade(Color.black, 0f);
+            vignette.color = MenuArt.Fade(Color.white, 1f);
+            grain.color = MenuArt.Fade(Color.white, 0f);
+            if (embers != null)
+                foreach (var e in embers)
+                    if (e != null && e.img != null) e.img.enabled = false;
+            return;
+        }
+
         bool menu = backdrop == Backdrop.Menu;
         field.color = MenuArt.Fade(MenuArt.Ink, fieldNow * (menu ? 1f : 0.88f));
         if (watermark != null) watermark.color = MenuArt.Fade(Color.white, fieldNow * (menu ? 0.055f : 0.02f));

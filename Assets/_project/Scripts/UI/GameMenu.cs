@@ -626,9 +626,16 @@ public class GameMenu : MonoBehaviour
         if (stage != null)
         {
             stage.SetBackdrop(s == Screen.None ? MenuStage.Backdrop.None
+                            : s == Screen.Boot ? MenuStage.Backdrop.Black
                             : onStage ? MenuStage.Backdrop.Stage
                             : s == Screen.Pause || s == Screen.MatchOver ? MenuStage.Backdrop.Pause
-                            : MenuStage.Backdrop.Menu);
+                            : MenuStage.Backdrop.Menu,
+                              // Instant for the landing page: the field otherwise RAMPS toward
+                              // its target, so the boot screen opened on the lit arena and sank
+                              // to black over about a second. Measured mid-ramp at alpha 0.670
+                              // with the arena plainly visible through it. Every other screen
+                              // keeps the ramp - that gradual settle is what makes the wipes read.
+                              s == Screen.Boot);
             stage.ShowWatermark(s != Screen.Boot && !onStage);
         }
 
@@ -944,6 +951,7 @@ public class GameMenu : MonoBehaviour
     {
         bootPrompt.text = MenuArt.Track("PRESS ANY BUTTON", 2);
         bootExiting = false;                   // a second visit must not start muted
+        bootReady = false;                     // ...nor with the prompt already lit on the black
         if (bootRoutine != null) StopCoroutine(bootRoutine);
         bootRoutine = StartCoroutine(BootRoutine());
     }
@@ -952,6 +960,14 @@ public class GameMenu : MonoBehaviour
     {
         var logoRect = bootLogo != null ? bootLogo.rectTransform : null;
         bootPrompt.color = MenuArt.Fade(MenuArt.Bone, 0f);
+        if (bootLogo != null) bootLogo.color = MenuArt.Fade(Color.white, 0f);
+        if (bootTitle != null) bootTitle.color = MenuArt.Fade(MenuArt.BronzeLit, 0f);
+        if (logoRect != null) logoRect.localScale = Vector3.one * 1.08f;
+
+        // Hold on black first. The fade below already starts the logo at alpha 0, but without a
+        // beat of nothing the page and the logo arrive together and there is no "then" to it.
+        for (float t = 0f; t < BootBlackHold; t += Time.unscaledDeltaTime) yield return null;
+
         float fade = 1.1f;
         for (float k = 0f; k < 1f; k += Time.unscaledDeltaTime / fade)
         {
@@ -971,6 +987,9 @@ public class GameMenu : MonoBehaviour
 
     /// <summary>Seconds for one full dim-bright-dim breath of the "PRESS ANY BUTTON" prompt.</summary>
     const float BootPromptPeriod = 4f;
+
+    /// <summary>Seconds of black before the logo starts to fade up, so the two read as a sequence.</summary>
+    const float BootBlackHold = 0.5f;
 
     void UpdateBoot()
     {

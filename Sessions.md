@@ -3166,11 +3166,29 @@ profile, which keeps a little of each face to the camera.
 
 **They started inside each other's reach.** The arena's authored marks are **2.30** apart and the
 roster's longest reach is **3.10-3.50**, so a swing on the first frame of FIGHT landed before
-either man moved - exactly what the user reported. `BalanceConfig.MATCH_START_GAP` is 5.0 now and
+either man moved - exactly what the user reported. `BalanceConfig.MATCH_START_GAP` is **6.5** and
 `ResolveSpawns` spreads the two fighting sides to it about the midpoint of the marks, along the
-marks' own axis, with the height still raycast at the new spot. Three pairings verified: 5.00 at
-placement, 5.00 after settling (so nobody is falling), standing Heavy whiffs for all. A lunging
-special still reaches, deliberately.
+marks' own axis, with the height still raycast at the new spot. 5.0 came first and stopped standing
+swings only; the user asked for a distance nothing reaches, and 6.5 clears the worst case outright -
+longest reach 3.50 plus longest lunge 2.60 is 6.10. Verified live on both long-lunge fighters:
+Bjorn's six moves close at most to **4.73** (Heavy+SP, travelling 1.77), Miyamoto's to 5.60, all
+twelve whiff.
+
+Two ways that verification lied before it was right. A sweep run WITHOUT `StartMatch` fires every
+attack happily and reports **0.00 of lunge travel** for all of them, because a frozen fighter never
+advances - the whiffs were true and the reason was wrong. And a sweep without `ApplySides` leaves
+the benched pair active, so `FindOpponent` took the first other Fighter in the scene: Bjorn spent a
+whole run lunging at a Salaadin parked across the arena while the health check watched Miyamoto.
+
+**And the landing page was never black.** Boot used `Backdrop.Menu` - warm ink plus a bronze
+watermark glow, the logo watermark, grain and 26 drifting embers - so the logo faded up out of an
+already-lit field. `Backdrop.Black` holds all of that at zero on true black, and is applied with
+`instant: true`, which turned out to matter as much as the colour: the field ramps toward its
+target, so the first attempt opened on the lit arena and sank to black over about a second (caught
+mid-ramp at alpha 0.670). `BootBlackHold` (0.5 s) then holds the black before the 1.1 s logo fade.
+Measured coming from Main: field (0,0,0,1.000) on the FIRST frame, logo 0.000 through 0.42 s, then
+1.000 at 1.65 s. Photographed both ways - a pure black frame, then the logo up on black with no
+embers. `BuildBoot` also resets `bootReady` now, or a second visit lit the prompt on the black.
 
 **And the prompt blinked rather than breathed.** "PRESS ANY BUTTON" pulsed on
 `Abs(Sin(t * 1.6))`, which is fast twice over: `Abs` folds the sine's negative half up, halving
@@ -3184,3 +3202,13 @@ A virtual `InputSystem.AddDevice<Gamepad>()` plus a queued `GamepadState` does d
 **invoking a coroutine by reflection skips the teardown the real path does**: calling
 `BootExitRoutine` without `StopCoroutine(bootRoutine)` left the fade-in alive and the alpha snapped
 back to 1.0 after the fade - an artifact of the test, absent from the genuine press.
+
+### 2026-10-23 - The audio pass, written up and parked
+
+The user set out the whole sound brief and asked for it to be saved for tomorrow, not started:
+menu and button sounds left to my judgement (metal, a zip on navigate), five fight events given as
+onomatopoeia (whiff FEEWWWW, block TINNN, parry TRINNN with echo, hit QRUTTCH, dodge WOOFFF), a
+wordless breath per fighter with the attack (Miyamoto TSSS, Bjorn HUH), Elden Ring-inspired death
+cries in a different tone each, and music they supply themselves. It is written up in
+`Design/Plan_Audio.md` with the hook points - every fight event already has one in
+`CombatSystem.OnHit` or the active window closing, so no new systems are needed.

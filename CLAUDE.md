@@ -891,15 +891,32 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   the camera at this framing is already ~25 deg off a pure profile, so the 60 deg yaw lands them
   **5.2 deg** short of square on, which keeps a little of each face to camera instead of two flat
   profiles. Measured on all three pairings as `dot(forward, toOpponent)` = 0.996.
-- **`MATCH_START_GAP` (BalanceConfig, 5.0) is the opening distance, and the authored marks were
+- **`MATCH_START_GAP` (BalanceConfig, 6.5) is the opening distance, and the authored marks were
   never it.** The scene's two marks sit **2.30** apart while every fighter's longest reach is
   **3.10-3.50**, so a swing thrown on the first frame of FIGHT connected before anyone had moved.
   `ResolveSpawns` now spreads the two FIGHTING sides to that gap about the midpoint of the marks,
   along the axis the marks establish - taking both from the marks keeps it right in an arena whose
-  marks are elsewhere or at an angle, and the height is still a raycast at the NEW spot. Verified
-  on three pairings: 5.00 at placement, 5.00 after settling, a standing Heavy whiffs for all.
-  A LUNGING special still reaches (Bjorn travels 2.6, landing 2.4 away inside his 3.5) and that is
-  deliberate; past **6.1** nothing at all would connect.
+  marks are elsewhere or at an angle, and the height is still a raycast at the NEW spot. 6.5 clears
+  the worst case outright: longest reach 3.50 plus longest lunge 2.60 is 6.10, so NOTHING connects
+  from the marks. Verified live on both long-lunge fighters - Bjorn's six moves close at most to
+  **4.73** (Heavy+SP, travelling 1.77) and Miyamoto's to 5.60; all twelve whiff.
+- **A lunge needs a LIVE MATCH to move anyone, and a frozen test reports it as zero travel.**
+  Calling `PlaceFighters` and `TryAttack` without `StartMatch` fires the attack (neither
+  `InputEnabled` nor a disabled `Fighter` stops `TryAttack`) but the fighter never advances, so
+  every closing distance reads exactly the starting gap. **And `ApplySides` must be called too**:
+  without it the non-participants stay active and `FindOpponent` takes the first other Fighter in
+  the scene - a sweep had Bjorn lunging at a benched Salaadin parked across the arena while the
+  health check watched Miyamoto. Both faults produce confident, wrong numbers that look fine.
+- **The landing page is `MenuStage.Backdrop.Black`, applied INSTANTLY.** Boot used `Backdrop.Menu`,
+  which is warm ink (0.039, 0.031, 0.027) plus a bronze watermark glow at 0.22, the logo
+  watermark, grain and 26 drifting embers - so the logo never faded up out of darkness. The new
+  mode holds all of that at zero and uses true black. The `instant` flag matters as much as the
+  colour: the field RAMPS toward its target, so without it the boot screen opened on the lit arena
+  and sank to black over about a second (measured mid-ramp at alpha 0.670, arena plainly visible).
+  Every other screen keeps the ramp - that settle is what makes the wipes read. `BootBlackHold`
+  (0.5 s) then holds on black before the 1.1 s logo fade, so the two read as a sequence. Measured
+  from Main: field (0,0,0,1.000) on the FIRST frame, logo 0.000 through 0.42 s, then 1.000 at 1.65.
+  `Backdrop.Black` is APPENDED to the enum because `backdrop` is a serialized field.
 - **The boot logo fades OUT on the press now** (`BootExitRoutine`, 0.45 s, the mirror of
   `BootRoutine`'s fade in) instead of being cut away mid-glow by the wipe. `bootExiting` makes
   `UpdateBoot` stand off the colours while it runs, and `BuildBoot` clears the flag so a second
