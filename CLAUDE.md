@@ -634,6 +634,39 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   never `transform.right`. A fighter's root, his pelvis and the Blender import each have their own
   idea of "right", and three rounds of contradictory readings here all came from that.
 
+- **A pack clip has UNCROSSED and CROSSED stretches, and a spliced move must take its frames from
+  the uncrossed ones.** Measure per frame as the ankle separation along the hip joints' own axis
+  and the windows fall straight out: `sword and shield slash` is crossed 0-16, clean **17-32**,
+  crossed 33+; `sword and shield attack` is clean **0-58**, crossed 59+. Richard's Twin Hew opened
+  on nine crossed frames purely because the splice began at the overhead's wind-up (frame 10), and
+  no amount of blend tuning could have fixed that - the legs were the CLIP's. The same clip reads
+  clean as his Heavy because that state's window sits inside 17-32.
+- **Do NOT try to fix a crossing by easing into the clip.** A four-frame lead-in interpolating out
+  of the standing stance made it WORSE (11 crossed frames against 8): interpolating two UNCROSSED
+  leg poses can swing a thigh straight through the other leg, so the lead-in crossed on its own
+  account while the engine's blend into it still crossed. Move the window instead.
+- **`CrucibleSpecialStates.BlendIn` is 0.05 s, and the number only started mattering once it was
+  WRITTEN every run.** It used to be set inside `if (!reachable)`, i.e. only when the Any State
+  transition was first created, so editing the constant changed nothing on a controller that
+  already had its transitions - and the console still logged the new figure. The shorter blend is
+  what stopped a special's first frames dipping the boots 0.16 under the arena, and a long
+  cross-fade between two distant poses is also exactly what reads as **melty**.
+- **`Wire special and riposte states` did not include Salaadin at all** (the roster was P1/P2/P3),
+  so every shared change made there stopped at three fighters. He is in it now; check the roster
+  before assuming a shared editor pass covered everyone.
+- **A drained fighter's `TryAttack` returns FALSE and a sampler then measures the idle.** Six
+  landed specials empty the bar, after which every later move in the sweep reports the idle clip's
+  numbers as if they were the move's - which is how Richard's Twin Hew came back as
+  "Richard_Idle, 5 crossed frames" twice. Set `Stats.currentStamina = maxStamina` before each
+  swing and BAIL on a false return rather than sampling. (`Stats.currentHealth` too - a K.O. ends
+  the pass just as silently.)
+- **`GetCurrentAnimatorClipInfo(0)[0].clip.name` is not a reliable read of what is playing**; it
+  can keep naming the idle through a whole attack. Take the entry with the highest `weight`, or
+  read the state name - and trust the measurements (a 2.97 hip rise is a leap, not an idle).
+- **`BakeMesh` output carries no bone weights.** Take `boneWeights` from `sharedMesh` and the
+  positions from the baked mesh; guarding on the baked mesh's own weights skips every renderer and
+  the result is a silent "no feet found" rather than an error.
+
 ## Measuring a move from the CLI (the harness that works)
 
 - **`Time.captureDeltaTime = 1f/60f` makes one rendered frame equal one 60 fps game frame**, so a

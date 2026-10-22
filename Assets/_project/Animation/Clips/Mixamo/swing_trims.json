@@ -1,11 +1,11 @@
 {
   "Richard_DoubleHigh": {
-    "core_end": 55,
-    "core_start": 35,
+    "core_end": 34,
+    "core_start": 14,
     "first": 1,
     "fps": 30,
-    "last": 68,
-    "peak": 47
+    "last": 37,
+    "peak": 28
   },
   "Richard_ShieldBash": {
     "core_end": 40,
@@ -16,12 +16,12 @@
     "peak": 33
   },
   "Richard_ShieldCharge": {
-    "core_end": 30,
-    "core_start": 14,
+    "core_end": 20,
+    "core_start": 8,
     "first": 1,
     "fps": 30,
-    "last": 34,
-    "peak": 23
+    "last": 25,
+    "peak": 16
   },
   "Richard_Thrust": {
     "core_end": 20,

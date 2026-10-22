@@ -34,11 +34,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Richard_DoubleHigh
+      name: Richard_Special_DoubleHigh
       takeName: restlead
       internalID: -5812743650383702295
-      firstFrame: 1
-      lastFrame: 68
+      firstFrame: 2
+      lastFrame: 37
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

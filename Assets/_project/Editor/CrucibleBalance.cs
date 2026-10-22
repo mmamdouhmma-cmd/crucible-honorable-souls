@@ -115,9 +115,9 @@ public static class CrucibleBalance
             N("Richard_Light_Thrust",                  7,  15,  5,     11,  3,  9,   7),
             N("Richard_Medium_Slash",                  9,  18,  2,     15,  4, 11,   9),
             N("Richard_Heavy_Overhead",               11,  21,  8,     22,  5, 17,  11),
-            N("Richard_Special_ShieldCharge",         14,  38, 10,     40,  5, 21,  13),   // slower on the user's call: the run read as "looney toons" at 47 frames
+            N("Richard_Special_ShieldCharge",         14,  38, 10,     28,  5, 15,  13),   // 48 f: slow enough not to read as "looney toons", short enough that the run is not a journey
             N("Richard_Special_ShieldBash",           15,  43, 12,     22,  5, 20,  13),
-            N("Richard_Special_DoubleHigh",           16,  48, 10,     30,  5, 20,  14),
+            N("Richard_Special_DoubleHigh",           16,  48, 10,     52,  5, 15,  14),   // 72 f for TWO swings; the hit is the second one, so the startup covers the first
             N("Richard_Riposte_Dash",                  9,  12,  0,     12,  4, 14,   9),
             N("Richard_Riposte_Parry",                 8,  12,  0,     12,  4, 14,   9),
         },

@@ -390,8 +390,16 @@ GUARD = os.path.join(PACK, "sword and shield block idle.fbx")
 # foot 0.953 BEHIND the right, one leg directly behind the other, which is the "legs cross" the user
 # reported. His own idle (the clip Richard_Idle plays) stands 1.750 wide with 0.254 of stagger, so
 # the thrust takes its stance from there and blends in and out of the idle without moving the feet.
-LUNGE = os.path.join(PACK, "sword and shield attack (4).fbx")
-LUNGE_FRAME = 15   # its measured swing peak: both boots down, weight forward
+# Stance for the thrust, chosen by MEASUREMENT, not by which clip it came from. An authored clip is
+# imported CopyFromOther / Based Upon ORIGINAL while a pack clip is CreateFromThisModel / Body
+# Orientation, so the same pose does NOT land the same way: copying the idle's frame gives a stance
+# that measures -0.066 in play where the idle itself measures +1.741. What Blender does predict is
+# the SIGN. Ankle gap along the hip joints' own axis, per source pose: block idle -0.531 (crossed,
+# the original complaint), idle (4) -0.321, every attack frame but one negative, and the WALK
+# +0.38 to +0.50 throughout. Frame 2 is its double-support beat - both boots down (0.082 / 0.040
+# against a 0.074 rest ankle) and the widest gap in the cycle.
+STANCE = os.path.join(PACK, "sword and shield walk.fbx")
+STANCE_FRAME = 2
 
 
 def clip_thrust(arm, name="Richard_Thrust", travel=0.0, frames=(0, 7, 15, 19, 33)):
@@ -401,10 +409,13 @@ def clip_thrust(arm, name="Richard_Thrust", travel=0.0, frames=(0, 7, 15, 19, 33
     charge version read as a run-in rather than a stand-and-poke.
     """
     # The stance is a single frozen pose, so the frame it is borrowed from IS the whole clip's
-    # footing. The block idle's stance is nearly in line, one boot behind the other, which is the
-    # "legs cross" the user reported; "attack (4)" is the pack's compact standing cut, feet planted
-    # square and apart with no travel, and it is a pack pose rather than anything hand-authored.
-    base = take(LUNGE)[int(LUNGE_FRAME)]
+    # footing, and it decides what the move reads as. The block idle's is nearly in line, one boot
+    # behind the other - the "legs cross" the user reported. "attack (4)" uncrossed them but it is
+    # a CUT's footing, so the thrust read as a lunging slash; the user asked for the plain thrust
+    # back. His own idle is the answer: he stands as he stands, and only the arm moves. The arm
+    # ends up straight rather than exactly on the target (pose() reports the shortfall) - from an
+    # upright stance the shoulder is further back than the target, and a straight arm IS the thrust.
+    base = take(STANCE)[STANCE_FRAME]
     f_start, f_cock, f_hit, f_hold, f_end = frames
 
     def stance():
@@ -467,21 +478,59 @@ def clip_shield_bash(arm, name="Richard_ShieldBash"):
     return bash_out + len(cut) - 1
 
 
+def blend_frames(fa, fb, t):
+    """Cross-fade two pack frames. A hard cut between two takes snaps every bone at once, which is
+    what a spliced clip reads as; four frames of this hides the seam without posing anything."""
+    out = {}
+    for k, (ma, la) in fa.items():
+        if k not in fb:
+            out[k] = (ma, la)
+            continue
+        mb, lb = fb[k]
+        ta, ra, sa = ma.decompose()
+        tb, rb, sb = mb.decompose()
+        out[k] = (Matrix.LocRotScale(ta.lerp(tb, t), ra.slerp(rb, t), sa.lerp(sb, t)),
+                  la.lerp(lb, t))
+    return out
+
+
 def clip_double_high(arm, name="Richard_DoubleHigh"):
-    """SP + Heavy: the pack's overhead cut spliced straight into its rising cut - two high swings."""
-    a = take(os.path.join(PACK, "sword and shield slash.fbx"))        # overhead, contact ~18
-    b = take(os.path.join(PACK, "sword and shield slash (3).fbx"))    # diagonal-up, contact ~27
-    a_end = 30            # drop the overhead's long recovery
-    blend = 6
+    """SP + Heavy: TWO high swings, which is the whole point of the move.
+
+    A single pack chop was tried here and the user's verdict was that it is Bjorn's special: his
+    Blood Eagle is "standing melee run jump attack", a leaping overhead, and the sword pack's
+    "attack" is an overhead+leap too, so the two read the same whatever the weapon. This splices
+    the pack's fast overhead into its big committed chop - both frames verbatim, only the join is
+    authored - and takes each swing's core so the pair fits a 60-frame budget at x1.00.
+    """
+    a = take(os.path.join(PACK, "sword and shield slash.fbx"))     # overhead, contact ~18
+    b = take(os.path.join(PACK, "sword and shield attack.fbx"))    # the big chop, contact ~36
+    # BOTH windows are the clips' UNCROSSED ranges, measured per frame as the ankle separation
+    # along the hip joints' own axis: "slash" is crossed at 0-16 and 33+ and clean only at 17-32,
+    # "attack" is clean from 0-58. Taking the overhead from frame 10 - its wind-up - meant the move
+    # opened on nine frames of crossed legs that were the CLIP's, not the transition's, and no
+    # amount of blend tuning could have fixed them. Starting at 17 gives up the wind-up, which the
+    # blend out of the idle covers anyway.
+    A0, A1 = 17, 32        # the overhead from its contact through the follow-through
+    B0, B1 = 28, 45        # the chop through its own contact
+    BLEND = 4
     f = 0
-    for i in range(a_end):
+    # No lead-in here, and the reason is worth keeping: easing out of the standing stance over four
+    # frames made the crossing WORSE (11 frames against 8). Interpolating two uncrossed leg poses
+    # can swing a thigh THROUGH the other leg, so the lead-in crossed on its own account and the
+    # engine's blend into it still crossed as well. The answer was on the engine side - the special
+    # blend-in in CrucibleSpecialStates, which is also what a long one reads as: melty.
+    for i in range(A0, A1):
         apply_frame(arm, a[i])
-        key(arm, f)
-        f += 1
-    for i in range(10, len(b)):     # skip the rising cut's slow wind-up
+        key(arm, f); f += 1
+    for j in range(BLEND):
+        t = (j + 1) / float(BLEND + 1)
+        apply_frame(arm, blend_frames(a[A1 - 1], b[B0], t))
+        key(arm, f); f += 1
+    for i in range(B0, B1):
         apply_frame(arm, b[i])
-        key(arm, f)
-        f += 1
+        key(arm, f); f += 1
+    print(f"  twin hew: {f} frames = slash[{A0}:{A1}] + {BLEND} blend + attack[{B0}:{B1}]")
     return f - 1
 
 
@@ -508,8 +557,8 @@ def clip_charge(arm, name="Richard_ShieldCharge"):
     """
     run = take(os.path.join(PACK, "sword and shield run.fbx"))
     cycle = len(run)
-    n = 34                                      # paired with the 66-frame budget: the whole clip at x1.00
-    reach_start, reach_done = 14, 22            # the arm comes out over these frames; contact ~23
+    n = 24                                      # paired with the 48-frame budget: the whole clip at x1.00
+    reach_start, reach_done = 8, 15             # the arm comes out over these frames; contact ~16
     OUT = (0.52, 0.06, 0.30)                    # arm extended, point forward
     base = None
     for f in range(n):

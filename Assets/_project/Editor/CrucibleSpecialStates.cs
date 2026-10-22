@@ -20,10 +20,17 @@ public static class CrucibleSpecialStates
     const string P1Ctrl = "Assets/_project/Animation/Controllers/P1_Bjorn.controller";
     const string P2Ctrl = "Assets/_project/Animation/Controllers/P2_Miyamoto.controller";
     const string P3Ctrl = "Assets/_project/Animation/Controllers/P3_Richard.controller";
+    // His character folder is lowercase on disk; see Folder() in CrucibleBalance.cs.
+    const string P4Ctrl = "Assets/_project/Animation/Controllers/P4_Salaadin.controller";
 
     // Blend into a special. The same rule the attack transitions already use: fixed duration, no
     // exit time, because the attack's own frame data decides when it starts and ends.
-    const float BlendIn = 0.12f;
+    // 0.05 s, down from 0.12. A special's first pose is a long way from the idle, and the blend
+    // between them is not the clip: measured on Richard's Twin Hew, the 7-frame cross-fade swung a
+    // thigh THROUGH the other leg for 8 frames and dipped his boots 0.16 under the arena while
+    // every frame of the clip itself measured clean. Shortening it is also what stops a special
+    // reading as melty - a long cross-fade is exactly that.
+    const float BlendIn = 0.05f;
     const float ExitAt = 0.9f;
 
     [MenuItem("Crucible/Animation/Wire special and riposte states")]
@@ -32,6 +39,9 @@ public static class CrucibleSpecialStates
         Run(P1Ctrl, "Assets/_project/Characters/Bjorn/Attacks", "Bjorn_Idle");
         Run(P2Ctrl, "Assets/_project/Characters/Miyamoto/Attacks", "Miyamoto_Idle");
         if (System.IO.File.Exists(P3Ctrl)) Run(P3Ctrl, "Assets/_project/Characters/Richard/Attacks", "Richard_Idle");
+        // Salaadin was missing from this list entirely, so every shared change made here - the
+        // blend duration among them - stopped at three fighters while his stayed as first wired.
+        if (System.IO.File.Exists(P4Ctrl)) Run(P4Ctrl, "Assets/_project/Characters/salaadin/Attacks", "Salaadin_Idle");
         AssetDatabase.SaveAssets();
         Debug.Log("Special and riposte states wired. Run 'Use Mixamo packs' next to give them their clips.");
     }
@@ -78,18 +88,21 @@ public static class CrucibleSpecialStates
                 Debug.Log($"added state {stateName}");
             }
 
-            // Any State -> the special, on its trigger.
-            bool reachable = sm.anyStateTransitions.Any(t => t.destinationState == st);
-            if (!reachable)
+            // Any State -> the special, on its trigger. The DURATION is written every run, not only
+            // when the transition is created: it used to sit inside the "if (!reachable)" branch, so
+            // changing BlendIn did nothing to a controller that already had its transitions and the
+            // console still reported the new number. Read the controller back after this runs.
+            var existing = sm.anyStateTransitions.FirstOrDefault(t => t.destinationState == st);
+            if (existing == null)
             {
-                var t = sm.AddAnyStateTransition(st);
-                t.AddCondition(AnimatorConditionMode.If, 0f, trigger);
-                t.hasExitTime = false;
-                t.hasFixedDuration = true;
-                t.duration = BlendIn;
-                t.canTransitionToSelf = false;
-                Debug.Log($"{stateName}: Any State -> state on {trigger}, {BlendIn:0.00}s blend");
+                existing = sm.AddAnyStateTransition(st);
+                existing.AddCondition(AnimatorConditionMode.If, 0f, trigger);
+                existing.canTransitionToSelf = false;
+                Debug.Log($"{stateName}: Any State -> state on {trigger}");
             }
+            existing.hasExitTime = false;
+            existing.hasFixedDuration = true;
+            existing.duration = BlendIn;
 
             // ... and back to the guard when it has played out.
             if (idle != null && !st.transitions.Any(t => t.destinationState == idle))

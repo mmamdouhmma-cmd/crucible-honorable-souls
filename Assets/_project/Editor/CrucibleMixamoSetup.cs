@@ -122,7 +122,12 @@ public static class CrucibleMixamoSetup
         // chest, a spell-cast gesture. So these share with Salaadin, as the walks and slash (5) already
         // do - both are real swings, no spin, no travel.
         ("Richard_Special_ShieldBash",     "SwordShieldPack", "sword and shield slash (3)",  false),  // diagonal-up, 48 f, yaw 109, travel 0.01. Salaadin's dodge riposte - the lowest-visibility clip to share
-        ("Richard_Special_DoubleHigh",     "SwordShieldPack", "sword and shield attack",     false),  // the pack's biggest committed chop: drop 4.00, yaw 86, 71 f
+        // Back to a spliced clip, on the user's call: a single pack chop here reads as BJORN's
+        // special - his Blood Eagle is "standing melee run jump attack" and this pack's "attack" is
+        // an overhead+leap too, so the two look the same whatever the weapon. Twin Hew is two high
+        // swings, which is what the move is named for. See clip_double_high: pack frames verbatim,
+        // only the four-frame join is authored.
+        ("Richard_Special_DoubleHigh",     "Custom",          "Richard_DoubleHigh",          false),
         ("Richard_Riposte_Dash",           "SwordShieldPack", "sword and shield attack (4)", false),  // 31 f, the shortest cut in the pack
         ("Richard_Riposte_Parry",          "SwordShieldPack", "sword and shield kick",       false),  // a BOOT: hitsWithWeapon is off
         ("React_Front",                    "SwordShieldPack", "sword and shield impact",     false),

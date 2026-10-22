@@ -2814,3 +2814,49 @@ and silently fitted the OLD clip map (`trimmed=False` in its own log is the tell
 `Apply the roster balance` wrote the new frame budget in memory but **never to disk**, so the charge
 kept its 47-frame budget and the window cut the first nine frames off the run. Read the asset back,
 not the console.
+
+### 2026-10-22 - Richard's three: a short run, a plain thrust, and two swings that are not Bjorn's
+
+**The run is shorter.** 48 frames against 66, clip 24 frames against 34, measured 53 game frames
+travelling 2.05 - where the first attempt at "slower" had made it a 71-frame journey.
+
+**The light attack is a plain thrust again, and the stance had to be picked by measurement.** The
+lunging footing that uncrossed his legs last time came from the pack's standing CUT, so the thrust
+read as a lunging slash. His own idle is the obvious answer and it is wrong twice over: `take()[0]`
+is the clip's first frame, and an authored clip is imported CopyFromOther / Based Upon ORIGINAL
+while a pack clip is CreateFromThisModel / Body Orientation - so the same pose does not land the
+same way. Copying the idle's frame measured **-0.066** in play where the idle itself measures
++1.741. What Blender does predict is the SIGN, and the scan across the pack is decisive: block idle
+-0.531, idle (4) -0.321, every attack frame but one negative, and the WALK **+0.38 to +0.50**
+throughout. Its frame 2 is the double-support beat, both boots down. Result: **+0.797, zero crossed
+frames**, and the arm now reaches within 0.053 of the target instead of 0.189 - a full extension.
+
+**Twin Hew is two swings again** - a single pack chop is Bjorn's special, since his Blood Eagle is
+a leaping overhead and the sword pack's "attack" is one too. It splices the pack's overhead into
+its big committed chop, frames verbatim, with a four-frame cross-fade at the join, and the hit
+lands on the second swing (52/5/15 = 72 frames, contact 27.4, x0.94).
+
+Getting the legs right took three attempts and the first two were wrong in instructive ways. A
+four-frame lead-in easing out of the standing stance made it WORSE - 11 crossed frames against 8 -
+because interpolating two uncrossed leg poses swings a thigh through the other leg. Shortening the
+special blend-in from 0.12 s to 0.05 s cleared the floor dip (12 frames at -0.099 to **zero**) but
+left the crossing, which proved the crossing was never the transition. The answer was in the source
+clips: measured per frame, `slash` is crossed 0-16 and 33+ and clean only at **17-32**, `attack` is
+clean 0-58. Moving the first swing into 17-32 gave **0 crossed frames, gap +0.117**.
+
+All six of Richard's moves now measure zero frames below the floor and zero crossed frames, bar one
+-0.018 blend frame on the shield bash.
+
+**Two silent-failure traps, both the same shape as the ones already on file.** `BlendIn` was only
+applied when the Any State transition was CREATED, so editing the constant did nothing to an
+existing controller while the console reported the new number - it is written every run now. And
+`Wire special and riposte states` never included Salaadin, so every shared change there had been
+stopping at three fighters; he is in the roster now and all four controllers read 0.05 s.
+
+**The verification harness was lying for two whole passes.** Six landed specials empty the stamina
+bar, `TryAttack` then returns false, and the sampler happily measured the IDLE and reported it as
+the move - which is where "SP+Heavy plays Richard_Idle with 5 crossed frames" came from. It tops
+the bar up before every swing now and bails on a false return. Two smaller ones found alongside:
+`GetCurrentAnimatorClipInfo(0)[0]` can name the idle right through an attack (take the highest
+weight), and `BakeMesh` output has no bone weights, so the foot-vertex probe must read them from
+`sharedMesh`.
