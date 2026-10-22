@@ -504,6 +504,19 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   negative because they pushed the MODEL down from a root floating on that overhang; measure them
   against the root only once the capsule bottom IS the root origin. **Verify against the arena, not
   y = 0**: the floor under the marks runs -0.065 to -0.267.
+- **A fighter's AUTHORED root height is not where he should stand, and two places used it.** The
+  capsule fit put every capsule's bottom on the soles, which makes the root land on the floor - but
+  `GameMenu.ResolveSpawns` (match marks) and `PlaceStaged` (character select) still took y from
+  each root's authored scene position (0.24 Bjorn, 0.75 the rest), measured when the capsule hung
+  up to 0.75 BELOW the feet and the root floated by that much. Both now call `GroundedY(at,
+  fallback)`, which raycasts down at the mark, ignores triggers and fighters, and takes the highest
+  hit; the authored y is only the fallback. **A fall can hide this**: `FreezeFighters` only disables
+  the `Fighter` component, so gravity still runs and a fighter spawned 0.8 in the air lands during
+  READY-3-2-1 - measure AT THE INSTANT OF PLACEMENT, not after settling. A raycast is also the only
+  version that survives an arena swap, since the floor under the marks is neither flat nor y=0.
+- **Measure a sole as the lowest FOOT-WEIGHTED baked vertex, never the lowest vertex.** Richard's
+  cape hangs 0.13 below his heels and Salaadin's coat does the same, so the plain minimum reports a
+  man sunk into the arena while his feet are on it.
 - **`ShieldWeaponMount` is now the mount table for ALL FOUR fighters, not just the shielded pair.**
   Its application used to sit inside `if (!twoHanded)`, so a Bjorn or Miyamoto entry was silently
   never applied - Miyamoto's katana had an entry written and still pointed backward through his

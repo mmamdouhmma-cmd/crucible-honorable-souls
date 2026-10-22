@@ -267,6 +267,31 @@ public class GameMenu : MonoBehaviour
 
     // ================================================================ match flow
 
+    /// <summary>
+    /// The y that stands a fighter ON the arena under <paramref name="at"/>, rather than at the
+    /// height his root happens to be authored at.
+    /// Since the capsule was fitted to the body (2026-10-22) the bottom of every fighter's
+    /// CapsuleCollider IS his root origin, so the root goes straight onto the floor. The authored
+    /// scene heights (0.24 Bjorn / 0.75 the rest) were measured when the capsule hung up to 0.75
+    /// BELOW the feet and the root therefore floated by exactly that much: left in place they spawn
+    /// a fighter up to 0.86 in the air and drop him through the count-in, and they stand him in the
+    /// air on the select screens. A raycast also survives an arena swap, which one authored height
+    /// cannot - the floor under the marks is not flat and not y=0 (it runs -0.065 to -0.267).
+    /// Triggers are ignored (the hitboxes are triggers) and so is anything belonging to a fighter.
+    /// </summary>
+    float GroundedY(Vector3 at, float fallback)
+    {
+        var hits = Physics.RaycastAll(new Vector3(at.x, at.y + 3f, at.z), Vector3.down, 20f,
+                                      ~0, QueryTriggerInteraction.Ignore);
+        float best = float.NaN;
+        for (int i = 0; i < hits.Length; i++)
+        {
+            if (hits[i].collider.GetComponentInParent<Fighter>() != null) continue;
+            if (float.IsNaN(best) || hits[i].point.y > best) best = hits[i].point.y;
+        }
+        return float.IsNaN(best) ? fallback : best;
+    }
+
     /// <summary>Spawn marks for the sides as they are now, each fighter keeping its own height.</summary>
     void ResolveSpawns()
     {
@@ -276,7 +301,7 @@ public class GameMenu : MonoBehaviour
             // X/Z from the side's mark, Y from this fighter's own root: the two roots sit at
             // different heights (0.24 / 0.75) because each model has its own ground offset, and
             // averaging them is what left both fighters floating once before.
-            spawnPos[i] = new Vector3(sideMark[side].x, ownY[i], sideMark[side].z);
+            spawnPos[i] = new Vector3(sideMark[side].x, GroundedY(sideMark[side], ownY[i]), sideMark[side].z);
             spawnRot[i] = sideRot[side];
         }
     }
@@ -1683,7 +1708,7 @@ public class GameMenu : MonoBehaviour
     {
         if (index < 0 || index >= roster.Length) return;
         var f = roster[index];
-        pos.y = ownY[index];                                 // each root has its own ground offset
+        pos.y = GroundedY(pos, ownY[index]);                 // on the floor, whatever arena is up
         Vector3 toCam = camPos - pos;
         toCam.y = 0f;
         if (toCam.sqrMagnitude < 0.01f) toCam = Vector3.back;

@@ -2618,3 +2618,37 @@ Heavy closes to 2.10 with the axe 0.528 from the spine, 11 damage.
 
 Still carried: Richard's four authored clips want re-exporting through `richard_clips.py` against
 his new body.
+
+### 2026-10-22 — the spawn heights the capsule fix left behind
+
+Picked up after the laptop went down mid-session. The four fixes from the morning were all on
+disk and all still measure right in play: Miyamoto's katana reads **+0.554 against his own
+forward** with **0.694** of torso clearance (it was −0.94 and 0.038 — the blade inside his chest),
+both his hands sit on the hilt (`offHandMiss` 0.0000, finger gap 0.021), Richard's shield faces
+**1.000 out and 0.003 up** with his sword gripped at 0.022, Bjorn's axe is forward 0.833 at 0.555
+clearance, and Bjorn's two spins still carry `lungeStopDistance` 0.9 / `lungeMaxDistance` 2.6 in
+their assets.
+
+Re-verifying the floating turned up the tail of it. The capsule fit was right — every fighter's
+capsule bottom IS his root origin now, and each one SETTLES with his soles on the arena. But two
+places still read the fighter's **authored scene height**, and those numbers (0.24 Bjorn, 0.75 the
+other three) were measured back when the capsule hung up to 0.75 BELOW the feet and the root
+floated by exactly that much. `ResolveSpawns` used them for the match marks and `PlaceStaged` for
+the character-select line-up, so every fighter was still **put into the air** — 0.35 (Bjorn) to
+0.82 (the rest) above the floor — and only *looked* fixed because `FreezeFighters` leaves gravity
+running and he lands during READY-3-2-1. The earlier verification measured him after that fall,
+which is why it read clean.
+
+Both now go through one `GroundedY(at, fallback)` helper: raycast down at the mark, ignore triggers
+(the hitboxes are triggers) and anything belonging to a fighter, take the highest hit. A raycast
+also survives an arena swap, which one authored height cannot — the floor under the marks is
+neither flat nor y=0. The authored height stays as the fallback when nothing is hit.
+
+Measured at both pairings' marks, at the instant of placement and before gravity can hide
+anything: **capsule bottom 0.0000 above the floor for all four**, and the real soles (foot-weighted
+baked vertices, not the lowest vertex — Richard's cape hangs 0.13 below his heels and reads as a
+sunken man) land within **0.013**: Bjorn −0.005, Miyamoto +0.010, Richard +0.004, Salaadin +0.013.
+No drop at the count-in and nothing standing in the air on the select screens.
+
+Still carried: Richard's four authored clips want re-exporting through `richard_clips.py` against
+his new body.
