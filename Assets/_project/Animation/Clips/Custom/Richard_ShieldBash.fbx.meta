@@ -34,11 +34,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Richard_Special_ShieldBash
+      name: Richard_ShieldBash
       takeName: restlead
       internalID: -5812743650383702295
-      firstFrame: 7.0499997
-      lastFrame: 57.75
+      firstFrame: 1
+      lastFrame: 58
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

@@ -2765,3 +2765,52 @@ All four stand with their capsule bottoms exactly on the floor and their soles w
 charge looked like it could not move — re-space before each one. Five bit-identical frames in a
 series is hit-stop, which is the game working, not a freeze. And a KO silently ends the run: six
 landed attacks put Miyamoto at 0/80, after which every move in his own pass reported NOT FIRED.
+
+### 2026-10-22 — Four more from play-testing: the run, two melty specials, crossed legs, a flat blade
+
+**Richard's two "melty" specials are pack clips now, and picking them took two rounds.** The user
+asked for "any 2 similar animations without changing them". The trap is that `clip_measure.py`
+WRAPS hip yaw, so a full turn reads as a small one: `attack (3)` looked like a 36 deg cut and is a
+396 deg spin. Run `clip_curves.py` instead, which unwraps — and the pack turns out to be mostly
+spins (attack (2) 429, slash (2) 507, slash (4) 391). The only two clips no fighter used, `power up`
+and `casting`, measure as overheads and are **not strikes at all**: photographed in play they hold
+the sword up across the chest, a spell-cast gesture. So the specials share with Salaadin, as the
+walks and slash (5) already do: **SP+Medium takes `slash (3)`** (diagonal-up, 48 f, yaw 109, no
+travel — his dodge riposte, the lowest-visibility clip to share) and **SP+Heavy takes
+`sword and shield attack`** (the pack's biggest committed chop: drop 4.00, yaw 86). Both at x1.00.
+
+**The charge was Looney Tunes because two things stacked.** The clip held the upper body in a fixed
+carry pose every frame — a man sprinting with his shoulders locked — and the state was pinned at
+1.2x on top of a clip that already crammed 1.5 run cycles into 33 frames. Now `apply_frame` copies
+the pack run's **whole** upper body for the approach and only the right arm is taken over at the
+end, lerped out of wherever the run's swing left it (`hand_rel`) so there is no jump. The budget
+went 24/5/18 = 47 frames to **40/5/21 = 66**, which is what lets the whole 34-frame clip play:
+measured 1.07 s at **x0.97**, 71 game frames, travelling **2.42** against the old 1.79.
+
+**His light attack crossed his legs because the stance it borrows is a fencing stance.** The thrust
+freezes one pose for the whole clip, and it took it from the pack's `block idle`, whose feet are in
+line — measured along the hip joints' own axis the ankles sat at **-0.535**, i.e. the left boot on
+the wrong side of the right. It now borrows `attack (4)` frame 15, a standing cut with both boots
+planted apart: **+0.531**, no crossed frames, and the arm reaches full extension without the IK
+falling short. Two wrong turns on the way: his own idle stands upright, which moves the shoulder
+back and puts the thrust target 0.189 beyond his reach, and overlaying the guard's torso on the
+idle's hips doubles the lean — photographed, it bent him double.
+
+**Miyamoto's spin needed a new aim mode, not a new clip.** The blade rode **-41 to -7 degrees**
+below horizontal all through Kuruma, which is what reads as a back fist, and neither existing mode
+fixes it: `Full` aims at the opponent's CHEST, which from a raised hand points the tip down, and
+`YawOnly` leaves the clip's own wheel (-36 to +39) alone. **`AimMode.Level`** flattens the desired
+direction to the horizon before aiming, so the blade stays level AND points at the man: measured
+**0.2 to 3.2 degrees** through the hit window. The enum is appended, never reordered — those values
+serialize by index on every AttackData asset.
+
+Across both fighters' twelve moves: zero frames below the floor. The two remaining negatives are a
+single blend frame on Richard's bash (-0.018) and Miyamoto's Nito Cross, where the legs cross
+because the move is a full turn.
+
+**And the two process traps that cost the most time here**, both already written in CLAUDE.md and
+both worth re-reading before the next session: `Use Mixamo packs` ran against a **stale assembly**
+and silently fitted the OLD clip map (`trimmed=False` in its own log is the tell), and
+`Apply the roster balance` wrote the new frame budget in memory but **never to disk**, so the charge
+kept its 47-frame budget and the window cut the first nine frames off the run. Read the asset back,
+not the console.

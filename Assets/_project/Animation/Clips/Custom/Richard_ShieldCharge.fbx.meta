@@ -34,8 +34,8 @@ ModelImporter:
       name: Richard_Special_ShieldCharge
       takeName: restlead
       internalID: -5812743650383702295
-      firstFrame: 5.799999
-      lastFrame: 33
+      firstFrame: 2
+      lastFrame: 34
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

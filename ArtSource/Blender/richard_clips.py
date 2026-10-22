@@ -385,6 +385,13 @@ def export(arm, name, last):
 # ---------------------------------------------------------------------------------------------
 
 GUARD = os.path.join(PACK, "sword and shield block idle.fbx")
+# The thrust's legs are a single frozen pose, so the stance it borrows IS the stance for the whole
+# clip. The block idle's is a FENCING stance - measured in play, lateral spread 0.046 with the left
+# foot 0.953 BEHIND the right, one leg directly behind the other, which is the "legs cross" the user
+# reported. His own idle (the clip Richard_Idle plays) stands 1.750 wide with 0.254 of stagger, so
+# the thrust takes its stance from there and blends in and out of the idle without moving the feet.
+LUNGE = os.path.join(PACK, "sword and shield attack (4).fbx")
+LUNGE_FRAME = 15   # its measured swing peak: both boots down, weight forward
 
 
 def clip_thrust(arm, name="Richard_Thrust", travel=0.0, frames=(0, 7, 15, 19, 33)):
@@ -393,14 +400,19 @@ def clip_thrust(arm, name="Richard_Thrust", travel=0.0, frames=(0, 7, 15, 19, 33
     travel > 0 slides the hips forward through the stab, which is what makes the SP + Light
     charge version read as a run-in rather than a stand-and-poke.
     """
-    guard = take(GUARD)[0]
+    # The stance is a single frozen pose, so the frame it is borrowed from IS the whole clip's
+    # footing. The block idle's stance is nearly in line, one boot behind the other, which is the
+    # "legs cross" the user reported; "attack (4)" is the pack's compact standing cut, feet planted
+    # square and apart with no travel, and it is a pack pose rather than anything hand-authored.
+    base = take(LUNGE)[int(LUNGE_FRAME)]
     f_start, f_cock, f_hit, f_hold, f_end = frames
-    apply_frame(arm, guard)
-    hips = B(arm, "Hips")
-    hips_rest = hips.location.copy()
 
     def stance():
-        apply_frame(arm, guard)
+        apply_frame(arm, base)
+
+    stance()
+    hips = B(arm, "Hips")
+    hips_rest = hips.location.copy()
 
     # f0 - the guard the clip starts and ends in
     stance()
@@ -473,32 +485,44 @@ def clip_double_high(arm, name="Richard_DoubleHigh"):
     return f - 1
 
 
-def clip_charge(arm, name="Richard_ShieldCharge"):
-    """SP + Light: three running strides behind the shield, the sword already out when it lands.
+def hand_rel(arm, side):
+    """Where a hand sits right now, in the (fwd, lateral, up) metres-from-the-hips that pose() takes."""
+    d = wpos(arm, B(arm, side + "Hand")) - wpos(arm, B(arm, "Hips"))
+    return (d.dot(FWD), d.dot(RIGHT), d.dot(UP))
 
-    The first version ran for 18 frames and then FROZE the legs on the run's last pose for 22 more
-    while only the arms moved. On screen that reads as a pause in the middle of the run, which is
-    exactly what the user reported ("he runs, pauses in the running animation, then thrusts").
-    The legs now run the WHOLE clip - the pack run is one cycle, i.e. two steps, so it is sampled
-    cyclically for three steps, the user's stated maximum - and the sword is driven forward over
-    the first half so it is fully extended BEFORE the last stride lands, rather than being pushed
-    out from a standstill afterwards.
+
+def clip_charge(arm, name="Richard_ShieldCharge"):
+    """SP + Light: he runs in and thrusts, and the run is the PACK's run - arms and all.
+
+    Two rounds of play-testing on this one. The first froze the legs mid-run while the arms moved,
+    which read as a pause. The second ran the legs the whole way but held the upper body in a fixed
+    carry pose every frame, overriding the run's own arm swing: a man sprinting with his shoulders
+    locked, which the user called "looney toons" - and the state was pinned at 1.2x on top of it.
+
+    So the upper body is simply LEFT ALONE for the approach: apply_frame copies every bone the pack
+    keyed, so his arms, shoulders and spine do what a run does. Only at the end is the right arm
+    taken over for the thrust, and it is lerped out of WHERE THE RUN LEFT IT (hand_rel, captured on
+    the first thrust frame) rather than snapped to an absolute pose, so there is no jump at the
+    hand-over. The legs keep running underneath it: the point arrives while he is still closing,
+    which is what "sword forward as soon as it hits" asks for.
     """
     run = take(os.path.join(PACK, "sword and shield run.fbx"))
     cycle = len(run)
-    n = int(round(cycle * 1.5))                 # three steps
-    CARRY = (-0.02, 0.30, 0.12)                 # sword back, shield leading
-    OUT = (0.46, 0.08, 0.33)                    # arm extended, point forward
-    hit = int(round(n * 0.75))                  # the stride the point arrives on
+    n = 34                                      # paired with the 66-frame budget: the whole clip at x1.00
+    reach_start, reach_done = 14, 22            # the arm comes out over these frames; contact ~23
+    OUT = (0.52, 0.06, 0.30)                    # arm extended, point forward
+    base = None
     for f in range(n):
-        apply_frame(arm, run[f % cycle])
-        t = min(1.0, f / float(max(hit - 2, 1)))
-        t = t * t * (3 - 2 * t)                 # smoothstep, so the arm does not snap out
-        right = tuple(CARRY[i] + (OUT[i] - CARRY[i]) * t for i in range(3))
-        pose(arm, left=(0.32, -0.21, 0.30), shield=(UP, FWD),
-             right=right, blade=(FWD, -RIGHT))
+        apply_frame(arm, run[f % cycle])        # legs AND upper body, the whole run
+        if f >= reach_start:
+            if base is None:
+                base = hand_rel(arm, "Right")   # hand over from wherever the run's swing has it
+            t = min(1.0, (f - reach_start) / float(reach_done - reach_start))
+            t = t * t * (3 - 2 * t)             # smoothstep, so the arm does not snap out
+            right = tuple(base[i] + (OUT[i] - base[i]) * t for i in range(3))
+            pose(arm, right=right, blade=(FWD, -RIGHT))
         key(arm, f)
-    print(f"  charge: {n} frames from a {cycle}-frame run cycle x1.5, point out by frame {hit}")
+    print(f"  charge: {n} frames of the {cycle}-frame run cycle, arm out {reach_start}-{reach_done}")
     return n - 1
 
 

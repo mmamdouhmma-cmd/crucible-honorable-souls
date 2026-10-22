@@ -218,7 +218,22 @@ public class WeaponAim : MonoBehaviour
         Vector3 desired = (target - grip).normalized;
         float ang, applied;
         Quaternion rot;
-        if (mode == AimMode.YawOnly)
+        if (mode == AimMode.Level)
+        {
+            // Hold the blade LEVEL and pointed at the opponent. A spin whose blade wheels through
+            // the vertical reads as a back fist rather than a cut - Kuruma's swings from -36 to +39
+            // degrees - and neither Full nor YawOnly fixes it: Full aims at the chest, which from a
+            // raised hand points the tip DOWN (measured -41 to -7), and YawOnly leaves the clip's
+            // own wheel alone. This flattens the desired direction to the horizon first.
+            Vector3 flat = desired; flat.y = 0f;
+            if (flat.sqrMagnitude < 1e-4f) return;
+            desired = flat.normalized;
+            ang = Vector3.Angle(current, desired);
+            if (ang < 0.5f) return;
+            applied = Mathf.Min(ang, cap) * w;
+            rot = Quaternion.AngleAxis(applied, Vector3.Cross(current, desired).normalized);
+        }
+        else if (mode == AimMode.YawOnly)
         {
             // Turn the blade about the vertical axis only, so a chop stays a chop but lands on the centre line.
             Vector3 c = current; c.y = 0f;

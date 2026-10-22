@@ -1,302 +1,302 @@
 {
- "standing melee attack horizontal": {
-  "first": 1,
-  "last": 73,
-  "fps": 30,
-  "peak": 30,
-  "core_start": 17,
-  "core_end": 34,
-  "peak_speed_m_per_frame": 0.3031
- },
- "standing melee attack 360 high": {
-  "first": 1,
-  "last": 85,
-  "fps": 30,
-  "peak": 33,
-  "core_start": 12,
-  "core_end": 44,
-  "peak_speed_m_per_frame": 0.2747
- },
- "standing melee attack downward": {
-  "first": 1,
-  "last": 69,
-  "fps": 30,
-  "peak": 26,
-  "core_start": 3,
-  "core_end": 32,
-  "peak_speed_m_per_frame": 0.2371
- },
- "standing melee attack backhand": {
-  "first": 1,
-  "last": 96,
-  "fps": 30,
-  "peak": 32,
-  "core_start": 22,
-  "core_end": 46,
-  "peak_speed_m_per_frame": 0.3342
- },
- "standing react large gut": {
-  "first": 1,
-  "last": 46,
-  "fps": 30,
-  "peak": 5,
-  "core_start": 1,
-  "core_end": 20,
-  "peak_speed_m_per_frame": 0.0616
- },
- "standing block react large": {
-  "first": 1,
-  "last": 41,
-  "fps": 30,
-  "peak": 10,
-  "core_start": 3,
-  "core_end": 32,
-  "peak_speed_m_per_frame": 0.0845
- },
- "great sword slash": {
-  "first": 1,
-  "last": 39,
-  "fps": 30,
-  "peak": 18,
-  "core_start": 4,
-  "core_end": 39,
-  "peak_speed_m_per_frame": 0.2289
- },
- "great sword slash (2)": {
-  "first": 1,
-  "last": 107,
-  "fps": 30,
-  "peak": 52,
-  "core_start": 42,
-  "core_end": 65,
-  "peak_speed_m_per_frame": 0.2314
- },
- "great sword slash (3)": {
-  "first": 1,
-  "last": 56,
-  "fps": 30,
-  "peak": 24,
-  "core_start": 1,
-  "core_end": 41,
-  "peak_speed_m_per_frame": 0.1497
- },
- "great sword attack": {
-  "first": 1,
-  "last": 37,
-  "fps": 30,
-  "peak": 15,
-  "core_start": 1,
-  "core_end": 23,
-  "peak_speed_m_per_frame": 0.1419
- },
- "great sword high spin attack": {
-  "first": 1,
-  "last": 57,
-  "fps": 30,
-  "peak": 33,
-  "core_start": 9,
-  "core_end": 22,
-  "peak_speed_m_per_frame": 0.2164
- },
- "great sword impact": {
-  "first": 1,
-  "last": 27,
-  "fps": 30,
-  "peak": 6,
-  "core_start": 1,
-  "core_end": 27,
-  "peak_speed_m_per_frame": 0.0293
- },
- "standing melee attack 360 low": {
-  "first": 1,
-  "last": 70,
-  "fps": 30,
-  "peak": 29,
-  "core_start": 23,
-  "core_end": 34,
-  "peak_speed_m_per_frame": 0.2256
- },
- "standing melee run jump attack": {
-  "first": 1,
-  "last": 111,
-  "fps": 30,
-  "peak": 52,
-  "core_start": 47,
-  "core_end": 54,
-  "peak_speed_m_per_frame": 0.417
- },
- "great sword slash (4)": {
-  "first": 1,
-  "last": 55,
-  "fps": 30,
-  "peak": 11,
-  "core_start": 4,
-  "core_end": 14,
-  "peak_speed_m_per_frame": 0.2548
- },
- "great sword slash (5)": {
-  "first": 1,
-  "last": 44,
-  "fps": 30,
-  "peak": 19,
-  "core_start": 3,
-  "core_end": 25,
-  "peak_speed_m_per_frame": 0.0864
- },
- "standing melee combo attack ver. 3": {
-  "first": 1,
-  "last": 83,
-  "fps": 30,
-  "peak": 32,
-  "core_start": 26,
-  "core_end": 36,
-  "peak_speed_m_per_frame": 0.3306
- },
- "standing melee attack kick ver. 2": {
-  "first": 1,
-  "last": 43,
-  "fps": 30,
-  "peak": 19,
-  "core_start": 15,
-  "core_end": 23,
-  "peak_speed_m_per_frame": 0.1139
- },
- "great sword kick": {
-  "first": 1,
-  "last": 46,
-  "fps": 30,
-  "peak": 10,
-  "core_start": 8,
-  "core_end": 16,
-  "peak_speed_m_per_frame": 0.1432
- },
- "great sword kick (2)": {
-  "first": 1,
-  "last": 52,
-  "fps": 30,
-  "peak": 40,
-  "core_start": 27,
-  "core_end": 46,
-  "peak_speed_m_per_frame": 0.1063
- },
- "sword and shield slash": {
-  "first": 1,
-  "last": 46,
-  "fps": 30,
-  "peak": 19,
-  "core_start": 18,
-  "core_end": 21
- },
- "sword and shield slash (5)": {
-  "first": 1,
-  "last": 42,
-  "fps": 30,
-  "peak": 19,
-  "core_start": 8,
-  "core_end": 30
- },
- "sword and shield slash (3)": {
-  "first": 1,
-  "last": 48,
-  "fps": 30,
-  "peak": 26,
-  "core_start": 20,
-  "core_end": 30
- },
- "sword and shield attack (4)": {
-  "first": 1,
-  "last": 31,
-  "fps": 30,
-  "peak": 15,
-  "core_start": 13,
-  "core_end": 23
- },
- "sword and shield kick": {
-  "first": 1,
-  "last": 37,
-  "fps": 30,
-  "peak": 5,
-  "core_start": 2,
-  "core_end": 16
- },
- "Richard_Thrust": {
-  "first": 1,
-  "last": 34,
-  "fps": 30,
-  "peak": 15,
-  "core_start": 10,
-  "core_end": 20
- },
- "Richard_ShieldCharge": {
-  "first": 1,
-  "last": 33,
-  "fps": 30,
-  "peak": 26,
-  "core_start": 14,
-  "core_end": 30
- },
- "Richard_ShieldBash": {
-  "first": 1,
-  "last": 58,
-  "fps": 30,
-  "peak": 33,
-  "core_start": 25,
-  "core_end": 40
- },
- "Richard_DoubleHigh": {
-  "first": 1,
-  "last": 68,
-  "fps": 30,
-  "peak": 47,
-  "core_start": 35,
-  "core_end": 55
- },
- "sword and shield attack": {
-  "first": 1,
-  "last": 71,
-  "fps": 30,
-  "peak": 35,
-  "core_start": 23,
-  "core_end": 49
- },
- "sword and shield attack (2)": {
-  "first": 1,
-  "last": 40,
-  "fps": 30,
-  "peak": 20,
-  "core_start": 8,
-  "core_end": 24
- },
- "sword and shield attack (3)": {
-  "first": 1,
-  "last": 53,
-  "fps": 30,
-  "peak": 24,
-  "core_start": 18,
-  "core_end": 30
- },
- "sword and shield slash (2)": {
-  "first": 1,
-  "last": 107,
-  "fps": 30,
-  "peak": 38,
-  "core_start": 28,
-  "core_end": 50
- },
- "sword and shield slash (4)": {
-  "first": 1,
-  "last": 70,
-  "fps": 30,
-  "peak": 42,
-  "core_start": 34,
-  "core_end": 51
- },
- "great sword casting": {
-  "first": 1,
-  "last": 145,
-  "fps": 30,
-  "peak": 66,
-  "core_start": 57,
-  "core_end": 73
- }
+  "Richard_DoubleHigh": {
+    "core_end": 55,
+    "core_start": 35,
+    "first": 1,
+    "fps": 30,
+    "last": 68,
+    "peak": 47
+  },
+  "Richard_ShieldBash": {
+    "core_end": 40,
+    "core_start": 25,
+    "first": 1,
+    "fps": 30,
+    "last": 58,
+    "peak": 33
+  },
+  "Richard_ShieldCharge": {
+    "core_end": 30,
+    "core_start": 14,
+    "first": 1,
+    "fps": 30,
+    "last": 34,
+    "peak": 23
+  },
+  "Richard_Thrust": {
+    "core_end": 20,
+    "core_start": 10,
+    "first": 1,
+    "fps": 30,
+    "last": 34,
+    "peak": 15
+  },
+  "great sword attack": {
+    "core_end": 23,
+    "core_start": 1,
+    "first": 1,
+    "fps": 30,
+    "last": 37,
+    "peak": 15,
+    "peak_speed_m_per_frame": 0.1419
+  },
+  "great sword casting": {
+    "core_end": 73,
+    "core_start": 57,
+    "first": 1,
+    "fps": 30,
+    "last": 145,
+    "peak": 66
+  },
+  "great sword high spin attack": {
+    "core_end": 22,
+    "core_start": 9,
+    "first": 1,
+    "fps": 30,
+    "last": 57,
+    "peak": 33,
+    "peak_speed_m_per_frame": 0.2164
+  },
+  "great sword impact": {
+    "core_end": 27,
+    "core_start": 1,
+    "first": 1,
+    "fps": 30,
+    "last": 27,
+    "peak": 6,
+    "peak_speed_m_per_frame": 0.0293
+  },
+  "great sword kick": {
+    "core_end": 16,
+    "core_start": 8,
+    "first": 1,
+    "fps": 30,
+    "last": 46,
+    "peak": 10,
+    "peak_speed_m_per_frame": 0.1432
+  },
+  "great sword kick (2)": {
+    "core_end": 46,
+    "core_start": 27,
+    "first": 1,
+    "fps": 30,
+    "last": 52,
+    "peak": 40,
+    "peak_speed_m_per_frame": 0.1063
+  },
+  "great sword slash": {
+    "core_end": 39,
+    "core_start": 4,
+    "first": 1,
+    "fps": 30,
+    "last": 39,
+    "peak": 18,
+    "peak_speed_m_per_frame": 0.2289
+  },
+  "great sword slash (2)": {
+    "core_end": 65,
+    "core_start": 42,
+    "first": 1,
+    "fps": 30,
+    "last": 107,
+    "peak": 52,
+    "peak_speed_m_per_frame": 0.2314
+  },
+  "great sword slash (3)": {
+    "core_end": 41,
+    "core_start": 1,
+    "first": 1,
+    "fps": 30,
+    "last": 56,
+    "peak": 24,
+    "peak_speed_m_per_frame": 0.1497
+  },
+  "great sword slash (4)": {
+    "core_end": 14,
+    "core_start": 4,
+    "first": 1,
+    "fps": 30,
+    "last": 55,
+    "peak": 11,
+    "peak_speed_m_per_frame": 0.2548
+  },
+  "great sword slash (5)": {
+    "core_end": 25,
+    "core_start": 3,
+    "first": 1,
+    "fps": 30,
+    "last": 44,
+    "peak": 19,
+    "peak_speed_m_per_frame": 0.0864
+  },
+  "standing block react large": {
+    "core_end": 32,
+    "core_start": 3,
+    "first": 1,
+    "fps": 30,
+    "last": 41,
+    "peak": 10,
+    "peak_speed_m_per_frame": 0.0845
+  },
+  "standing melee attack 360 high": {
+    "core_end": 44,
+    "core_start": 12,
+    "first": 1,
+    "fps": 30,
+    "last": 85,
+    "peak": 33,
+    "peak_speed_m_per_frame": 0.2747
+  },
+  "standing melee attack 360 low": {
+    "core_end": 34,
+    "core_start": 23,
+    "first": 1,
+    "fps": 30,
+    "last": 70,
+    "peak": 29,
+    "peak_speed_m_per_frame": 0.2256
+  },
+  "standing melee attack backhand": {
+    "core_end": 46,
+    "core_start": 22,
+    "first": 1,
+    "fps": 30,
+    "last": 96,
+    "peak": 32,
+    "peak_speed_m_per_frame": 0.3342
+  },
+  "standing melee attack downward": {
+    "core_end": 32,
+    "core_start": 3,
+    "first": 1,
+    "fps": 30,
+    "last": 69,
+    "peak": 26,
+    "peak_speed_m_per_frame": 0.2371
+  },
+  "standing melee attack horizontal": {
+    "core_end": 34,
+    "core_start": 17,
+    "first": 1,
+    "fps": 30,
+    "last": 73,
+    "peak": 30,
+    "peak_speed_m_per_frame": 0.3031
+  },
+  "standing melee attack kick ver. 2": {
+    "core_end": 23,
+    "core_start": 15,
+    "first": 1,
+    "fps": 30,
+    "last": 43,
+    "peak": 19,
+    "peak_speed_m_per_frame": 0.1139
+  },
+  "standing melee combo attack ver. 3": {
+    "core_end": 36,
+    "core_start": 26,
+    "first": 1,
+    "fps": 30,
+    "last": 83,
+    "peak": 32,
+    "peak_speed_m_per_frame": 0.3306
+  },
+  "standing melee run jump attack": {
+    "core_end": 54,
+    "core_start": 47,
+    "first": 1,
+    "fps": 30,
+    "last": 111,
+    "peak": 52,
+    "peak_speed_m_per_frame": 0.417
+  },
+  "standing react large gut": {
+    "core_end": 20,
+    "core_start": 1,
+    "first": 1,
+    "fps": 30,
+    "last": 46,
+    "peak": 5,
+    "peak_speed_m_per_frame": 0.0616
+  },
+  "sword and shield attack": {
+    "core_end": 49,
+    "core_start": 23,
+    "first": 1,
+    "fps": 30,
+    "last": 71,
+    "peak": 35
+  },
+  "sword and shield attack (2)": {
+    "core_end": 24,
+    "core_start": 8,
+    "first": 1,
+    "fps": 30,
+    "last": 40,
+    "peak": 20
+  },
+  "sword and shield attack (3)": {
+    "core_end": 30,
+    "core_start": 18,
+    "first": 1,
+    "fps": 30,
+    "last": 53,
+    "peak": 24
+  },
+  "sword and shield attack (4)": {
+    "core_end": 23,
+    "core_start": 13,
+    "first": 1,
+    "fps": 30,
+    "last": 31,
+    "peak": 15
+  },
+  "sword and shield kick": {
+    "core_end": 16,
+    "core_start": 2,
+    "first": 1,
+    "fps": 30,
+    "last": 37,
+    "peak": 5
+  },
+  "sword and shield slash": {
+    "core_end": 21,
+    "core_start": 18,
+    "first": 1,
+    "fps": 30,
+    "last": 46,
+    "peak": 19
+  },
+  "sword and shield slash (2)": {
+    "core_end": 50,
+    "core_start": 28,
+    "first": 1,
+    "fps": 30,
+    "last": 107,
+    "peak": 38
+  },
+  "sword and shield slash (3)": {
+    "core_end": 30,
+    "core_start": 20,
+    "first": 1,
+    "fps": 30,
+    "last": 48,
+    "peak": 26
+  },
+  "sword and shield slash (4)": {
+    "core_end": 51,
+    "core_start": 34,
+    "first": 1,
+    "fps": 30,
+    "last": 70,
+    "peak": 42
+  },
+  "sword and shield slash (5)": {
+    "core_end": 30,
+    "core_start": 8,
+    "first": 1,
+    "fps": 30,
+    "last": 42,
+    "peak": 19
+  }
 }

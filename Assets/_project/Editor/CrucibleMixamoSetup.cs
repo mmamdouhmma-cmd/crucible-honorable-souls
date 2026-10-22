@@ -113,8 +113,16 @@ public static class CrucibleMixamoSetup
         ("Richard_Medium_Slash",           "SwordShieldPack", "sword and shield slash (5)",  false),  // diagonal-down, 42 f, the cleanest quick cut in the pack
         ("Richard_Heavy_Overhead",         "SwordShieldPack", "sword and shield slash",      false),  // the pack's true overhead: tip drops 1.44, fastest tip in the set
         ("Richard_Special_ShieldCharge",   "Custom",          "Richard_ShieldCharge",        false),
-        ("Richard_Special_ShieldBash",     "Custom",          "Richard_ShieldBash",          false),
-        ("Richard_Special_DoubleHigh",     "Custom",          "Richard_DoubleHigh",          false),
+        // The user's call after play-testing: both authored specials read as "melty", so they take
+        // pack clips untouched. Two rounds of picking. Measure yaw with clip_curves, which UNWRAPS it -
+        // clip_measure wraps, which is how "attack (3)" passed as a 36 deg cut when it is really a full
+        // 396 deg spin - and the pack's strikes are mostly spins: attack (2) 429, slash (2) 507,
+        // slash (4) 391. The only two clips NOBODY else used, "power up" and "casting", measure as
+        // overheads and are not strikes at all: photographed in play they hold the sword up across the
+        // chest, a spell-cast gesture. So these share with Salaadin, as the walks and slash (5) already
+        // do - both are real swings, no spin, no travel.
+        ("Richard_Special_ShieldBash",     "SwordShieldPack", "sword and shield slash (3)",  false),  // diagonal-up, 48 f, yaw 109, travel 0.01. Salaadin's dodge riposte - the lowest-visibility clip to share
+        ("Richard_Special_DoubleHigh",     "SwordShieldPack", "sword and shield attack",     false),  // the pack's biggest committed chop: drop 4.00, yaw 86, 71 f
         ("Richard_Riposte_Dash",           "SwordShieldPack", "sword and shield attack (4)", false),  // 31 f, the shortest cut in the pack
         ("Richard_Riposte_Parry",          "SwordShieldPack", "sword and shield kick",       false),  // a BOOT: hitsWithWeapon is off
         ("React_Front",                    "SwordShieldPack", "sword and shield impact",     false),

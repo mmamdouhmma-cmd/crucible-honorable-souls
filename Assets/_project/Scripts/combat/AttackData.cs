@@ -40,7 +40,8 @@ public enum AttackOrigin
 /// and used to pick the get-hit animation. Straight covers overheads and thrusts.
 /// </summary>
 /// <summary>How the weapon aim may correct a strike: see AttackData.aimMode.</summary>
-public enum AimMode { Full, YawOnly, Off }
+// Appended, never reordered: these serialize by index on every AttackData asset.
+public enum AimMode { Full, YawOnly, Off, Level }
 
 /// <summary>
 /// What a string link needs from the previous hit before it may be cancelled into.
