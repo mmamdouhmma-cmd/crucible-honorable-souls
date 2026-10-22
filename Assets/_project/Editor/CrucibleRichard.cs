@@ -34,7 +34,7 @@ public static class CrucibleRichard
     const int Light = 0, Medium = 1, Heavy = 2, Special = 3;
     const int FromOverhead = 0, FromLeft = 1, FromRight = 2, FromThrust = 3;
     const int HitStraight = 0, HitLeft = 1, HitRight = 2;
-    const int AimFull = 0, AimYaw = 1, AimOff = 2;
+    const int AimFull = 0, AimYaw = 1, AimOff = 2, AimLevel = 3;
 
     struct Move
     {
@@ -49,9 +49,18 @@ public static class CrucibleRichard
     // a shield: his normals trade start-up for damage and hitstun, his specials for armour pierce.
     static readonly Move[] Moves =
     {
-        new Move { asset = "Richard_Light_Thrust", name = "Lion Thrust", trigger = "LightAttack",
-                   height = Mid, type = Light, comesFrom = FromThrust, hitSide = HitStraight, aim = AimFull,
-                   range = 3.0f, size = new Vector3(0.9f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
+        // LIGHT: an overhead chop out of the BARBARIAN pack (AxePack "standing melee attack
+        // downward"), the user's pick on 2026-10-23 in place of the authored Lion Thrust. 93 deg of
+        // UNWRAPPED yaw so it is a plain cut and not a turn, tip arc 1.37, and grip_spread 0.97 -
+        // the hands stay APART, which is the whole reason a one-handed axe clip is safe on a man
+        // carrying a shield (every GreatSwordPack clip sits at 0.11-0.20, both hands on the hilt,
+        // and would drag his shield arm onto the sword). The geometry follows the new swing:
+        // Overhead/FromOverhead so a dash over the top evades it, HitStraight for the straight
+        // reaction, and a taller, narrower box than the Heavy's. The ASSET name is kept - the
+        // scene holds it by GUID.
+        new Move { asset = "Richard_Light_Thrust", name = "Lion Chop", trigger = "LightAttack",
+                   height = Overhead, type = Light, comesFrom = FromOverhead, hitSide = HitStraight, aim = AimFull,
+                   range = 3.0f, size = new Vector3(0.9f, 1.4f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
         new Move { asset = "Richard_Medium_Slash", name = "Cross Slash", trigger = "MediumAttack",
@@ -64,15 +73,24 @@ public static class CrucibleRichard
                    range = 3.1f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
-        // The three specials play their OWN NORMAL's animation, so each one takes that normal's hit
-        // geometry too - a box that does not match the swing on screen is the thing that reads as
-        // unfair. They stay specials in every other respect: damage, stamina, and the heavier
-        // camera shake FightCamera gives an unblocked Special.
+        // SP + Medium and SP + Heavy play their OWN NORMAL's animation, so each takes that
+        // normal's hit geometry too - a box that does not match the swing on screen is the thing
+        // that reads as unfair. SP + Light no longer does: as of 2026-10-23 it has a clip of its
+        // own (the barbarian backhand), because sharing the Light's clip left nothing on screen to
+        // tell the two apart but the camera shake. They stay specials in every other respect:
+        // damage, stamina, and the heavier shake FightCamera gives an unblocked Special.
         // The ASSET names are kept so the scene's GUID references survive.
-        // SP + Light: his Lion Thrust (Custom/Richard_Thrust).
-        new Move { asset = "Richard_Special_ShieldCharge", name = "Lionheart Thrust", trigger = "SpecialLight",
-                   height = Mid, type = Special, specialButton = Light, comesFrom = FromThrust, hitSide = HitStraight,
-                   aim = AimFull, range = 3.2f, size = new Vector3(0.9f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
+        // SP + Light: a REVERSE slash out of the BARBARIAN pack (AxePack "standing melee attack
+        // backhand"). 245 deg of turn - a real pivot but not a full circle - the highest tip arc of
+        // anything on offer at 1.40, and foot^ -0.72, so the feet stay PLANTED: it reads as a cut
+        // coming back across him rather than a charge. AimLevel, not AimFull: a turning swing aimed
+        // Full points the tip DOWN at the opponent's chest from a raised hand, which is exactly
+        // what read as a spinning back FIST on Kuruma and the Nito Cross. Level flattens the
+        // desired direction to the horizon first. FromLeft/HitRight because it returns from his
+        // off side. The ASSET name is kept for the scene's GUID.
+        new Move { asset = "Richard_Special_ShieldCharge", name = "Lionheart Reversal", trigger = "SpecialLight",
+                   height = Mid, type = Special, specialButton = Light, comesFrom = FromLeft, hitSide = HitRight,
+                   aim = AimLevel, range = 3.2f, size = new Vector3(1.4f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.0f, weapon = true },
 
         // SP + Medium: his Cross Slash (SwordShieldPack/slash (5)).

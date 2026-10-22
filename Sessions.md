@@ -3074,3 +3074,49 @@ gained from half a bar against 8 from a tenth of one.
 One thing left alone and worth a look: **his SP+Heavy leaps** - hips 2.80 above the root against an
 idle's ~1.6 and his other moves' 1.35. It is the clip's own hop, it predates today, and it now
 plays at x2.2 so it is quicker than it was. The pack has nothing else that size for that slot.
+
+### 2026-10-23 - The spinning jumping slash, and a barbarian lends out his swings
+
+Five states re-pointed across Richard and Salaadin, all on the user's picks after he was shown the
+measurements for every strike in all four packs.
+
+**The clip he remembered was the one taken off Salaadin's Heavy that morning.** "There was a
+spinning jumping slash it was so smooth" - `sword and shield slash (4)`: overhead + spin + leap,
+391 degrees unwrapped, the only clip in the shield pack that is all three. It was a fault as a
+normal and is the right thing on SP+Heavy, where it now measures 443 degrees of pelvis sweep in
+play. A spin is a fault in a normal and a flourish in a special, and this is the clean example.
+
+**"I don't think it's a complete animation" was measurable, and `tipHi` is the measurement.**
+Salaadin's SP+Light played `slash (2)`, the only strike in four packs whose tip NEVER rises above
+the hips: **0.07**, where everything else sits between 0.29 and 1.45. 107 frames with no arc and no
+edge presented. It takes `sword and shield attack` instead - tip arc 1.45, the highest in the
+pack - freed up by the spin-jump moving into SP+Heavy.
+
+**The barbarian pack is open to the shield fighters, and `grip_spread` is why.** The user's hunch
+was right: AxePack is one-handed right-hand work, hands apart at 0.69-1.08, and it retargets onto
+Richard and Salaadin cleanly. The GreatSwordPack cannot - every clip in it sits at 0.11-0.20, both
+hands on the hilt, so it would drag a shield arm onto the sword. Richard's Light is now the
+barbarian overhead (`attack downward`) and his SP+Light the barbarian reverse slash
+(`attack backhand`, 245 degrees, feet planted, tip arc 1.40 - the highest available anywhere).
+Salaadin's Light is the barbarian flat sweep (`combo attack ver. 2`).
+
+That last one carries a caveat that was put to the user before he chose it and stands after: its
+tip arc is **0.29**, the second-lowest of any strike in the four packs, the same low-tip shape that
+spoiled `slash (2)`. Photographed at contact it reads as a controlled level cut with the edge
+leading, not as a broken one - but it is a compact swing, and the hand stays between 0.51 and 0.24
+of a torso above the hips where Richard's new Light reaches 1.28.
+
+**The trap of the day: a contact entry does not rescue a clip missing from `swing_trims.json`.**
+`ComputeTrims` bails before it ever reads the contact, so the clip is fitted WHOLE. Salaadin's
+Light came back at **x14.00** - the entire 4.20 s clip against an 18-frame budget - with a perfectly
+good contact sitting in the JSON. The warning is logged and lost in a hundred lines of output; the
+state speed is the tell, as always. Adding the trims entry put it at x1.10.
+
+Richard's hit geometry followed each new swing rather than staying put: his Light is
+Overhead/FromOverhead now that it is a chop, and his SP+Light took AimLevel, because a turning
+swing aimed Full points the tip down at the chest from a raised hand - the same thing that read as
+a spinning back fist on Kuruma and the Nito Cross. Both asset names were kept; the scene holds them
+by GUID.
+
+Worth knowing: **`Richard_Thrust` is now an orphan.** Both states that played it moved to the
+barbarian pack, so Richard has no thrust at all any more. The clip and its generator still exist.

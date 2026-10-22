@@ -44,7 +44,7 @@ public static class CrucibleSalaadin
     const int Light = 0, Medium = 1, Heavy = 2, Special = 3;
     const int FromOverhead = 0, FromLeft = 1, FromRight = 2, FromThrust = 3;
     const int HitStraight = 0, HitLeft = 1, HitRight = 2;
-    const int AimFull = 0, AimYaw = 1, AimOff = 2;
+    const int AimFull = 0, AimYaw = 1, AimOff = 2, AimLevel = 3;
 
     struct Move
     {
@@ -59,9 +59,17 @@ public static class CrucibleSalaadin
     // Miyamoto hits for. His guard is a shield, so he blocks well without Richard's armour.
     static readonly Move[] Moves =
     {
+        // LIGHT: a flat horizontal sweep out of the BARBARIAN pack (AxePack "standing melee combo
+        // attack ver. 2"), the user's pick on 2026-10-23. 146 deg of UNWRAPPED yaw, hands apart at
+        // grip_spread 0.76 so the shield arm is free, and used by nobody else in the roster.
+        // CAUTION, and it was flagged before the choice was made: its tip arc is 0.29, the
+        // second-lowest of any strike in the four packs - the same low-tip shape that made his old
+        // SP+Light (slash (2), tipHi 0.07) read as an unfinished animation. The box is widened and
+        // flattened to match a sweep, and AimLevel holds the falchion on the horizon through it so
+        // the edge leads instead of the tip dropping toward the chest.
         new Move { asset = "Salaadin_Light_SaifCut", name = "Saif Cut", trigger = "LightAttack",
-                   height = Mid, type = Light, comesFrom = FromRight, hitSide = HitLeft, aim = AimFull,
-                   range = 2.9f, size = new Vector3(1.1f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
+                   height = Mid, type = Light, comesFrom = FromRight, hitSide = HitLeft, aim = AimLevel,
+                   range = 2.9f, size = new Vector3(1.4f, 0.9f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
         // MEDIUM: the low cut across the shins (Custom/Salaadin_ShinCut). Low, so a dash over it
@@ -83,11 +91,17 @@ public static class CrucibleSalaadin
                    range = 3.1f, size = new Vector3(1.2f, 1.6f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
-        // SP + Light: the shield leads the dash, the saber comes up underneath it
-        // (Custom/Salaadin_VeiledRush).
+        // SP + Light: the big committed overhead that comes in off a leap (SwordShieldPack
+        // "sword and shield attack"), freed up by the spinning jump taking SP + Heavy. It replaces
+        // slash (2), which the user read as an incomplete animation - and measurably was: its tip
+        // NEVER rose above the hips (tipHi 0.07, the only strike in four packs like that) across
+        // 107 frames, so there was no arc to see. This clip has the highest tip in the shield pack
+        // at 1.45 and 86 deg of yaw, so it is a clean chop rather than a turn. It leaps (hips 3.63,
+        // foot^ -0.29), which suits a move called Rush. Geometry follows: Overhead/FromOverhead,
+        // HitStraight, and a tall box where the blade actually comes down.
         new Move { asset = "Salaadin_Special_VeiledRush", name = "Veiled Rush", trigger = "SpecialLight",
-                   height = Mid, type = Special, specialButton = Light, comesFrom = FromThrust, hitSide = HitStraight,
-                   aim = AimFull, range = 3.2f, size = new Vector3(1.0f, 1.3f, 1f), offset = new Vector3(0f, 1f, 0f),
+                   height = Overhead, type = Special, specialButton = Light, comesFrom = FromOverhead, hitSide = HitStraight,
+                   aim = AimFull, range = 3.2f, size = new Vector3(1.0f, 1.6f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 2.4f, weapon = true },
 
         // SP + Medium: the flat, wide swing. Widest box on him, because the cut is horizontal.
@@ -96,7 +110,13 @@ public static class CrucibleSalaadin
                    aim = AimFull, range = 3.0f, size = new Vector3(1.5f, 0.9f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.2f, weapon = true },
 
-        // SP + Heavy: the big diagonal that comes down the centre.
+        // SP + Heavy: the SPINNING JUMPING SLASH - the user asked for this one by name after
+        // seeing it as his Heavy (SwordShieldPack "slash (4)": overhead + spin + leap, 391 deg of
+        // unwrapped yaw, foot^ -0.35, tip arc 1.28). Today's earlier change took it off the Heavy,
+        // where a full turn is a fault; on a special a full turn is the flourish. AimYaw is kept
+        // deliberately: it faces him at the man while leaving the clip's own vertical wheel alone,
+        // which is what an overhead that spins needs - AimFull would fight the descent and AimLevel
+        // would flatten a cut that is supposed to come down.
         new Move { asset = "Salaadin_Special_HattinCleave", name = "Hattin Cleave", trigger = "SpecialHeavy",
                    height = Overhead, type = Special, specialButton = Heavy, comesFrom = FromOverhead, hitSide = HitStraight,
                    aim = AimYaw, range = 3.1f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),

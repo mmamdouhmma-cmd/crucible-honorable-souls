@@ -479,7 +479,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Light_SaifCut
-  m_Speed: 1.111111
+  m_Speed: 1.1000003
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 6154231440653099939}
@@ -492,7 +492,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 4061839508520268033, guid: 75e0ea05a934efc43a3e6e8a81bf7cdd, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: 173a907e8eb9f6543bc54c5c8a849b23, type: 3}
   m_Tag: 
   m_SpeedParameter: Blend
   m_MirrorParameter: 
@@ -1014,7 +1014,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Special_HattinCleave
-  m_Speed: 2.2
+  m_Speed: 2.1999998
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1027,7 +1027,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 6447c45bfff69e14cba858e5bb51fc11, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: 74a18121118683b439f367f46992dcef, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1647,7 +1647,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 172df99531cdccc4a8faf23af6830581, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: 6447c45bfff69e14cba858e5bb51fc11, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 

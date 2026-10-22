@@ -111,6 +111,14 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   which `clip_measure` reports as 36 and 9 degrees of hip yaw and `clip_curves` UNWRAPS to 395.7
   and 391.4. They are plain cuts now (`slash (5)`, the pack's low slash, and `slash`, its plain
   overhead), measured in play at **12 and 132 degrees of pelvis sweep against the old ~390**.
+  His whole LIGHT and SPECIAL set was re-pointed later the same day, on the user's picks:
+  Light = AxePack `combo attack ver. 2` (a flat sweep; its tip arc is only 0.29 and that was
+  flagged before the choice), SP+Light = `sword and shield attack` (the committed overhead, tip
+  arc 1.45, replacing the tip-never-rises `slash (2)`), SP+Heavy = `slash (4)`, **the spinning
+  jumping slash the user asked for by name** - the clip his Heavy gave up that morning. Verified in
+  play: Light 118 deg pelvis / hips 1.39, SP+Light 144 / 2.80, SP+Heavy **443 / 2.09**. The big hop
+  moved from SP+Heavy to SP+Light - `sword and shield attack` leaps higher (2.80) than the
+  spin-jump does (2.09).
   His guard is play-verified against the authored clip: shield boss . forward **1.00**, blade edge
   . forward **0.94**, elbows 113/128, every bone within the idle's own breath. **His folder is lowercase
   `Characters/salaadin`** - renaming it deadlocks the Editor if any shell is sitting in it, so
@@ -835,6 +843,40 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `LOW_STAMINA_RECOVERY_MULTIPLIER`, applied in `Fighter.HandleStaminaRecovery`), so emptying the
   bar costs more to come back from than spending down to a comfortable level. Verified in play over
   60 frames: 11 points gained from half a bar against 8 from a tenth of one.
+
+- **A clip that is NOT in `swing_trims.json` is skipped entirely and fitted WHOLE**, and a contact
+  entry does NOT rescue it - `ComputeTrims` bails at `if (!block.Success) continue;` before the
+  contact is ever read. The symptom is a state speed in the double digits:
+  `Salaadin_Light_SaifCut` came back at **x14.00** (the whole 4.20 s clip against an 18-frame
+  budget) with a perfectly good contact of `{28.6, 1.1}` sitting in the JSON. Adding the trims
+  entry put it at x1.10. **When wiring a clip no fighter has used before, add it to BOTH files.**
+  The warning is logged (`<clip>: not in swing_trims.json`) and is easy to miss in a run that
+  prints a hundred lines.
+- **The GreatSwordPack cannot be used by a shield fighter, and `grip_spread` is how you know.**
+  Every clip in it measures **0.11-0.20** (both hands on the hilt); the SwordShieldPack and the
+  barbarian AxePack run **0.45-1.08** (hands apart). A two-handed clip retargeted onto Richard or
+  Salaadin drags the shield arm onto the sword. The AxePack is a one-handed RIGHT-hand pack and
+  retargets onto either of them cleanly - it is an axe only in the weapon the original held, which
+  is not part of the clip.
+- **`tipHi` is the measurement behind "that animation looks incomplete".** It is the weapon tip's
+  highest point measured FROM THE HIPS. Salaadin's old SP+Light (`slash (2)`) is the only strike in
+  all four packs whose tip NEVER rises above the hips - **0.07**, against 0.29-1.45 for everything
+  else - so across 107 frames there is no arc to see and no edge presented. That is what the user
+  reported as an unfinished animation, and it is checkable before wiring rather than after playing.
+- **The barbarian pack holds only four strikes nobody uses**, and after 2026-10-23 three are spent:
+  `attack downward` (Richard's Light), `attack backhand` (Richard's SP+Light, shared with Bjorn),
+  `combo attack ver. 2` (Salaadin's Light). Only `combo attack ver. 1` (233 deg, advancing) is
+  still free. The SwordShieldPack has nothing unused at all.
+- **`Richard_Thrust` is now an ORPHAN**: both states that played it (his Light and his SP+Light)
+  moved to barbarian clips on 2026-10-23, so **no animator state plays it** and Richard no longer
+  has a thrust of any kind. The authored FBX and `richard_clips.py` still build it; wiring it back
+  is a one-line clip-map change.
+- **A capture needs the MAIN camera, and the coroutine needs time to reach the pose.** A second
+  camera at `depth = 10` still lost to the fight camera and photographed the match view; taking
+  `Camera.main` over (with `FightCamera.enabled = false` first, or it re-frames every frame) works.
+  And `eval_file` returns the moment `StartCoroutine` is called - the first three captures were
+  the idle, taken while the coroutine was still in its 70-frame settle. Poll
+  `EditorApplication.isPaused` before capturing.
 
 ## Measuring a move from the CLI (the harness that works)
 

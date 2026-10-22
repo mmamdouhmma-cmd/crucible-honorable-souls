@@ -479,7 +479,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Light_Thrust
-  m_Speed: 1.2130436
+  m_Speed: 1.3000001
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 6154231440653099939}
@@ -492,7 +492,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -5812743650383702295, guid: a072b107c38a1054da46d270f79dd078, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: 80c85c857a66c0248afdbba168b95cf5, type: 3}
   m_Tag: 
   m_SpeedParameter: Blend
   m_MirrorParameter: 
@@ -1634,7 +1634,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Special_ShieldCharge
-  m_Speed: 1.2333332
+  m_Speed: 1.3000001
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5648808868077471529}
@@ -1647,7 +1647,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 831972226715816293, guid: a072b107c38a1054da46d270f79dd078, type: 3}
+  m_Motion: {fileID: 4061839508520268033, guid: 444c1b3430ded5841abb22bd19555487, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 

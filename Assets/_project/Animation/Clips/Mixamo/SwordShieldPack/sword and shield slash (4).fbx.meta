@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Salaadin_Heavy_WhirlingSaif
+      name: Salaadin_Special_HattinCleave
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 32.5
-      lastFrame: 49.5
+      firstFrame: 10.649999
+      lastFrame: 66.75
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

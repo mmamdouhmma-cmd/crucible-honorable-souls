@@ -31,40 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Richard_Light_Thrust
+      name: Richard_Thrust
       takeName: restlead
       internalID: -5812743650383702295
-      firstFrame: 7.8750005
-      lastFrame: 21.825
-      wrapMode: 0
-      orientationOffsetY: 0
-      level: 0
-      cycleOffset: 0
-      loop: 0
-      hasAdditiveReferencePose: 0
-      loopTime: 0
-      loopBlend: 0
-      loopBlendOrientation: 1
-      loopBlendPositionY: 1
-      loopBlendPositionXZ: 0
-      keepOriginalOrientation: 1
-      keepOriginalPositionY: 1
-      keepOriginalPositionXZ: 0
-      heightFromFeet: 0
-      mirror: 0
-      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
-      curves: []
-      events: []
-      transformMask: []
-      maskType: 3
-      maskSource: {instanceID: 0}
-      additiveReferencePoseFrame: 0
-    - serializedVersion: 16
-      name: Richard_Special_ShieldCharge
-      takeName: restlead
-      internalID: 831972226715816293
-      firstFrame: 7.5499997
-      lastFrame: 26.05
+      firstFrame: 1
+      lastFrame: 34
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

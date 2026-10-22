@@ -29,8 +29,8 @@ MonoBehaviour:
   hitstunFrames: 7
   hitboxRange: 2.9
   hitboxOffset: {x: 0, y: 1, z: 0}
-  hitboxSize: {x: 1.1, y: 1, z: 1}
-  aimMode: 0
+  hitboxSize: {x: 1.4, y: 0.9, z: 1}
+  aimMode: 3
   aimMaxAngle: -1
   aimRollDegrees: 0
   lungeStopDistance: -1

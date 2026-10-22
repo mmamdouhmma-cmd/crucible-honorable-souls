@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
   m_Name: Richard_Light_Thrust
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
-  attackName: Lion Thrust
+  attackName: Lion Chop
   damage: 7
   staminaCost: 15
   armorPierce: 5
@@ -21,15 +21,15 @@ MonoBehaviour:
   recoveryFrames: 9
   animationClip: {fileID: 0}
   animatorTriggerName: LightAttack
-  attackHeight: 1
+  attackHeight: 3
   attackType: 0
   specialButton: 0
-  comesFrom: 3
+  comesFrom: 0
   hitSide: 0
   hitstunFrames: 7
   hitboxRange: 3
   hitboxOffset: {x: 0, y: 1, z: 0}
-  hitboxSize: {x: 0.9, y: 1, z: 1}
+  hitboxSize: {x: 0.9, y: 1.4, z: 1}
   aimMode: 0
   aimMaxAngle: -1
   aimRollDegrees: 0

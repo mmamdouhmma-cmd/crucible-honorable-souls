@@ -109,7 +109,7 @@ public static class CrucibleMixamoSetup
         ("Richard_Idle",                   "SwordShieldPack", "sword and shield idle (4)",   true),   // a settled fighting stance: 76 f, 8 cm of hand drift and a 0.3 cm loop gap, where "idle" (109 f) and idles 2-3 (224/261 f) look around and shift their weight
         ("Richard_Walk_Forward",           "SwordShieldPack", "sword and shield walk",       true),
         ("Richard_Walk_Back",              "SwordShieldPack", "sword and shield walk (2)",   true),
-        ("Richard_Light_Thrust",           "Custom",          "Richard_Thrust",              false),
+        ("Richard_Light_Thrust",           "AxePack",         "standing melee attack downward", false),  // barbarian overhead: 93 deg unwrapped yaw, grip 0.97 (hands apart - shield safe). NOT AxePack2H, which holds a clip of the same name keyed for TWO hands.
         ("Richard_Medium_Slash",           "SwordShieldPack", "sword and shield slash (5)",  false),  // diagonal-down, 42 f, the cleanest quick cut in the pack
         ("Richard_Heavy_Overhead",         "SwordShieldPack", "sword and shield slash",      false),  // the pack's true overhead: tip drops 1.44, fastest tip in the set
         // All three of his specials were re-cast on the user's call: no running and no jumping.
@@ -134,7 +134,7 @@ public static class CrucibleMixamoSetup
         // read as one is the camera: FightCamera.OnImpact shakes harder and longer for a Special.
         // A trim is keyed by CLIP, so these share the normals' trims; the per-STATE contacts in
         // swing_contacts.json keep each special's own window and speed.
-        ("Richard_Special_ShieldCharge",   "Custom",          "Richard_Thrust",              false),
+        ("Richard_Special_ShieldCharge",   "AxePack",         "standing melee attack backhand", false),  // barbarian REVERSE slash: 245 deg of turn, tip arc 1.40 (the highest available anywhere), feet planted
         // The user's call after play-testing: both authored specials read as "melty", so they take
         // pack clips untouched. Two rounds of picking. Measure yaw with clip_curves, which UNWRAPS it -
         // clip_measure wraps, which is how "attack (3)" passed as a 36 deg cut when it is really a full
@@ -179,12 +179,12 @@ public static class CrucibleMixamoSetup
         // with 428.8 deg of hip yaw and 2.87 units of travel - a full turn, not a cut, and it had no
         // trim entry either so it played whole at x4.33. "attack (4)" is the pack's most compact
         // clean cut: diagonal-down, yaw 63.2 deg, hips 0.01, an 11-frame core in a 31-frame clip.
-        ("Salaadin_Light_SaifCut",         "SwordShieldPack", "sword and shield attack (4)",   false),
+        ("Salaadin_Light_SaifCut",         "AxePack",         "standing melee combo attack ver. 2", false),  // barbarian flat sweep: 146 deg unwrapped yaw, used by nobody else. Tip arc is only 0.29 - flagged to the user as the same low-tip shape that spoiled slash (2)
         ("Salaadin_Medium_ShinCut",        "SwordShieldPack", "sword and shield slash (5)",    false),  // the pack's LOW slash (hand never above 0.69 of hips-to-head, 2.01 sideways against 1.04 of drop) and only 40.6 deg of UNWRAPPED hip yaw - a plain cut, which is what "Shin Cut" should be. It used to play "attack (3)", which clip_measure reads as 36 deg of yaw and clip_curves unwraps to 395.7: a FULL TURN. Shared with Richard's Medium, so the window is a per-STATE contact.
         ("Salaadin_Heavy_WhirlingSaif",    "SwordShieldPack", "sword and shield slash",        false),  // a genuinely plain overhead: 84.9 deg of UNWRAPPED yaw, no spin, no leap - "Falling Saif". The comment that used to sit here called "slash (4)" a plain overhead on a 9 deg hip turn; that was clip_measure's WRAPPED yaw. Unwrapped it is 391.4 deg with a leap. Shared with Richard's Heavy, so the window is a per-STATE contact.
-        ("Salaadin_Special_VeiledRush",    "SwordShieldPack", "sword and shield slash (2)",    false),  // 107 f and a 21.14 hand path: the longest flourish in the pack, so the special reads as one
+        ("Salaadin_Special_VeiledRush",    "SwordShieldPack", "sword and shield attack",       false),  // the committed overhead freed by the spin-jump taking SP+Heavy: tipHi 1.45, highest in the pack. It replaces slash (2), whose tip NEVER rose above the hips (tipHi 0.07 over 107 f) - the measured reason the user read it as an incomplete animation
         ("Salaadin_Special_CrescentSlash", "SwordShieldPack", "sword and shield attack (3)",   false),  // takes the 395.7 deg full turn the Medium gave up: a spin is a fault in a normal and a flourish in a special (same reason the Riposte_Parry keeps its 428 deg turn)
-        ("Salaadin_Special_HattinCleave",  "SwordShieldPack", "sword and shield attack",       false),  // the big committed chop freed up by the heavy: 4.00 of drop, 43 deg of hip turn and the pack's longest shoulder travel at 6.53 - too much body for a normal, right for a special
+        ("Salaadin_Special_HattinCleave",  "SwordShieldPack", "sword and shield slash (4)",    false),  // THE SPINNING JUMPING SLASH, asked for by name: overhead + spin + leap, 391 deg unwrapped, foot^ -0.35, tip arc 1.28. It was his Heavy until today, where the full turn was a fault; on a special it is the flourish
         ("Salaadin_Riposte_Dash",          "SwordShieldPack", "sword and shield slash (3)",    false),  // 48 f
         ("Salaadin_Riposte_Parry",         "SwordShieldPack", "sword and shield attack (2)",   false),  // a saber counter, not a boot - he has no kicks. It takes the 428 deg spin the light gave up: a parry answer is the one place that much turn reads as flourish rather than as a mistake
         ("React_Front",                    "SwordShieldPack", "sword and shield impact",       false),  // only three impacts exist; shared

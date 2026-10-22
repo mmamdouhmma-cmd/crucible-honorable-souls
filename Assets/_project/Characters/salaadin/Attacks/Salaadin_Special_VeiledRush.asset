@@ -21,15 +21,15 @@ MonoBehaviour:
   recoveryFrames: 18
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialLight
-  attackHeight: 1
+  attackHeight: 3
   attackType: 3
   specialButton: 0
-  comesFrom: 3
+  comesFrom: 0
   hitSide: 0
   hitstunFrames: 12
   hitboxRange: 3.2
   hitboxOffset: {x: 0, y: 1, z: 0}
-  hitboxSize: {x: 1, y: 1.3, z: 1}
+  hitboxSize: {x: 1, y: 1.6, z: 1}
   aimMode: 0
   aimMaxAngle: -1
   aimRollDegrees: 0
