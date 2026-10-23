@@ -94,6 +94,28 @@ public enum HitSide
 }
 
 /// <summary>
+/// The swing's GEOMETRY, for the free-form combo flow rule: inside the combo-pressure window the
+/// next raw attack must flow from the last one, which means it may be anything EXCEPT the same
+/// geometry again (a cut from the right cannot follow a cut from the right; it can follow a left
+/// cut, a spin, a thrust or an overhead - and vice versa for every family). Authored per move in
+/// the CrucibleBalance table. APPEND new values only - this serializes by index on every asset.
+/// </summary>
+public enum SwingFlow
+{
+    Overhead,       // straight down the centre - flows into no spin
+    Thrust,
+    CutLeft,
+    CutRight,
+    SpinLeft,
+    SpinRight,
+    // Diagonal overheads (appended 2026-10-24): an overhead flows into a spin ONLY on its own
+    // diagonal - OverheadRight into SpinRight, OverheadLeft into SpinLeft. This is flow-rule
+    // data, deliberately separate from comesFrom, which the DEFENDER uses to pick the dodge side.
+    OverheadLeft,
+    OverheadRight
+}
+
+/// <summary>
 /// Frame-data and hitbox configuration for a single attack.
 /// Authored as a ScriptableObject so designers can tune without recompiling.
 /// All frame counts are at 60fps.
@@ -148,6 +170,10 @@ public class AttackData : ScriptableObject
     [Tooltip("Where the strike comes from, from the attacker's point of view. Decides which dash directions evade it, " +
              "which ones open a counter, and which ones dash straight into it for extra damage.")]
     [SerializeField] private AttackOrigin comesFrom = AttackOrigin.Overhead;
+
+    [Tooltip("The swing's geometry, for the free-form combo FLOW rule: in quick succession the next raw attack " +
+             "may be anything except the same geometry again. Written by the CrucibleBalance table.")]
+    [SerializeField] private SwingFlow swingFlow = SwingFlow.Overhead;
 
     [Header("Hit Reaction")]
     [Tooltip("Which side the defender is struck from, from the defender's point of view. Picks the get-hit animation " +
@@ -271,6 +297,7 @@ public class AttackData : ScriptableObject
 
     /// <summary>Side the defender is struck from (defender's view) — picks the get-hit animation.</summary>
     public HitSide HitSide => hitSide;
+    public SwingFlow SwingFlow => swingFlow;
 
     /// <summary>Frames the defender is locked in hitstun after this attack lands.</summary>
     public int HitstunFrames => hitstunFrames;

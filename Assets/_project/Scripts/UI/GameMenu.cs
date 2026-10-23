@@ -415,6 +415,7 @@ public class GameMenu : MonoBehaviour
         inMatch = false;
         FreezeFighters(true);
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
+        KillShot.RestoreLights();   // a rematch starts under full light again
         Time.timeScale = GameSpeed();
         Show(Screen.None);
 
@@ -527,7 +528,11 @@ public class GameMenu : MonoBehaviour
                 FreezeFighters(true);
                 if (TouchControls.Instance != null) TouchControls.Instance.Hide();
                 if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
-                if (stage != null) stage.Announce(f.CharacterName + "\ndied", MenuArt.BloodLit, 2.0f, null, 140);
+                // The ending names the WINNER, not the fallen (the user's call, 2026-10-24).
+                Fighter standing = null;
+                foreach (var w in roster) if (w != f && w.gameObject.activeInHierarchy) standing = w;
+                if (stage != null) stage.Announce((standing != null ? standing.CharacterName : "Nobody") + "\nwins",
+                                                  MenuArt.BloodLit, 2.0f, null, 140);
                 StartCoroutine(ShowMatchOver(f));
                 return;
             }
@@ -621,6 +626,9 @@ public class GameMenu : MonoBehaviour
         if (push && screen != Screen.None && screen != s && screen != Screen.Boot) history.Add(screen);
 
         if (s == Screen.CharSelect && screen != Screen.CharSelect && !rebuilding) pickingP2 = false;
+        // The kill-shot darkness holds through the K.O. screen (the corpse under a black sky IS
+        // the shot); any real menu screen brings the arena lights back for the select views.
+        if (s != Screen.None && s != Screen.Pause && s != Screen.MatchOver) KillShot.RestoreLights();
         screen = s;
         capturing = false;
         captureBack.gameObject.SetActive(false);

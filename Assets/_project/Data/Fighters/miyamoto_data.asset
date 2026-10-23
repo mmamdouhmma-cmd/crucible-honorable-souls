@@ -16,7 +16,7 @@ MonoBehaviour:
   archetype: Duelist
   maxHealth: 80
   maxStamina: 100
-  armor: 8
+  armor: 13
   damageMultiplier: 92
   attackSpeed: 100
   movementSpeed: 48

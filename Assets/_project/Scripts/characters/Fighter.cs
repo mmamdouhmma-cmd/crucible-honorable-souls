@@ -111,6 +111,13 @@ public class Fighter : MonoBehaviour
     private const string ANIM_HIT_SIDE = "HitSide"; // int: 0 = Straight, 1 = Left, 2 = Right
     private const string ANIM_GET_HIT = "GetHit";   // trigger: play the get-hit animation
     private const string ANIM_BLOCKING = "Blocking"; // bool: guard is up (controller holds the block pose)
+    // Lower-body-masked layer (wired by Crucible > Animation > Wire the block-walk legs): a walk
+    // blend that plays UNDER the block pose, so a guarding fighter steps instead of floating.
+    // Weight is driven here - up only while blocking AND moving, so a standing guard keeps the
+    // authored block stance head to toe.
+    private const string BLOCK_LEGS_LAYER = "BlockLegs";
+    private int blockLegsLayer = -1;
+    private float blockLegsWeight;
     private const string ANIM_DASH = "Dash";         // trigger: a dash just started
     private const string ANIM_DASH_DIR = "DashDir";  // int: 0 forward, 1 back, 2 left, 3 right (relative to facing)
     private const string ANIM_PARRY_SUCCESS = "ParrySuccess"; // trigger: a parry caught a strike
@@ -339,6 +346,8 @@ public class Fighter : MonoBehaviour
         }
         animatorHasHitParams = HasAnimatorParameters(ANIM_HIT_SIDE, ANIM_GET_HIT);
         animatorHasBlocking = HasAnimatorParameters(ANIM_BLOCKING);
+        blockLegsLayer = animator != null && animator.runtimeAnimatorController != null
+            ? animator.GetLayerIndex(BLOCK_LEGS_LAYER) : -1;
         animatorHasDash = HasAnimatorParameters(ANIM_DASH, ANIM_DASH_DIR);
         animatorHasParry = HasAnimatorParameters(ANIM_PARRY_SUCCESS);
         animatorHasDeath = HasAnimatorParameters(ANIM_DEATH);
@@ -432,6 +441,7 @@ public class Fighter : MonoBehaviour
         HandleStaminaRecovery();
         HandleParry();
         HandleBlock();
+        UpdateBlockLegs();
         HandleCombatInput();
         ClampToArena();
 
@@ -533,6 +543,21 @@ public class Fighter : MonoBehaviour
     }
 
     /// <summary>
+    /// Drives the BlockLegs layer: while the guard is up AND the fighter is walking, the
+    /// lower-body walk blend fades in over the block pose, so the feet step instead of sliding.
+    /// Standing still (or doing anything else) fades it straight back out and the full authored
+    /// block stance returns.
+    /// </summary>
+    private void UpdateBlockLegs()
+    {
+        if (blockLegsLayer < 0 || animator == null) return;
+        bool walking = isBlocking && !IsInHitstun && Mathf.Abs(currentInput.moveDirection) > 0.05f;
+        float target = walking ? 1f : 0f;
+        blockLegsWeight = Mathf.MoveTowards(blockLegsWeight, target, Time.deltaTime / 0.12f);
+        animator.SetLayerWeight(blockLegsLayer, blockLegsWeight);
+    }
+
+    /// <summary>
     /// Called when an attack starts. Returns true (and uses up the window) if the
     /// attack was started inside the dash-counter window after a dodge.
     /// </summary>
@@ -616,6 +641,7 @@ public class Fighter : MonoBehaviour
         knockbackVelocity = Vector3.zero;
 
         if (animatorHasBlocking && animator != null) animator.SetBool(ANIM_BLOCKING, false);
+        if (blockLegsLayer >= 0 && animator != null) { blockLegsWeight = 0f; animator.SetLayerWeight(blockLegsLayer, 0f); }
         if (animatorHasDeath && animator != null) animator.SetTrigger(ANIM_DEATH);
         else Debug.Log($"P{playerNumber}: DEAD (animator has no '{ANIM_DEATH}' trigger yet)");
 
@@ -724,6 +750,7 @@ private void ResetAnimator()
 
     animator.SetFloat("MoveSpeed", 0f);
     if (animatorHasBlocking) animator.SetBool(ANIM_BLOCKING, false);
+    if (blockLegsLayer >= 0) { blockLegsWeight = 0f; animator.SetLayerWeight(blockLegsLayer, 0f); }
 
     if (idleStateHash != 0) animator.Play(idleStateHash, 0, 0f);
     else animator.Rebind();          // no idle state on this controller: full reset to the layer default
@@ -972,6 +999,9 @@ private void HandleMovement()
 {
     float moveSpeed = fighterData.MovementSpeed / 10f;
 
+    // Guard up = slower feet (the BlockLegs layer animates them; see UpdateBlockLegs).
+    if (isBlocking) moveSpeed *= BalanceConfig.BLOCK_WALK_SPEED_MULTIPLIER;
+
     // Input is screen-based (-1 = left, +1 = right); convert it to toward/away
     // from the opponent along the fighter's facing.
     float forwardAmount = facingRight ? currentInput.moveDirection : -currentInput.moveDirection;
@@ -1161,7 +1191,9 @@ public void NotifyEvaded(bool counterAllowed)
     if (!firstReport) return;
     lastDodgeDustTime = Time.time;
 
-    if (dustEffects) HitEffects.SpawnDust(FeetPosition(), BodyRadius, Mathf.Max(1f, dodgeDustStrength));
+    // A successful dodge gets its own burst (pale cloud + cyan ring), not the warm dash dust -
+    // bigger and colour-contrasted on the user's call (2026-10-23): the plain puff was invisible.
+    if (dustEffects) HitEffects.SpawnDodgeBurst(FeetPosition(), BodyRadius, Mathf.Max(1f, dodgeDustStrength));
     RecoverHealth(healOnDodge, "dodge");
 
     // A SUCCESSFUL dash costs nothing: the dodge refunds the dash's own stamina (the user's

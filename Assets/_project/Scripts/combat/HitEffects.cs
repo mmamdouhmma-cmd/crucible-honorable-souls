@@ -104,26 +104,61 @@ public static class HitEffects
     }
 
     /// <summary>
-    /// A parry's flash: the spark shower plus a short-lived ring of brighter, slower embers that
-    /// hang where the blades met, so the deflection reads even when the camera is moving.
+    /// A parry's flash: the gold spark shower plus a COLD core - a blue-white pop of light where
+    /// the blades met and a flat expanding ring of cyan streaks. The whole game is lit warm
+    /// (embers, torches, sand), so the cold flash is the one thing on screen that colour, and a
+    /// parry reads at a glance even when the camera is moving.
     /// </summary>
     public static void SpawnParryFlash(Vector3 point, Vector3 direction, float bodyRadius, float strength)
     {
         float s = Mathf.Max(0.1f, strength);
+        float scale = Mathf.Sqrt(s);
         SpawnSparks(point, direction, bodyRadius, s);
 
         float r = Mathf.Max(bodyRadius, 0.2f);
-        ParticleSystem ps = NewSystem("ParryFlash", point, Quaternion.LookRotation(Vector3.up), new Color(1f, 0.95f, 0.75f), 0.7f, VfxMaterials.SoftDot(), true);
-        ParticleSystem.MainModule main = ps.main;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(0.1f, 0.25f);
+        Color steel = new Color(0.55f, 0.85f, 1f);
+
+        // The core pop: a few big additive blue-white dots that flare and die in a tenth of a
+        // second - the "camera flash" that makes the moment unmissable.
+        ParticleSystem flash = NewSystem("ParryFlashCore", point, Quaternion.LookRotation(Vector3.up), Color.white, 0.5f, VfxMaterials.SoftDot(), true);
+        ParticleSystem.MainModule main = flash.main;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.07f, 0.16f);
+        main.startSpeed = 0f;
+        main.startSize = new ParticleSystem.MinMaxCurve(r * 1.2f * scale, r * 2.2f * scale);
+        main.gravityModifier = 0f;
+        Burst(flash, 3, 5, 0f);
+        ParticleSystem.ShapeModule core = flash.shape;
+        core.shapeType = ParticleSystemShapeType.Sphere;
+        core.radius = r * 0.1f;
+        flash.Play();
+
+        // The shockwave: a flat horizontal ring of stretched cyan streaks thrown outward from the
+        // contact, so the deflection still reads when the core pop is over.
+        ParticleSystem ring = NewSystem("ParryRing", point, Quaternion.LookRotation(Vector3.up), steel, 0.7f, VfxMaterials.SoftDot(), true);
+        main = ring.main;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.3f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(r * 7f * scale, r * 12f * scale);
+        main.startSize = new ParticleSystem.MinMaxCurve(r * 0.1f * scale, r * 0.2f * scale);
+        main.gravityModifier = 0f;
+        Burst(ring, Mathf.RoundToInt(14 * s), Mathf.RoundToInt(22 * s), 0f);
+        ParticleSystem.ShapeModule shape = ring.shape;
+        shape.shapeType = ParticleSystemShapeType.Circle;    // local XY; the system faces up, so the ring lies level
+        shape.radius = r * 0.15f;
+        Stretch(ring, 0.1f, 2.6f);
+        ring.Play();
+
+        // Slower blue embers that hang where the blades met, the afterglow of the pop.
+        ParticleSystem embers = NewSystem("ParryFlash", point, Quaternion.LookRotation(Vector3.up), steel, 0.8f, VfxMaterials.SoftDot(), true);
+        main = embers.main;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.15f, 0.35f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(r * 1.5f * s, r * 4f * s);
-        main.startSize = new ParticleSystem.MinMaxCurve(r * 0.1f * s, r * 0.22f * s);
+        main.startSize = new ParticleSystem.MinMaxCurve(r * 0.14f * s, r * 0.3f * s);
         main.gravityModifier = 0.1f;
-        Burst(ps, Mathf.RoundToInt(8 * s), Mathf.RoundToInt(14 * s), 0f);
-        ParticleSystem.ShapeModule shape = ps.shape;
-        shape.shapeType = ParticleSystemShapeType.Sphere;
-        shape.radius = r * 0.12f;
-        ps.Play();
+        Burst(embers, Mathf.RoundToInt(10 * s), Mathf.RoundToInt(16 * s), 0f);
+        ParticleSystem.ShapeModule halo = embers.shape;
+        halo.shapeType = ParticleSystemShapeType.Sphere;
+        halo.radius = r * 0.12f;
+        embers.Play();
     }
 
     /// <summary>
@@ -147,6 +182,47 @@ public static class HitEffects
         Burst(ps, Mathf.RoundToInt(10 * s), Mathf.RoundToInt(18 * s), 0f);
         Cone(ps, Mathf.Min(85f, 70f + 8f * (s - 1f)), r * 0.5f * scale);
         ps.Play();
+    }
+
+    /// <summary>
+    /// The burst for a SUCCESSFUL dodge - a dash that made a strike miss. Deliberately not the
+    /// warm dash dust: a big pale blue-white cloud at the feet plus a flat ring of additive
+    /// streaks snapped outward, cold against the sand and stone so the evade reads at a glance.
+    /// Ordinary dash push-off keeps <see cref="SpawnDust"/>.
+    /// </summary>
+    public static void SpawnDodgeBurst(Vector3 point, float bodyRadius, float strength = 1f)
+    {
+        float s = Mathf.Max(0.1f, strength);
+        float scale = Mathf.Sqrt(s);
+        float r = Mathf.Max(bodyRadius, 0.2f);
+
+        // The cloud: like dash dust but paler, bigger and more opaque.
+        Color pale = new Color(0.8f, 0.9f, 1f, 0.85f);
+        ParticleSystem cloud = NewSystem("DodgeCloud", point, Quaternion.LookRotation(Vector3.up), pale, 1.8f, VfxMaterials.SoftDot());
+        ParticleSystem.MainModule main = cloud.main;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.45f * scale, 0.9f * scale);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(r * 2f * scale, r * 5f * scale);
+        main.startSize = new ParticleSystem.MinMaxCurve(r * 0.9f * scale, r * 1.8f * scale);
+        main.gravityModifier = 0.12f;
+        main.maxParticles = Mathf.Max(160, Mathf.RoundToInt(40 * s));
+        Burst(cloud, Mathf.RoundToInt(12 * s), Mathf.RoundToInt(20 * s), 0f);
+        Cone(cloud, 80f, r * 0.6f * scale);
+        cloud.Play();
+
+        // The ring: cyan speed-streaks thrown flat outward at knee height - the "he was HERE"
+        // snap that no amount of brown dust ever gave.
+        ParticleSystem ring = NewSystem("DodgeRing", point + Vector3.up * (r * 0.6f), Quaternion.LookRotation(Vector3.up), new Color(0.6f, 0.9f, 1f), 0.8f, VfxMaterials.SoftDot(), true);
+        main = ring.main;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.32f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(r * 8f * scale, r * 14f * scale);
+        main.startSize = new ParticleSystem.MinMaxCurve(r * 0.1f * scale, r * 0.2f * scale);
+        main.gravityModifier = 0f;
+        Burst(ring, Mathf.RoundToInt(12 * s), Mathf.RoundToInt(18 * s), 0f);
+        ParticleSystem.ShapeModule shape = ring.shape;
+        shape.shapeType = ParticleSystemShapeType.Circle;    // local XY; the system faces up, so the ring lies level
+        shape.radius = r * 0.3f;
+        Stretch(ring, 0.1f, 2.6f);
+        ring.Play();
     }
 
     // ---------------------------------------------------------------- helpers

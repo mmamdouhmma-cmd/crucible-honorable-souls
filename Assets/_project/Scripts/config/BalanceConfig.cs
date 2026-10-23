@@ -28,6 +28,9 @@ public static class BalanceConfig
     public const float DEFAULT_HEALTH_REGEN_PER_SECOND = 1f;       // default; each Fighter can override it in the Inspector
     public const float DEFAULT_HEALTH_REGEN_DELAY = 3f;            // seconds after a hit before regen resumes; per-Fighter override
     public const float BLOCK_STAMINA_DRAIN_PER_SECOND = 4f;        // default drain while holding block; each Fighter can override it in the Inspector
+    // Walking with the guard up is slower (the user's call, 2026-10-24: -12%). The legs animate on
+    // the BlockLegs animator layer while the upper body holds the block pose.
+    public const float BLOCK_WALK_SPEED_MULTIPLIER = 0.88f;
     public const float POSTURE_BREAK_DURATION = 0.6f;
     
     // ==================== ATTACK STAMINA COSTS ====================
@@ -87,6 +90,15 @@ public static class BalanceConfig
     public const float WEAKENED_DAMAGE_MULTIPLIER = 0.75f;
     public const float WEAKENED_ATTACK_PACE_MULTIPLIER = 0.85f; // attack clock AND animator run at this rate
 
+    // ==================== UNEVEN GROUND ====================
+    // Arena floors are neither flat nor level (the test arena's runs -0.065 to -0.267 under the
+    // marks, and the shipped arenas slope), and the swept blade is physical: an opponent standing
+    // downhill can be passed clean over, and one standing uphill slips under the box. When the two
+    // fighters' roots differ in height by more than this (world units; statures are ~2.6-2.9), the
+    // authored front box - which ignores height on purpose - judges the active window instead,
+    // exactly as it already does for kicks and slow frames. On level ground nothing changes.
+    public const float UNEVEN_GROUND_HEIGHT_GAP = 0.2f;
+
     // ==================== WHIFF ====================
     // An attack whose active window closes without touching anyone (not hit, not blocked, not
     // dodged - a dash-dodge costs DODGED_RECOVERY_FRAMES instead) extends its own recovery by
@@ -96,17 +108,18 @@ public static class BalanceConfig
     public const float WHIFF_RECOVERY_MULTIPLIER = 1.0f;
 
     // ==================== ATTACK CHAIN LIMIT (anti-spam) ====================
-    // All three post-move lockouts are the SAME beat (0.5 s, the user's call on 2026-10-23, down
-    // from the 0.85 s set on 2026-10-21):
-    // whatever a fighter just finished - a repeat, a string or a special - the gap before he
-    // can swing again reads the same. They were 1.5 / 1.5 / 1.0, which played as a stall.
-    // The same attack can be thrown at most SAME_ATTACK_CHAIN_LIMIT times in a row. After the last
-    // repeat lands the fighter cannot start ANY attack for ATTACK_CHAIN_LOCKOUT seconds, so a button
-    // cannot be machine-gunned: two swings, then a commitment gap the opponent can punish.
-    // A different attack, or a gap longer than ATTACK_CHAIN_WINDOW after the previous attack ended,
-    // starts a fresh chain and is free to swing.
+    // The string and special lockouts are the same beat (0.5 s, the user's call on 2026-10-23,
+    // down from the 0.85 s set on 2026-10-21): a finished string or special reads as the same
+    // commitment gap whichever it was.
+    // The SAME MOVE can be thrown at most SAME_ATTACK_CHAIN_LIMIT times in a row. After the last
+    // repeat finishes, THAT MOVE ALONE is barred for SAME_ATTACK_LOCKOUT seconds - every other
+    // attack stays free (the 1.5 rule, restored on the user's call 2026-10-23: the 0.5 s
+    // lock-everything version plus a 0.6 s chain window meant "medium, step back, medium" never
+    // tripped anything, which made Miyamoto's medium a spam button).
+    // A different attack, or a gap longer than ATTACK_CHAIN_WINDOW after the previous attack
+    // ended, starts a fresh chain and is free to swing.
     public const int SAME_ATTACK_CHAIN_LIMIT = 2;
-    public const float ATTACK_CHAIN_LOCKOUT = 0.5f;
+    public const float SAME_ATTACK_LOCKOUT = 1.5f;   // seconds the repeated move itself is barred
 
     /// <summary>
     /// Seconds a fighter cannot attack after finishing a STRING (combo). A combo must not be a way
@@ -114,7 +127,10 @@ public static class BalanceConfig
     /// spammable.
     /// </summary>
     public const float STRING_LOCKOUT = 0.5f;  // seconds locked out of every attack after the last repeat
-    public const float ATTACK_CHAIN_WINDOW = 0.6f;    // gap after an attack ends that still counts as the same chain
+    // Gap after an attack ends that still counts as the same chain. 0.6 s was shorter than a step
+    // back and a step in, so spacing between repeats reset the count; 2.0 s remembers the repeat
+    // across that spacing, and the per-move bar above is mild enough to afford the longer memory.
+    public const float ATTACK_CHAIN_WINDOW = 2.0f;
 
     /// <summary>
     /// Seconds a fighter cannot attack after a SPECIAL runs its course. A special already costs
@@ -124,6 +140,26 @@ public static class BalanceConfig
     public const float SPECIAL_LOCKOUT = 0.5f;
 
     // ---- Strings (combos) ----
+    // Every attack thrown as COMBO PRESSURE pays a surcharge on top of its authored cost, as a
+    // fraction of the fighter's MAX stamina, by the attack's own weight (the user's call,
+    // 2026-10-24). "Combo pressure" is any swing that starts within COMBO_PRESSURE_GAP of the
+    // previous swing ending - which covers string follow-ups AND the raw rotation the 1.5 rule
+    // cannot touch (light x2, medium x2, heavy x2, repeat: each pair ducks under its own per-move
+    // bar). Sustained offense now drains the bar fast enough that the rotation ends; the first
+    // swing after a real pause pays nothing extra.
+    public const float COMBO_SURCHARGE_LIGHT = 0.05f;
+    public const float COMBO_SURCHARGE_MEDIUM = 0.07f;
+    public const float COMBO_SURCHARGE_HEAVY = 0.10f;
+    // The PRESSURE WINDOW all three free-form combo rules share: a swing that starts within this
+    // long of the previous swing ending pays the surcharge above, must FLOW (never the same
+    // SwingFlow geometry twice in a row - a right cut cannot follow a right cut, but a left cut,
+    // a spin, a thrust or an overhead all may, and vice versa), and counts against the cap below.
+    // A swing after a longer pause starts a fresh sequence, free of all three.
+    public const float COMBO_PRESSURE_GAP = 1.0f;    // seconds of idle after a swing before the next one is free again
+    // The authored strings cap at MAX_STRING_LENGTH (3); a FREE-FORM run of quick swings caps
+    // here (the user's call, 2026-10-24) - the 5th back-to-back swing is refused until a pause.
+    public const int FREEFORM_COMBO_CAP = 4;
+
     // A press that arrives while the fighter is mid-attack is held for this long and comes out on
     // the first frame the cancel window allows, so a follow-up pressed slightly early is not eaten.
     // Fighting games sit around 6-10 frames; wider feels loose and starts firing moves the player

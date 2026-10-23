@@ -209,7 +209,9 @@ public class CrucibleAudio : MonoBehaviour
             case CombatSound.Block: Instance.Shot(Instance.block, vol * (0.7f + 0.3f * w), 1.1f - 0.2f * w, 0.05f); break;
             case CombatSound.Parry: Instance.Shot(Instance.parry, vol, 1f, 0.03f); break;
             case CombatSound.Hit: Instance.Shot(Instance.hit, vol * (0.7f + 0.3f * w), 1.15f - 0.3f * w, 0.06f); break;
-            case CombatSound.Dodge: Instance.Shot(Instance.dodge, vol * 0.8f, 1f, 0.06f); break;
+            // Full level: the dodge chime has to carry over the attacker's own swish, which
+            // plays in the same instant (it is the dodged swing's arming sound).
+            case CombatSound.Dodge: Instance.Shot(Instance.dodge, vol, 1f, 0.06f); break;
         }
     }
 

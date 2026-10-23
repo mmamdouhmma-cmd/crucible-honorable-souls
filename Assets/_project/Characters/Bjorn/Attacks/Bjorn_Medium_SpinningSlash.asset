@@ -25,6 +25,7 @@ MonoBehaviour:
   attackType: 1
   specialButton: 0
   comesFrom: 2
+  swingFlow: 4
   hitSide: 1
   hitstunFrames: 9
   hyperArmor: 0

@@ -3431,3 +3431,118 @@ play-verified. Salaadin's clean-opener Shin Cut (StringArmored=True) met a parry
 through the real hit queue: the string ended on the spot, Salaadin ate the parry stun, Bjorn
 took zero damage. The ordering does the work: the parry branch in ResolveHit returns before
 the armour branch is ever reached, so no armour of either kind outranks a timed parry.
+
+### 2026-10-23 — The 1.5 rule returns, slopes stop eating strikes, parry/dodge become visible and audible
+
+Three fixes off the user's playtest of the full roster, all play-verified through the CLI harness
+(editor opened fresh for the session, zero console errors end to end).
+
+- **The 1.5 rule is back, better than it was.** The user caught Miyamoto's medium as a spam
+  button: "attack, step back, attack" forever. Two separate decays had killed the old rule - the
+  lockout had been cut to 0.5 s AND it locked every attack (so it was softened), while the 0.6 s
+  `ATTACK_CHAIN_WINDOW` meant the step-back reset the count so it never fired at all. Now: same
+  MOVE twice in a row -> that move alone barred 1.5 s (`SAME_ATTACK_LOCKOUT`), everything else
+  free, window 2.0 s so spacing between repeats still counts. Chain and ban are keyed by
+  AttackData identity, gated in TryAttack; strings and ripostes untouched. Verified both shapes:
+  back-to-back and with a 72-frame gap - third medium blocked, light goes through, medium back
+  after the bar.
+- **Uneven ground: the user's whiff reports were the arenas' sloped floors** - the blade sweep is
+  physical and passes over an opponent standing downhill. Third front-box case in
+  `CombatSystem.Update`: roots differing by > `UNEVEN_GROUND_HEIGHT_GAP` (0.2) hands the active
+  window to the authored box (same ForceHit path kicks already use). Verified with a kinematic
+  defender raised 0.55 and 1.2: hit lands both times. (At those heights Bjorn's trigger box still
+  touched on its own - the fallback is the net under the geometries that don't.)
+- **Parry and dodge effects + sounds.** The parry flash gained a blue-white core pop and a flat
+  cyan shockwave ring over the gold sparks; a successful dodge got its own `SpawnDodgeBurst`
+  (pale cloud + cyan streak ring) instead of the brown dust that vanished against the sand. Cold
+  colours against the warm palette on purpose. New synthesized clips (struck-steel ring for
+  parry, rising whoosh + two-note chirp for dodge, `ArtSource/Audio/make_parry_dodge.py`)
+  overwrote the four WAVs in place - GUIDs survived, no rewiring - and dodge now plays at full
+  level. Photographed in play paused 3 frames after spawn: both read clearly over the desert
+  arena.
+- Gotcha for next time: the silent hit path. `OnTriggerEnter` logs NOTHING, so a log-hook test
+  that greps for "Blade sweep hit" / "front box judged" and sees an empty capture has not seen a
+  miss - read the defender's health too. That empty capture cost one rerun before the dy=0.55 hit
+  turned out to be a plain trigger overlap.
+
+### 2026-10-24 — Guarded feet, a forbidden hill, walls you can see through, and a killing blow worth watching
+
+- Applied the user's hand-tuned armour spread (Miyamoto 8 -> 13, Richard 22 -> 20, Salaadin
+  18 -> 17, edited in the scene Inspector) back into the `CrucibleBalance` table, re-ran Apply +
+  `SaveAssets`, and read all three stores back in agreement. No block change had actually reached
+  disk - the block spread stayed 60/68/85/75 everywhere, checked live in the Editor too.
+- **Blocking fighters walk.** New `BlockLegs` layer on all four controllers (legs-only avatar
+  mask, 1D MoveSpeed blend of each fighter's own walk clips at x0.8), weight driven by
+  `Fighter.UpdateBlockLegs` only while blocking AND moving. Guarded walking is 12% slower
+  (`BLOCK_WALK_SPEED_MULTIPLIER`). The packs already carry walks and strafes in every direction,
+  so nothing was imported. Verified in play: layer weight 0 walking plain, 1.0 walking guarded,
+  0 standing guarded; speed ratio measured **0.883**.
+  - Harness gotcha: the first speed measurement read 0.643 because the walk path crossed other
+    clamps; a clean straight line away from every obstacle gave 0.883 on the same build. Measure
+    speed on empty ground.
+- **The desert hill is out of bounds.** `ArenaBounds.keepOut` circles (new), clamped in the same
+  script pass as the outer bound - the user asked for "a collider on it", but a collider cannot
+  stop these fighters (frozen X/Z axes; the hill's own MeshCollider is what they were climbing).
+  Mapped the arena by raycast grid: a 2.1-high plateau centred (-0.5, 12.3) and a 2-high rock at
+  (0.5, -6); both ringed. Verified: teleported onto the plateau centre, expelled to the rim at
+  exactly keep-out radius + body radius.
+- **Walls turn transparent around a swallowed fighter.** `WallCutout` + the hand-written URP
+  shader `Crucible/ArenaCutout`: the arenas are each ONE mesh, so the only honest transparency is
+  per-fragment - a soft dithered hole along the camera->fighter sight line, swapped in only while
+  a linecast says the fighter is hidden. Photographed from outside the desert rim: both fighters
+  clearly visible through the wall, lighting continuous with the real material, and the original
+  material restored the frame the view cleared.
+- **The killing blow**: `KillShot.Begin` from `CombatSystem.ResolveHit` on the fatal hit - time
+  to x0.2 then ramped back, lights + ambient + skybox (a clone, never the asset) dimmed to
+  near-black with the unlit blood glowing on, extra blood, and the announce now reads
+  "<winner> wins" instead of "<loser> died". Dark holds through the K.O. screen; restored on any
+  menu screen or rematch. Measured: timeScale 0.200 at the kill, sun 2.10 -> 0.21 -> 2.10 on
+  rematch, ambient 1.10 -> 0.17 -> 1.10.
+  - Test-only artifact worth remembering: driving `StartMatch` without going through character
+    select leaves ALL FOUR fighters active (`ApplySides` never ran), so the winner announce named
+    a bystander. Real flow benches the pair's opponents first.
+- Input injection that works for held buttons: `InputManager.SetAi(1, true)` +
+  `SetAiInput(1, new InputData {...})` re-sent EVERY frame from the coroutine (the snapshot is
+  consumed and cleared per frame). Writing `Fighter.currentInput` by reflection does nothing -
+  Fighter overwrites it from InputManager at the top of its Update.
+
+### 2026-10-24 — Combo pressure: the spam rotation pays, flows, and stops at four
+
+- The user asked whether the post-combo wait still exists (it does: `STRING_LOCKOUT` and
+  `SPECIAL_LOCKOUT`, 0.5 s each, bar every attack via `attackLockoutTimer`), then asked for
+  combo stamina surcharges — and mid-build revealed the real target: "anyone can spam lightx2
+  mediumx2 heavyx2 and its an endless combo". The rotation ducks the 1.5 rule because no single
+  move repeats three times.
+- Built **combo pressure**: `comboGapTimer` in CombatSystem counts seconds since ANY swing ended;
+  under `COMBO_PRESSURE_GAP` (1.0 s) the next swing is pressure. Reset to 999 on flinch and at
+  match start, so the comeback swing and the opener are always free. Three rules share the window:
+  - **Surcharge** (first ask): authored cost + 5/7/10% of MAX stamina by weight
+    (`COMBO_SURCHARGE_LIGHT/MEDIUM/HEAVY`), applied in `EffectiveStaminaCost` at all three call
+    sites. Measured exact on Bjorn (110): L 20 fresh, then L 26 / M 31 / H 37, back to 23 after
+    a 1.25 s pause.
+  - **Flow rule** (second ask): new `SwingFlow` enum on AttackData (Overhead/Thrust/CutLeft/
+    CutRight/SpinLeft/SpinRight), authored in a `Flow` table in `CrucibleBalance` and written by
+    `Apply the roster balance`. In pressure a swing may be anything except the SAME geometry twice
+    in a row — the user's examples (right cut -> left cut / same-side spin / overhead, and vice
+    versa) all flow; a repeat is refused with a "mix the sides" log. Gated in TryAttack only, so
+    the authored strings are exempt. hitSide was too coarse to reuse: thrust and overhead are both
+    `Straight`, and spins (which the user wants to FLOW from a same-side cut) are invisible in it.
+  - **Cap** (second ask): `FREEFORM_COMBO_CAP` = 4. `comboPressureCount` increments per pressure
+    swing (string links included), the 5th quick press is refused until the pause.
+- Play-verified end to end: L->L blocked (same CutLeft), L->M->H->L all start (spin, overhead,
+  back to cut), 5th press blocked by the cap, free again after 1.25 s; and a real string still
+  converts under the gates (Bjorn L buffered into H, stringDepth 1, both hits landed).
+- Trap of the day: `Crucible.Editor.asmdef` cannot reference Assembly-CSharp, so the editor table
+  mirrors SwingFlow as a private enum by index (append-only on BOTH sides) and writes
+  `enumValueIndex` through SerializedObject like everything else there.
+- Follow-up the same evening: **the diagonal rule**. An overhead may flow into a spin only when
+  the spin continues its diagonal — `OverheadLeft`/`OverheadRight` appended to SwingFlow (both
+  enums, both append-only), gate added after the same-geometry check. The user pointed at the
+  existing direction data (`comesFrom`) but it cannot carry this: every overhead in the roster is
+  authored `comesFrom = Overhead` (AttackOrigin has no diagonals) and the field is the DEFENDER's
+  dodge-side input, so the diagonal went on SwingFlow instead. Only Hattin Cleave is diagonal
+  (OverheadRight — `sword and shield attack`, 86 deg of yaw from his right) and it pairs with the
+  Whirling Saif (SpinRight). Play-verified: Bjorn H (vertical) -> M spin BLOCKED, L cut -> M spin
+  flows, Salaadin SP+H -> H flows (thrown at 0.58 s: past the 0.5 s special lockout, inside the
+  1.0 s pressure window). The `Apply` eval hit the familiar HTTP 400 timeout and had STILL
+  written and saved everything — read back before re-running, not before panicking.

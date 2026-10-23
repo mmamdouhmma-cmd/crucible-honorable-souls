@@ -55,7 +55,8 @@ public static class CrucibleBalance
                      // was under the threshold anyone feels. At 48 the lead is 17%, and a fast
                      // walk is a COUNTER fighter's defensive tool - walking in and out of range is
                      // how he baits the whiffs he punishes.
-                     health = 80, stamina = 100, armor = 8, damageMultiplier = 92, moveSpeed = 48,
+                     // armor 8 -> 13 (user's hand tune in the scene, 2026-10-24)
+                     health = 80, stamina = 100, armor = 13, damageMultiplier = 92, moveSpeed = 48,
                      regen = 20f, dashDistance = 2.6f, dashDuration = 0.22f, dashStamina = 12,
                      blockReduction = 60, blockDrain = 3f,
                      // The COUNTER fighter: 82% dash coverage, the widest parry window in the
@@ -81,7 +82,8 @@ public static class CrucibleBalance
         // The wall: the shield makes his guard the strongest per hit, the small tank makes it short.
         new Vitals { character = "Richard", player = "Player3", fighterName = "Richard", archetype = "Tank",
                      dataPath = "Assets/_project/Data/Fighters/richard_data.asset",
-                     health = 115, stamina = 85, armor = 22, damageMultiplier = 100, moveSpeed = 32,
+                     // armor 22 -> 20 (user's hand tune in the scene, 2026-10-24)
+                     health = 115, stamina = 85, armor = 20, damageMultiplier = 100, moveSpeed = 32,
                      regen = 20f, dashDistance = 2.0f, dashDuration = 0.34f, dashStamina = 16,
                      blockReduction = 85, blockDrain = 2f,
                      // 35% dash coverage - the wall blocks, he does not slip. Base parry.
@@ -98,7 +100,8 @@ public static class CrucibleBalance
                      // section 5): the roster's damage order is now Bjorn 110 > Richard 100 >
                      // Miyamoto 92 > Salaadin 85, and he and Miyamoto stop sharing x0.92. His
                      // damage now lives in the STRINGS, not the single blow.
-                     health = 95, stamina = 115, armor = 18, damageMultiplier = 85, moveSpeed = 41,
+                     // armor 18 -> 17 (user's hand tune in the scene, 2026-10-24)
+                     health = 95, stamina = 115, armor = 17, damageMultiplier = 85, moveSpeed = 41,
                      regen = 20f, dashDistance = 2.3f, dashDuration = 0.26f, dashStamina = 15,
                      // 82 -> 75 (Plan_Balance 2.4): between Richard's 85 and Bjorn's 68, so the
                      // round shield still reads but the wall is Richard's alone.
@@ -251,8 +254,81 @@ public static class CrucibleBalance
             so.FindProperty("lungeMaxDistance").floatValue = lg.max;
         }
         so.FindProperty("hyperArmor").boolValue = HyperArmor.Contains(m.asset);
+        so.FindProperty("swingFlow").enumValueIndex = (int)FlowFor(m.asset, so.FindProperty("hitSide").enumValueIndex);
         so.ApplyModifiedProperties();
         EditorUtility.SetDirty(asset);
+    }
+
+    /// <summary>
+    /// The swing's geometry for the free-form flow rule (the user's call, 2026-10-24: in quick
+    /// succession no geometry may repeat back to back - a right cut may be followed by a left cut,
+    /// a spin, a thrust or an overhead, never by another right cut). Classified by what each move
+    /// actually does on screen; anything not listed falls back to its hitSide (Straight ->
+    /// Overhead, Left/Right -> that side's cut).
+    /// This editor assembly cannot see the game's types, so SwingFlow is MIRRORED here by index -
+    /// keep it in step with the enum in AttackData.cs (append-only there, append-only here).
+    /// </summary>
+    enum SwingFlow { Overhead, Thrust, CutLeft, CutRight, SpinLeft, SpinRight, OverheadLeft, OverheadRight }
+
+    static readonly System.Collections.Generic.Dictionary<string, SwingFlow> Flow =
+        new System.Collections.Generic.Dictionary<string, SwingFlow>
+    {
+        // Bjorn: one-handed cuts, two true spins, a haft jab, a boot riposte.
+        { "Bjorn_Light_Slash",            SwingFlow.CutLeft },
+        { "Bjorn_Medium_SpinningSlash",   SwingFlow.SpinLeft },
+        { "Bjorn_Heavy_OverheadDoubleAxe",SwingFlow.Overhead },
+        { "Bjorn_Heavy_SpinOverhead",     SwingFlow.SpinRight },
+        { "Bjorn_Special_BloodEagle",     SwingFlow.Overhead },   // the leaping overhead
+        { "Bjorn_Special_HaftStrike",     SwingFlow.Thrust },     // a jab with the haft
+        { "Bjorn_Special_HewingCharge",   SwingFlow.CutLeft },
+        { "Bjorn_Riposte_Dash",           SwingFlow.CutLeft },
+        { "Bjorn_Riposte_Parry",          SwingFlow.Thrust },     // the boot
+
+        // Miyamoto: thrust, side cut, overhead; the specials are draw cuts and spins.
+        { "Miyamoto_Light_Thrust",        SwingFlow.Thrust },
+        { "Miyamoto_Medium_SideSlash",    SwingFlow.CutLeft },
+        { "Miyamoto_Heavy_Overhead",      SwingFlow.Overhead },
+        { "Miyamoto_Special_Iaijutsu",    SwingFlow.CutRight },   // the draw cut sweeps out right
+        { "Miyamoto_Special_Kuruma",      SwingFlow.SpinRight },  // 100 deg pelvis wheel
+        { "Miyamoto_Special_NitoCross",   SwingFlow.SpinLeft },   // 356 deg pelvis
+        { "Miyamoto_Special_Nukitsuke",   SwingFlow.CutLeft },
+        { "Miyamoto_Riposte_Dash",        SwingFlow.Thrust },
+        { "Miyamoto_Riposte_Parry",       SwingFlow.Thrust },     // the boot
+
+        // Richard: his Light plays the barbarian downward attack, so it IS an overhead.
+        { "Richard_Light_Thrust",         SwingFlow.Overhead },
+        { "Richard_Medium_Slash",         SwingFlow.CutLeft },
+        { "Richard_Heavy_Overhead",       SwingFlow.Overhead },
+        { "Richard_Special_DoubleHigh",   SwingFlow.CutRight },   // the paired high cuts
+        { "Richard_Special_ShieldBash",   SwingFlow.Thrust },     // a forward shove
+        { "Richard_Special_ShieldCharge", SwingFlow.Thrust },     // the running slam
+        { "Richard_Riposte_Dash",         SwingFlow.CutLeft },
+        { "Richard_Riposte_Parry",        SwingFlow.Thrust },     // the boot
+
+        // Salaadin: the combo fighter gets alternating sides on his normals, a whirling heavy.
+        { "Salaadin_Light_SaifCut",       SwingFlow.CutLeft },    // the flat sweep
+        { "Salaadin_Medium_ShinCut",      SwingFlow.CutRight },   // the low forehand
+        { "Salaadin_Heavy_WhirlingSaif",  SwingFlow.SpinRight },
+        { "Salaadin_Special_CrescentSlash", SwingFlow.CutRight },
+        // Diagonal: `sword and shield attack` sweeps 86 deg of yaw coming down from his right,
+        // so the cleave flows straight into his right-hand spin (the Whirling Saif) - the one
+        // overhead->spin pairing the roster owns. The dead-vertical overheads stay plain
+        // Overhead and flow into NO spin.
+        { "Salaadin_Special_HattinCleave",  SwingFlow.OverheadRight },
+        { "Salaadin_Special_VeiledRush",    SwingFlow.Thrust },   // the rush
+        { "Salaadin_Riposte_Dash",        SwingFlow.CutLeft },
+        { "Salaadin_Riposte_Parry",       SwingFlow.CutRight },   // the saber counter
+    };
+
+    static SwingFlow FlowFor(string asset, int hitSideIndex)
+    {
+        if (Flow.TryGetValue(asset, out var flow)) return flow;
+        switch (hitSideIndex)   // HitSide: 0 Straight, 1 Left, 2 Right
+        {
+            case 1: return SwingFlow.CutLeft;
+            case 2: return SwingFlow.CutRight;
+            default: return SwingFlow.Overhead;
+        }
     }
 
     /// <summary>

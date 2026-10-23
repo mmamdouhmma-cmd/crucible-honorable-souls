@@ -16,7 +16,7 @@ MonoBehaviour:
   archetype: Tank
   maxHealth: 115
   maxStamina: 85
-  armor: 22
+  armor: 20
   damageMultiplier: 100
   attackSpeed: 92
   movementSpeed: 32

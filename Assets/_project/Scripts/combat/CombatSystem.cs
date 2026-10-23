@@ -83,13 +83,19 @@ public class CombatSystem : MonoBehaviour
     private Fighter reachTarget;             // opponent checked when the hitbox armed (for the gizmo)
     private Vector3 reachTargetPos;          // position that check used
 
-    // Same-attack chain limiter (BalanceConfig.SAME_ATTACK_CHAIN_LIMIT / ATTACK_CHAIN_LOCKOUT /
-    // ATTACK_CHAIN_WINDOW): counts how many times the same attack has been thrown back to back and
-    // locks every attack out for a beat once the limit is reached.
-    private AttackType chainType;      // attack the current chain is made of
-    private int chainCount;            // repeats of chainType back to back (0 = no chain running)
+    // Same-attack chain limiter (BalanceConfig.SAME_ATTACK_CHAIN_LIMIT / SAME_ATTACK_LOCKOUT /
+    // ATTACK_CHAIN_WINDOW): counts how many times the same MOVE has been thrown back to back and,
+    // once the limit is reached, bars THAT MOVE ALONE for a beat - every other attack stays free.
+    private AttackData chainAttack;    // the move the current chain is made of
+    private int chainCount;            // repeats of chainAttack back to back (0 = no chain running)
     private float chainIdleTimer;      // seconds since the last attack ended (chain expires past ATTACK_CHAIN_WINDOW)
-    private float attackLockoutTimer;  // seconds left of the post-chain lockout
+    private float comboGapTimer = 999f; // seconds since the last swing ended, ANY move - under
+                                        // COMBO_PRESSURE_GAP the next swing is combo pressure
+    private int comboPressureCount;     // swings in the current pressure sequence (strings included)
+    private SwingFlow lastSwingFlow;    // geometry of the last swing, for the flow rule
+    private float attackLockoutTimer;  // seconds left of the post-string/post-special lockout (every attack)
+    private AttackData bannedAttack;   // the move barred by the repeat limit (null = none)
+    private float bannedAttackTimer;   // seconds left of that bar
 
     // Strings. A press that arrives while this fighter is busy is remembered for
     // BalanceConfig.INPUT_BUFFER_FRAMES and comes out on the first frame it is legal - the
@@ -121,14 +127,14 @@ public class CombatSystem : MonoBehaviour
     [Tooltip("Seconds with no attacking after a STRING finishes its last move (0 = use BalanceConfig.STRING_LOCKOUT).")]
     [SerializeField] private float stringLockout = 0f;
 
-    [Tooltip("Seconds with no attacking after the same attack is thrown back to back to the limit (0 = use BalanceConfig.ATTACK_CHAIN_LOCKOUT).")]
+    [Tooltip("Seconds the SAME MOVE is barred after being thrown back to back to the limit - other attacks stay free (0 = use BalanceConfig.SAME_ATTACK_LOCKOUT).")]
     [SerializeField] private float sameAttackLockout = 0f;
 
     [Tooltip("Seconds with no attacking after a SPECIAL runs its course (0 = use BalanceConfig.SPECIAL_LOCKOUT).")]
     [SerializeField] private float specialLockout = 0f;
 
     private float StringLockout => stringLockout > 0f ? stringLockout : BalanceConfig.STRING_LOCKOUT;
-    private float SameAttackLockout => sameAttackLockout > 0f ? sameAttackLockout : BalanceConfig.ATTACK_CHAIN_LOCKOUT;
+    private float SameAttackLockout => sameAttackLockout > 0f ? sameAttackLockout : BalanceConfig.SAME_ATTACK_LOCKOUT;
     private float SpecialLockout => specialLockout > 0f ? specialLockout : BalanceConfig.SPECIAL_LOCKOUT;
 
     private void Awake()
@@ -183,6 +189,17 @@ public class CombatSystem : MonoBehaviour
             }
         }
 
+        if (bannedAttackTimer > 0f)
+        {
+            bannedAttackTimer -= Time.deltaTime;
+            if (bannedAttackTimer <= 0f)
+            {
+                bannedAttackTimer = 0f;
+                if (debugLogs && bannedAttack != null) Debug.Log($"P{fighter.PlayerNumber}: {bannedAttack.AttackName} is available again");
+                bannedAttack = null;
+            }
+        }
+
         if (!isAttacking && chainCount > 0)
         {
             chainIdleTimer += Time.deltaTime;
@@ -191,6 +208,7 @@ public class CombatSystem : MonoBehaviour
                 chainCount = 0;
             }
         }
+        if (!isAttacking) comboGapTimer += Time.deltaTime;
 
         if (inHitstun)
         {
@@ -258,22 +276,29 @@ public class CombatSystem : MonoBehaviour
             return;
         }
 
-        // The authored front box (fighter space, world units) decides the hit in two cases. A KICK,
-        // because hits are otherwise judged by sweeping the blade and a carried blade never catches
-        // one. And a SLOW FRAME: when a rendered frame is longer than SLOW_FRAME_SECONDS the sweep
-        // can skip a whole thrust, so the box stands in, exactly as the pre-weapon-box system did.
-        // The second case is never used at 60 fps.
+        // The authored front box (fighter space, world units) decides the hit in three cases. A
+        // KICK, because hits are otherwise judged by sweeping the blade and a carried blade never
+        // catches one. A SLOW FRAME: when a rendered frame is longer than SLOW_FRAME_SECONDS the
+        // sweep can skip a whole thrust, so the box stands in, exactly as the pre-weapon-box
+        // system did (never used at 60 fps). And UNEVEN GROUND: the arena floors slope, and a
+        // physical blade passes clean over an opponent standing downhill - when the two roots
+        // differ in height the front box, which ignores height on purpose, judges the window.
         bool bodyAttack = currentAttack != null && !currentAttack.HitsWithWeapon;
         bool slowFrame = Time.unscaledDeltaTime > BalanceConfig.SLOW_FRAME_SECONDS;
         if (hitboxActive && hitDetector != null && hitDetector.FollowWeapon && !hitDetector.HasHit && !swingEvaded &&
-            (bodyAttack || slowFrame) && IsInActivePhase())
+            IsInActivePhase())
         {
             Fighter opp = fighter != null ? fighter.Opponent : null;
-            if (opp != null && !opp.IsDashing && IsWithinReach(currentAttack, opp.transform.position, opp.BodyRadius))
+            bool unevenGround = opp != null &&
+                Mathf.Abs(opp.transform.position.y - fighter.transform.position.y) > BalanceConfig.UNEVEN_GROUND_HEIGHT_GAP;
+            if ((bodyAttack || slowFrame || unevenGround) &&
+                opp != null && !opp.IsDashing && IsWithinReach(currentAttack, opp.transform.position, opp.BodyRadius))
             {
                 if (debugLogs)
                 {
-                    string why = bodyAttack ? "body attack" : $"slow frame ({Time.unscaledDeltaTime * 1000f:0} ms)";
+                    string why = bodyAttack ? "body attack"
+                        : slowFrame ? $"slow frame ({Time.unscaledDeltaTime * 1000f:0} ms)"
+                        : $"uneven ground (dy {opp.transform.position.y - fighter.transform.position.y:0.00})";
                     Debug.Log($"P{fighter.PlayerNumber}: {why} - front box judged {currentAttack.AttackName}");
                 }
                 hitDetector.ForceHit(opp);
@@ -309,6 +334,7 @@ public class CombatSystem : MonoBehaviour
         {
             int endedDepth = stringDepth;   // EndAttack clears it, and the lockout below needs it
             bool endedSpecial = currentAttack.IsSpecial;
+            AttackData ended = currentAttack;   // the repeat bar below names the move itself
             EndAttack();
 
             // A special is the most expensive thing a fighter can throw, so it costs a beat after it
@@ -331,12 +357,15 @@ public class CombatSystem : MonoBehaviour
                 if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {endedDepth + 1}-hit string finished - locked out for {StringLockout:0.00}s");
             }
 
-            // Hit the repeat limit on a swing that ran its course: no more attacks for a beat.
+            // Hit the repeat limit on a swing that ran its course: THAT MOVE is barred for a beat
+            // while every other attack stays live (the 1.5 rule) - the button cannot be
+            // machine-gunned, but the fighter is not stood down.
             if (chainCount >= BalanceConfig.SAME_ATTACK_CHAIN_LIMIT)
             {
-                attackLockoutTimer = Mathf.Max(attackLockoutTimer, SameAttackLockout);
+                bannedAttack = ended;
+                bannedAttackTimer = SameAttackLockout;
                 chainCount = 0;
-                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {BalanceConfig.SAME_ATTACK_CHAIN_LIMIT}x {chainType} in a row - locked out for {SameAttackLockout:0.00}s");
+                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {BalanceConfig.SAME_ATTACK_CHAIN_LIMIT}x {ended.AttackName} in a row - that move barred for {SameAttackLockout:0.00}s (others free)");
             }
         }
     }
@@ -411,7 +440,7 @@ public class CombatSystem : MonoBehaviour
         }
 
         if (fighter == null || fighter.Stats == null) return false;
-        if (!fighter.Stats.HasStamina(EffectiveStaminaCost(link.followUp))) return false;
+        if (!fighter.Stats.HasStamina(EffectiveStaminaCost(link.followUp, inCombo: true))) return false;
 
         string from = currentAttack.AttackName;
         int window0 = currentAttack.CancelStartFrame, window1 = currentAttack.CancelEndFrame;
@@ -477,18 +506,31 @@ public class CombatSystem : MonoBehaviour
                       $"x{BalanceConfig.WEAKENED_ATTACK_PACE_MULTIPLIER} pace)");
         }
 
-        fighter.Stats.UseStamina(EffectiveStaminaCost(attack));
+        bool inCombo = InComboPressure(depth);
+        int spent = EffectiveStaminaCost(attack, inCombo);
+        fighter.Stats.UseStamina(spent);
+        // Free-form combo bookkeeping: every quick-succession swing (string links included)
+        // lengthens the pressure sequence; a swing after a real pause starts a fresh one. The
+        // geometry is remembered for the flow rule in TryAttack.
+        comboPressureCount = inCombo ? comboPressureCount + 1 : 1;
+        lastSwingFlow = attack.SwingFlow;
+        if (inCombo && debugLogs)
+        {
+            Debug.Log($"P{fighter.PlayerNumber}: combo pressure {comboPressureCount} - {attack.AttackName} pays {spent} stamina " +
+                      $"({attack.StaminaCost} + {ComboSurcharge(attack.AttackType):P0} of the bar)");
+        }
 
-        // Count this swing against the same-attack chain. A different attack, or too long a gap
-        // after the previous one ended, starts over - so a string, being different attacks by
-        // definition, never trips the anti-spam lockout.
-        if (chainCount > 0 && attack.AttackType == chainType && chainIdleTimer < BalanceConfig.ATTACK_CHAIN_WINDOW)
+        // Count this swing against the same-attack chain. Tracked by the MOVE, not the button, so
+        // a special and the normal sharing a button never pollute each other's count. A different
+        // move, or too long a gap after the previous one ended, starts over - so a string, being
+        // different moves back to back, never trips the repeat bar.
+        if (chainCount > 0 && attack == chainAttack && chainIdleTimer < BalanceConfig.ATTACK_CHAIN_WINDOW)
         {
             chainCount++;
         }
         else
         {
-            chainType = attack.AttackType;
+            chainAttack = attack;
             chainCount = 1;
         }
         chainIdleTimer = 0f;
@@ -571,7 +613,53 @@ public class CombatSystem : MonoBehaviour
         return false;
     }
 
-    int needed = EffectiveStaminaCost(found);
+    // The repeat bar (1.5 rule): this exact move was just thrown twice in a row, so it alone is
+    // barred for a beat. Any other attack goes through this gate untouched.
+    if (bannedAttackTimer > 0f && found == bannedAttack)
+    {
+        Debug.Log($"P{pn}: BLOCKED - {found.AttackName} thrown {BalanceConfig.SAME_ATTACK_CHAIN_LIMIT}x in a row, barred {bannedAttackTimer:0.00}s more (other attacks are free)");
+        return false;
+    }
+
+    // Free-form combo rules (the user's call, 2026-10-24). The authored strings cancel in through
+    // TryCancelIntoFollowUp and are exempt; these gate only RAW quick-succession swings:
+    //  - the sequence caps at FREEFORM_COMBO_CAP swings, then the fighter must pause;
+    //  - each swing must FLOW - anything except the same geometry twice in a row (a right cut can
+    //    be followed by a left cut, a spin, a thrust or an overhead, never by another right cut).
+    if (comboGapTimer < BalanceConfig.COMBO_PRESSURE_GAP && comboPressureCount > 0)
+    {
+        if (comboPressureCount >= BalanceConfig.FREEFORM_COMBO_CAP)
+        {
+            Debug.Log($"P{pn}: BLOCKED - free-form combo capped at {BalanceConfig.FREEFORM_COMBO_CAP} swings, " +
+                      $"pause {BalanceConfig.COMBO_PRESSURE_GAP - comboGapTimer:0.00}s more");
+            return false;
+        }
+        if (found.SwingFlow == lastSwingFlow)
+        {
+            Debug.Log($"P{pn}: BLOCKED - {found.AttackName} is another {found.SwingFlow} swing; " +
+                      "the same geometry cannot flow twice in a row (mix the sides)");
+            return false;
+        }
+        // An overhead flows into a spin only on its own diagonal (the user's call, 2026-10-24):
+        // a cut that came down diagonally from the right carries straight into a right spin; the
+        // opposite spin - or any spin after a dead-vertical overhead - is a re-chamber, refused.
+        bool nextIsSpin = found.SwingFlow == SwingFlow.SpinLeft || found.SwingFlow == SwingFlow.SpinRight;
+        bool lastIsOverhead = lastSwingFlow == SwingFlow.Overhead ||
+                              lastSwingFlow == SwingFlow.OverheadLeft || lastSwingFlow == SwingFlow.OverheadRight;
+        if (nextIsSpin && lastIsOverhead)
+        {
+            bool sameDiagonal = (lastSwingFlow == SwingFlow.OverheadLeft && found.SwingFlow == SwingFlow.SpinLeft) ||
+                                (lastSwingFlow == SwingFlow.OverheadRight && found.SwingFlow == SwingFlow.SpinRight);
+            if (!sameDiagonal)
+            {
+                Debug.Log($"P{pn}: BLOCKED - {found.AttackName} ({found.SwingFlow}) cannot follow a " +
+                          $"{lastSwingFlow}; a spin only flows from an overhead on its own diagonal");
+                return false;
+            }
+        }
+    }
+
+    int needed = EffectiveStaminaCost(found, InComboPressure(0));
     if (!fighter.Stats.HasStamina(needed))
     {
         Debug.Log($"P{pn}: BLOCKED - stamina {fighter.Stats.currentStamina}/{needed} for {found.AttackName}");
@@ -624,6 +712,7 @@ public class CombatSystem : MonoBehaviour
         hitstunTimer = Mathf.Max(hitstunTimer, seconds);
         inHitstun = true;
         chainCount = 0; // a flinch breaks the chain; no lockout on top of the hitstun
+        comboGapTimer = 999f; // and breaks the pressure: the comeback swing pays no combo surcharge
 
         if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: hitstun for {frames} frames ({seconds:0.00}s)");
     }
@@ -670,12 +759,42 @@ public class CombatSystem : MonoBehaviour
                fighter.Stats.currentStamina < fighter.Stats.maxStamina * BalanceConfig.WEAKENED_STAMINA_FRACTION;
     }
 
-    /// <summary>What <paramref name="attack"/> costs right now: the authored cost, cut below the line.</summary>
-    private int EffectiveStaminaCost(AttackData attack)
+    /// <summary>
+    /// True when a swing started RIGHT NOW (at string depth <paramref name="depth"/>) counts as
+    /// combo pressure and pays the surcharge: every string follow-up, and any raw swing that
+    /// starts within COMBO_PRESSURE_GAP of the previous swing ending - the light x2 / medium x2 /
+    /// heavy x2 rotation that ducks under the per-move 1.5 rule.
+    /// </summary>
+    private bool InComboPressure(int depth)
+    {
+        return depth > 0 || comboGapTimer < BalanceConfig.COMBO_PRESSURE_GAP;
+    }
+
+    /// <summary>
+    /// What <paramref name="attack"/> costs right now: the authored cost, plus the combo
+    /// surcharge (a cut of MAX stamina by the attack's own weight) when it is thrown as combo
+    /// pressure, the whole thing cut below the low-stamina line.
+    /// </summary>
+    private int EffectiveStaminaCost(AttackData attack, bool inCombo = false)
     {
         int cost = attack != null ? attack.StaminaCost : 0;
+        if (inCombo && attack != null && fighter != null && fighter.Stats != null)
+        {
+            cost += Mathf.RoundToInt(fighter.Stats.maxStamina * ComboSurcharge(attack.AttackType));
+        }
         if (IsWeakened()) cost = Mathf.RoundToInt(cost * BalanceConfig.WEAKENED_STAMINA_COST_MULTIPLIER);
         return cost;
+    }
+
+    /// <summary>The combo surcharge for a weight, as a fraction of max stamina.</summary>
+    private static float ComboSurcharge(AttackType type)
+    {
+        switch (type)
+        {
+            case AttackType.Light: return BalanceConfig.COMBO_SURCHARGE_LIGHT;
+            case AttackType.Heavy: return BalanceConfig.COMBO_SURCHARGE_HEAVY;
+            default: return BalanceConfig.COMBO_SURCHARGE_MEDIUM;
+        }
     }
 
     /// <summary>
@@ -712,7 +831,11 @@ public class CombatSystem : MonoBehaviour
         if (hitDetector != null) hitDetector.Deactivate();
         hitboxActive = false;
         chainCount = 0;
+        comboGapTimer = 999f;   // the first swing of a fresh match is never combo pressure
+        comboPressureCount = 0;
         attackLockoutTimer = 0f;
+        bannedAttack = null;
+        bannedAttackTimer = 0f;
         inHitstun = false;
         hitstunTimer = 0f;
         evadedExtraRecovery = 0f;
@@ -951,6 +1074,9 @@ public class CombatSystem : MonoBehaviour
         {
             target.NotifyDeath();   // death animation instead of a flinch
             CrucibleAudio.Death(target.CharacterName);
+            // The killing blow gets its own presentation: slow motion, the arena dimmed to
+            // near-black, the (unlit) blood keeping its colour.
+            KillShot.Begin(target, fighter, bloodColor);
         }
         else if (target.Combat != null && target.Combat.IsAttacking && target.Combat.CurrentAttack != null &&
                  (target.Combat.CurrentAttack.HyperArmor || target.Combat.StringArmored))
@@ -1214,5 +1340,6 @@ public class CombatSystem : MonoBehaviour
         currentAttackIsDashCounter = false;
         currentAttackIsParryCounter = false;
         chainIdleTimer = 0f; // the chain window starts counting from here
+        comboGapTimer = 0f;  // and so does the combo-surcharge gap
     }
 }

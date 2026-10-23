@@ -843,8 +843,88 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   moves' 1.35. It is the `sword and shield attack` clip ("overhead+leap") and it predates the
   2026-10-23 speed change - but it now plays at x2.2, so the hop is faster. Not touched; the user
   has not called it out, and the pack has nothing else that size.
-- **All three post-move lockouts are 0.5 s** (the user's call, 2026-10-23, down from 0.85). They
-  are still deliberately ONE beat - `ATTACK_CHAIN_LOCKOUT`, `STRING_LOCKOUT`, `SPECIAL_LOCKOUT`.
+- **Free-form combos live under COMBO PRESSURE now** (the user's calls, 2026-10-24). A swing that
+  starts within `COMBO_PRESSURE_GAP` (1.0 s) of the previous swing ending — raw spam and string
+  links alike — is "in pressure", and three rules ride on it, all in `CombatSystem`
+  (`comboGapTimer` / `comboPressureCount` / `lastSwingFlow`, reset on flinch and at match start so
+  the comeback swing and the opening swing are always free):
+  - **Surcharge**: every pressure swing costs its authored stamina PLUS 5/7/10% of MAX stamina
+    (Light/Medium/Heavy, `COMBO_SURCHARGE_*`) — this is what finally taxes the L,L,M,M,H,H
+    rotation that ducked the 1.5 rule. Play-verified on Bjorn (110 bar): 20 fresh, then 26/31/37.
+  - **Flow rule**: each AttackData carries `SwingFlow` (Overhead / Thrust / CutLeft / CutRight /
+    SpinLeft / SpinRight / OverheadLeft / OverheadRight — APPEND-only, serialized by index, and
+    MIRRORED as a private enum in `CrucibleBalance` because the editor asmdef cannot see game
+    types). A pressure swing may be anything EXCEPT the same geometry twice in a row — right cut
+    into left cut, spin, thrust or overhead all flow; right cut into right cut is refused — AND
+    **an overhead flows into a spin only on its own diagonal**: OverheadRight -> SpinRight (and
+    left/left), while a dead-vertical `Overhead` flows into NO spin. The diagonal lives on
+    SwingFlow on purpose, NOT on `comesFrom` — that is the DEFENDER's dodge-side data and all
+    overheads are authored `comesFrom = Overhead` anyway. Only `Salaadin_Special_HattinCleave`
+    is diagonal (OverheadRight, 86 deg of yaw) and it pairs with his WhirlingSaif (SpinRight) —
+    the roster's one overhead->spin flow. The table is `Flow` in `CrucibleBalance.cs` (fallback:
+    derive from hitSide); gated in `TryAttack` ONLY, so the authored strings are exempt
+    (play-verified: Bjorn L->L blocked, L->M->H->L flows, H->M spin blocked (vertical), L->M spin
+    flows, Hattin->WhirlingSaif flows, string depth still reached under the gates).
+  - **Cap**: a free-form run stops at `FREEFORM_COMBO_CAP` (4) swings — the 5th quick press is
+    refused until the 1.0 s pause. String links count toward the run, so a 3-hit string buys one
+    raw extension, not a fresh four.
+- **String and special lockouts are 0.5 s; the same-attack rule is the 1.5 RULE again** (the
+  user's call, 2026-10-23 evening, reversing that morning's 0.5): the same MOVE thrown twice in a
+  row bars THAT MOVE ALONE for `SAME_ATTACK_LOCKOUT` 1.5 s - every other attack stays free - and
+  `ATTACK_CHAIN_WINDOW` is 2.0 s so "medium, step back, medium" still counts as one chain (0.6 s
+  reset it, which is what made Miyamoto's medium a spam button). Tracked by AttackData IDENTITY
+  (`CombatSystem.chainAttack` / `bannedAttack`), not by button, so a special and its normal never
+  pollute each other's count; gated in `TryAttack`, so string links are untouched and the AI obeys
+  it too. `ATTACK_CHAIN_LOCKOUT` is gone. Play-verified: M, M, third M blocked, Light free, M back
+  after 1.5 s - and the same with a 1.2 s step-back gap between the two Ms.
+- **Uneven arena ground cannot eat a strike any more** (2026-10-23): when the two fighters' roots
+  differ in height by more than `UNEVEN_GROUND_HEIGHT_GAP` (0.2 world units), the authored front
+  box judges the active window - the third case beside kicks and slow frames in
+  `CombatSystem.Update` - because the physical blade sweep passes clean over an opponent standing
+  downhill on a sloped floor. On level ground nothing changes. Play-verified at dy 0.55 and 1.2
+  with a kinematic raised defender: the hit lands (13 dmg + hitstun) where the user saw whiffs.
+- **Parry and dodge each have an unmissable effect and their own sound** (the user's call,
+  2026-10-23: both were invisible and the dodge clip was literally a pitched-down swish).
+  `SpawnParryFlash` = the gold sparks + a blue-white core pop + a flat cyan shockwave ring;
+  `SpawnDodgeBurst` (new in HitEffects, called from `Fighter.NotifyEvaded`; ordinary dash dust
+  unchanged) = a pale blue-white cloud + a cyan streak ring at knee height. Cold colours on
+  purpose: the whole game is lit warm, so these are the only cold flashes on screen. The clips
+  are synthesized by `ArtSource/Audio/make_parry_dodge.py` (struck-steel ring / rising whoosh
+  with a two-note chirp), OVERWRITING `parry_01/02.wav` + `dodge_01/02.wav` in place so the
+  GUIDs and CrucibleAudio's references survived - no re-run of `Set up audio` needed. Dodge now
+  plays at full level (was 0.8).
+- **Armour is hand-tuned as of 2026-10-24**: Miyamoto 13, Bjorn 14, Salaadin 17, Richard 20 (the
+  user tightened the spread in the scene; the `CrucibleBalance` table was updated to match and
+  re-applied, so scene, table and the FighterData assets agree). Block spread unchanged.
+- **Blocking fighters WALK now instead of floating** (2026-10-24): a "BlockLegs" animator layer on
+  all four controllers - lower-body avatar mask (`BlockLegsLower.mask`), 1D MoveSpeed blend of the
+  fighter's own walk clips at x0.8 pace - whose weight `Fighter.UpdateBlockLegs` raises only while
+  the guard is up AND the fighter is moving, so a standing block keeps the authored pose head to
+  toe. Wired by `Crucible > Animation > Wire the block-walk legs` (idempotent). Guarded walking is
+  12% slower (`BLOCK_WALK_SPEED_MULTIPLIER` 0.88, play-measured 0.883). The packs already hold
+  walk clips in all four directions (`standing walk left/right`, the strafes) - nothing imported;
+  movement is only ever toward/away, so forward/back is the whole vocabulary.
+- **ArenaBounds has KEEP-OUT circles** (2026-10-24): serialized `keepOut` list (x, z = centre,
+  y = radius) pushed out in the same script clamp as the outer bound - a physical collider can
+  never do this job because the fighters' Rigidbodies freeze X/Z (the reason ArenaBounds exists at
+  all; the desert hill's MeshCollider is exactly what they were climbing and floating on). The
+  desert carries two: the plateau at (-0.5, 12.3) r 5 and the small rock at (0.5, -6) r 1.8.
+  Play-verified: a fighter dropped on the hill centre is expelled to the rim exactly.
+- **Walls go see-through when they swallow a fighter** (2026-10-24): each arena is ONE mesh, so no
+  material fade can work - `WallCutout` (on GameMangers) linecasts camera->chest against the active
+  arena's collider and, while blocked, swaps the arena onto `Crucible/ArenaCutout`
+  (`Assets/_project/Shaders/`), which dissolves a soft dithered hole along each sight line
+  (per-fragment distance to the camera->fighter segment). Original material restored the moment
+  the view clears. The shader approximates URP Lit (SH + shadowed main light + normal map) and
+  carries ShadowCaster/DepthOnly passes so nothing pops during the swap; the Shader reference is
+  serialized on WallCutout so builds cannot strip it.
+- **The killing blow has a presentation** (`KillShot`, 2026-10-24): on the fatal hit time drops to
+  x0.2 of match speed (0.9 s real hold, 0.8 s ramp back), every light + ambient + a skybox CLONE
+  dim to ~10-15% so the arena goes near-black while the UNLIT blood keeps its colour, and an extra
+  double gout of blood marks the blow. The K.O. screen stays dark on purpose; lights restore on
+  any menu screen or `StartMatch` (both hooked in GameMenu). The K.O. announce now names the
+  WINNER ("<name> wins"), not the fallen; the MatchOver title already did. Play-verified: 0.200
+  at the kill, sun 2.10 -> 0.21, full restore on rematch.
 - **Every SP+Heavy has HYPER ARMOUR** (`AttackData.hyperArmor`, the user's call 2026-10-23): an
   incoming hit deals its damage but neither flinches nor interrupts the swing; a PARRY still
   beats it outright. The branch is in `CombatSystem.ResolveHit` before `NotifyHit`; the flag is

@@ -16,7 +16,7 @@ MonoBehaviour:
   archetype: Champion
   maxHealth: 95
   maxStamina: 115
-  armor: 18
+  armor: 17
   damageMultiplier: 85
   attackSpeed: 100
   movementSpeed: 41

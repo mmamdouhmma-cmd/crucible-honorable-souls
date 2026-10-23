@@ -379,6 +379,7 @@ MonoBehaviour:
   centre: {x: 0, y: 0, z: 0}
   radius: 23.55
   halfExtents: {x: 23.55, y: 23.55}
+  keepOut: []
   debugLogs: 1
 --- !u!1 &126681661
 GameObject:
@@ -4396,7 +4397,7 @@ MonoBehaviour:
   playerNumber: 3
   maxHealth: 115
   maxStamina: 85
-  armor: 22
+  armor: 20
   stats:
     currentHealth: 4
     maxHealth: 0
@@ -4858,6 +4859,7 @@ GameObject:
   - component: {fileID: 1348053415}
   - component: {fileID: 1348053414}
   - component: {fileID: 1348053416}
+  - component: {fileID: 1348053417}
   m_Layer: 0
   m_Name: GameMangers
   m_TagString: Untagged
@@ -5147,6 +5149,22 @@ MonoBehaviour:
   fightMusic: {fileID: 0}
   windLoop: {fileID: 8300000, guid: de9f75e0b2c8ee341aadefaea06a85e8, type: 3}
   windLevel: 0.3
+--- !u!114 &1348053417
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1348053404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 379016edeef59e245a3fd6944e4cc94e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WallCutout
+  cutRadius: 2.4
+  fadeTime: 0.18
+  cutoutShader: {fileID: 4800000, guid: 4236176756415564c89866d507c871a0, type: 3}
+  debugLogs: 0
 --- !u!1 &1348276768
 GameObject:
   m_ObjectHideFlags: 0
@@ -5599,6 +5617,7 @@ MonoBehaviour:
   centre: {x: 0, y: 0, z: 0}
   radius: 29
   halfExtents: {x: 29, y: 19}
+  keepOut: []
   debugLogs: 0
 --- !u!1 &1438262564
 GameObject:
@@ -6581,7 +6600,7 @@ MonoBehaviour:
   playerNumber: 4
   maxHealth: 95
   maxStamina: 115
-  armor: 18
+  armor: 17
   stats:
     currentHealth: 4
     maxHealth: 0
@@ -6795,6 +6814,9 @@ MonoBehaviour:
   centre: {x: 0, y: 0, z: 0}
   radius: 24.1
   halfExtents: {x: 24.1, y: 24.1}
+  keepOut:
+  - {x: -0.5, y: 5, z: 12.3}
+  - {x: 0.5, y: 1.8, z: -6}
   debugLogs: 1
 --- !u!1 &1922406720
 GameObject:
@@ -7186,7 +7208,7 @@ MonoBehaviour:
   playerNumber: 2
   maxHealth: 80
   maxStamina: 100
-  armor: 8
+  armor: 13
   stats:
     currentHealth: 4
     maxHealth: 0

@@ -29,6 +29,12 @@ public class ArenaBounds : MonoBehaviour
     [Tooltip("Rect only: half the width (X) and half the depth (Z), in world units.")]
     [SerializeField] private Vector2 halfExtents = new Vector2(29f, 19f);
 
+    [Tooltip("Keep-out circles INSIDE the arena (x, z = centre, y = radius, world units). Fighters " +
+             "are pushed to the rim and walk around - used for the desert hill, which they used to " +
+             "climb and float on. A script clamp for the same reason the outer bound is one: the " +
+             "fighters' frozen X/Z axes ignore physical colliders.")]
+    [SerializeField] private Vector3[] keepOut = new Vector3[0];
+
     [Tooltip("Log the first time each fighter is pushed back in.")]
     [SerializeField] private bool debugLogs = false;
 
@@ -48,18 +54,43 @@ public class ArenaBounds : MonoBehaviour
         {
             Vector2 offset = new Vector2(p.x - centre.x, p.z - centre.z);
             float limit = Mathf.Max(0.1f, radius - bodyRadius);
-            if (offset.sqrMagnitude <= limit * limit) return p;
-
-            offset = offset.normalized * limit;
-            return new Vector3(centre.x + offset.x, p.y, centre.z + offset.y);
+            if (offset.sqrMagnitude > limit * limit)
+            {
+                offset = offset.normalized * limit;
+                p = new Vector3(centre.x + offset.x, p.y, centre.z + offset.y);
+            }
+            return PushOutOfKeepOut(p, bodyRadius);
         }
 
         float limX = Mathf.Max(0.1f, halfExtents.x - bodyRadius);
         float limZ = Mathf.Max(0.1f, halfExtents.y - bodyRadius);
         float x = Mathf.Clamp(p.x - centre.x, -limX, limX) + centre.x;
         float z = Mathf.Clamp(p.z - centre.z, -limZ, limZ) + centre.z;
-        if (Mathf.Approximately(x, p.x) && Mathf.Approximately(z, p.z)) return p;
-        return new Vector3(x, p.y, z);
+        return PushOutOfKeepOut(new Vector3(x, p.y, z), bodyRadius);
+    }
+
+    /// <summary>
+    /// Pushes a point outside every keep-out circle (nearest rim, same Y). A fighter walking at a
+    /// zone slides along its rim, so "walk around it" happens on its own.
+    /// </summary>
+    private Vector3 PushOutOfKeepOut(Vector3 p, float bodyRadius)
+    {
+        for (int i = 0; i < keepOut.Length; i++)
+        {
+            Vector3 zone = keepOut[i];
+            float keep = zone.y + bodyRadius;
+            Vector2 offset = new Vector2(p.x - zone.x, p.z - zone.z);
+            float sq = offset.sqrMagnitude;
+            if (sq >= keep * keep || zone.y <= 0f) continue;
+
+            // Dead centre has no outward direction: push toward the arena centre's opposite.
+            if (sq < 1e-6f) offset = new Vector2(zone.x - centre.x, zone.z - centre.z).normalized;
+            if (offset.sqrMagnitude < 1e-6f) offset = Vector2.right;
+
+            offset = offset.normalized * keep;
+            p = new Vector3(zone.x + offset.x, p.y, zone.z + offset.y);
+        }
+        return p;
     }
 
     /// <summary>Clamps against the active bounds, or returns the point untouched when there are none.</summary>
@@ -80,8 +111,28 @@ public class ArenaBounds : MonoBehaviour
         halfExtents = newHalfExtents;
     }
 
+    /// <summary>Adds or replaces the keep-out circles from code (arena placement menus / setup evals).</summary>
+    public void SetKeepOut(params Vector3[] zones)
+    {
+        keepOut = zones ?? new Vector3[0];
+    }
+
     private void OnDrawGizmosSelected()
     {
+        Gizmos.color = new Color(0.3f, 0.9f, 1f, 0.9f);
+        foreach (var zone in keepOut)
+        {
+            const int steps = 32;
+            Gizmos.color = new Color(1f, 0.5f, 0.2f, 0.9f);
+            Vector3 prev = new Vector3(zone.x + zone.y, 0.2f, zone.z);
+            for (int i = 1; i <= steps; i++)
+            {
+                float a = i * 2f * Mathf.PI / steps;
+                Vector3 next = new Vector3(zone.x + Mathf.Cos(a) * zone.y, 0.2f, zone.z + Mathf.Sin(a) * zone.y);
+                Gizmos.DrawLine(prev, next);
+                prev = next;
+            }
+        }
         Gizmos.color = new Color(0.3f, 0.9f, 1f, 0.9f);
         if (shape == Shape.Circle)
         {
