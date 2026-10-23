@@ -3212,3 +3212,31 @@ wordless breath per fighter with the attack (Miyamoto TSSS, Bjorn HUH), Elden Ri
 cries in a different tone each, and music they supply themselves. It is written up in
 `Design/Plan_Audio.md` with the hook points - every fight event already has one in
 `CombatSystem.OnHit` or the active window closing, so no new systems are needed.
+
+### 2026-10-23 — Balance pass items 1-4: whiff tax, low-stamina reversal, block spread, Miyamoto's walk
+
+Implemented the first four items of `Design/Plan_Balance.md` in one pass; none of them touch a
+frame budget, so no `Use Mixamo packs` refit was needed.
+
+- **Whiff tax (2.1).** `whiffExtraRecovery` on `CombatSystem`: when the active window closes with
+  no touch and no dodge, the move's own `recoveryFrames` x `WHIFF_RECOVERY_MULTIPLIER` (1.0) is
+  added to the total - recovery doubles on a whiff, scaling by weight with no second table. It is
+  mutually exclusive with the dodge tax (`evadedExtraRecovery`, 48 f, which is longer and wins on
+  a dash-dodge), and the cancel window is NOT stretched, so a combo link still only escapes the
+  authored recovery. A LANDED hit pays nothing - measured 26 f against the same move's 30 whiffed.
+- **Low stamina reversed (2.3).** `LOW_STAMINA_FRACTION` / `LOW_STAMINA_RECOVERY_MULTIPLIER` are
+  gone; regen is flat again. Below `WEAKENED_STAMINA_FRACTION` (40%) an attack costs x0.75, deals
+  x0.75 and runs at x0.85 - the attack clock and `animator.speed` slow TOGETHER (the animator was
+  already written every frame for hit-stop, which gave the slowdown a clean seam). The weakened
+  verdict is taken once in `BeginAttack` and held for the swing; cost and damage cuts are equal so
+  damage-per-stamina never improves below the line. The stamina gates (`TryAttack`, the string
+  cancel) check the EFFECTIVE cost, so a drained fighter can still afford the cheapened swing.
+- **Block spread (2.4).** 85 / 75 / 68 / 60 (Richard / Salaadin / Bjorn / Miyamoto) in
+  `CrucibleBalance` - was 85 / 82 / 80 / 60. Bjorn loses the second-best-guard accident.
+- **Miyamoto walk 44 -> 48 (2.2).** One integer; the walk clip is a loop, nothing re-times.
+
+Applied the roster balance through `eval` (not the menu bridge), read every scene field and both
+data assets back, saved the scene. Play-verified with the capture-delta harness: whiff light
+30 f / heavy 54 f (22/38 authored), weakened light cost 13 frames 36, weakened heavy cost 17
+frames 63, damage 8 -> 6, walk 48. Items 5 and 6 of the plan (Salaadin's combo freedom with the
+deferred damage cut, per-fighter parry and dash i-frames) are still open.

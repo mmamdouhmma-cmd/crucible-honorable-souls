@@ -1,7 +1,17 @@
 # CRUCIBLE: Honorable Souls — Balance and feel pass
 
-Agreed 2026-10-23 in conversation, to build next session. Nothing here is implemented yet.
+Agreed 2026-10-23 in conversation.
 **This pass runs BEFORE `Design/Plan_Audio.md`** - the user's call, 2026-10-23.
+
+**Progress (2026-10-23, same day):** items 1-4 of the sequence in section 5 are SHIPPED and
+play-verified - the whiff recovery extension (2.1, `WHIFF_RECOVERY_MULTIPLIER = 1.0`: a whiff
+doubles the move's own recovery), the low-stamina reversal (2.3, below 40%: cost x0.75, damage
+x0.75, pace x0.85 - equal cost/damage cuts, so efficiency is flat and only tempo is lost), the
+block spread (2.4: 85 / 75 / 68 / 60) and Miyamoto's walk (2.2, 44 -> 48). No frame budgets
+changed, so no animation refit was needed. Measured: Bjorn whiffed light 30 f vs landed 26 f,
+whiffed heavy 54 f vs authored 38; weakened light cost 13 vs 17, damage 6 vs 8, 36 f vs 30.
+Items 5 (Salaadin's combo freedom + the deferred damage cut) and 6 (per-fighter parry and dash
+i-frames) remain.
 
 The measured numbers below came off the live assets and the scene, not off the design intent —
 `Editor/CrucibleBalance.cs` for the table, the four `Fighter` components for the defensive fields.

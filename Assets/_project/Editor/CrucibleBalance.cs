@@ -13,7 +13,10 @@
 //   Richard   most health, lowest stamina, damage between the two, slowest of the three;
 //             his shield pays him back with the best block (85%) and the lowest hold drain
 //   Salaadin  the balanced one: Miyamoto's damage at a slower swing, armour between Bjorn and
-//             Richard, the biggest stamina pool, and a round shield that blocks 82%
+//             Richard, the biggest stamina pool, and a round shield that blocks 75%
+//
+// Block spread (Plan_Balance 2.4, 2026-10-23): 85 / 75 / 68 / 60 so "can I afford to turtle" is
+// a different question per fighter - it was 85 / 82 / 80 / 60, three of four within five points.
 //
 // Frames are the ONLY attack-speed lever: FighterData.AttackSpeed and FighterData.DashDistance
 // are dead fields that nothing reads. Changing a frame count re-times that clip, so run
@@ -38,7 +41,11 @@ public static class CrucibleBalance
     {
         new Vitals { character = "Miyamoto", player = "Player2", fighterName = "Miyamoto", archetype = "Duelist",
                      dataPath = "Assets/_project/Data/Fighters/miyamoto_data.asset",
-                     health = 80, stamina = 100, armor = 8, damageMultiplier = 92, moveSpeed = 44,
+                     // moveSpeed 44 -> 48 (Plan_Balance 2.2): his old 7% walk lead over Salaadin
+                     // was under the threshold anyone feels. At 48 the lead is 17%, and a fast
+                     // walk is a COUNTER fighter's defensive tool - walking in and out of range is
+                     // how he baits the whiffs he punishes.
+                     health = 80, stamina = 100, armor = 8, damageMultiplier = 92, moveSpeed = 48,
                      regen = 20f, dashDistance = 2.6f, dashDuration = 0.22f, dashStamina = 12,
                      blockReduction = 60, blockDrain = 3f },
 
@@ -46,7 +53,9 @@ public static class CrucibleBalance
                      dataPath = "Assets/_project/Data/Fighters/bjorn_data.asset",
                      health = 95, stamina = 110, armor = 14, damageMultiplier = 110, moveSpeed = 38,
                      regen = 17f, dashDistance = 2.2f, dashDuration = 0.30f, dashStamina = 18,
-                     blockReduction = 80, blockDrain = 3f },
+                     // 80 -> 68 (Plan_Balance 2.4): aggression should not also carry the
+                     // second-best guard in the game.
+                     blockReduction = 68, blockDrain = 3f },
 
         // The wall: the shield makes his guard the strongest per hit, the small tank makes it short.
         new Vitals { character = "Richard", player = "Player3", fighterName = "Richard", archetype = "Tank",
@@ -61,7 +70,9 @@ public static class CrucibleBalance
                      dataPath = "Assets/_project/Data/Fighters/salaadin_data.asset",
                      health = 95, stamina = 115, armor = 18, damageMultiplier = 92, moveSpeed = 41,
                      regen = 16f, dashDistance = 2.3f, dashDuration = 0.26f, dashStamina = 15,
-                     blockReduction = 82, blockDrain = 2.5f },
+                     // 82 -> 75 (Plan_Balance 2.4): between Richard's 85 and Bjorn's 68, so the
+                     // round shield still reads but the wall is Richard's alone.
+                     blockReduction = 75, blockDrain = 2.5f },
     };
 
     // ------------------------------------------------------------------ the moves

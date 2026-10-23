@@ -542,7 +542,7 @@ MonoBehaviour:
   dashDistance: 2.2
   dashDuration: 0.3
   dashStaminaCost: 18
-  blockDamageReduction: 80
+  blockDamageReduction: 68
   blockStaminaDrainPerSecond: 3
   parryWindow: 0.12
   parryCooldown: 1
@@ -6497,7 +6497,7 @@ MonoBehaviour:
   dashDistance: 2.3
   dashDuration: 0.26
   dashStaminaCost: 15
-  blockDamageReduction: 82
+  blockDamageReduction: 75
   blockStaminaDrainPerSecond: 2.5
   parryWindow: 0.12
   parryCooldown: 1

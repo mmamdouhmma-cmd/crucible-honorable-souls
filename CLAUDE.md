@@ -83,7 +83,8 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   every `AttackData`'s damage/stamina/pierce/frames/hitstun, and the `Fighter` components in the
   scene. Each fighter now has his own data asset (`bjorn_data`, `miyamoto_data`, `richard_data`);
   `testfighter_data` is no longer referenced. Archetypes as of 2026-10-20: Miyamoto 80 hp / 100
-  stamina / 8 armour / x0.92 / walk 4.4, Bjorn 95 / 110 / 14 / x1.10 / 3.8 (costliest moves),
+  stamina / 8 armour / x0.92 / walk 4.8 (raised from 4.4 on 2026-10-23, Plan_Balance 2.2),
+  Bjorn 95 / 110 / 14 / x1.10 / 3.8 (costliest moves),
   Richard 115 / 85 / 22 / x1.00 / 3.2 (85% block at 2/s drain). `FighterData.AttackSpeed` and
   `DashDistance` are DEAD fields - attack speed is only the AttackData frame counts, and changing
   one re-times its clip, so re-run `Use Mixamo packs` after a frame change.
@@ -844,10 +845,22 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   has not called it out, and the pack has nothing else that size.
 - **All three post-move lockouts are 0.5 s** (the user's call, 2026-10-23, down from 0.85). They
   are still deliberately ONE beat - `ATTACK_CHAIN_LOCKOUT`, `STRING_LOCKOUT`, `SPECIAL_LOCKOUT`.
-- **Stamina recovers at x0.75 below 20% of the bar** (`BalanceConfig.LOW_STAMINA_FRACTION` and
-  `LOW_STAMINA_RECOVERY_MULTIPLIER`, applied in `Fighter.HandleStaminaRecovery`), so emptying the
-  bar costs more to come back from than spending down to a comfortable level. Verified in play over
-  60 frames: 11 points gained from half a bar against 8 from a tenth of one.
+- **Low stamina weakens the ATTACKS, not the regen** (Plan_Balance 2.3, shipped 2026-10-23;
+  it REPLACED the x0.75-regen-under-20% rule, whose constants are gone). Below
+  `WEAKENED_STAMINA_FRACTION` (40%) a swing costs x0.75 stamina, deals x0.75 damage and runs at
+  x0.85 pace - attack clock AND `animator.speed` together, so the picture matches the frames.
+  Judged ONCE in `CombatSystem.BeginAttack` and held for the whole swing. The damage cut must
+  never be smaller than the cost cut or camping at 39% of the bar becomes optimal.
+- **A whiffed attack doubles its own recovery** (`WHIFF_RECOVERY_MULTIPLIER = 1.0`, Plan_Balance
+  2.1, shipped 2026-10-23): active window closes untouched -> `whiffExtraRecovery` adds
+  `recoveryFrames x 1.0` to the total, so a missed heavy is held open longer than a missed light.
+  Mutually exclusive with the dodge tax (48 f), which still wins on a dash-dodge. The cancel
+  window is NOT stretched - a combo link escapes the authored recovery only. Play-verified:
+  Bjorn light 22 f -> 30 whiffed, heavy 38 -> 54; a LANDED light is 26 f (no tax).
+- **Block spread is 85 / 75 / 68 / 60** (Richard / Salaadin / Bjorn / Miyamoto, Plan_Balance 2.4)
+  and **Miyamoto walks 4.8** (moveSpeed 48, Plan_Balance 2.2) - both in `CrucibleBalance`,
+  applied and play-verified 2026-10-23. Items 5 (Salaadin combo freedom + deferred damage cut)
+  and 6 (per-fighter parry and dash i-frames) of `Design/Plan_Balance.md` are NOT built yet.
 
 - **A clip that is NOT in `swing_trims.json` is skipped entirely and fitted WHOLE**, and a contact
   entry does NOT rescue it - `ComputeTrims` bails at `if (!block.Success) continue;` before the

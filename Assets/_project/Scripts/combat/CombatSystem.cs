@@ -160,7 +160,14 @@ public class CombatSystem : MonoBehaviour
         // Hit-stop: everything below (attack timers, hitstun, animation) holds still for a few frames.
         HitStop.Tick(Time.deltaTime);
         bool frozen = HitStop.IsActive;
-        if (animator != null) animator.speed = frozen ? 0f : 1f;
+        // A weakened swing (started under the low-stamina line) plays slower too, so what the
+        // player sees stays in step with the slowed frame clock below.
+        if (animator != null)
+        {
+            animator.speed = frozen ? 0f
+                : (isAttacking && currentAttackWeakened) ? BalanceConfig.WEAKENED_ATTACK_PACE_MULTIPLIER
+                : 1f;
+        }
         if (frozen) return;
 
         // Post-chain lockout and chain expiry. Both run while idle, so they tick before the
@@ -203,14 +210,17 @@ public class CombatSystem : MonoBehaviour
 
         if (!isAttacking || currentAttack == null) return;
 
-        currentAttackTime += Time.deltaTime;
+        // The attack clock and the animator slow together for a weakened swing, so startup,
+        // active and recovery all stretch and the animation stays on the frame windows.
+        currentAttackTime += Time.deltaTime *
+            (currentAttackWeakened ? BalanceConfig.WEAKENED_ATTACK_PACE_MULTIPLIER : 1f);
 
         // A buffered press inside the cancel window drops the rest of the recovery.
         if (hasBufferedInput && TryCancelIntoFollowUp()) return;
 
         float startupEnd = currentAttack.StartupFrames * BalanceConfig.FRAME_TIME;
         float activeEnd = startupEnd + currentAttack.ActiveFrames * BalanceConfig.FRAME_TIME;
-        float total = currentAttack.GetTotalDuration() + evadedExtraRecovery;
+        float total = currentAttack.GetTotalDuration() + evadedExtraRecovery + whiffExtraRecovery;
 
         // A blade box only hits where the weapon physically is, so it stays armed a few frames either
         // side of the authored active window (the authored front box was a slab that was always touching).
@@ -274,7 +284,19 @@ public class CombatSystem : MonoBehaviour
             hitboxActive = false;
             if (weaponTrail != null) weaponTrail.End();
 
-            if (!touched && !swingEvaded) LogWhiff();
+            // A whiff extends the move's OWN recovery by a fraction of itself, so a missed
+            // heavy is held open longer than a missed light (Plan_Balance 2.1). A dodged swing
+            // already pays the longer dodge recovery instead, so the two never stack.
+            if (!touched && !swingEvaded)
+            {
+                int extra = Mathf.RoundToInt(currentAttack.RecoveryFrames * BalanceConfig.WHIFF_RECOVERY_MULTIPLIER);
+                if (extra > 0 && whiffExtraRecovery <= 0f)
+                {
+                    whiffExtraRecovery = extra * BalanceConfig.FRAME_TIME;
+                    if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {currentAttack.AttackName} WHIFFED - +{extra} f recovery ({whiffExtraRecovery:F2}s open)");
+                }
+                LogWhiff();
+            }
         }
 
         if (currentAttackTime >= total)
@@ -383,7 +405,7 @@ public class CombatSystem : MonoBehaviour
         }
 
         if (fighter == null || fighter.Stats == null) return false;
-        if (!fighter.Stats.HasStamina(link.followUp.StaminaCost)) return false;
+        if (!fighter.Stats.HasStamina(EffectiveStaminaCost(link.followUp))) return false;
 
         string from = currentAttack.AttackName;
         int window0 = currentAttack.CancelStartFrame, window1 = currentAttack.CancelEndFrame;
@@ -415,6 +437,7 @@ public class CombatSystem : MonoBehaviour
         hitboxStarted = false;
         swingEvaded = false;
         evadedExtraRecovery = 0f;
+        whiffExtraRecovery = 0f;
         reachTarget = null;
         attackTouched = false;
         attackHitClean = false;
@@ -432,7 +455,19 @@ public class CombatSystem : MonoBehaviour
             Debug.Log($"P{fighter.PlayerNumber}: PARRY COUNTER - {attack.AttackName} will deal x{fighter.ParryCounterDamageMultiplier} damage");
         }
 
-        fighter.Stats.UseStamina(attack.StaminaCost);
+        // Judged ONCE, at the moment the swing starts and before the cost comes off the bar,
+        // and held for the whole swing: recovering past the line mid-swing does not speed it up.
+        currentAttackWeakened = IsWeakened();
+        if (currentAttackWeakened && debugLogs)
+        {
+            Debug.Log($"P{fighter.PlayerNumber}: {attack.AttackName} thrown WEAKENED " +
+                      $"(stamina {fighter.Stats.currentStamina}/{fighter.Stats.maxStamina}: " +
+                      $"x{BalanceConfig.WEAKENED_STAMINA_COST_MULTIPLIER} cost, " +
+                      $"x{BalanceConfig.WEAKENED_DAMAGE_MULTIPLIER} damage, " +
+                      $"x{BalanceConfig.WEAKENED_ATTACK_PACE_MULTIPLIER} pace)");
+        }
+
+        fighter.Stats.UseStamina(EffectiveStaminaCost(attack));
 
         // Count this swing against the same-attack chain. A different attack, or too long a gap
         // after the previous one ended, starts over - so a string, being different attacks by
@@ -523,9 +558,10 @@ public class CombatSystem : MonoBehaviour
         return false;
     }
 
-    if (!fighter.Stats.HasStamina(found.StaminaCost))
+    int needed = EffectiveStaminaCost(found);
+    if (!fighter.Stats.HasStamina(needed))
     {
-        Debug.Log($"P{pn}: BLOCKED - stamina {fighter.Stats.currentStamina}/{found.StaminaCost} for {found.AttackName}");
+        Debug.Log($"P{pn}: BLOCKED - stamina {fighter.Stats.currentStamina}/{needed} for {found.AttackName}");
         return false;
     }
 
@@ -599,6 +635,29 @@ public class CombatSystem : MonoBehaviour
     // recovery (no turning, no walking) so a well-timed dash leaves them open to the counter.
     private float evadedExtraRecovery;
 
+    // Added to the current attack's total when its active window closed without touching anyone:
+    // the whiff tax (Plan_Balance 2.1). Mutually exclusive with evadedExtraRecovery.
+    private float whiffExtraRecovery;
+
+    // True while the current swing was started under the low-stamina line: it cost less, deals
+    // less, and runs slower - clock and animator together (Plan_Balance 2.3).
+    private bool currentAttackWeakened;
+
+    /// <summary>True when an attack thrown RIGHT NOW would be weakened (bar under the line).</summary>
+    private bool IsWeakened()
+    {
+        return fighter != null && fighter.Stats != null && fighter.Stats.maxStamina > 0 &&
+               fighter.Stats.currentStamina < fighter.Stats.maxStamina * BalanceConfig.WEAKENED_STAMINA_FRACTION;
+    }
+
+    /// <summary>What <paramref name="attack"/> costs right now: the authored cost, cut below the line.</summary>
+    private int EffectiveStaminaCost(AttackData attack)
+    {
+        int cost = attack != null ? attack.StaminaCost : 0;
+        if (IsWeakened()) cost = Mathf.RoundToInt(cost * BalanceConfig.WEAKENED_STAMINA_COST_MULTIPLIER);
+        return cost;
+    }
+
     /// <summary>
     /// How long a dodged attack stays open, in frames: the attack's own override first, then this
     /// component's setting, then <see cref="BalanceConfig.DODGED_RECOVERY_FRAMES"/>.
@@ -635,6 +694,8 @@ public class CombatSystem : MonoBehaviour
         inHitstun = false;
         hitstunTimer = 0f;
         evadedExtraRecovery = 0f;
+        whiffExtraRecovery = 0f;
+        currentAttackWeakened = false;
         hasBufferedInput = false;
         bufferTimer = 0f;
         stringDepth = 0;
@@ -847,6 +908,9 @@ public class CombatSystem : MonoBehaviour
         {
             bonus *= BalanceConfig.DASH_INTO_ATTACK_DAMAGE_MULTIPLIER;
         }
+        // Thrown from under the low-stamina line: the damage cut is at least as deep as the cost
+        // cut, so running the bar down can never IMPROVE damage-per-stamina (Plan_Balance 2.3).
+        if (currentAttackWeakened) bonus *= BalanceConfig.WEAKENED_DAMAGE_MULTIPLIER;
 
         int finalDamage = DamageCalculator.CalculateDamage(
             currentAttack.Damage,
@@ -1105,6 +1169,7 @@ public class CombatSystem : MonoBehaviour
         isAttacking = false;
         currentAttack = null;
         currentAttackTime = 0f;
+        currentAttackWeakened = false;
         currentAttackIsDashCounter = false;
         currentAttackIsParryCounter = false;
         chainIdleTimer = 0f; // the chain window starts counting from here

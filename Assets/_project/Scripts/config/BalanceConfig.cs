@@ -72,12 +72,25 @@ public static class BalanceConfig
     public const float MATCH_START_GAP = 6.5f;
 
     // ==================== LOW STAMINA ====================
-    // Below LOW_STAMINA_FRACTION of the bar, passive recovery runs at
-    // LOW_STAMINA_RECOVERY_MULTIPLIER of its normal rate, so running the bar right down costs
-    // longer to come back from than spending down to a comfortable level. The user's call
-    // (2026-10-23): "stamina recovers slower by 25% when its less than 20%".
-    public const float LOW_STAMINA_FRACTION = 0.20f;
-    public const float LOW_STAMINA_RECOVERY_MULTIPLIER = 0.75f;
+    // Below WEAKENED_STAMINA_FRACTION of the bar an attack costs less, deals less and comes out
+    // slower (Plan_Balance 2.3, agreed 2026-10-23). This REPLACES the old slow-regen rule
+    // (recovery at x0.75 under 20% of the bar): a drained fighter stays in the fight but stops
+    // threatening, and the stamina spiral itself is what teaches pacing a round.
+    // The damage cut must be AT LEAST as large as the cost cut, or damage-per-stamina IMPROVES
+    // below the line and the optimal play becomes camping at 39% of the bar. Equal percentages
+    // leave efficiency flat and cost only tempo, which is the intent.
+    public const float WEAKENED_STAMINA_FRACTION = 0.40f;
+    public const float WEAKENED_STAMINA_COST_MULTIPLIER = 0.75f;
+    public const float WEAKENED_DAMAGE_MULTIPLIER = 0.75f;
+    public const float WEAKENED_ATTACK_PACE_MULTIPLIER = 0.85f; // attack clock AND animator run at this rate
+
+    // ==================== WHIFF ====================
+    // An attack whose active window closes without touching anyone (not hit, not blocked, not
+    // dodged - a dash-dodge costs DODGED_RECOVERY_FRAMES instead) extends its own recovery by
+    // this fraction of the move's recoveryFrames, so a whiffed heavy is punished harder than a
+    // whiffed light without a second table (Plan_Balance 2.1). The cancel window is NOT
+    // stretched: a combo link escapes the authored recovery only, never the whiff tail.
+    public const float WHIFF_RECOVERY_MULTIPLIER = 1.0f;
 
     // ==================== ATTACK CHAIN LIMIT (anti-spam) ====================
     // All three post-move lockouts are the SAME beat (0.5 s, the user's call on 2026-10-23, down
