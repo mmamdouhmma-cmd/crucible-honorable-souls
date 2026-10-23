@@ -107,6 +107,12 @@ public class FighterStats
         currentStamina -= amount;
     }
 
+    /// <summary>Gives back whole stamina points at once (a refund), capped at max.</summary>
+    public void AddStamina(int amount)
+    {
+        currentStamina = Mathf.Min(maxStamina, currentStamina + Mathf.Max(amount, 0));
+    }
+
     /// <summary>
     /// Drains stamina across <paramref name="deltaTime"/> seconds at
     /// <paramref name="perSecond"/> (e.g. holding block), never below 0.

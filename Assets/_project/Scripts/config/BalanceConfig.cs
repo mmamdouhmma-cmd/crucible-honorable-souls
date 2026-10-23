@@ -46,6 +46,9 @@ public static class BalanceConfig
 
     // ==================== COMBAT TIMING ====================
     public const float PARRY_WINDOW = 0.12f;        // 9 frames at 60fps
+    // The FALLBACK for Fighter.dashIFrameDuration only - the real per-fighter values live in
+    // CrucibleBalance (Plan_Balance 2.5; coverage of the dash, not absolute time, is the dial).
+    // Before 2026-10-23 this constant was dead code and the WHOLE dash evaded.
     public const float DASH_IFRAME_DURATION = 0.15f;
     // Time after a dodge-dash in which the counter attack must be STARTED. Matched to
     // DODGED_RECOVERY_FRAMES (0.8s): the dodged attacker is held open for 0.8s, so a shorter

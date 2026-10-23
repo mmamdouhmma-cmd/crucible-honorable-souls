@@ -17,7 +17,20 @@ so a landed hit converts instantly) with the deferred damage cut riding along, x
 the roster reads Bjorn 110 > Richard 100 > Miyamoto 92 > Salaadin 85 and the x0.92 twinning with
 Miyamoto is over. Play-verified: L->M->L lands 5+6+5 damage, L->SP+M->M lands 22, the fourth
 press is capped at MAX_STRING_LENGTH, and ShinCut's hit-confirm cancel fires on frame 12 where
-the default window would open at 16. Item 6 (per-fighter parry and dash i-frames) remains.
+the default window would open at 16.
+
+Item 6 shipped the same evening, which completes the plan. Dash i-frames are a per-fighter field
+(`Fighter.dashIFrameDuration`, a `CrucibleBalance` column) at the proposed 0.18 / 0.16 / 0.14 /
+0.12 s = 82 / 62 / 47 / 35% coverage - and the finding on the way in: `DASH_IFRAME_DURATION` was
+dead code, nothing read it, so the WHOLE dash evaded (coverage was 100% for everyone, not the
+68-44% the table above assumed). Only the head of a dash evades now; the tail is punishable.
+Parry became a six-column per-fighter table in the same pass (Miyamoto window 0.18 / cooldown 0.8
+/ counter window 1.0 / riposte x1.5; Bjorn 0.10 / cost 10 / cooldown 1.2; Richard and Salaadin
+base), which settles the 1.5-vs-1.35 and 1.0-vs-0.5 discrepancies from section "Not built at
+all". And per the user's call the same day, a SUCCESSFUL dodge refunds the dash's stamina - the
+plan's own warning stands: refund + 82% coverage is double-generous for Miyamoto, first thing to
+watch in a playtest. Verified by dash age at the judgment frame: Miyamoto hit at 0.217 / evaded
+at 0.100 against his 0.18; Richard hit at 0.200 / evaded at 0.117 against his 0.12.
 
 The measured numbers below came off the live assets and the scene, not off the design intent —
 `Editor/CrucibleBalance.cs` for the table, the four `Fighter` components for the defensive fields.

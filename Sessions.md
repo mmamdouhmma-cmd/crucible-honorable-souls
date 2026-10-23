@@ -3267,3 +3267,37 @@ in the same commit. All of it authored data - `CrucibleCombos` and one `Crucible
 Play-verified as Salaadin vs Miyamoto: L->M->L lands 5+6+5 (the x0.85 single blow is 5, was 6),
 L->SP+M(Crescent)->M lands 22, the capped 4th press never fires. Items 1-4 were verified earlier
 the same day; item 6 (per-fighter parry and dash i-frames) is the last one open.
+
+### 2026-10-23 — Balance item 6: per-fighter dash i-frames and parry; the dodge refund
+
+The last item of `Design/Plan_Balance.md` - the two axes that make Miyamoto a counter fighter.
+
+- **`DASH_IFRAME_DURATION` was dead code.** Nothing read it: `ResolveDashAgainst` only checked
+  `isDashing`, so every correctly-directioned dash evaded for its WHOLE duration and the plan's
+  "coverage today" table (68-44%) described a constant that was never applied. The real state was
+  100% coverage for everyone.
+- **Only the head of a dash evades now.** `Fighter.dashIFrameDuration` (new serialized field, a
+  `CrucibleBalance` column): past it `ResolveDashAgainst` returns Hit, so the tail is punishable;
+  the forward-into-the-blade amplification deliberately stays live for the whole dash. Values are
+  the plan's 2.5 column: 0.18 / 0.16 / 0.14 / 0.12 s = 82 / 62 / 47 / 35% coverage (Miyamoto /
+  Salaadin / Bjorn / Richard).
+- **A successful dodge refunds the dash's stamina** (the user's call, mid-session). The code had
+  charged every dash; `NotifyEvaded` now hands `dashStaminaCost` back via the new
+  `FighterStats.AddStamina`, behind the same firstReport guard as the dodge heal so the two evade
+  paths (arm-time and contact) cannot pay one dodge twice.
+- **Parry went from one implicit spec to a six-column table.** `CrucibleBalance.WriteScene` writes
+  window / cost / cooldown / stun / counter window / counter damage per fighter: Miyamoto 0.18 /
+  8 / 0.8 / 1.0 / 1.0 / x1.5 (his axis), Bjorn 0.10 / 10 / 1.2 / 1.0 / 0.8 / x1.35 (defence is
+  not his game), Richard and Salaadin base 0.12 / 8 / 1.0 / 1.0 / 0.8 / x1.35. This settles the
+  never-decided 1.5-vs-1.35 and 1.0-vs-0.5 serialized/BalanceConfig discrepancies.
+- **Measuring the window: the judgment moment is CONTACT (or hitbox-arm), and defenders with
+  different dash speeds meet the blade at different dash ages** - so "dash k frames after the
+  swing" is not a controlled variable, and two rounds of boundary-chasing produced flips on both
+  sides. The harness that settled it reads `dashTimer` BY REFLECTION on the frame the verdict
+  lands and compares it to that fighter's own window: Miyamoto HIT at 0.217s / EVADED at 0.100s
+  against 0.18; Richard HIT at 0.200s / EVADED at 0.117s against 0.12. All four consistent.
+
+With this, all six items of Plan_Balance are shipped and play-verified in one day. Carried
+forward to playtest: refund + 82% coverage is double-generous for Miyamoto (the plan's own
+warning - pick one to be generous); the whiff/weakened/block/combo numbers are each one constant
+if the feel is off.

@@ -859,8 +859,28 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   Bjorn light 22 f -> 30 whiffed, heavy 38 -> 54; a LANDED light is 26 f (no tax).
 - **Block spread is 85 / 75 / 68 / 60** (Richard / Salaadin / Bjorn / Miyamoto, Plan_Balance 2.4)
   and **Miyamoto walks 4.8** (moveSpeed 48, Plan_Balance 2.2) - both in `CrucibleBalance`,
-  applied and play-verified 2026-10-23. Items 5 (Salaadin combo freedom + deferred damage cut)
-  and 6 (per-fighter parry and dash i-frames) of `Design/Plan_Balance.md` are NOT built yet.
+  applied and play-verified 2026-10-23. All six items of `Design/Plan_Balance.md` are SHIPPED
+  as of 2026-10-23 (5 and 6 landed later the same day - the bullets below).
+- **Dash i-frames are PER FIGHTER and only the HEAD of a dash evades** (Plan_Balance 2.5 / item
+  6, shipped 2026-10-23). `Fighter.dashIFrameDuration`, written by `CrucibleBalance`: Miyamoto
+  0.18 / Salaadin 0.16 / Bjorn 0.14 / Richard 0.12 s = 82 / 62 / 47 / 35% COVERAGE of each dash.
+  Before this, `DASH_IFRAME_DURATION` was DEAD CODE and the whole dash evaded; now
+  `ResolveDashAgainst` returns Hit once `dashTimer` passes the window, so every dash has a
+  punishable tail (forward-into-the-blade amplification stays live for the whole dash). Verified
+  with the dash AGE read at the judgment frame: Miyamoto hit at 0.217 / evaded at 0.100 vs 0.18;
+  Richard hit at 0.200 / evaded at 0.117 vs 0.12. The judgment moment is CONTACT (or hitbox-arm),
+  so a feed-delay is not a controlled test variable - different dash speeds reach the blade at
+  different ages; measure the age, don't infer it.
+- **A SUCCESSFUL dodge refunds the dash's stamina** (the user's call, 2026-10-23):
+  `Fighter.NotifyEvaded` -> `Stats.AddStamina(dashStaminaCost)`, behind the same firstReport
+  guard as the dodge heal so the two evade paths cannot pay one dodge twice. Verified: Richard
+  69 -> 85/85 where regen alone reaches ~79. Watch in playtests: the plan warned refund + high
+  i-frame coverage is double-generous for Miyamoto - his coverage (82%) and this shipped together.
+- **Parry is a per-fighter table now** (`CrucibleBalance` writes all six fields; they were
+  identical on the whole roster). Miyamoto the counter fighter: window 0.18, cooldown 0.8,
+  counter window 1.0, riposte x1.5; Bjorn the worst parry (0.10, cost 10, cooldown 1.2); Richard
+  and Salaadin base (0.12 / 8 / 1.0). This SETTLED the old 1.5-vs-1.35 counter damage and
+  1.0-vs-0.5 counter window discrepancies: the table is the answer.
 - **Salaadin's axis is COMBO FREEDOM** (Plan_Balance item 5, shipped 2026-10-23, with the
   deferred damage cut x0.92 -> x0.85 riding along - the roster's damage order is now Bjorn 110 >
   Richard 100 > Miyamoto 92 > Salaadin 85). Three breaks with the shared string shapes, all
@@ -991,8 +1011,7 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
 
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
-  quick tunnel, new URL each restart); `parryCounterDamageMultiplier` is serialized 1.5 against `BalanceConfig`'s
-  1.35 and `parryCounterWindow` 1.0 s against 0.5 s, never settled; `PlayProbe`, `BladeTrace`
+  quick tunnel, new URL each restart); `PlayProbe`, `BladeTrace`
   and `InputHold` are debug-only components still in the scene (`DebugTimeScale` is wanted —
   the Settings speed slider drives it).
 

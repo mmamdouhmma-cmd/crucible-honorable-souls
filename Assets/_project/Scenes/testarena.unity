@@ -542,15 +542,16 @@ MonoBehaviour:
   dashDistance: 2.2
   dashDuration: 0.3
   dashStaminaCost: 18
+  dashIFrameDuration: 0.14
   blockDamageReduction: 68
   blockStaminaDrainPerSecond: 3
-  parryWindow: 0.12
-  parryCooldown: 1
-  parryStaminaCost: 8
+  parryWindow: 0.1
+  parryCooldown: 1.2
+  parryStaminaCost: 10
   parryAnimSpeed: 2
   parryStunDuration: 1
-  parryCounterWindow: 1
-  parryCounterDamageMultiplier: 1.5
+  parryCounterWindow: 0.8
+  parryCounterDamageMultiplier: 1.35
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
   staminaRecoveryPerSecond: 17
@@ -4411,6 +4412,7 @@ MonoBehaviour:
   dashDistance: 2
   dashDuration: 0.34
   dashStaminaCost: 16
+  dashIFrameDuration: 0.12
   blockDamageReduction: 85
   blockStaminaDrainPerSecond: 2
   parryWindow: 0.12
@@ -4418,8 +4420,8 @@ MonoBehaviour:
   parryStaminaCost: 8
   parryAnimSpeed: 2
   parryStunDuration: 1
-  parryCounterWindow: 1
-  parryCounterDamageMultiplier: 1.5
+  parryCounterWindow: 0.8
+  parryCounterDamageMultiplier: 1.35
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
   staminaRecoveryPerSecond: 14
@@ -6497,6 +6499,7 @@ MonoBehaviour:
   dashDistance: 2.3
   dashDuration: 0.26
   dashStaminaCost: 15
+  dashIFrameDuration: 0.16
   blockDamageReduction: 75
   blockStaminaDrainPerSecond: 2.5
   parryWindow: 0.12
@@ -6504,8 +6507,8 @@ MonoBehaviour:
   parryStaminaCost: 8
   parryAnimSpeed: 2
   parryStunDuration: 1
-  parryCounterWindow: 1
-  parryCounterDamageMultiplier: 1.5
+  parryCounterWindow: 0.8
+  parryCounterDamageMultiplier: 1.35
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
   staminaRecoveryPerSecond: 16
@@ -7101,10 +7104,11 @@ MonoBehaviour:
   dashDistance: 2.6
   dashDuration: 0.22
   dashStaminaCost: 12
+  dashIFrameDuration: 0.18
   blockDamageReduction: 60
   blockStaminaDrainPerSecond: 3
-  parryWindow: 0.12
-  parryCooldown: 1
+  parryWindow: 0.18
+  parryCooldown: 0.8
   parryStaminaCost: 8
   parryAnimSpeed: 2
   parryStunDuration: 1

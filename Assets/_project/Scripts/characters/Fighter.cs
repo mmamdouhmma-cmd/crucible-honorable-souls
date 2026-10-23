@@ -125,6 +125,12 @@ public class Fighter : MonoBehaviour
     [SerializeField] private float dashDistance = 2.5f;
     [SerializeField] private float dashDuration = 0.25f;   // total dash time in seconds
     [SerializeField] private int dashStaminaCost = 25;
+
+    [Tooltip("Seconds from the start of a dash during which it can still EVADE (the i-frames). " +
+             "Past this the dash's tail is an ordinary target: it no longer dodges, and a forward " +
+             "dash still runs into the blade. What matters is COVERAGE - this time as a fraction " +
+             "of dashDuration - which CrucibleBalance sets per fighter (Plan_Balance 2.5).")]
+    [SerializeField] private float dashIFrameDuration = BalanceConfig.DASH_IFRAME_DURATION;
     private bool isDashing = false;
     private float dashTimer = 0f;
     private Vector3 dashVelocity = Vector3.zero;
@@ -1114,6 +1120,13 @@ public DashHitOutcome ResolveDashAgainst(AttackOrigin origin)
 
     if (forward && !sideways) return DashHitOutcome.HitAmplified;
 
+    // Only the HEAD of the dash evades (Plan_Balance 2.5): past the i-frames the tail is an
+    // ordinary target, so a dash nobody can hit does not exist and COVERAGE is the per-fighter
+    // dial. Until 2026-10-23 DASH_IFRAME_DURATION was dead code and the whole dash evaded.
+    // The forward-into-the-blade amplification above deliberately stays live for the whole
+    // dash - running onto a strike late is still running onto it.
+    if (dashTimer > dashIFrameDuration) return DashHitOutcome.Hit;
+
     switch (origin)
     {
         case AttackOrigin.Overhead:
@@ -1150,6 +1163,15 @@ public void NotifyEvaded(bool counterAllowed)
 
     if (dustEffects) HitEffects.SpawnDust(FeetPosition(), BodyRadius, Mathf.Max(1f, dodgeDustStrength));
     RecoverHealth(healOnDodge, "dodge");
+
+    // A SUCCESSFUL dash costs nothing: the dodge refunds the dash's own stamina (the user's
+    // call, 2026-10-23). Behind the firstReport guard above, so the two evade paths (hitbox
+    // arming and trigger contact) cannot pay one dodge out twice.
+    if (Stats != null)
+    {
+        Stats.AddStamina(dashStaminaCost);
+        Debug.Log($"P{playerNumber}: successful dodge - {dashStaminaCost} dash stamina refunded");
+    }
 }
 
 /// <summary>Health for landing the punish a dodge or parry earned (called by CombatSystem).</summary>

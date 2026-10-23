@@ -37,6 +37,14 @@ public static class CrucibleBalance
         public float regen, dashDistance, dashDuration;
         public int dashStamina, blockReduction;
         public float blockDrain;
+        // Plan_Balance 2.5 / item 6: the two axes that make a COUNTER fighter possible. Dash
+        // i-frames are COVERAGE of that fighter's own dash (iframes / dashDuration), kept clearly
+        // under 100% so every dash has a punishable tail. Parry was identical on all four before
+        // this table existed - and writing it here SETTLES the old 1.5-vs-1.35 counter damage and
+        // 1.0-vs-0.5 counter window discrepancies that were never decided.
+        public float dashIFrames;
+        public float parryWindow, parryCooldown, parryStun, parryCounterWindow, parryCounterDamage;
+        public int parryCost;
     }
 
     static readonly Vitals[] Fighters =
@@ -49,7 +57,13 @@ public static class CrucibleBalance
                      // how he baits the whiffs he punishes.
                      health = 80, stamina = 100, armor = 8, damageMultiplier = 92, moveSpeed = 48,
                      regen = 20f, dashDistance = 2.6f, dashDuration = 0.22f, dashStamina = 12,
-                     blockReduction = 60, blockDrain = 3f },
+                     blockReduction = 60, blockDrain = 3f,
+                     // The COUNTER fighter: 82% dash coverage, the widest parry window in the
+                     // game (0.18 vs the 0.12 base), the shortest parry cooldown, and the only
+                     // x1.5 riposte - his damage lives here, not in neutral.
+                     dashIFrames = 0.18f,
+                     parryWindow = 0.18f, parryCost = 8, parryCooldown = 0.8f, parryStun = 1f,
+                     parryCounterWindow = 1f, parryCounterDamage = 1.5f },
 
         new Vitals { character = "Bjorn", player = "Player1", fighterName = "Bjorn", archetype = "Berserker",
                      dataPath = "Assets/_project/Data/Fighters/bjorn_data.asset",
@@ -57,14 +71,23 @@ public static class CrucibleBalance
                      regen = 17f, dashDistance = 2.2f, dashDuration = 0.30f, dashStamina = 18,
                      // 80 -> 68 (Plan_Balance 2.4): aggression should not also carry the
                      // second-best guard in the game.
-                     blockReduction = 68, blockDrain = 3f },
+                     blockReduction = 68, blockDrain = 3f,
+                     // 47% dash coverage; the narrowest, dearest, slowest parry - defence is
+                     // not his game on any axis.
+                     dashIFrames = 0.14f,
+                     parryWindow = 0.10f, parryCost = 10, parryCooldown = 1.2f, parryStun = 1f,
+                     parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
 
         // The wall: the shield makes his guard the strongest per hit, the small tank makes it short.
         new Vitals { character = "Richard", player = "Player3", fighterName = "Richard", archetype = "Tank",
                      dataPath = "Assets/_project/Data/Fighters/richard_data.asset",
                      health = 115, stamina = 85, armor = 22, damageMultiplier = 100, moveSpeed = 32,
                      regen = 14f, dashDistance = 2.0f, dashDuration = 0.34f, dashStamina = 16,
-                     blockReduction = 85, blockDrain = 2f },
+                     blockReduction = 85, blockDrain = 2f,
+                     // 35% dash coverage - the wall blocks, he does not slip. Base parry.
+                     dashIFrames = 0.12f,
+                     parryWindow = 0.12f, parryCost = 8, parryCooldown = 1f, parryStun = 1f,
+                     parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
 
         // The middle of the roster on every axis: Miyamoto's damage scalar on a frame, armour
         // halfway between Bjorn and Richard, and the most stamina of the four.
@@ -79,7 +102,11 @@ public static class CrucibleBalance
                      regen = 16f, dashDistance = 2.3f, dashDuration = 0.26f, dashStamina = 15,
                      // 82 -> 75 (Plan_Balance 2.4): between Richard's 85 and Bjorn's 68, so the
                      // round shield still reads but the wall is Richard's alone.
-                     blockReduction = 75, blockDrain = 2.5f },
+                     blockReduction = 75, blockDrain = 2.5f,
+                     // 62% dash coverage (second to Miyamoto), base parry everywhere else.
+                     dashIFrames = 0.16f,
+                     parryWindow = 0.12f, parryCost = 8, parryCooldown = 1f, parryStun = 1f,
+                     parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
     };
 
     // ------------------------------------------------------------------ the moves
@@ -263,6 +290,13 @@ public static class CrucibleBalance
         so.FindProperty("dashStaminaCost").intValue = v.dashStamina;
         so.FindProperty("blockDamageReduction").intValue = v.blockReduction;
         so.FindProperty("blockStaminaDrainPerSecond").floatValue = v.blockDrain;
+        so.FindProperty("dashIFrameDuration").floatValue = v.dashIFrames;
+        so.FindProperty("parryWindow").floatValue = v.parryWindow;
+        so.FindProperty("parryStaminaCost").intValue = v.parryCost;
+        so.FindProperty("parryCooldown").floatValue = v.parryCooldown;
+        so.FindProperty("parryStunDuration").floatValue = v.parryStun;
+        so.FindProperty("parryCounterWindow").floatValue = v.parryCounterWindow;
+        so.FindProperty("parryCounterDamageMultiplier").floatValue = v.parryCounterDamage;
         so.ApplyModifiedProperties();
         EditorUtility.SetDirty(fighter);
         UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(go.scene);
