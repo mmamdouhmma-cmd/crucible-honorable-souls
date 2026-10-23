@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Axe Riposte
   damage: 9
-  staminaCost: 14
+  staminaCost: 16
   armorPierce: 0
   startupFrames: 12
   activeFrames: 4

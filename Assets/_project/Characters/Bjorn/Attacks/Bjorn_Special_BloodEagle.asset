@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Blood Eagle
   damage: 18
-  staminaCost: 54
+  staminaCost: 62
   armorPierce: 10
   startupFrames: 24
   activeFrames: 5

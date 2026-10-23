@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Spinning Riposte
   damage: 9
-  staminaCost: 10
+  staminaCost: 12
   armorPierce: 8
   startupFrames: 10
   activeFrames: 4

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Spinning Slash
   damage: 10
-  staminaCost: 20
+  staminaCost: 23
   armorPierce: 2
   startupFrames: 18
   activeFrames: 5

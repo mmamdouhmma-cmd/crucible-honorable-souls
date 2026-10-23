@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Shin Cut
   damage: 8
-  staminaCost: 16
+  staminaCost: 18
   armorPierce: 2
   startupFrames: 12
   activeFrames: 4

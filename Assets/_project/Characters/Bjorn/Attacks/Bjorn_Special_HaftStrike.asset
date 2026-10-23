@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Haft Strike
   damage: 15
-  staminaCost: 42
+  staminaCost: 48
   armorPierce: 5
   startupFrames: 18
   activeFrames: 5

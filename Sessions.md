@@ -3301,3 +3301,26 @@ With this, all six items of Plan_Balance are shipped and play-verified in one da
 forward to playtest: refund + 82% coverage is double-generous for Miyamoto (the plan's own
 warning - pick one to be generous); the whiff/weakened/block/combo numbers are each one constant
 if the feel is off.
+
+### 2026-10-23 — Stamina +15% across the board, and the matrix re-run
+
+All 34 attack rows in `CrucibleBalance` (normals, specials, ripostes, all four fighters) took a
+15% stamina cost rise on the user's call, rounded to the nearest point - e.g. Bjorn light 17 ->
+20, Miyamoto Iaijutsu 42 -> 48. Costs touch no frames, so no clip refit; applied through `eval`,
+read back off four assets, scene saved.
+
+The TTK matrix was re-run with ONE simulator under both rule sets (old costs + old regen rule +
+Salaadin x0.92 against today's game), so the delta is the balance pass and not modelling drift.
+The model: best pair of two different alternating normals, back-to-back, stamina-limited,
+defender passive, kill at the hit frame - its absolute numbers run lower than the plan's original
+table (that model had inter-swing gaps) but it reproduces the old ordering exactly. Results in
+`Design/Plan_Balance.md`: head-to-head wins unchanged (Bjorn 3 / Richard 2 / Salaadin 1 /
+Miyamoto 0) because this is precisely the axis the pass moved everyone OFF of; Miyamoto's ratio
+0.63 -> 0.79 and the Salaadin matchup from 4.5-vs-7.6 to 7.1-vs-7.9; Salaadin's own ratio fell by
+design (his damage is priced against strings the model cannot throw); everyone's grind slowed
+5-23% from the cost rise plus the weakened tempo.
+
+One session note: the Editor turned out to be IN PLAY MODE when the apply ran (and a recompile
+had just gone through, which per the standing warning kills `InputManager.Instance` in a live
+session) - exited play, applied, verified. Check `editor_status` before an Apply, not after it
+fails.

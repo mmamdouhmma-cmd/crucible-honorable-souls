@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Crescent Slash
   damage: 14
-  staminaCost: 40
+  staminaCost: 46
   armorPierce: 8
   startupFrames: 20
   activeFrames: 5

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Nukitsuke
   damage: 13
-  staminaCost: 34
+  staminaCost: 39
   armorPierce: 18
   startupFrames: 7
   activeFrames: 4

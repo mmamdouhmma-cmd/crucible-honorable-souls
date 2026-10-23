@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Hattin Cleave
   damage: 16
-  staminaCost: 45
+  staminaCost: 52
   armorPierce: 10
   startupFrames: 26
   activeFrames: 5

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Slash
   damage: 8
-  staminaCost: 17
+  staminaCost: 20
   armorPierce: 0
   startupFrames: 10
   activeFrames: 4

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Cross Slash
   damage: 9
-  staminaCost: 18
+  staminaCost: 21
   armorPierce: 2
   startupFrames: 15
   activeFrames: 4

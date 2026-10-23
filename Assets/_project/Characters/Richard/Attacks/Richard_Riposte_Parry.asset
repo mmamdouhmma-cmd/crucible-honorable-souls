@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Boot Riposte
   damage: 8
-  staminaCost: 12
+  staminaCost: 14
   armorPierce: 0
   startupFrames: 12
   activeFrames: 4

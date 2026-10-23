@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Crusader Hew
   damage: 11
-  staminaCost: 21
+  staminaCost: 24
   armorPierce: 8
   startupFrames: 22
   activeFrames: 5

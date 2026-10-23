@@ -32,6 +32,42 @@ plan's own warning stands: refund + 82% coverage is double-generous for Miyamoto
 watch in a playtest. Verified by dash age at the judgment frame: Miyamoto hit at 0.217 / evaded
 at 0.100 against his 0.18; Richard hit at 0.200 / evaded at 0.117 against his 0.12.
 
+**All attack stamina costs were then raised 15%** (the user's call, 2026-10-23, after the pass) -
+every row in `CrucibleBalance`, normals, specials and ripostes, rounded to the nearest point.
+Costs touch no frame budgets, so no clip refit.
+
+**The matrix, re-run after the pass** (scratchpad `ttk_model.py`, one simulator run under both
+rule sets so the delta is the balance changes and not modelling drift - its absolute numbers sit
+lower than the original table above because it alternates swings back-to-back, but it reproduces
+the old ordering exactly: Bjorn 3, Richard 2, Salaadin 1, Miyamoto 0):
+
+| attacker | →Miyamoto | →Salaadin | →Bjorn | →Richard | kills in | survives | ratio (was) |
+|---|---|---|---|---|---|---|---|
+| Miyamoto | — | 7.9 | 7.5 | 11.1 | 8.8 | 6.9 | 0.79 (0.63) |
+| Salaadin | 7.1 | — | 10.8 | 17.6 | 11.9 | 9.5 | 0.80 (0.93) |
+| Bjorn | 4.6 | 7.6 | — | 12.0 | 8.1 | 10.2 | 1.27 (1.28) |
+| Richard | 9.2 | 13.0 | 12.3 | — | 11.5 | 13.6 | 1.18 (1.18) |
+
+What it says, and what it cannot see:
+
+- **Head-to-head wins are unchanged** (Bjorn 3, Richard 2, Salaadin 1, Miyamoto 0) - in pure
+  neutral grind the ordering stands, which is expected: the pass moved the fighters onto OTHER
+  axes, and this model measures exactly the axis they are supposed to stop competing on.
+- **Miyamoto closed most of his gap in neutral anyway** (ratio 0.63 -> 0.79), and the matchup the
+  whole pass started from - "Salaadin feels like a better Miyamoto" - went from a blowout
+  (Salaadin kills him in 4.5 against 7.6 back) to near-even (7.1 against 7.9). His counters,
+  i-frames, parry window and walk are all ON TOP of this and invisible here.
+- **Salaadin's ratio fell (0.93 -> 0.80) BY DESIGN**: the x0.85 cut is priced against strings,
+  and the model throws single alternating normals only. His three-hit improvised strings with
+  instant hit-confirm cancels are his real sustained offence now - a string-aware model (or play)
+  is where his number has to be judged.
+- **The 15% cost rise slowed the whole game's grind**: every kills-in rose 5-23% (Bjorn 6.9 ->
+  8.1, Salaadin 9.7 -> 11.9 under the one model). The weakened rule contributes - a grinder
+  spends most of a long exchange under 40% at x0.85 pace.
+- Model assumptions, same as the original: best pair of two different alternating normals,
+  back-to-back, stamina-limited with continuous regen, greedy (swings as soon as affordable),
+  defender passive with no health regen, kill counted at the hit frame, hit-stop ignored.
+
 The measured numbers below came off the live assets and the scene, not off the design intent —
 `Editor/CrucibleBalance.cs` for the table, the four `Fighter` components for the defensive fields.
 

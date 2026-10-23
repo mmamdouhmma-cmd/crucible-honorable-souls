@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Veiled Reversal
   damage: 13
-  staminaCost: 36
+  staminaCost: 41
   armorPierce: 5
   startupFrames: 20
   activeFrames: 5

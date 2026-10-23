@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Kuruma
   damage: 15
-  staminaCost: 42
+  staminaCost: 48
   armorPierce: 24
   startupFrames: 8
   activeFrames: 4

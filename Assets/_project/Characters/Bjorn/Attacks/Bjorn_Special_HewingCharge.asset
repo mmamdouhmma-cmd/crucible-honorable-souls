@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Hewing Charge
   damage: 16
-  staminaCost: 48
+  staminaCost: 55
   armorPierce: 5
   startupFrames: 22
   activeFrames: 5

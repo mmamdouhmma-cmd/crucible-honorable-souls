@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Falling Saif
   damage: 10
-  staminaCost: 19
+  staminaCost: 22
   armorPierce: 5
   startupFrames: 17
   activeFrames: 4

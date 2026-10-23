@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Saif Cut
   damage: 7
-  staminaCost: 14
+  staminaCost: 16
   armorPierce: 0
   startupFrames: 8
   activeFrames: 3

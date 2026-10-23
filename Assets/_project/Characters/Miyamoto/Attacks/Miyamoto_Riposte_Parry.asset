@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Push Kick Riposte
   damage: 8
-  staminaCost: 10
+  staminaCost: 12
   armorPierce: 8
   startupFrames: 16
   activeFrames: 4
