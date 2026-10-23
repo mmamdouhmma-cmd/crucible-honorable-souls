@@ -41,12 +41,17 @@ MonoBehaviour:
     withSpecialModifier: 0
     followUp: {fileID: 11400000, guid: 667f3ba954913b44a858d5847db8ff9f, type: 2}
     requires: 0
-    openerOnly: 1
+    openerOnly: 0
+  - input: 1
+    withSpecialModifier: 0
+    followUp: {fileID: 11400000, guid: 450ed3e3ec4029848a251b7588f1fd84, type: 2}
+    requires: 0
+    openerOnly: 0
   - input: 0
     withSpecialModifier: 1
     followUp: {fileID: 11400000, guid: 3f38675a7eabd504a86fa9b88e8ddb96, type: 2}
     requires: 1
     openerOnly: 0
-  cancelStartFrame: -1
+  cancelStartFrame: 17
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1

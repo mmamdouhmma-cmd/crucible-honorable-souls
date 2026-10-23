@@ -3240,3 +3240,30 @@ data assets back, saved the scene. Play-verified with the capture-delta harness:
 30 f / heavy 54 f (22/38 authored), weakened light cost 13 frames 36, weakened heavy cost 17
 frames 63, damage 8 -> 6, walk 48. Items 5 and 6 of the plan (Salaadin's combo freedom with the
 deferred damage cut, per-fighter parry and dash i-frames) are still open.
+
+### 2026-10-23 — Balance item 5: Salaadin's combo freedom, and the damage cut it unlocks
+
+The dependency in Plan_Balance section 5 ran in one pass: the combo advantage first, the deferred
+damage cut (x0.92 -> x0.85, roster order now Bjorn 110 > Richard 100 > Miyamoto 92 > Salaadin 85)
+in the same commit. All of it authored data - `CrucibleCombos` and one `CrucibleBalance` integer.
+
+- **His normal->normal links drop `openerOnly`**, which is the single flag that stops everyone
+  else dialling three normals. He alone can go L->M->L or H->L->H; `MAX_STRING_LENGTH` (3) and
+  `STRING_LOCKOUT` still apply unchanged.
+- **Every normal branches to BOTH other normals**, and **every special hands back TWO normals and
+  does so mid-string** - so N->SP->N is a Salaadin-only shape. Ripostes branch to L or M.
+- **`Wire()` now writes the combo INPUT WINDOW with the links**: Salaadin's `cancelStartFrame` =
+  each move's own `startupFrames`, everyone else explicitly -1 (default: startup+active). The
+  pre-contact guard in `TryCancelIntoFollowUp` still refuses to cancel a live unresolved hitbox,
+  so the single real effect is that a LANDED hit cancels instantly - measured: ShinCut converted
+  on clock frame 12 (its startup) where the default window opens at 16.
+- **A harness press can OVERWRITE the buffer and read as a broken string**: the first T1 run
+  pressed a 4th button before the 3rd's window opened, `BufferInput` replaced the held Light with
+  a Medium that ShinCut does not link, and the string "ended early". The game was right; the test
+  dialled like a machine, not a player. Space test presses to land inside the windows.
+- `Report combo strings` only walked Bjorn/Miyamoto/Richard - Salaadin's lowercase folder was
+  never listed. Added.
+
+Play-verified as Salaadin vs Miyamoto: L->M->L lands 5+6+5 (the x0.85 single blow is 5, was 6),
+L->SP+M(Crescent)->M lands 22, the capped 4th press never fires. Items 1-4 were verified earlier
+the same day; item 6 (per-fighter parry and dash i-frames) is the last one open.

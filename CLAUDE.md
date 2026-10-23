@@ -97,8 +97,8 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `ArtSource/Blender/richard_clips.py` (thrust, shield charge, shield bash, double-high) — the pack
   has no thrust and no bash. He carries a shield, so he is NOT in `CrucibleCharacterSetup.TwoHanded`
   and has no `TwoHandGrip`.
-- **Four fighters now.** Salaadin (falchion + round shield, the balanced one: 95 hp, 115 stamina,
-  18 armour, x0.92 damage, walk 4.1) lives on `Player4` with `P4_Salaadin.controller` and
+- **Four fighters now.** Salaadin (falchion + round shield, the combo fighter: 95 hp, 115 stamina,
+  18 armour, x0.85 damage - the roster's lowest, cut from x0.92 on 2026-10-23 - walk 4.1) lives on `Player4` with `P4_Salaadin.controller` and
   `salaadin_data`. His move set is the table in `Editor/CrucibleSalaadin.cs`; build him with
   `Crucible > Characters > Salaadin > 1/2/3`, then `Rebuild Player4 (Salaadin body)`, then the
   shared menu items, then `Salaadin > 4 Rewire Player4 to the move set` (the scene holds his
@@ -861,6 +861,18 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   and **Miyamoto walks 4.8** (moveSpeed 48, Plan_Balance 2.2) - both in `CrucibleBalance`,
   applied and play-verified 2026-10-23. Items 5 (Salaadin combo freedom + deferred damage cut)
   and 6 (per-fighter parry and dash i-frames) of `Design/Plan_Balance.md` are NOT built yet.
+- **Salaadin's axis is COMBO FREEDOM** (Plan_Balance item 5, shipped 2026-10-23, with the
+  deferred damage cut x0.92 -> x0.85 riding along - the roster's damage order is now Bjorn 110 >
+  Richard 100 > Miyamoto 92 > Salaadin 85). Three breaks with the shared string shapes, all
+  authored in `CrucibleCombos`: his normal->normal links are NOT `openerOnly` (he alone dials
+  three normals, L->M->L; others are blocked by the opener flag, and `MAX_STRING_LENGTH` still
+  caps everyone at 3); every normal branches to BOTH other normals and every special hands back
+  TWO normals mid-string (the N->SP->N shape nobody else has); and `Wire()` writes his
+  `cancelStartFrame` = the move's own startup (others stay -1 = startup+active), which with the
+  pre-contact guard in `TryCancelIntoFollowUp` means exactly one thing: a LANDED hit converts
+  into its follow-up instantly. Play-verified: L->M->L lands 5+6+5, L->SP+M->M lands 22, the 4th
+  press is capped, ShinCut converts on frame 12 not 16. `Report combo strings` now includes his
+  (lowercase) folder - it used to silently skip him.
 
 - **A clip that is NOT in `swing_trims.json` is skipped entirely and fitted WHOLE**, and a contact
   entry does NOT rescue it - `ComputeTrims` bails at `if (!block.Success) continue;` before the

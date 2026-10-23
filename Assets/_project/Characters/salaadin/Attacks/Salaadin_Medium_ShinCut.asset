@@ -37,16 +37,21 @@ MonoBehaviour:
   lungeMaxDistance: -1
   hitsWithWeapon: 1
   comboLinks:
+  - input: 0
+    withSpecialModifier: 0
+    followUp: {fileID: 11400000, guid: 667f3ba954913b44a858d5847db8ff9f, type: 2}
+    requires: 0
+    openerOnly: 0
   - input: 2
     withSpecialModifier: 0
     followUp: {fileID: 11400000, guid: bddc427dc5e1faf4fa3980d21826cb4f, type: 2}
     requires: 0
-    openerOnly: 1
+    openerOnly: 0
   - input: 2
     withSpecialModifier: 1
     followUp: {fileID: 11400000, guid: fa7b9d3442dd5f147a4fba9312289218, type: 2}
     requires: 1
     openerOnly: 0
-  cancelStartFrame: -1
+  cancelStartFrame: 12
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1

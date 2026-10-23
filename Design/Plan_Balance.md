@@ -10,8 +10,14 @@ x0.75, pace x0.85 - equal cost/damage cuts, so efficiency is flat and only tempo
 block spread (2.4: 85 / 75 / 68 / 60) and Miyamoto's walk (2.2, 44 -> 48). No frame budgets
 changed, so no animation refit was needed. Measured: Bjorn whiffed light 30 f vs landed 26 f,
 whiffed heavy 54 f vs authored 38; weakened light cost 13 vs 17, damage 6 vs 8, 36 f vs 30.
-Items 5 (Salaadin's combo freedom + the deferred damage cut) and 6 (per-fighter parry and dash
-i-frames) remain.
+Item 5 shipped later the same day: Salaadin's combo freedom (normal->normal links no longer
+openerOnly so he alone dials three normals; every normal branches to both other normals; specials
+hand back two normals MID-string, giving him N->SP->N; cancelStartFrame = his moves' own startup,
+so a landed hit converts instantly) with the deferred damage cut riding along, x0.92 -> x0.85 -
+the roster reads Bjorn 110 > Richard 100 > Miyamoto 92 > Salaadin 85 and the x0.92 twinning with
+Miyamoto is over. Play-verified: L->M->L lands 5+6+5 damage, L->SP+M->M lands 22, the fourth
+press is capped at MAX_STRING_LENGTH, and ShinCut's hit-confirm cancel fires on frame 12 where
+the default window would open at 16. Item 6 (per-fighter parry and dash i-frames) remains.
 
 The measured numbers below came off the live assets and the scene, not off the design intent —
 `Editor/CrucibleBalance.cs` for the table, the four `Fighter` components for the defensive fields.

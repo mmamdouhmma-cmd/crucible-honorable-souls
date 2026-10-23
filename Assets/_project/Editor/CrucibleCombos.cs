@@ -133,31 +133,63 @@ public static class CrucibleCombos
         ("Richard_Special_DoubleHigh",     new[] { new Link(L, false, "Richard_Light_Thrust", true, Always) }),
     };
 
-    // Salaadin. Same three shapes as the rest of the roster. His showpieces sit on the normals now
-    // (the shin cut, the full turn) and the compact pack swings on the specials, so a string that
-    // dials a special finishes on a flat crescent or a diagonal cleave rather than on a spin.
+    // Salaadin. COMBO FREEDOM is his axis (Plan_Balance item 5, section 3): most branches in the
+    // roster, and the only fighter whose strings improvise MID-STRING. Three deliberate breaks
+    // with the shared shapes, paid for by the lowest damage multiplier in the roster (x0.85):
+    //   - his normal -> normal links are NOT openerOnly, so he can dial three normals freely
+    //     (L -> M -> L, H -> L -> H, ...) where everyone else gets exactly normal -> normal ->
+    //     special. MAX_STRING_LENGTH still caps him at 3 hits and STRING_LOCKOUT still lands.
+    //   - every normal branches to BOTH other normals, and every special hands back TWO normals
+    //     and does so mid-string too, which is the N -> SP -> N shape nobody else has.
+    //   - Wire() writes his cancelStartFrame = the move's own startup (everyone else stays -1 =
+    //     startup + active): the pre-contact guard in TryCancelIntoFollowUp still holds, so the
+    //     one real effect is that a LANDED hit converts into its follow-up instantly instead of
+    //     waiting out the active window - the longest combo input window in the game.
     static readonly (string attack, Link[] links)[] Salaadin =
     {
         ("Salaadin_Light_SaifCut", new[]
         {
-            new Link(M, false, "Salaadin_Medium_ShinCut",       true,  Always),
+            new Link(M, false, "Salaadin_Medium_ShinCut",        false, Always),
+            new Link(H, false, "Salaadin_Heavy_WhirlingSaif",    false, Always),
             new Link(M, true,  "Salaadin_Special_CrescentSlash", false, HitOrBlock),
         }),
         ("Salaadin_Medium_ShinCut", new[]
         {
-            new Link(H, false, "Salaadin_Heavy_WhirlingSaif",   true,  Always),
-            new Link(H, true,  "Salaadin_Special_HattinCleave", false, HitOrBlock),
+            new Link(L, false, "Salaadin_Light_SaifCut",         false, Always),
+            new Link(H, false, "Salaadin_Heavy_WhirlingSaif",    false, Always),
+            new Link(H, true,  "Salaadin_Special_HattinCleave",  false, HitOrBlock),
         }),
         ("Salaadin_Heavy_WhirlingSaif", new[]
         {
-            new Link(L, false, "Salaadin_Light_SaifCut",        true,  Always),
-            new Link(L, true,  "Salaadin_Special_VeiledRush",   false, HitOrBlock),
+            new Link(L, false, "Salaadin_Light_SaifCut",         false, Always),
+            new Link(M, false, "Salaadin_Medium_ShinCut",        false, Always),
+            new Link(L, true,  "Salaadin_Special_VeiledRush",    false, HitOrBlock),
         }),
-        ("Salaadin_Riposte_Dash",           new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
-        ("Salaadin_Riposte_Parry",          new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
-        ("Salaadin_Special_VeiledRush",     new[] { new Link(M, false, "Salaadin_Medium_ShinCut", true, Always) }),
-        ("Salaadin_Special_CrescentSlash",  new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
-        ("Salaadin_Special_HattinCleave",   new[] { new Link(L, false, "Salaadin_Light_SaifCut", true, Always) }),
+        ("Salaadin_Riposte_Dash", new[]
+        {
+            new Link(L, false, "Salaadin_Light_SaifCut",         true, Always),
+            new Link(M, false, "Salaadin_Medium_ShinCut",        true, Always),
+        }),
+        ("Salaadin_Riposte_Parry", new[]
+        {
+            new Link(L, false, "Salaadin_Light_SaifCut",         true, Always),
+            new Link(M, false, "Salaadin_Medium_ShinCut",        true, Always),
+        }),
+        ("Salaadin_Special_VeiledRush", new[]
+        {
+            new Link(M, false, "Salaadin_Medium_ShinCut",        false, Always),
+            new Link(H, false, "Salaadin_Heavy_WhirlingSaif",    false, Always),
+        }),
+        ("Salaadin_Special_CrescentSlash", new[]
+        {
+            new Link(L, false, "Salaadin_Light_SaifCut",         false, Always),
+            new Link(M, false, "Salaadin_Medium_ShinCut",        false, Always),
+        }),
+        ("Salaadin_Special_HattinCleave", new[]
+        {
+            new Link(L, false, "Salaadin_Light_SaifCut",         false, Always),
+            new Link(H, false, "Salaadin_Heavy_WhirlingSaif",    false, Always),
+        }),
     };
 
     [MenuItem("Crucible/Combat/Wire combo strings")]
@@ -170,6 +202,15 @@ public static class CrucibleCombos
             {
                 if (!all.TryGetValue(attackName, out var attack)) { Debug.LogError($"no AttackData named {attackName}"); continue; }
                 var so = new SerializedObject(attack);
+
+                // The combo INPUT WINDOW is string data, so it is written here with the links.
+                // Salaadin's opens at the move's own startup - with the pre-contact guard in
+                // TryCancelIntoFollowUp this means a landed hit cancels instantly; everyone else
+                // keeps the default (-1 = startup + active, wait out the active window).
+                bool salaadin = ReferenceEquals(table, Salaadin);
+                so.FindProperty("cancelStartFrame").intValue =
+                    salaadin ? so.FindProperty("startupFrames").intValue : -1;
+
                 var arr = so.FindProperty("comboLinks");
                 arr.arraySize = links.Length;
                 for (int i = 0; i < links.Length; i++)
@@ -202,7 +243,10 @@ public static class CrucibleCombos
     {
         foreach (var (dir, who) in new[] { ("Assets/_project/Characters/Bjorn/Attacks", "Bjorn"),
                                            ("Assets/_project/Characters/Miyamoto/Attacks", "Miyamoto"),
-                                           ("Assets/_project/Characters/Richard/Attacks", "Richard") })
+                                           ("Assets/_project/Characters/Richard/Attacks", "Richard"),
+                                           // his folder is lowercase on purpose; renaming it
+                                           // deadlocks the Editor (see CLAUDE.md)
+                                           ("Assets/_project/Characters/salaadin/Attacks", "Salaadin") })
         {
             var lines = new List<string>();
             foreach (var opener in LoadAttacks(dir).Values.OrderBy(a => a.name))

@@ -17,7 +17,7 @@ MonoBehaviour:
   maxHealth: 95
   maxStamina: 115
   armor: 18
-  damageMultiplier: 92
+  damageMultiplier: 85
   attackSpeed: 100
   movementSpeed: 41
   dashDistance: 30

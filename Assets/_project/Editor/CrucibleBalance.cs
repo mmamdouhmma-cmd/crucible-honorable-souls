@@ -12,8 +12,10 @@
 //   Bjorn     highest damage, mid health, biggest stamina pool but the costliest moves
 //   Richard   most health, lowest stamina, damage between the two, slowest of the three;
 //             his shield pays him back with the best block (85%) and the lowest hold drain
-//   Salaadin  the balanced one: Miyamoto's damage at a slower swing, armour between Bjorn and
-//             Richard, the biggest stamina pool, and a round shield that blocks 75%
+//   Salaadin  the combo fighter: LOWEST damage per blow (x0.85) paid back in string freedom
+//             (see CrucibleCombos - most branches, improvises mid-string, instant hit-confirm
+//             cancels), armour between Bjorn and Richard, the biggest stamina pool, and a round
+//             shield that blocks 75%
 //
 // Block spread (Plan_Balance 2.4, 2026-10-23): 85 / 75 / 68 / 60 so "can I afford to turtle" is
 // a different question per fighter - it was 85 / 82 / 80 / 60, three of four within five points.
@@ -68,7 +70,12 @@ public static class CrucibleBalance
         // halfway between Bjorn and Richard, and the most stamina of the four.
         new Vitals { character = "Salaadin", player = "Player4", fighterName = "Salaadin", archetype = "Champion",
                      dataPath = "Assets/_project/Data/Fighters/salaadin_data.asset",
-                     health = 95, stamina = 115, armor = 18, damageMultiplier = 92, moveSpeed = 41,
+                     // damageMultiplier 92 -> 85 (Plan_Balance 2.2, the DEFERRED cut, landed
+                     // 2026-10-23 in the same pass as his combo freedom - the dependency in
+                     // section 5): the roster's damage order is now Bjorn 110 > Richard 100 >
+                     // Miyamoto 92 > Salaadin 85, and he and Miyamoto stop sharing x0.92. His
+                     // damage now lives in the STRINGS, not the single blow.
+                     health = 95, stamina = 115, armor = 18, damageMultiplier = 85, moveSpeed = 41,
                      regen = 16f, dashDistance = 2.3f, dashDuration = 0.26f, dashStamina = 15,
                      // 82 -> 75 (Plan_Balance 2.4): between Richard's 85 and Bjorn's 68, so the
                      // round shield still reads but the wall is Richard's alone.
