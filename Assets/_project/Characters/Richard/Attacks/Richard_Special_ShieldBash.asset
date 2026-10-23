@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Crusader Cross
   damage: 15
-  staminaCost: 49
+  staminaCost: 42
   armorPierce: 12
   startupFrames: 15
   activeFrames: 5
@@ -27,6 +27,7 @@ MonoBehaviour:
   comesFrom: 2
   hitSide: 1
   hitstunFrames: 13
+  hyperArmor: 0
   hitboxRange: 3
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1.3, y: 1.1, z: 1}

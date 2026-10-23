@@ -27,6 +27,7 @@ MonoBehaviour:
   comesFrom: 2
   hitSide: 1
   hitstunFrames: 8
+  hyperArmor: 0
   hitboxRange: 2.8
   hitboxOffset: {x: 0, y: 0.6, z: 0}
   hitboxSize: {x: 1.3, y: 1, z: 1}

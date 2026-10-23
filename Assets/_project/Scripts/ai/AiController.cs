@@ -53,21 +53,23 @@ public class AiController : MonoBehaviour
         public float think;           // seconds between offensive decisions
         public float aggression;      // chance per decision to attack when in range
         public float dodge;           // chance to dodge a seen strike
-        public float block;           // chance to block a seen strike it did not dodge
+        public float parry;           // chance to parry a seen strike it did not dodge (timed press)
+        public float block;           // chance to block a seen strike it did not dodge or parry
         public float mistake;         // chance per decision to do something dumb (swing from range, drop the guard)
         public float range;           // distance it likes to stand at
         public bool punish;           // attacks into the opponent's recovery
         public float heavyBias;       // weight toward medium/heavy picks
         public float retreat;         // chance per decision to back off when too close / low stamina
+        public float special;         // chance an attack pick becomes a special when the bar allows it
     }
 
     static Profile For(AiDifficulty d)
     {
         switch (d)
         {
-            case AiDifficulty.Chill: return new Profile { reaction = 0.45f, think = 0.55f, aggression = 0.35f, dodge = 0.12f, block = 0.30f, mistake = 0.30f, range = 2.3f, punish = false, heavyBias = 0.25f, retreat = 0.15f };
-            case AiDifficulty.Insane: return new Profile { reaction = 0.08f, think = 0.12f, aggression = 0.85f, dodge = 0.75f, block = 0.85f, mistake = 0.02f, range = 1.9f, punish = true, heavyBias = 0.55f, retreat = 0.35f };
-            default: return new Profile { reaction = 0.22f, think = 0.28f, aggression = 0.6f, dodge = 0.45f, block = 0.6f, mistake = 0.12f, range = 2.1f, punish = true, heavyBias = 0.4f, retreat = 0.25f };
+            case AiDifficulty.Chill: return new Profile { reaction = 0.45f, think = 0.55f, aggression = 0.35f, dodge = 0.12f, parry = 0.05f, block = 0.30f, mistake = 0.30f, range = 2.3f, punish = false, heavyBias = 0.25f, retreat = 0.15f, special = 0.06f };
+            case AiDifficulty.Insane: return new Profile { reaction = 0.08f, think = 0.12f, aggression = 0.85f, dodge = 0.70f, parry = 0.45f, block = 0.85f, mistake = 0.02f, range = 1.9f, punish = true, heavyBias = 0.55f, retreat = 0.35f, special = 0.28f };
+            default: return new Profile { reaction = 0.22f, think = 0.28f, aggression = 0.6f, dodge = 0.40f, parry = 0.18f, block = 0.6f, mistake = 0.12f, range = 2.1f, punish = true, heavyBias = 0.4f, retreat = 0.25f, special = 0.15f };
         }
     }
 
@@ -85,6 +87,10 @@ public class AiController : MonoBehaviour
     int backOffDir;
     float lastDashAt = -10f;
     int lastFoeAttackId;           // changes when the foe starts a new attack
+    float parryAt = -1f;           // Time.time to press Defense so the parry window covers the hit
+    float parryPressUntil = -1f;   // Defense is held until here: the AI snapshot is consumed once
+                                   // per frame, so a one-frame press can be swallowed by ordering
+                                   // or the hit's own hit-stop; a short hold always gets through
 
     void Awake()
     {
@@ -104,7 +110,7 @@ public class AiController : MonoBehaviour
         Bind();
         Active = true;
         nextThink = Time.time + 0.5f;
-        threatSeenAt = -1f; threatHandled = false; blockUntil = 0f; backOffUntil = 0f;
+        threatSeenAt = -1f; threatHandled = false; blockUntil = 0f; backOffUntil = 0f; parryAt = -1f; parryPressUntil = -1f;
         if (InputManager.Instance != null) InputManager.Instance.SetAi(playerNumber, true);
         if (debugLogs) Debug.Log($"AI: driving Player {playerNumber} at {d}");
     }
@@ -176,8 +182,22 @@ public class AiController : MonoBehaviour
         }
         else
         {
-            threatSeenAt = -1f; threatHandled = false;
+            threatSeenAt = -1f; threatHandled = false; parryAt = -1f;   // the threat is gone; so is a scheduled parry
         }
+
+        // ---- a parry scheduled against the incoming strike: hold still, then hold Defense down
+        if (parryAt > 0f && now >= parryAt)
+        {
+            parryAt = -1f;
+            if (!busy) parryPressUntil = now + 0.06f;
+        }
+        if (parryPressUntil > now)
+        {
+            input.defenseButton = true;
+            if (debugLogs) Debug.Log("AI: PARRY");
+            return input;
+        }
+        if (parryAt > 0f) return input;    // the moment approaches: stand ready
 
         // ---- defence: react to a seen wind-up after the profile's reaction time
         if ((rules.dodge || rules.block) && foeWindingUp && !threatHandled && threatSeenAt >= 0f &&
@@ -193,7 +213,22 @@ public class AiController : MonoBehaviour
                 if (debugLogs) Debug.Log("AI: DODGE");
                 return input;
             }
-            if (rules.block && roll < p.dodge + p.block && !myCombat.IsAttacking)
+            // Parry rides the block permission (a parry IS a guard, raised on time), timed so the
+            // window covers the strike's contact: the hit lands a few frames AFTER the startup
+            // ends (hitbox arm + travel), so the press leads it by only a hair - a bigger lead
+            // spends most of a short parry window before the blade even arrives.
+            if (rules.block && roll < p.dodge + p.parry && !myCombat.IsAttacking && stamina >= 12)
+            {
+                var a = foeCombat.CurrentAttack;
+                float untilHit = a.StartupFrames * BalanceConfig.FRAME_TIME - foeCombat.AttackTime;
+                // Measured, not guessed: contact arrives ~3 frames BEFORE the authored startup
+                // ends, and the press travels AI -> InputManager -> Fighter, which costs two more.
+                // A 0.12s lead opens the window a couple of frames before the blade arrives, which
+                // even the shortest parry window in the roster (0.10s) survives.
+                parryAt = now + Mathf.Max(0f, untilHit - 0.12f);
+                return input;
+            }
+            if (rules.block && roll < p.dodge + p.parry + p.block && !myCombat.IsAttacking)
             {
                 var a = foeCombat.CurrentAttack;
                 float remaining = a.GetTotalDuration() - foeCombat.AttackTime;
@@ -212,11 +247,11 @@ public class AiController : MonoBehaviour
 
         if (busy) return input;
 
-        // ---- counter after a clean dodge, or punish a recovery
-        bool counterOpen = me.DashCounterOpen;
+        // ---- counter after a clean dodge or a parry, or punish a recovery
+        bool counterOpen = me.DashCounterOpen || me.ParryCounterTimeLeft > 0f;
         if (rules.punish && rules.attack && (counterOpen || (p.punish && foeRecovering)) && gap <= 2.7f && stamina >= 10)
         {
-            Pick(ref input, preferHeavy: foeRecovering);
+            Pick(ref input, preferHeavy: foeRecovering, stamina);
             if (debugLogs) Debug.Log(counterOpen ? "AI: COUNTER" : "AI: PUNISH");
             return input;
         }
@@ -248,7 +283,7 @@ public class AiController : MonoBehaviour
         {
             if (rules.attack && Random.value < p.aggression && !foeWindingUp)
             {
-                Pick(ref input, preferHeavy: false);
+                Pick(ref input, preferHeavy: false, stamina);
                 return input;
             }
             if (rules.walk && Random.value < p.retreat && gap < p.range - 0.3f)
@@ -260,7 +295,7 @@ public class AiController : MonoBehaviour
         }
         else if (rules.walk)
         {
-            if (rules.attack && Random.value < p.mistake) { Pick(ref input, preferHeavy: false); return input; }   // swings at air
+            if (rules.attack && Random.value < p.mistake) { Pick(ref input, preferHeavy: false, stamina); return input; }   // swings at air
             // close in: walk, or dash in from far away
             if (rules.dodge && gap > 4.5f && stamina >= 25 && now - lastDashAt > 1.2f && Random.value < 0.5f)
             {
@@ -272,8 +307,20 @@ public class AiController : MonoBehaviour
         return input;
     }
 
-    void Pick(ref InputData input, bool preferHeavy)
+    void Pick(ref InputData input, bool preferHeavy, int stamina)
     {
+        // With a full enough bar, sometimes a special instead of a normal - and more often as a
+        // punish, where the big move is safe. The costliest special is ~53, so 55 clears any pick.
+        if (stamina >= 55 && Random.value < (preferHeavy ? p.special + 0.15f : p.special))
+        {
+            input.specialModifier = true;
+            float s = Random.value;
+            if (s < 0.33f) input.lightAttack = true;
+            else if (s < 0.66f) input.mediumAttack = true;
+            else input.heavyAttack = true;
+            if (debugLogs) Debug.Log("AI: SPECIAL");
+            return;
+        }
         float r = Random.value;
         float heavy = preferHeavy ? p.heavyBias + 0.25f : p.heavyBias;
         if (r < heavy * 0.45f) input.heavyAttack = true;

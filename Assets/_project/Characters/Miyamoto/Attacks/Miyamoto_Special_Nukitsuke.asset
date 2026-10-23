@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Nukitsuke
   damage: 13
-  staminaCost: 39
+  staminaCost: 33
   armorPierce: 18
   startupFrames: 7
   activeFrames: 4
@@ -27,6 +27,7 @@ MonoBehaviour:
   comesFrom: 2
   hitSide: 1
   hitstunFrames: 12
+  hyperArmor: 0
   hitboxRange: 2.8
   hitboxOffset: {x: 0, y: 0.9, z: 0}
   hitboxSize: {x: 1.5, y: 1.4, z: 1}

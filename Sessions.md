@@ -3364,3 +3364,32 @@ times out at 5 s on Setup's import pass but the work completes — read the comp
 soundfile's OGG VORBIS writer hard-crashes python (exit 253, buffered stdout lost — run -u),
 wind went out as WAV instead; a 4-cry generation split as 2 segments, fixed by cutting long
 segments at their quietest interior dip.
+
+### 2026-10-23 — Hyper armour, cheaper specials, the AI learns to parry
+
+The user reported Salaadin's SP+Light/SP+Heavy "can't land" and combos dying after the first
+hit. A full verification sweep (eval_file coroutine probes, captureDeltaTime 1/60) says the
+data is clean: all 24 attacks land from BOTH their far logical edge (lungeStop+travel−0.15)
+and point-blank (stop+0.25), on either side, and all 68 authored strings land every hit with
+every link converting. Two probe traps found on the way: TryAttack returns FALSE when a
+mid-attack press merely buffers (count conversions off CombatSystem.stringDepth, not return
+values), and adding an AiController to a fighter kills it instantly — it is a SINGLETON on
+GameMangers whose Awake destroys duplicates, and the dead component leaves IsAi(n) true with
+nobody writing input, which freezes that player. What the user felt was the two moves' long
+tells (first contact f21/f28) being blocked or walked out of, so three changes shipped:
+
+1. HYPER ARMOUR on every SP+Heavy (AttackData.hyperArmor, written by CrucibleBalance's
+   HyperArmor set): an incoming hit deals damage but neither flinches nor interrupts the swing;
+   a parry still beats it outright. The branch sits in CombatSystem.ResolveHit before
+   NotifyHit. Play-verified: Salaadin's Cleave ate Bjorn's light (−6) and still landed (−12);
+   the unarmoured SP+M control was interrupted as before.
+2. SPECIAL STAMINA −15% roster-wide (table ×0.85, e.g. Hattin Cleave 52→44, Blood Eagle 62→53).
+3. The AI THROWS SPECIALS and PARRIES. Specials: a Pick() roll (Chill .06 / Moderate .15 /
+   Insane .28) behind stamina ≥55 — verified 11 specials in 45 attacks. Parry: scheduled press
+   timed off the foe's startup. Three timing lessons, all measured: contact arrives ~3 frames
+   BEFORE the authored startup ends; the press travels AI → InputManager → Fighter which costs
+   two more frames (and the one-frame AI snapshot is consumed per frame, so the press is HELD
+   0.06 s — a single-frame press can be eaten by the hit's own hitstun); lead the contact by
+   0.12 s and even Bjorn's 0.10 s window covers it. Verified 24/24 parries against fed heavies.
+   An 8-frame light is NOT parryable on reaction (reaction+pipeline > startup) — that is fair,
+   not a bug. me.ParryCounterTimeLeft now also opens the AI's punish branch.

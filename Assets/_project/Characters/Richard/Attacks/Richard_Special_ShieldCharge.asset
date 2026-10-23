@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Lionheart Reversal
   damage: 14
-  staminaCost: 44
+  staminaCost: 37
   armorPierce: 10
   startupFrames: 11
   activeFrames: 4
@@ -27,6 +27,7 @@ MonoBehaviour:
   comesFrom: 1
   hitSide: 2
   hitstunFrames: 13
+  hyperArmor: 0
   hitboxRange: 3.2
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1.4, y: 1, z: 1}

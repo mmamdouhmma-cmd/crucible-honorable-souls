@@ -939,6 +939,14 @@ public class CombatSystem : MonoBehaviour
             target.NotifyDeath();   // death animation instead of a flinch
             CrucibleAudio.Death(target.CharacterName);
         }
+        else if (target.Combat != null && target.Combat.IsAttacking &&
+                 target.Combat.CurrentAttack != null && target.Combat.CurrentAttack.HyperArmor)
+        {
+            // Hyper armour: the big special powers through. The damage above already landed; the
+            // swing is neither flinched nor interrupted. A parry still beats it (handled earlier).
+            if (debugLogs) Debug.Log($"P{target.PlayerNumber}: ARMOURED through the hit - " +
+                                     $"{target.Combat.CurrentAttack.AttackName} keeps swinging");
+        }
         else target.NotifyHit(currentAttack.HitSide, currentAttack.HitstunFrames);
 
         // Remembered for string links that must be earned by connecting.

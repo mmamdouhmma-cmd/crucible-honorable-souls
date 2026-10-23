@@ -159,6 +159,10 @@ public class AttackData : ScriptableObject
              "Match it to the flinch clip's length.")]
     [SerializeField] private int hitstunFrames = 12;
 
+    [Tooltip("Hyper armour: while this attack is in progress, an incoming hit deals its damage but does not flinch " +
+             "or interrupt the swing. A parry still beats it outright. For the big, slow specials.")]
+    [SerializeField] private bool hyperArmor = false;
+
     [Header("Hitbox")]
     [Tooltip("How far the hitbox reaches in front of the attacker, in world units (the same units as dash distance " +
              "and fighter radius). The fighter's model scale does not change it. Select the fighter to preview it in the Scene view.")]
@@ -270,6 +274,9 @@ public class AttackData : ScriptableObject
 
     /// <summary>Frames the defender is locked in hitstun after this attack lands.</summary>
     public int HitstunFrames => hitstunFrames;
+
+    /// <summary>Incoming hits damage but never flinch or interrupt this attack while it runs.</summary>
+    public bool HyperArmor => hyperArmor;
 
     /// <summary>Reach along the attacker's forward axis, in the fighter's local units.</summary>
     public float HitboxRange => hitboxRange;

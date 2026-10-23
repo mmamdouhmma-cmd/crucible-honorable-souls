@@ -845,6 +845,25 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   has not called it out, and the pack has nothing else that size.
 - **All three post-move lockouts are 0.5 s** (the user's call, 2026-10-23, down from 0.85). They
   are still deliberately ONE beat - `ATTACK_CHAIN_LOCKOUT`, `STRING_LOCKOUT`, `SPECIAL_LOCKOUT`.
+- **Every SP+Heavy has HYPER ARMOUR** (`AttackData.hyperArmor`, the user's call 2026-10-23): an
+  incoming hit deals its damage but neither flinches nor interrupts the swing; a PARRY still
+  beats it outright. The branch is in `CombatSystem.ResolveHit` before `NotifyHit`; the flag is
+  written by `CrucibleBalance`'s `HyperArmor` set (false on everything else), so the table stays
+  the source of truth. Special stamina is the pre-cut figure x0.85 roster-wide, same session.
+- **The AI throws specials and parries now** (AiController, 2026-10-23). Specials: a `Pick()`
+  roll (`p.special`: Chill .06 / Moderate .15 / Insane .28) behind stamina >= 55. Parry: a press
+  SCHEDULED off the foe's startup, led by 0.12 s and HELD for 0.06 s - measured: contact lands
+  ~3 frames before the authored startup ends, the press costs ~2 frames through
+  AI -> InputManager -> Fighter, and the one-frame AI snapshot is consumed per frame, so a
+  single-frame press can be eaten by the very hit it meant to parry. Verified 24/24 vs heavies;
+  an 8-frame light is NOT parryable on reaction and that is fair. `ParryCounterTimeLeft` opens
+  the AI punish branch like a dodge counter. Remaining AI gap: it still cannot dial a string.
+- **`AiController` is a SINGLETON on GameMangers; `AddComponent<AiController>` on a fighter
+  self-destructs in Awake** - and worse, `Activate` on the dying copy leaves `InputManager.IsAi(n)`
+  true with nobody writing input, which freezes that player solid. Drive `AiController.Instance`.
+- **`TryAttack` returns FALSE when a mid-attack press merely buffers** (the buffer fires later in
+  Update), so a harness that counts string links off the return value under-counts. Count
+  conversions off `CombatSystem.stringDepth` instead.
 - **Low stamina weakens the ATTACKS, not the regen** (Plan_Balance 2.3, shipped 2026-10-23;
   it REPLACED the x0.75-regen-under-20% rule, whose constants are gone). Below
   `WEAKENED_STAMINA_FRACTION` (40%) a swing costs x0.75 stamina, deals x0.75 damage and runs at

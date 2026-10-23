@@ -138,15 +138,17 @@ public static class CrucibleBalance
             N("Miyamoto_Light_Thrust",                 7,  14,  8,      5,  3,  5,   7),
             N("Miyamoto_Medium_SideSlash",             7,  16,  10,      7,  4,  6,   8),
             N("Miyamoto_Heavy_Overhead",               9,  18,  16,     13,  4,  9,  10),   // was 23 start: the slowest heavy in the game, on the fastest fighter
-            N("Miyamoto_Special_Nukitsuke",           13,  39,  18,      7,  4,  7,  12),   // SP+Light: was 18/5/20 = 0.72s. The user's call - too slow, and it is the pack's slowest strike (peak tip 0.286) so the clip could not carry that budget either
-            N("Miyamoto_Special_NitoCross",           14,  44,  20,     11,  5, 12,  12),
+            // Special stamina across the ROSTER cut 15% on 2026-10-23 (the user's call): every
+            // SP slot's cost is the old figure x0.85, rounded.
+            N("Miyamoto_Special_Nukitsuke",           13,  33,  18,      7,  4,  7,  12),   // SP+Light: was 18/5/20 = 0.72s. The user's call - too slow, and it is the pack's slowest strike (peak tip 0.286) so the clip could not carry that budget either
+            N("Miyamoto_Special_NitoCross",           14,  37,  20,     11,  5, 12,  12),
             // SP+Heavy. The 30-frame draw WAS deliberate and the user's verdict is that it does not
             // play: 0.50s of windup before the first active frame. Kuruma (the spin charge handed
             // down from the normal heavy) takes the slot at 0.53s total.
-            N("Miyamoto_Special_Kuruma",              15,  48, 24,      8,  4,  8,  14),
+            N("Miyamoto_Special_Kuruma",              15,  41, 24,      8,  4,  8,  14),
             // The double thrust, now reachable ONLY as the last hit of a string, so it needs no
             // tell - a confirmed finisher is paid for by the hit that opened the cancel window.
-            N("Miyamoto_Special_Iaijutsu",            15,  48, 24,      8,  5,  9,  14),   // all four specials cut about a quarter on the user's call: 30/47/32/36 frames -> 22/34/24/27
+            N("Miyamoto_Special_Iaijutsu",            15,  41, 24,      8,  5,  9,  14),   // all four specials cut about a quarter on the user's call: 30/47/32/36 frames -> 22/34/24/27
             N("Miyamoto_Riposte_Dash",                 9,  12,  8,     10,  4, 11,   9),
             N("Miyamoto_Riposte_Parry",                8,  12,  8,     16,  4,  5,   9),
         },
@@ -157,9 +159,9 @@ public static class CrucibleBalance
             N("Bjorn_Medium_SpinningSlash",           10,  23,  2,     18,  5, 12,   9),   // was 23 start
             N("Bjorn_Heavy_OverheadDoubleAxe",        13,  26,  5,     18,  5, 15,  11),   // was 15 start: the fastest heavy, on the slow fighter
             N("Bjorn_Heavy_SpinOverhead",             13,  29,  5,     28,  4, 14,  11),
-            N("Bjorn_Special_HaftStrike",             15,  48,  5,     18,  5, 20,  13),
-            N("Bjorn_Special_HewingCharge",           16,  55,  5,     22,  5, 22,  13),
-            N("Bjorn_Special_BloodEagle",             18,  62, 10,     24,  5, 24,  15),
+            N("Bjorn_Special_HaftStrike",             15,  41,  5,     18,  5, 20,  13),
+            N("Bjorn_Special_HewingCharge",           16,  47,  5,     22,  5, 22,  13),
+            N("Bjorn_Special_BloodEagle",             18,  53, 10,     24,  5, 24,  15),
             N("Bjorn_Riposte_Dash",                    9,  16,  0,     12,  4, 14,   9),
             N("Bjorn_Riposte_Parry",                   8,  16,  0,     12,  4, 14,   9),
         },
@@ -169,9 +171,9 @@ public static class CrucibleBalance
             N("Richard_Light_Thrust",                  7,  17,  5,     11,  3,  9,   7),
             N("Richard_Medium_Slash",                  9,  21,  2,     15,  4, 11,   9),
             N("Richard_Heavy_Overhead",               11,  24,  8,     22,  5, 17,  11),
-            N("Richard_Special_ShieldCharge",         14,  44, 10,     11,  4, 15,  13),   // the three specials run a little longer than the normals whose clips they play
-            N("Richard_Special_ShieldBash",           15,  49, 12,     15,  5, 14,  13),
-            N("Richard_Special_DoubleHigh",           16,  55, 10,     22,  5, 17,  14),   // 44 f, the same total as the Heavy, so the window maths match it exactly
+            N("Richard_Special_ShieldCharge",         14,  37, 10,     11,  4, 15,  13),   // the three specials run a little longer than the normals whose clips they play
+            N("Richard_Special_ShieldBash",           15,  42, 12,     15,  5, 14,  13),
+            N("Richard_Special_DoubleHigh",           16,  47, 10,     22,  5, 17,  14),   // 44 f, the same total as the Heavy, so the window maths match it exactly
             N("Richard_Riposte_Dash",                  9,  14,  0,     12,  4, 14,   9),
             N("Richard_Riposte_Parry",                 8,  14,  0,     12,  4, 14,   9),
         },
@@ -186,9 +188,9 @@ public static class CrucibleBalance
             N("Salaadin_Light_SaifCut",                7,  16,  0,      8,  3,  7,   7),
             N("Salaadin_Medium_ShinCut",               8,  18,  2,     12,  4,  9,   8),
             N("Salaadin_Heavy_WhirlingSaif",          10,  22,  5,     17,  4, 13,  10),
-            N("Salaadin_Special_VeiledRush",          13,  41,  5,     20,  5, 18,  12),
-            N("Salaadin_Special_CrescentSlash",       14,  46,  8,     20,  5, 19,  13),
-            N("Salaadin_Special_HattinCleave",        16,  52, 10,     26,  5, 20,  14),
+            N("Salaadin_Special_VeiledRush",          13,  35,  5,     20,  5, 18,  12),
+            N("Salaadin_Special_CrescentSlash",       14,  39,  8,     20,  5, 19,  13),
+            N("Salaadin_Special_HattinCleave",        16,  44, 10,     26,  5, 20,  14),
             N("Salaadin_Riposte_Dash",                 9,  14,  0,     12,  4, 14,   9),
             N("Salaadin_Riposte_Parry",                8,  14,  0,     12,  4, 14,   9),
         },
@@ -248,9 +250,25 @@ public static class CrucibleBalance
             so.FindProperty("lungeStopDistance").floatValue = lg.stop;
             so.FindProperty("lungeMaxDistance").floatValue = lg.max;
         }
+        so.FindProperty("hyperArmor").boolValue = HyperArmor.Contains(m.asset);
         so.ApplyModifiedProperties();
         EditorUtility.SetDirty(asset);
     }
+
+    /// <summary>
+    /// The SP+Heavy slot on every fighter powers through hits: the wind-up is long enough that any
+    /// light could interrupt it, so the move takes the damage and keeps swinging (the user's call,
+    /// 2026-10-23). A parry still beats it outright. Written to AttackData.hyperArmor, false on
+    /// everything else, so the table stays the one source of truth.
+    /// </summary>
+    static readonly System.Collections.Generic.HashSet<string> HyperArmor =
+        new System.Collections.Generic.HashSet<string>
+    {
+        "Miyamoto_Special_Kuruma",
+        "Bjorn_Special_BloodEagle",
+        "Richard_Special_DoubleHigh",
+        "Salaadin_Special_HattinCleave",
+    };
 
     /// <summary>
     /// Moves that have to CLOSE rather than reach. The default lunge stops at

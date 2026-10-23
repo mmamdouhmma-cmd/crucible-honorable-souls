@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Nito Cross
   damage: 14
-  staminaCost: 44
+  staminaCost: 37
   armorPierce: 20
   startupFrames: 11
   activeFrames: 5
@@ -27,6 +27,7 @@ MonoBehaviour:
   comesFrom: 2
   hitSide: 1
   hitstunFrames: 12
+  hyperArmor: 0
   hitboxRange: 2.8
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1.6, y: 1.5, z: 1}

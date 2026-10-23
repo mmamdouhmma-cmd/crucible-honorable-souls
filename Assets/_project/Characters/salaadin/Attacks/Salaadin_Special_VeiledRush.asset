@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Veiled Reversal
   damage: 13
-  staminaCost: 41
+  staminaCost: 35
   armorPierce: 5
   startupFrames: 20
   activeFrames: 5
@@ -27,6 +27,7 @@ MonoBehaviour:
   comesFrom: 1
   hitSide: 2
   hitstunFrames: 12
+  hyperArmor: 0
   hitboxRange: 3.2
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1.4, y: 1, z: 1}
