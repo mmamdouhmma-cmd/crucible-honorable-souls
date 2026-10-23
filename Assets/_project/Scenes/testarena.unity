@@ -547,14 +547,14 @@ MonoBehaviour:
   blockStaminaDrainPerSecond: 3
   parryWindow: 0.1
   parryCooldown: 1.2
-  parryStaminaCost: 10
+  parryStaminaCost: 5
   parryAnimSpeed: 2
   parryStunDuration: 1
   parryCounterWindow: 0.8
   parryCounterDamageMultiplier: 1.35
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 17
+  staminaRecoveryPerSecond: 25
   healthRegenPerSecond: 1
   healOnDodge: 0.02
   healOnParry: 0.02
@@ -4417,14 +4417,14 @@ MonoBehaviour:
   blockStaminaDrainPerSecond: 2
   parryWindow: 0.12
   parryCooldown: 1
-  parryStaminaCost: 8
+  parryStaminaCost: 5
   parryAnimSpeed: 2
   parryStunDuration: 1
   parryCounterWindow: 0.8
   parryCounterDamageMultiplier: 1.35
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 14
+  staminaRecoveryPerSecond: 25
   healthRegenPerSecond: 1
   healOnDodge: 0.02
   healOnParry: 0.02
@@ -4857,6 +4857,7 @@ GameObject:
   - component: {fileID: 1348053413}
   - component: {fileID: 1348053415}
   - component: {fileID: 1348053414}
+  - component: {fileID: 1348053416}
   m_Layer: 0
   m_Name: GameMangers
   m_TagString: Untagged
@@ -5049,6 +5050,103 @@ MonoBehaviour:
     blurb: Wet earth under a closed canopy.
     shipped: 0
   testGroundName: Ground
+--- !u!114 &1348053416
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1348053404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2775db6bda8220b4f88ee1032f70091e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CrucibleAudio
+  uiNavigate:
+  - {fileID: 8300000, guid: 88644eb843469214eb7804e82cb3b23d, type: 3}
+  - {fileID: 8300000, guid: b59995632f7b41340aeeffaa042d148b, type: 3}
+  - {fileID: 8300000, guid: b9c023f4b94194541923010736ecc566, type: 3}
+  uiSelect:
+  - {fileID: 8300000, guid: 2b869584f4b6cce49a4892ba1fc892d1, type: 3}
+  - {fileID: 8300000, guid: 89d2f12fa8036744a864ca0114682c85, type: 3}
+  uiBack:
+  - {fileID: 8300000, guid: 7e2695b8e91cd98428d22ccef582f4e6, type: 3}
+  uiWipe:
+  - {fileID: 8300000, guid: fcc0032f25bd35c4fa0a82977a37b5eb, type: 3}
+  uiBoot:
+  - {fileID: 8300000, guid: 891efba2483970444a4903f639b04988, type: 3}
+  uiCountBeat:
+  - {fileID: 8300000, guid: 019c3e092bdc28f409539f10ec8df713, type: 3}
+  uiCountFight:
+  - {fileID: 8300000, guid: 5d36a1d9c053a59469cd483e693c2a88, type: 3}
+  swish:
+  - {fileID: 8300000, guid: 42f1644029d95e340b1b9f6c4ee2549c, type: 3}
+  - {fileID: 8300000, guid: 2f65b7acd3e4d334691752925ebf3d49, type: 3}
+  - {fileID: 8300000, guid: 49a89c1a00c504b449238347cda19b7d, type: 3}
+  - {fileID: 8300000, guid: 5a67eed075715c145b176cebba4aa574, type: 3}
+  - {fileID: 8300000, guid: 73bea815f5e9c9645a90db347ec8b596, type: 3}
+  block:
+  - {fileID: 8300000, guid: ab28fd445fb4dad48a844a76c594fe8f, type: 3}
+  - {fileID: 8300000, guid: 552ff9f3b01f02640802d1b74f544117, type: 3}
+  - {fileID: 8300000, guid: 7c31732c5fd0ba34ba13e21c103e0176, type: 3}
+  - {fileID: 8300000, guid: f1d23bfe87dd43240b99f2e25a214a41, type: 3}
+  parry:
+  - {fileID: 8300000, guid: 27f9baf61983e2b4297e729ad2c7dd1c, type: 3}
+  - {fileID: 8300000, guid: acb2be7c3a0823146a914311271f4035, type: 3}
+  hit:
+  - {fileID: 8300000, guid: ba5cac6e0b5d319438080ea7ed4fdf26, type: 3}
+  - {fileID: 8300000, guid: 3935f45d42ed9404486fac36d69dbd95, type: 3}
+  - {fileID: 8300000, guid: 4f5f243e0b2d60446a4b22fa29ffcfa9, type: 3}
+  dodge:
+  - {fileID: 8300000, guid: 7fb0d5e1d47c5574c8fbad69b8337309, type: 3}
+  - {fileID: 8300000, guid: f0eb93552d0d63b47ad4e3c7924265b5, type: 3}
+  voices:
+  - character: Bjorn
+    effortLight:
+    - {fileID: 8300000, guid: 5cb637af57a4b9c4eb8637e174d7b6f2, type: 3}
+    - {fileID: 8300000, guid: 252a52a72ba8ade43a87be29f4d786af, type: 3}
+    - {fileID: 8300000, guid: f6e9cde2cf77d314eb6405cfad9b3d15, type: 3}
+    - {fileID: 8300000, guid: 831aec3f836e41d4582676143fc95640, type: 3}
+    - {fileID: 8300000, guid: f591a655865a2de4f81d7f2c008c8f98, type: 3}
+    effortHeavy:
+    - {fileID: 8300000, guid: 1d2cbae39339f5c4082db0e04fd69f1a, type: 3}
+    - {fileID: 8300000, guid: a8ae391c9d6760c409638f79787960c6, type: 3}
+    - {fileID: 8300000, guid: 63cf76ac382d0134cb7fbcf20c8890ac, type: 3}
+    death:
+    - {fileID: 8300000, guid: c90c3fc4ac730144d9d7210d38b3a73e, type: 3}
+  - character: Miyamoto
+    effortLight:
+    - {fileID: 8300000, guid: 1cb94b5fe0485db448105c22bf3569a2, type: 3}
+    - {fileID: 8300000, guid: 0919da227f7bcb948bf7a5b1775cbb2a, type: 3}
+    - {fileID: 8300000, guid: 5e8338cbda2392e49880194ee3f97172, type: 3}
+    effortHeavy:
+    - {fileID: 8300000, guid: af75187bec497ae49bb1bd3e87b01787, type: 3}
+    - {fileID: 8300000, guid: 864ca62ff5027484dbdacec21199bec1, type: 3}
+    death:
+    - {fileID: 8300000, guid: 552d1f227e31b934cb8c01fa4ffe8ba3, type: 3}
+  - character: Richard
+    effortLight:
+    - {fileID: 8300000, guid: 2941c1284e7b6be46b59f0a5ec19768c, type: 3}
+    - {fileID: 8300000, guid: c3a09ac9de3023d4f8deb8cef6c2054f, type: 3}
+    - {fileID: 8300000, guid: 7a6f18e527f10194cab3140e6c28636b, type: 3}
+    effortHeavy:
+    - {fileID: 8300000, guid: 88f83867dff4ffd4abc13fec22acb708, type: 3}
+    - {fileID: 8300000, guid: abed1d97a6d9d524589352c0c2e1410a, type: 3}
+    death:
+    - {fileID: 8300000, guid: c0c4bc3854e5e024283b886b267d8527, type: 3}
+  - character: Salaadin
+    effortLight:
+    - {fileID: 8300000, guid: a086481adf1f2524a8f7619a40c584d6, type: 3}
+    - {fileID: 8300000, guid: 164a59694023b524481ccebbe9d41eaf, type: 3}
+    - {fileID: 8300000, guid: a5b0dc9986ee7dd489f13e3489a6dc47, type: 3}
+    effortHeavy:
+    - {fileID: 8300000, guid: db96ad959a9d6b34aa65af5bddbe2978, type: 3}
+    death:
+    - {fileID: 8300000, guid: ca408b67a629cf14bbf95528759189b7, type: 3}
+  menuMusic: {fileID: 0}
+  fightMusic: {fileID: 0}
+  windLoop: {fileID: 8300000, guid: de9f75e0b2c8ee341aadefaea06a85e8, type: 3}
+  windLevel: 0.3
 --- !u!1 &1348276768
 GameObject:
   m_ObjectHideFlags: 0
@@ -6504,14 +6602,14 @@ MonoBehaviour:
   blockStaminaDrainPerSecond: 2.5
   parryWindow: 0.12
   parryCooldown: 1
-  parryStaminaCost: 8
+  parryStaminaCost: 5
   parryAnimSpeed: 2
   parryStunDuration: 1
   parryCounterWindow: 0.8
   parryCounterDamageMultiplier: 1.35
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 16
+  staminaRecoveryPerSecond: 25
   healthRegenPerSecond: 1
   healOnDodge: 0.02
   healOnParry: 0.02
@@ -7109,14 +7207,14 @@ MonoBehaviour:
   blockStaminaDrainPerSecond: 3
   parryWindow: 0.18
   parryCooldown: 0.8
-  parryStaminaCost: 8
+  parryStaminaCost: 5
   parryAnimSpeed: 2
   parryStunDuration: 1
   parryCounterWindow: 1
   parryCounterDamageMultiplier: 1.5
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 20
+  staminaRecoveryPerSecond: 25
   healthRegenPerSecond: 1
   healOnDodge: 0.02
   healOnParry: 0.02

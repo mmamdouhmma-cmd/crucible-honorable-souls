@@ -244,6 +244,11 @@ public class CombatSystem : MonoBehaviour
             hitboxActive = true;
             if (weaponTrail != null && weaponTrail.enabled) weaponTrail.Begin();
 
+            // The air cut, on EVERY swing - a landed hit layers its own sound over it a few frames
+            // later, which is the usual fighting-game read. Weight scales it: Bjorn's axe lower
+            // and louder than Miyamoto's katana.
+            CrucibleAudio.Combat(CrucibleAudio.CombatSound.Swish, currentAttack.AttackType);
+
             // Decide now whether an opponent mid-dash just dodged this swing. Waiting for the
             // trigger would only ever see dodges that are still inside the box when it arms.
             ResolveDodgeAtArm();
@@ -487,6 +492,9 @@ public class CombatSystem : MonoBehaviour
         {
             animator.SetTrigger(attack.AnimatorTriggerName);
         }
+
+        // The breath thrown with the swing: short exhale on a light, full effort on a heavy.
+        CrucibleAudio.Effort(fighter.CharacterName, attack.AttackType);
     }
 
     /// <summary>Remembers a press that cannot come out yet (see the buffer fields).</summary>
@@ -672,6 +680,8 @@ public class CombatSystem : MonoBehaviour
     private void MarkEvaded()
     {
         swingEvaded = true;
+        CrucibleAudio.Combat(CrucibleAudio.CombatSound.Dodge,
+                             currentAttack != null ? currentAttack.AttackType : AttackType.Medium);
         if (evadedExtraRecovery <= 0f)
         {
             int frames = DodgedRecoveryFramesFor(currentAttack);
@@ -887,6 +897,7 @@ public class CombatSystem : MonoBehaviour
             }
             if (hitStop) HitStop.Request(BalanceConfig.HIT_STOP_FRAMES * BalanceConfig.FRAME_TIME);
             if (FightCamera.Instance != null) FightCamera.Instance.OnImpact(0, currentAttack.AttackType, true);
+            CrucibleAudio.Combat(CrucibleAudio.CombatSound.Parry, currentAttack.AttackType);
 
             if (debugLogs)
             {
@@ -921,7 +932,13 @@ public class CombatSystem : MonoBehaviour
             bonus);
 
         target.Stats.TakeDamage(finalDamage);
-        if (!target.Stats.IsAlive()) target.NotifyDeath();   // death animation instead of a flinch
+        CrucibleAudio.Combat(blocked ? CrucibleAudio.CombatSound.Block : CrucibleAudio.CombatSound.Hit,
+                             currentAttack.AttackType);
+        if (!target.Stats.IsAlive())
+        {
+            target.NotifyDeath();   // death animation instead of a flinch
+            CrucibleAudio.Death(target.CharacterName);
+        }
         else target.NotifyHit(currentAttack.HitSide, currentAttack.HitstunFrames);
 
         // Remembered for string links that must be earned by connecting.

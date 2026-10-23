@@ -41,6 +41,9 @@ public class GameMenu : MonoBehaviour
     class SettingsData
     {
         public float volume = 1f;
+        public float musicVolume = 0.8f;
+        public float effectsVolume = 1f;
+        public float voiceVolume = 1f;
         public float gameSpeed = 0.85f;
         public bool blood = true;
         public int padPlayer = 2;
@@ -480,6 +483,7 @@ public class GameMenu : MonoBehaviour
         for (int i = 0; i < beats.Length; i++)
         {
             if (stage != null) stage.Beat(beats[i], i == 0 ? MenuArt.Bone : MenuArt.BronzeLit, i == 0 ? 130 : 240);
+            CrucibleAudio.Ui(CrucibleAudio.UiSound.CountBeat);
             yield return WaitWhilePlaying(holds[i]);
         }
 
@@ -490,6 +494,7 @@ public class GameMenu : MonoBehaviour
 
         if (stage != null)
             stage.Beat("Fight!", MenuArt.BloodLit, 210, flow == Flow.Practice ? "pause for the rules" : null);
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.CountFight);
         yield return WaitWhilePlaying(0.55f);
         if (stage != null) stage.ClearBeat();
         countIn = null;
@@ -573,6 +578,7 @@ public class GameMenu : MonoBehaviour
     void ApplySettings()
     {
         AudioListener.volume = Mathf.Clamp01(settings.volume);
+        CrucibleAudio.SetVolumes(settings.musicVolume, settings.effectsVolume, settings.voiceVolume);
         TouchControls.SetMode(settings.touchButtons);
         var dts = GetComponent<DebugTimeScale>();
         if (dts != null) { dts.timeScale = GameSpeed(); dts.enabled = true; }
@@ -599,13 +605,14 @@ public class GameMenu : MonoBehaviour
         screenAge = keepAge;                    // a toggle must not replay the entrance animation
         selected = Mathf.Clamp(keepSel, 0, Mathf.Max(0, items.Count - 1));
         scroll = Mathf.Clamp(keepScroll, 0, Mathf.Max(0, items.Count - visibleRows));
-        if (items.Count > 0 && items[selected].header) MoveSelection(1); else Refresh();
+        if (items.Count > 0 && items[selected].header) MoveSelection(1, sound: false); else Refresh();
     }
 
     /// <summary>Changes screen behind a wipe, for the transitions between the big views.</summary>
     void GoWiped(Screen s)
     {
         if (stage == null) { Show(s); return; }
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Wipe);
         stage.Wipe(() => Show(s));
     }
 
@@ -619,6 +626,24 @@ public class GameMenu : MonoBehaviour
         captureBack.gameObject.SetActive(false);
         screenAge = 0f;
         inputGuard = rebuilding ? inputGuard : 0.22f;
+
+        // Music follows the screen: the fight track and the low wind bed while the match is on
+        // screen, the menu track everywhere else. Pause and the K.O. screen sit OVER the match, so
+        // they keep the fight underneath and duck it instead of switching tracks.
+        if (s == Screen.None)
+        {
+            CrucibleAudio.Scene(CrucibleAudio.MusicMode.Fight);
+            CrucibleAudio.Ducked(false);
+        }
+        else if (s == Screen.Pause || s == Screen.MatchOver)
+        {
+            CrucibleAudio.Ducked(true);
+        }
+        else
+        {
+            CrucibleAudio.Scene(CrucibleAudio.MusicMode.Menu);
+            CrucibleAudio.Ducked(false);
+        }
 
         bool menuVisible = s != Screen.None;
         bool onStage = s == Screen.CharSelect || s == Screen.ArenaSelect || s == Screen.Vs;
@@ -672,7 +697,7 @@ public class GameMenu : MonoBehaviour
 
         LayoutPanel();
         LayoutRows();
-        if (items.Count > 0 && items[selected].header) MoveSelection(1);
+        if (items.Count > 0 && items[selected].header) MoveSelection(1, sound: false);
         Refresh();
         if (!rebuilding) for (int i = 0; i < rows.Count; i++) rows[i].slide = 0f;   // stagger the entrance
     }
@@ -794,6 +819,12 @@ public class GameMenu : MonoBehaviour
                 SetTitle("Settings", "");
                 items.Add(new Item { label = "Master volume", value = () => Mathf.RoundToInt(settings.volume * 100) + "%",
                     adjust = d => { settings.volume = Mathf.Clamp01(settings.volume + d * 0.1f); ApplySettings(); SaveSettings(); } });
+                items.Add(new Item { label = "Music", value = () => Mathf.RoundToInt(settings.musicVolume * 100) + "%",
+                    adjust = d => { settings.musicVolume = Mathf.Clamp01(settings.musicVolume + d * 0.1f); ApplySettings(); SaveSettings(); } });
+                items.Add(new Item { label = "Sound effects", value = () => Mathf.RoundToInt(settings.effectsVolume * 100) + "%",
+                    adjust = d => { settings.effectsVolume = Mathf.Clamp01(settings.effectsVolume + d * 0.1f); ApplySettings(); SaveSettings(); } });
+                items.Add(new Item { label = "Voices", value = () => Mathf.RoundToInt(settings.voiceVolume * 100) + "%",
+                    adjust = d => { settings.voiceVolume = Mathf.Clamp01(settings.voiceVolume + d * 0.1f); ApplySettings(); SaveSettings(); } });
                 items.Add(new Item { label = "Game speed", value = () => Mathf.RoundToInt(settings.gameSpeed * 100) + "%",
                     adjust = d => { settings.gameSpeed = Mathf.Clamp(settings.gameSpeed + d * 0.05f, 0.5f, 1f); ApplySettings(); SaveSettings(); } });
                 items.Add(new Item { label = "Blood", value = () => OnOff(settings.blood),
@@ -1008,6 +1039,7 @@ public class GameMenu : MonoBehaviour
 
         bootReady = false;
         bootExiting = true;
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Boot);   // one deep hit, under the 0.45 s fade-out
         if (bootRoutine != null) StopCoroutine(bootRoutine);
         bootRoutine = StartCoroutine(BootExitRoutine());
     }
@@ -1160,9 +1192,10 @@ public class GameMenu : MonoBehaviour
 
     // ================================================================ navigation
 
-    void MoveSelection(int dir)
+    void MoveSelection(int dir, bool sound = true)
     {
         if (items.Count == 0) return;
+        if (sound) CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
 
         // Screens that are nearly all body copy (How to Fight, the move list) have one or two
         // selectable rows, so following the selection would never scroll them. Scroll the view.
@@ -1197,18 +1230,20 @@ public class GameMenu : MonoBehaviour
 
     void Adjust(int dir)
     {
-        if (screen == Screen.CharSelect) { MoveCharacter(dir); return; }
-        if (screen == Screen.ArenaSelect) { MoveArena(dir); return; }
+        if (screen == Screen.CharSelect) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate); MoveCharacter(dir); return; }
+        if (screen == Screen.ArenaSelect) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate); MoveArena(dir); return; }
         if (selected < 0 || selected >= items.Count) return;
+        if (items[selected].adjust != null) CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
         items[selected].adjust?.Invoke(dir);
         Refresh();
     }
 
     void Confirm()
     {
-        if (screen == Screen.CharSelect) { ConfirmCharacter(); return; }
-        if (screen == Screen.ArenaSelect) { ConfirmArena(); return; }
+        if (screen == Screen.CharSelect) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Select); ConfirmCharacter(); return; }
+        if (screen == Screen.ArenaSelect) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Select); ConfirmArena(); return; }
         if (selected < 0 || selected >= items.Count) return;
+        if (items[selected].confirm != null) CrucibleAudio.Ui(CrucibleAudio.UiSound.Select);
         items[selected].confirm?.Invoke();
     }
 
@@ -1232,6 +1267,7 @@ public class GameMenu : MonoBehaviour
                 return;
         }
 
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Back);
         if (history.Count > 0)
         {
             var back = history[history.Count - 1];

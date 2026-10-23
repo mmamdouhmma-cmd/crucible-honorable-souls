@@ -3324,3 +3324,43 @@ One session note: the Editor turned out to be IN PLAY MODE when the apply ran (a
 had just gone through, which per the standing warning kills `InputManager.Instance` in a live
 session) - exited play, applied, verified. Check `editor_status` before an Apply, not after it
 fails.
+
+### 2026-10-23 — The audio pass (Plan_Audio, all of it but the music files)
+
+The game has sound. One new runtime component, `Scripts/core/CrucibleAudio.cs`, on GameMangers:
+plain AudioSources (no mixer asset, no middleware — the plan's open question, answered for the
+web build), two crossfading music sources, a looping wind bed, a 12-source one-shot pool with
+per-set no-repeat variant picking and pitch jitter. Channels are Music / Effects / Voice floats;
+Master stays on AudioListener.volume. Settings grew three sliders (Music, Sound effects, Voices)
+in `SettingsData` v1 — old saved JSON just takes the new defaults.
+
+Hooks, all in existing code paths: GameMenu MoveSelection/Adjust (navigate tick — the Rebuild-
+internal MoveSelection calls pass `sound: false`), Confirm/Back, GoWiped (scrape), boot press
+(deep hit), count-in beats + FIGHT, and `Show()` drives the music: fight track + wind while
+`Screen.None`, menu track elsewhere, Pause/MatchOver DUCK the fight mix (x0.35) instead of
+switching. CombatSystem: effort voice in BeginAttack, air swish at hitbox arm (every swing, by
+design — the hit layers over it), block/hit beside the spark/blood calls, parry in the parry
+branch, dodge in MarkEvaded, death cry beside NotifyDeath. All weight-scaled off AttackType
+(heavy = lower pitch, more level).
+
+Assets: `Assets/_project/Audio/{UI,Combat,Voice/<Name>,Music,Ambience}`, wired BY FILE NAME
+PREFIX by `Crucible > Audio > Set up audio` (`Editor/CrucibleAudioSetup.cs`), which also fixes
+import settings (streams Music/Ambience, decompress+mono one-shots) and SAVES THE SCENE. The
+editor asmdef cannot see Assembly-CSharp, so it is all SerializedObject + Type.GetType — the
+first draft with typed references was the session's one compile failure. Clip sources (see
+Audio/CREDITS.md): CC0 OpenGameArt packs (artisticdude swishes, StarNinjas clashes) cut/pitched
+in a Python+soundfile pass for the UI metal, blocks, swishes, dodge WOOFF, boot anvil; the wind
+is InspectorJ's CC-BY loop, tail crossfaded into the head; voices, death cries, flesh hits and
+the parry ring were GENERATED (Seed Audio via Krea, ~10.5 credits each, 8 generations, ~67
+credits left) — multi-grunt takes split by silence, the four death cries assigned deep→sharp by
+spectral centroid. Music/ is EMPTY on purpose: the user supplies menu*/fight*, drop in and
+re-run Set up audio.
+
+Play-verified with a coroutine probe sampling the source pool: Ui(Select) plays; in-match wind
+holds 0.300; a heavy swing logs effort_heavy (p1.03) → swish (p0.89) → hit (p0.90); a light KO
+logs effort_light (v0.70 p1.02) → swish → hit → death_01 — the weight scaling is visible in the
+numbers. Block/parry/dodge branches share the same verified plumbing. Gotchas: the eval bridge
+times out at 5 s on Setup's import pass but the work completes — read the component back;
+soundfile's OGG VORBIS writer hard-crashes python (exit 253, buffered stdout lost — run -u),
+wind went out as WAV instead; a 4-cry generation split as 2 segments, fixed by cutting long
+segments at their quietest interior dip.
