@@ -918,6 +918,15 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   the view clears. The shader approximates URP Lit (SH + shadowed main light + normal map) and
   carries ShadowCaster/DepthOnly passes so nothing pops during the swap; the Shader reference is
   serialized on WallCutout so builds cannot strip it.
+- **`Shader.Find` only sees shaders the BUILD includes, and that is how every hit effect died in
+  the Win64 app** (2026-10-24): `VfxMaterials.Unlit` found the URP unlit shaders in the Editor and
+  got null in the player, and the `ArgumentNullException` aborted `CombatSystem.ResolveHit` MID-HIT
+  on every landed blow - no blood, no parry flash, no dodge burst, no kill shot, while the Editor
+  was perfect. "Universal Render Pipeline/Particles/Unlit" and ".../Unlit" are in
+  Graphics > Always Included Shaders now (they land in the build's `globalgamemanagers.assets` -
+  grep it to verify a build), and `VfxMaterials` falls back to `Sprites/Default` with a LogError
+  instead of throwing. **For any works-in-Editor-not-in-app report, read the player log first**:
+  `%USERPROFILE%\AppData\LocalLow\DefaultCompany\CRUCIBLE test\Player.log` (+ `Player-prev.log`).
 - **The killing blow has a presentation** (`KillShot`, 2026-10-24): on the fatal hit time drops to
   x0.2 of match speed (0.9 s real hold, 0.8 s ramp back), every light + ambient + a skybox CLONE
   dim to ~10-15% so the arena goes near-black while the UNLIT blood keeps its colour, and an extra

@@ -39,7 +39,20 @@ public static class VfxMaterials
         {
             case Pipeline.Urp:
             {
+                // In a PLAYER, Shader.Find only sees shaders the build includes - these two are in
+                // Graphics > Always Included Shaders for exactly this call. Sprites/Default is the
+                // last resort so a mis-configured build degrades to flat sprites instead of every
+                // hit throwing out of CombatSystem.Update (which is what killed all effects in the
+                // 2026-10-24 Win64 build).
                 Shader s = Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Universal Render Pipeline/Unlit");
+                if (s == null)
+                {
+                    Debug.LogError("VfxMaterials: URP unlit shaders are not in this build - add them to Always Included Shaders. Falling back to Sprites/Default.");
+                    mat = new Material(Shader.Find("Sprites/Default"));
+                    if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
+                    if (sprite != null && mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", sprite);
+                    break;
+                }
                 mat = new Material(s);
                 mat.SetColor("_BaseColor", color);
                 if (sprite != null) mat.SetTexture("_BaseMap", sprite);

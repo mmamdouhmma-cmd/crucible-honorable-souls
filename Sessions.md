@@ -3561,3 +3561,20 @@ Three fixes off the user's playtest of the full roster, all play-verified throug
   PARRY, 95 hp untouched, 110 -> 100 stamina at connect, attacker stunned 33 f; raise 60 f early =
   ordinary block (chip 2); 2 s of held block = 60 -> 60 stamina. The `Apply` eval timed out
   (HTTP 400) and had still written everything, second time today.
+
+### 2026-10-24 — The app had no effects, and the player log named the shader
+
+- The user: "it works in the unity edit perfectly, but not ithe app." The 03:01 build was fresh,
+  the shortcut's target right, every new class in the built Assembly-CSharp.dll — and the app
+  still played with no blood, no parry flash, no dodge burst, no kill shot.
+- `Player.log` (AppData/LocalLow/DefaultCompany/CRUCIBLE test) had it on the first grep: every
+  landed hit threw `ArgumentNullException: shader` out of `VfxMaterials.Unlit` →
+  `HitEffects.SpawnBlood` → `CombatSystem.ResolveHit`. `Shader.Find` only sees shaders the build
+  includes; nothing referenced the URP unlit shaders, so the Editor found them and the player got
+  null — and the throw aborted the rest of the hit's resolution each time.
+- Fix: both URP unlit shaders added to Graphics > Always Included Shaders (verified in the new
+  build's `globalgamemanagers.assets`), and `VfxMaterials.Unlit` hardened to fall back to
+  `Sprites/Default` with a LogError instead of throwing. Rebuilt Win64 at 03:21, scene restored.
+- The background wait-loop watching the build was killed by the harness for system memory
+  pressure mid-build; the build itself (inside Unity) was untouched — checked the buildreport
+  and dll mtimes directly instead of restarting the watcher.
