@@ -3416,3 +3416,12 @@ beats an armoured string and a same-frame trade is still a clash. Play-verified 
 Salaadin's L→M with an injected Bjorn hit (`oppC.OnHit(sal)` queues through the real
 ResolvePendingHits path): clean-opener follow-up ate 7 damage and kept swinging; whiff-built
 follow-up was interrupted into hitstun as before.
+
+Tail of the same session, rebuilding the Win64 build with the change in: the desktop build has
+no menu item - it is `CrucibleBuild.PrepareScene` (reflection; builds the stripped _build_temp
+scene), then the MCP `build` tool to `Builds/CrucibleLite-Win64/Crucible.exe`, then
+`RestoreScene`. Two harness gotchas: `unity build status --json` prefixes a progress JSON line
+before the real object, so a naive single-object parse never matches - watch
+`Library/LastBuild.buildreport`'s mtime instead; and the MCP `build_status` result is ~1.4M
+characters of per-file report, so grep the saved overflow file for `"result"` rather than
+reading it. Build Succeeded, 0 errors; Assembly-CSharp.dll is the freshness check, as ever.
