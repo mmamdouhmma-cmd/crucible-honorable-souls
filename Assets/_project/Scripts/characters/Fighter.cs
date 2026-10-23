@@ -181,7 +181,7 @@ public class Fighter : MonoBehaviour
     [Min(0f)]
     [SerializeField] private float parryCooldown = 1f;
 
-    [Tooltip("Stamina spent on every parry attempt, hit or miss. Keeps tapping parry on every swing from being free.")]
+    [Tooltip("Stamina spent when a parry CONNECTS. Opening the window (raising block / Defense) is free; the cooldown paces attempts.")]
     [Min(0)]
     [SerializeField] private int parryStaminaCost = 8;
 
@@ -229,16 +229,19 @@ public class Fighter : MonoBehaviour
     /// <summary>Seconds left for the HUD to show CLASH (0 when none is pending).</summary>
     public float ClashFlashTimeLeft => Mathf.Max(clashFlashTimer, 0f);
 
-    // Parry. Its own action on the Defense button (Circle on the pad), never the block button:
-    // sharing block made it a lottery, because pressing guard as the strike arrives is the natural
-    // reaction, so parries happened by luck. A press opens a short active window and costs stamina
-    // plus parryCooldown before another can be tried. There is deliberately NO recovery lockout -
-    // a miss does not freeze the fighter, it just cannot be repeated at once. Blocking is untouched
-    // and never parries anything.
+    // Parry. The user's call (2026-10-24, reversing the dedicated-button design): RAISING BLOCK
+    // in time with the incoming attack IS the parry - the guard's first parryWindow seconds
+    // deflect a strike outright, after which the raise settles into an ordinary block. The
+    // Defense button (Circle) still opens the same window, because the AI schedules its parries
+    // through it. A raise costs nothing (block drain is 0 now, blocking is meant to be free);
+    // the stamina cost is charged when a parry CONNECTS, and parryCooldown gates how soon the
+    // window can re-open, so dropping and re-raising the guard on every swing is paced. There is
+    // deliberately NO recovery lockout - a missed window is just a block.
     private float parryActiveTimer = 0f;
     private float parryCooldownTimer = 0f;
     private float parryCounterTimer = 0f;
     private float parryFlashTimer = 0f;
+    private bool prevBlockHeld = false;   // last frame's block input, for the rising edge
 
     /// <summary>
     /// True while the parry's active window is open, so an incoming strike is deflected. Read by
@@ -481,14 +484,19 @@ public class Fighter : MonoBehaviour
     private bool loggedArenaEdge = false;
 
     /// <summary>
-    /// The parry, on its own Defense button. A press opens <see cref="parryWindow"/> of active
-    /// window in which an incoming strike is deflected (see <see cref="NotifyParry"/>). It costs
-    /// stamina and <see cref="parryCooldown"/> seconds before the next attempt, and nothing else:
+    /// The parry: RAISING the guard in time with the attack. The block input's rising edge (and
+    /// the Defense button, which the AI presses) opens <see cref="parryWindow"/> seconds in which
+    /// an incoming strike is deflected (see <see cref="NotifyParry"/>); after that the raise is
+    /// an ordinary block. Opening the window is free - the stamina cost is charged only when a
+    /// parry connects - and <see cref="parryCooldown"/> paces how soon the window can re-open:
     /// a parry that catches nothing leaves the fighter free to block, dash or swing immediately.
     /// An attempt is refused while attacking, dashing or in hitstun.
     /// </summary>
     private void HandleParry()
     {
+        bool blockRaised = currentInput.blockHeld && !prevBlockHeld;
+        prevBlockHeld = currentInput.blockHeld;
+
         if (parryCooldownTimer > 0f) parryCooldownTimer = Mathf.Max(0f, parryCooldownTimer - Time.deltaTime);
         if (parryActiveTimer > 0f)
         {
@@ -496,26 +504,20 @@ public class Fighter : MonoBehaviour
             return;
         }
 
-        if (!currentInput.defenseButton) return;
+        if (!currentInput.defenseButton && !blockRaised) return;
 
         bool busy = combatSystem != null && (combatSystem.IsAttacking || combatSystem.IsInHitstun);
         if (busy || isDashing) return;
 
         if (parryCooldownTimer > 0f)
         {
-            if (debugLogs) Debug.Log($"P{playerNumber}: no parry - {parryCooldownTimer:0.00}s of cooldown left");
-            return;
-        }
-        if (parryStaminaCost > 0 && (stats == null || !stats.HasStamina(parryStaminaCost)))
-        {
-            if (debugLogs) Debug.Log($"P{playerNumber}: no parry - needs {parryStaminaCost} stamina");
+            if (debugLogs) Debug.Log($"P{playerNumber}: no parry window - {parryCooldownTimer:0.00}s of cooldown left");
             return;
         }
 
-        if (parryStaminaCost > 0) stats.UseStamina(parryStaminaCost);
         parryActiveTimer = parryWindow;
         parryCooldownTimer = parryCooldown;
-        Debug.Log($"P{playerNumber}: PARRY attempt - window {parryWindow:0.00}s, {parryStaminaCost} stamina, {parryCooldown:0.00}s cooldown");
+        if (debugLogs) Debug.Log($"P{playerNumber}: PARRY window open - {parryWindow:0.00}s, {parryCooldown:0.00}s cooldown");
     }
 
     private void HandleBlock()
@@ -588,6 +590,10 @@ public class Fighter : MonoBehaviour
         // The window has done its job. The cooldown set when the attempt started stands, so the
         // reward is being instantly actionable with a counter open, not a free second attempt.
         parryActiveTimer = 0f;
+
+        // Raising the guard is free; the parry pays only when it CONNECTS (so block drain can be
+        // zero without every guard raise taxing the bar).
+        if (parryStaminaCost > 0 && stats != null) stats.UseStamina(parryStaminaCost);
 
         if (animatorHasParry && animator != null)
         {

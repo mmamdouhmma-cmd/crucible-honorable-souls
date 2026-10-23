@@ -988,6 +988,18 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   counter window 1.0, riposte x1.5; Bjorn the worst parry (0.10, cost 10, cooldown 1.2); Richard
   and Salaadin base (0.12 / 8 / 1.0). This SETTLED the old 1.5-vs-1.35 counter damage and
   1.0-vs-0.5 counter window discrepancies: the table is the answer.
+- **The parry is the timed BLOCK RAISE now** (the user's call, 2026-10-24, reversing the
+  dedicated-button design): raising guard opens `parryWindow` seconds of deflection, then the
+  raise settles into an ordinary block. The Defense button still opens the same window - the AI
+  parries through it. Opening the window is FREE; `parryStaminaCost` is charged only when a parry
+  CONNECTS (in `NotifyParry`), and `parryCooldown` paces re-raises. Hand in hand with it:
+  **block stamina drain is 0 roster-wide** (the user set it in the scene; table + BalanceConfig
+  default updated - holding guard costs nothing, the 85/75/68/60 reduction spread is the block's
+  whole identity) and **every stun in the game is 0.5 s**: `UniformHitstunFrames = 30` in
+  `CrucibleBalance.WriteMove` overrides every AttackData's hitstun column, and `parryStun` /
+  `PARRY_STUN_DURATION` are 0.5. Play-verified: raise 4 f before a heavy = PARRY (no damage,
+  -10 on connect, attacker stunned ~30 f); raise 60 f early = ordinary block (chip, no parry);
+  2 s hold drains nothing; a clean hit stuns ~30 f.
 - **Salaadin's axis is COMBO FREEDOM** (Plan_Balance item 5, shipped 2026-10-23, with the
   deferred damage cut x0.92 -> x0.85 riding along - the roster's damage order is now Bjorn 110 >
   Richard 100 > Miyamoto 92 > Salaadin 85). Three breaks with the shared string shapes, all

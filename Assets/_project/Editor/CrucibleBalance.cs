@@ -58,12 +58,12 @@ public static class CrucibleBalance
                      // armor 8 -> 13 (user's hand tune in the scene, 2026-10-24)
                      health = 80, stamina = 100, armor = 13, damageMultiplier = 92, moveSpeed = 48,
                      regen = 20f, dashDistance = 2.6f, dashDuration = 0.22f, dashStamina = 12,
-                     blockReduction = 60, blockDrain = 3f,
+                     blockReduction = 60, blockDrain = 0f,
                      // The COUNTER fighter: 82% dash coverage, the widest parry window in the
                      // game (0.18 vs the 0.12 base), the shortest parry cooldown, and the only
                      // x1.5 riposte - his damage lives here, not in neutral.
                      dashIFrames = 0.18f,
-                     parryWindow = 0.18f, parryCost = 8, parryCooldown = 0.8f, parryStun = 1f,
+                     parryWindow = 0.18f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
                      parryCounterWindow = 1f, parryCounterDamage = 1.5f },
 
         new Vitals { character = "Bjorn", player = "Player1", fighterName = "Bjorn", archetype = "Berserker",
@@ -72,11 +72,11 @@ public static class CrucibleBalance
                      regen = 20f, dashDistance = 2.2f, dashDuration = 0.30f, dashStamina = 18,   // regen flattened to 20 across the roster (user, 2026-10-23)
                      // 80 -> 68 (Plan_Balance 2.4): aggression should not also carry the
                      // second-best guard in the game.
-                     blockReduction = 68, blockDrain = 3f,
+                     blockReduction = 68, blockDrain = 0f,
                      // 47% dash coverage; the narrowest, dearest, slowest parry - defence is
                      // not his game on any axis.
                      dashIFrames = 0.14f,
-                     parryWindow = 0.10f, parryCost = 10, parryCooldown = 1.2f, parryStun = 1f,
+                     parryWindow = 0.10f, parryCost = 10, parryCooldown = 1.2f, parryStun = 0.5f,
                      parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
 
         // The wall: the shield makes his guard the strongest per hit, the small tank makes it short.
@@ -85,10 +85,10 @@ public static class CrucibleBalance
                      // armor 22 -> 20 (user's hand tune in the scene, 2026-10-24)
                      health = 115, stamina = 85, armor = 20, damageMultiplier = 100, moveSpeed = 32,
                      regen = 20f, dashDistance = 2.0f, dashDuration = 0.34f, dashStamina = 16,
-                     blockReduction = 85, blockDrain = 2f,
+                     blockReduction = 85, blockDrain = 0f,
                      // 35% dash coverage - the wall blocks, he does not slip. Base parry.
                      dashIFrames = 0.12f,
-                     parryWindow = 0.12f, parryCost = 8, parryCooldown = 1f, parryStun = 1f,
+                     parryWindow = 0.12f, parryCost = 8, parryCooldown = 1f, parryStun = 0.5f,
                      parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
 
         // The middle of the roster on every axis: Miyamoto's damage scalar on a frame, armour
@@ -105,10 +105,10 @@ public static class CrucibleBalance
                      regen = 20f, dashDistance = 2.3f, dashDuration = 0.26f, dashStamina = 15,
                      // 82 -> 75 (Plan_Balance 2.4): between Richard's 85 and Bjorn's 68, so the
                      // round shield still reads but the wall is Richard's alone.
-                     blockReduction = 75, blockDrain = 2.5f,
+                     blockReduction = 75, blockDrain = 0f,
                      // 62% dash coverage (second to Miyamoto), base parry everywhere else.
                      dashIFrames = 0.16f,
-                     parryWindow = 0.12f, parryCost = 8, parryCooldown = 1f, parryStun = 1f,
+                     parryWindow = 0.12f, parryCost = 8, parryCooldown = 1f, parryStun = 0.5f,
                      parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
     };
 
@@ -247,7 +247,9 @@ public static class CrucibleBalance
         so.FindProperty("startupFrames").intValue = m.startup;
         so.FindProperty("activeFrames").intValue = m.active;
         so.FindProperty("recoveryFrames").intValue = m.recovery;
-        so.FindProperty("hitstunFrames").intValue = m.hitstun;
+        // UNIFORM HITSTUN (the user's call, 2026-10-24): every stun is 0.5 s, overriding the
+        // per-move hitstun columns, which stay in the rows for the day this is per-move again.
+        so.FindProperty("hitstunFrames").intValue = UniformHitstunFrames;
         if (LungeOverride.TryGetValue(m.asset, out var lg))
         {
             so.FindProperty("lungeStopDistance").floatValue = lg.stop;
@@ -362,6 +364,9 @@ public static class CrucibleBalance
         { "Bjorn_Medium_SpinningSlash", (0.9f, 2.6f) },
         { "Bjorn_Heavy_SpinOverhead",   (0.9f, 2.6f) },
     };
+
+    // Every stun in the game is half a second (30 frames at 60fps) - the user's call, 2026-10-24.
+    const int UniformHitstunFrames = 30;
 
     // His art folder was created lowercase; every other fighter's matches the character name.
     static string Folder(string character) => character == "Salaadin" ? "salaadin" : character;

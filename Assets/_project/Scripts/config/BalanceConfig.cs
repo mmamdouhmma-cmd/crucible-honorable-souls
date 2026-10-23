@@ -27,7 +27,7 @@ public static class BalanceConfig
     public const float STAMINA_RECOVERY_PER_SECOND = 15f;          // default; each Fighter can override it in the Inspector
     public const float DEFAULT_HEALTH_REGEN_PER_SECOND = 1f;       // default; each Fighter can override it in the Inspector
     public const float DEFAULT_HEALTH_REGEN_DELAY = 3f;            // seconds after a hit before regen resumes; per-Fighter override
-    public const float BLOCK_STAMINA_DRAIN_PER_SECOND = 4f;        // default drain while holding block; each Fighter can override it in the Inspector
+    public const float BLOCK_STAMINA_DRAIN_PER_SECOND = 0f;        // holding block is FREE (the user, 2026-10-24); the parry pays on connect instead
     // Walking with the guard up is slower (the user's call, 2026-10-24: -12%). The legs animate on
     // the BlockLegs animator layer while the upper body holds the block pose.
     public const float BLOCK_WALK_SPEED_MULTIPLIER = 0.88f;
@@ -187,7 +187,7 @@ public static class BalanceConfig
     public const float DASH_INTO_ATTACK_DAMAGE_MULTIPLIER = 1.25f; // +25% taken when dashing into a strike
     public const float MOVEMENT_INTO_SLASH_BONUS = 1.1f;    // +10%
     public const float MOVEMENT_INTO_THRUST_BONUS = 1.15f;  // +15%
-    public const float PARRY_STUN_DURATION = 1.0f;
+    public const float PARRY_STUN_DURATION = 0.5f;   // every stun in the game is 0.5 s (the user, 2026-10-24)
     // Same as the dash counter (user's call, 2026-10-18): a parry is harder to time, but the free
     // 1.0 s stun it buys is already the reward. Serialized per fighter.
     public const float PARRY_COUNTER_DAMAGE_MULTIPLIER = 1.35f;

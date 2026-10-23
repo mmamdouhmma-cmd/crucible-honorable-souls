@@ -3546,3 +3546,18 @@ Three fixes off the user's playtest of the full roster, all play-verified throug
   flows, Salaadin SP+H -> H flows (thrown at 0.58 s: past the 0.5 s special lockout, inside the
   1.0 s pressure window). The `Apply` eval hit the familiar HTTP 400 timeout and had STILL
   written and saved everything — read back before re-running, not before panicking.
+- Evening: **the parry moved onto the block button** ("bring back the parry by timing the block").
+  `HandleParry` now fires on the block input's RISING EDGE as well as the Defense button (kept -
+  the AI schedules its parries through it); `prevBlockHeld` tracks the edge. Opening the window
+  costs nothing - with block drain at 0 a per-raise tax would have re-priced ordinary guarding -
+  so `parryStaminaCost` moved to `NotifyParry`, paid only when the parry connects. Alongside it,
+  both the user's numbers: **block stamina drain 0 roster-wide** (only Bjorn's scene value was
+  actually 0; the table now writes 0 for all four, BalanceConfig default too) and **every stun
+  0.5 s** - `UniformHitstunFrames = 30` overrides the per-move hitstun columns in WriteMove, and
+  parryStun/`PARRY_STUN_DURATION` dropped 1.0 -> 0.5.
+- Play-verified (after re-hitting the FindOpponent trap - round 1's attacks all whiffed because
+  StartMatch without ApplySides left four fighters active; bench the bystanders AND
+  `RefreshOpponent()` both): bare light = 34 f of hitstun; raise 4 f before Miyamoto's heavy =
+  PARRY, 95 hp untouched, 110 -> 100 stamina at connect, attacker stunned 33 f; raise 60 f early =
+  ordinary block (chip 2); 2 s of held block = 60 -> 60 stamina. The `Apply` eval timed out
+  (HTTP 400) and had still written everything, second time today.

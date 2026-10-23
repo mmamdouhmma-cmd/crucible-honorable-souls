@@ -27,7 +27,7 @@ MonoBehaviour:
   comesFrom: 1
   swingFlow: 1
   hitSide: 2
-  hitstunFrames: 12
+  hitstunFrames: 30
   hyperArmor: 0
   hitboxRange: 3.2
   hitboxOffset: {x: 0, y: 1, z: 0}
