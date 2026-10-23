@@ -3393,3 +3393,26 @@ tells (first contact f21/f28) being blocked or walked out of, so three changes s
    0.12 s and even Bjorn's 0.10 s window covers it. Verified 24/24 parries against fed heavies.
    An 8-frame light is NOT parryable on reaction (reaction+pipeline > startup) — that is fair,
    not a bug. me.ParryCounterTimeLeft now also opens the AI's punish branch.
+
+### 2026-10-23 — The dead-laptop recovery, and a landed opener armours the string
+
+The laptop died at the end of the last session; it turned out nothing was lost — the hyper
+armour / AI commit (1e9ba23) was already pushed, the desktop build's Assembly-CSharp.dll and
+data files were rebuilt one minute after it (the exe's own timestamp is older because Unity's
+incremental build reuses the shell — read the DLL date, not the exe's), and the only dangling
+state was five auto-generated performance-test files, committed as a deletion (6945a41).
+Reopening the Editor after the crash: it sat frozen at 70 MB on a "Recovering Scene Backups"
+modal with the log silent right after licensing — enumerating the process's win32 windows found
+the dialog and its message without stealing focus; the user clicked Yes (copies the backups into
+the gitignored Assets/_Recovery).
+
+Then the user's check: a combo whose FIRST hit lands must not be interruptible. It was —
+only hyper armour protected a swing. Now `CombatSystem.stringArmored` is set at the first
+cancel from `attackHitClean` and carried down the links by `BeginAttack`; `ResolveHit`'s
+armour branch honours it beside `HyperArmor`. The subtlety: an `Always` link fires off a
+WHIFFED opener too (once the active window passes), so `stringDepth > 0` alone proves nothing —
+the armour is earned by the clean opener only, and a blocked opener earns none. A parry still
+beats an armoured string and a same-frame trade is still a clash. Play-verified both ways on
+Salaadin's L→M with an injected Bjorn hit (`oppC.OnHit(sal)` queues through the real
+ResolvePendingHits path): clean-opener follow-up ate 7 damage and kept swinging; whiff-built
+follow-up was interrupted into hitstun as before.

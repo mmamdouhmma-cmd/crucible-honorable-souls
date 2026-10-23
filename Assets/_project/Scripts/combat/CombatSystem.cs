@@ -115,6 +115,7 @@ public class CombatSystem : MonoBehaviour
 
     private int stringDepth;           // links taken without returning to neutral (0 = a fresh swing)
     private bool stringUsedSpecial;    // a string carries at most ONE special, and it ends there
+    private bool stringArmored;        // the opener landed CLEAN, so the rest of the string powers through hits
 
     [Header("Anti-spam")]
     [Tooltip("Seconds with no attacking after a STRING finishes its last move (0 = use BalanceConfig.STRING_LOCKOUT).")]
@@ -415,6 +416,9 @@ public class CombatSystem : MonoBehaviour
         string from = currentAttack.AttackName;
         int window0 = currentAttack.CancelStartFrame, window1 = currentAttack.CancelEndFrame;
         int depth = stringDepth + 1;
+        // The armour is earned by the OPENER landing clean: a whiffed or blocked first hit leaves
+        // the whole string interruptible. BeginAttack carries the flag down the later links.
+        if (stringDepth == 0) stringArmored = attackHitClean;
         EndAttack("CANCELLED into the string");
         BeginAttack(link.followUp, depth);
         hasBufferedInput = false;
@@ -449,6 +453,7 @@ public class CombatSystem : MonoBehaviour
         stringDepth = depth;
         // A fresh swing starts the count over; a link inherits what the string has already spent.
         stringUsedSpecial = (depth > 0 && stringUsedSpecial) || attack.IsSpecial;
+        stringArmored = depth > 0 && stringArmored;
         currentAttackIsDashCounter = fighter.ConsumeDashCounter();
         if (currentAttackIsDashCounter)
         {
@@ -626,6 +631,13 @@ public class CombatSystem : MonoBehaviour
     /// <summary>The attack currently being performed, or null when idle.</summary>
     public AttackData CurrentAttack => currentAttack;
 
+    /// <summary>
+    /// True while this fighter is swinging a string FOLLOW-UP whose opener landed clean: incoming
+    /// hits deal their damage but neither flinch nor interrupt it, same as hyper armour. A parry
+    /// still beats it, and a same-frame trade is still a clash.
+    /// </summary>
+    public bool StringArmored => isAttacking && stringDepth > 0 && stringArmored;
+
     // ==================== HIT QUEUE / CLASH ====================
     // Trigger callbacks arrive one at a time, so a hit is not applied on the spot. It is queued
     // and every queued hit is resolved together on the next Update. That is the only way to see
@@ -709,6 +721,7 @@ public class CombatSystem : MonoBehaviour
         hasBufferedInput = false;
         bufferTimer = 0f;
         stringDepth = 0;
+        stringArmored = false;
         attackTouched = false;
         attackHitClean = false;
         pendingHits.Clear();
@@ -939,13 +952,16 @@ public class CombatSystem : MonoBehaviour
             target.NotifyDeath();   // death animation instead of a flinch
             CrucibleAudio.Death(target.CharacterName);
         }
-        else if (target.Combat != null && target.Combat.IsAttacking &&
-                 target.Combat.CurrentAttack != null && target.Combat.CurrentAttack.HyperArmor)
+        else if (target.Combat != null && target.Combat.IsAttacking && target.Combat.CurrentAttack != null &&
+                 (target.Combat.CurrentAttack.HyperArmor || target.Combat.StringArmored))
         {
-            // Hyper armour: the big special powers through. The damage above already landed; the
-            // swing is neither flinched nor interrupted. A parry still beats it (handled earlier).
+            // Hyper armour: the big special powers through - and so does a string whose opener
+            // landed clean. The damage above already landed; the swing is neither flinched nor
+            // interrupted. A parry still beats both (handled earlier), and a same-frame trade is
+            // still a clash.
             if (debugLogs) Debug.Log($"P{target.PlayerNumber}: ARMOURED through the hit - " +
-                                     $"{target.Combat.CurrentAttack.AttackName} keeps swinging");
+                                     $"{target.Combat.CurrentAttack.AttackName} keeps swinging" +
+                                     (target.Combat.CurrentAttack.HyperArmor ? "" : " (string earned by the clean opener)"));
         }
         else target.NotifyHit(currentAttack.HitSide, currentAttack.HitstunFrames);
 

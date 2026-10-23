@@ -850,6 +850,14 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   beats it outright. The branch is in `CombatSystem.ResolveHit` before `NotifyHit`; the flag is
   written by `CrucibleBalance`'s `HyperArmor` set (false on everything else), so the table stays
   the source of truth. Special stamina is the pre-cut figure x0.85 roster-wide, same session.
+- **A combo whose OPENER lands CLEAN cannot be interrupted** (the user's call, 2026-10-23): every
+  follow-up link powers through hits like hyper armour - damage still lands, no flinch, no
+  interrupt; a parry still beats it and a same-frame trade is still a clash. A whiffed or BLOCKED
+  opener earns nothing - and `stringDepth > 0` alone proves nothing, because an `Always` link
+  fires off a whiff once the active window passes. The flag is `CombatSystem.stringArmored`: set
+  at the FIRST cancel from `attackHitClean`, carried down the links by `BeginAttack`, read via
+  `StringArmored` in `ResolveHit`'s armour branch. Play-verified both ways on Salaadin's L->M
+  with an injected hit through the real pending-hits path.
 - **The AI throws specials and parries now** (AiController, 2026-10-23). Specials: a `Pick()`
   roll (`p.special`: Chill .06 / Moderate .15 / Insane .28) behind stamina >= 55. Parry: a press
   SCHEDULED off the foe's startup, led by 0.12 s and HELD for 0.06 s - measured: contact lands
