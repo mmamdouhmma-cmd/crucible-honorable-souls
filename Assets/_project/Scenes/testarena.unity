@@ -547,14 +547,14 @@ MonoBehaviour:
   blockStaminaDrainPerSecond: 3
   parryWindow: 0.1
   parryCooldown: 1.2
-  parryStaminaCost: 5
+  parryStaminaCost: 10
   parryAnimSpeed: 2
   parryStunDuration: 1
   parryCounterWindow: 0.8
   parryCounterDamageMultiplier: 1.35
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 25
+  staminaRecoveryPerSecond: 20
   healthRegenPerSecond: 1
   healOnDodge: 0.02
   healOnParry: 0.02
@@ -4417,14 +4417,14 @@ MonoBehaviour:
   blockStaminaDrainPerSecond: 2
   parryWindow: 0.12
   parryCooldown: 1
-  parryStaminaCost: 5
+  parryStaminaCost: 8
   parryAnimSpeed: 2
   parryStunDuration: 1
   parryCounterWindow: 0.8
   parryCounterDamageMultiplier: 1.35
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 25
+  staminaRecoveryPerSecond: 20
   healthRegenPerSecond: 1
   healOnDodge: 0.02
   healOnParry: 0.02
@@ -6602,14 +6602,14 @@ MonoBehaviour:
   blockStaminaDrainPerSecond: 2.5
   parryWindow: 0.12
   parryCooldown: 1
-  parryStaminaCost: 5
+  parryStaminaCost: 8
   parryAnimSpeed: 2
   parryStunDuration: 1
   parryCounterWindow: 0.8
   parryCounterDamageMultiplier: 1.35
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 25
+  staminaRecoveryPerSecond: 20
   healthRegenPerSecond: 1
   healOnDodge: 0.02
   healOnParry: 0.02
@@ -7207,14 +7207,14 @@ MonoBehaviour:
   blockStaminaDrainPerSecond: 3
   parryWindow: 0.18
   parryCooldown: 0.8
-  parryStaminaCost: 5
+  parryStaminaCost: 8
   parryAnimSpeed: 2
   parryStunDuration: 1
   parryCounterWindow: 1
   parryCounterDamageMultiplier: 1.5
   parrySuperGain: 15
   staminaRecoversWhileBlocking: 0
-  staminaRecoveryPerSecond: 25
+  staminaRecoveryPerSecond: 20
   healthRegenPerSecond: 1
   healOnDodge: 0.02
   healOnParry: 0.02

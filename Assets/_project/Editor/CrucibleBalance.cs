@@ -68,7 +68,7 @@ public static class CrucibleBalance
         new Vitals { character = "Bjorn", player = "Player1", fighterName = "Bjorn", archetype = "Berserker",
                      dataPath = "Assets/_project/Data/Fighters/bjorn_data.asset",
                      health = 95, stamina = 110, armor = 14, damageMultiplier = 110, moveSpeed = 38,
-                     regen = 17f, dashDistance = 2.2f, dashDuration = 0.30f, dashStamina = 18,
+                     regen = 20f, dashDistance = 2.2f, dashDuration = 0.30f, dashStamina = 18,   // regen flattened to 20 across the roster (user, 2026-10-23)
                      // 80 -> 68 (Plan_Balance 2.4): aggression should not also carry the
                      // second-best guard in the game.
                      blockReduction = 68, blockDrain = 3f,
@@ -82,7 +82,7 @@ public static class CrucibleBalance
         new Vitals { character = "Richard", player = "Player3", fighterName = "Richard", archetype = "Tank",
                      dataPath = "Assets/_project/Data/Fighters/richard_data.asset",
                      health = 115, stamina = 85, armor = 22, damageMultiplier = 100, moveSpeed = 32,
-                     regen = 14f, dashDistance = 2.0f, dashDuration = 0.34f, dashStamina = 16,
+                     regen = 20f, dashDistance = 2.0f, dashDuration = 0.34f, dashStamina = 16,
                      blockReduction = 85, blockDrain = 2f,
                      // 35% dash coverage - the wall blocks, he does not slip. Base parry.
                      dashIFrames = 0.12f,
@@ -99,7 +99,7 @@ public static class CrucibleBalance
                      // Miyamoto 92 > Salaadin 85, and he and Miyamoto stop sharing x0.92. His
                      // damage now lives in the STRINGS, not the single blow.
                      health = 95, stamina = 115, armor = 18, damageMultiplier = 85, moveSpeed = 41,
-                     regen = 16f, dashDistance = 2.3f, dashDuration = 0.26f, dashStamina = 15,
+                     regen = 20f, dashDistance = 2.3f, dashDuration = 0.26f, dashStamina = 15,
                      // 82 -> 75 (Plan_Balance 2.4): between Richard's 85 and Bjorn's 68, so the
                      // round shield still reads but the wall is Richard's alone.
                      blockReduction = 75, blockDrain = 2.5f,

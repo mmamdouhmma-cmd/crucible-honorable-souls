@@ -879,6 +879,7 @@ public class GameMenu : MonoBehaviour
             case Screen.Moves:
             {
                 visibleRows = 22; rowHeight = 33f; rowFont = 21;
+                if (!movesShowPadInit) { movesShowPadInit = true; movesShowPad = Gamepad.all.Count > 0; }
                 int pages = Mathf.Max(1, MovesRoster().Count * 2);
                 movesPage = ((movesPage % pages) + pages) % pages;
                 SetTitle("Move List", "read from the live attack data, so this list cannot go stale");
@@ -893,6 +894,13 @@ public class GameMenu : MonoBehaviour
                         adjust = d => { int n = Mathf.Max(1, MovesRoster().Count * 2); movesPage = (movesPage + (d > 0 ? 1 : n - 1)) % n; Rebuild(); },
                         confirm = () => { int n = Mathf.Max(1, MovesRoster().Count * 2); movesPage = (movesPage + 1) % n; Rebuild(); },
                     });
+                items.Add(new Item
+                {
+                    label = "Controls shown",
+                    value = () => movesShowPad ? "PS controller" : "Keyboard",
+                    adjust = d => { movesShowPad = !movesShowPad; Rebuild(); },
+                    confirm = () => { movesShowPad = !movesShowPad; Rebuild(); },
+                });
                 foreach (string line in MoveLines(movesPage)) items.Add(new Item { label = line, header = true, quiet = true });
                 items.Add(new Item { label = "Back", confirm = Back });
                 footerText.text = "Left / Right changes the page    " + NavHint();
@@ -1873,11 +1881,20 @@ public class GameMenu : MonoBehaviour
 
     // ================================================================ move list
 
+    // Which device the move list spells its buttons in. Defaults to the pad when one is plugged
+    // in; the row on the Moves screen toggles it. Labels always come from the LIVE bindings, so a
+    // rebind shows up here immediately on either device.
+    bool movesShowPad;
+    bool movesShowPadInit;
+
     List<(string name, CombatSystem combat, int player)> MovesRoster()
     {
         var list = new List<(string, CombatSystem, int)>();
         foreach (var fighter in roster.OrderBy(f => f.PlayerNumber))
         {
+            // Mid-match (and from the pause menu) only the pair actually fighting is listed -
+            // ApplySides switched the benched fighters' objects off.
+            if (inMatch && !fighter.gameObject.activeInHierarchy) continue;
             var combat = fighter.GetComponent<CombatSystem>();
             if (combat == null) continue;
             list.Add((fighter.CharacterName, combat, fighter.PlayerNumber));
@@ -1913,14 +1930,14 @@ public class GameMenu : MonoBehaviour
             yield return $"{entry.name.ToUpperInvariant()}   (Player {entry.player})      damage / stamina / startup-active-recovery";
             yield return "";
             foreach (var attack in Library(entry.combat))
-                yield return $"   {Press(keys, attack),-16} {attack.AttackName,-23} {attack.Damage,2} dmg   " +
+                yield return $"   {Press(keys, attack, movesShowPad),-16} {attack.AttackName,-23} {attack.Damage,2} dmg   " +
                              $"{attack.StaminaCost,2} stam   {attack.StartupFrames}/{attack.ActiveFrames}/{attack.RecoveryFrames}";
             foreach (var rp in Ripostes(entry.combat))
             {
                 string next = "";
                 var link = rp.attack.ComboLinks != null && rp.attack.ComboLinks.Length > 0 ? rp.attack.ComboLinks[0] : null;
                 if (link != null && link.followUp != null)
-                    next = "   > " + PressLabel(keys, link.input, link.withSpecialModifier) + "  " + link.followUp.AttackName;
+                    next = "   > " + PressLabel(keys, link.input, link.withSpecialModifier, movesShowPad) + "  " + link.followUp.AttackName;
                 yield return $"   {"[" + rp.label + "]",-16} {rp.attack.AttackName,-23} {rp.attack.Damage,2} dmg   " +
                              $"{rp.attack.StaminaCost,2} stam   {rp.attack.StartupFrames}/{rp.attack.ActiveFrames}/{rp.attack.RecoveryFrames}{next}";
             }
@@ -1932,7 +1949,7 @@ public class GameMenu : MonoBehaviour
 
         var strings = new List<(string buttons, string names)>();
         foreach (var opener in Library(entry.combat))
-            WalkMoves(opener, keys, Press(keys, opener), opener.AttackName, 0, opener.IsSpecial, strings);
+            WalkMoves(opener, keys, Press(keys, opener, movesShowPad), opener.AttackName, 0, opener.IsSpecial, strings);
         yield return $"{entry.name.ToUpperInvariant()}   (Player {entry.player})      {strings.Count} strings";
         yield return "";
         foreach (var line in strings)
@@ -1954,7 +1971,7 @@ public class GameMenu : MonoBehaviour
                 if (usedSpecial && link.followUp.IsSpecial) continue;
                 extended = true;
                 WalkMoves(link.followUp, keys,
-                          buttons + " > " + PressLabel(keys, link.input, link.withSpecialModifier),
+                          buttons + " > " + PressLabel(keys, link.input, link.withSpecialModifier, movesShowPad),
                           names + " > " + link.followUp.AttackName,
                           depth + 1, usedSpecial || link.followUp.IsSpecial, into);
             }
@@ -1974,15 +1991,16 @@ public class GameMenu : MonoBehaviour
         foreach (var a in combat.Specials ?? new AttackData[0]) if (a != null) yield return a;
     }
 
-    static string Press(ControlBindings.PlayerBindings keys, AttackData attack) =>
-        PressLabel(keys, attack.IsSpecial ? attack.SpecialButton : attack.AttackType, attack.IsSpecial);
+    static string Press(ControlBindings.PlayerBindings keys, AttackData attack, bool pad) =>
+        PressLabel(keys, attack.IsSpecial ? attack.SpecialButton : attack.AttackType, attack.IsSpecial, pad);
 
-    static string PressLabel(ControlBindings.PlayerBindings keys, AttackType button, bool special)
+    static string PressLabel(ControlBindings.PlayerBindings keys, AttackType button, bool special, bool pad)
     {
         GameAction action = button == AttackType.Light ? GameAction.Light
                           : button == AttackType.Medium ? GameAction.Medium : GameAction.Heavy;
-        string key = ControlBindings.KeyLabel(keys.Key(action));
-        return special ? $"[{ControlBindings.KeyLabel(keys.Key(GameAction.Special))} + {key}]" : $"[{key}]";
+        string key = pad ? ControlBindings.PadLabel(keys.Pad(action)) : ControlBindings.KeyLabel(keys.Key(action));
+        string mod = pad ? ControlBindings.PadLabel(keys.Pad(GameAction.Special)) : ControlBindings.KeyLabel(keys.Key(GameAction.Special));
+        return special ? $"[{mod} + {key}]" : $"[{key}]";
     }
 
     IEnumerable<string> HelpLines()
