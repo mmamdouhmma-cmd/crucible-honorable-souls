@@ -3425,3 +3425,9 @@ before the real object, so a naive single-object parse never matches - watch
 `Library/LastBuild.buildreport`'s mtime instead; and the MCP `build_status` result is ~1.4M
 characters of per-file report, so grep the saved overflow file for `"result"` rather than
 reading it. Build Succeeded, 0 errors; Assembly-CSharp.dll is the freshness check, as ever.
+
+Follow-up check the same evening, on the user's ask: PARRY still ends an armoured string -
+play-verified. Salaadin's clean-opener Shin Cut (StringArmored=True) met a parry-ready Bjorn
+through the real hit queue: the string ended on the spot, Salaadin ate the parry stun, Bjorn
+took zero damage. The ordering does the work: the parry branch in ResolveHit returns before
+the armour branch is ever reached, so no armour of either kind outranks a timed parry.
