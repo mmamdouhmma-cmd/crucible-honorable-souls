@@ -59,11 +59,12 @@ public static class CrucibleBalance
                      health = 80, stamina = 100, armor = 13, damageMultiplier = 92, moveSpeed = 48,
                      regen = 20f, dashDistance = 2.6f, dashDuration = 0.22f, dashStamina = 12,
                      blockReduction = 60, blockDrain = 0f,
-                     // The COUNTER fighter: 82% dash coverage, the widest parry window in the
-                     // game (0.18 vs the 0.12 base), the shortest parry cooldown, and the only
-                     // x1.5 riposte - his damage lives here, not in neutral.
+                     // The COUNTER fighter: 82% dash coverage, the shortest parry cooldown, and
+                     // the only x1.5 riposte - his damage lives here, not in neutral. The parry
+                     // WINDOW is 0.9 s roster-wide now (the user's call, 2026-10-24), so his old
+                     // widest-window edge moved into the cooldown.
                      dashIFrames = 0.18f,
-                     parryWindow = 0.18f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
+                     parryWindow = 0.9f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
                      parryCounterWindow = 1f, parryCounterDamage = 1.5f },
 
         new Vitals { character = "Bjorn", player = "Player1", fighterName = "Bjorn", archetype = "Berserker",
@@ -73,10 +74,10 @@ public static class CrucibleBalance
                      // 80 -> 68 (Plan_Balance 2.4): aggression should not also carry the
                      // second-best guard in the game.
                      blockReduction = 68, blockDrain = 0f,
-                     // 47% dash coverage; the narrowest, dearest, slowest parry - defence is
-                     // not his game on any axis.
+                     // 47% dash coverage; the dearest, slowest parry - defence is not his game
+                     // on any axis. (Window 0.9 roster-wide, user 2026-10-24.)
                      dashIFrames = 0.14f,
-                     parryWindow = 0.10f, parryCost = 10, parryCooldown = 1.2f, parryStun = 0.5f,
+                     parryWindow = 0.9f, parryCost = 10, parryCooldown = 1.2f, parryStun = 0.5f,
                      parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
 
         // The wall: the shield makes his guard the strongest per hit, the small tank makes it short.
@@ -88,7 +89,7 @@ public static class CrucibleBalance
                      blockReduction = 85, blockDrain = 0f,
                      // 35% dash coverage - the wall blocks, he does not slip. Base parry.
                      dashIFrames = 0.12f,
-                     parryWindow = 0.12f, parryCost = 8, parryCooldown = 1f, parryStun = 0.5f,
+                     parryWindow = 0.9f, parryCost = 8, parryCooldown = 1f, parryStun = 0.5f,
                      parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
 
         // The middle of the roster on every axis: Miyamoto's damage scalar on a frame, armour
@@ -108,7 +109,7 @@ public static class CrucibleBalance
                      blockReduction = 75, blockDrain = 0f,
                      // 62% dash coverage (second to Miyamoto), base parry everywhere else.
                      dashIFrames = 0.16f,
-                     parryWindow = 0.12f, parryCost = 8, parryCooldown = 1f, parryStun = 0.5f,
+                     parryWindow = 0.9f, parryCost = 8, parryCooldown = 1f, parryStun = 0.5f,
                      parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
     };
 
@@ -365,8 +366,10 @@ public static class CrucibleBalance
         { "Bjorn_Heavy_SpinOverhead",   (0.9f, 2.6f) },
     };
 
-    // Every stun in the game is half a second (30 frames at 60fps) - the user's call, 2026-10-24.
-    const int UniformHitstunFrames = 30;
+    // Every get-hit stun is 0.8 s (48 frames at 60fps) - the user's call, 2026-10-24, raising the
+    // morning's 0.5. Parry stun stays at parryStun in the vitals; the wrong-dodge penalty stun is
+    // BalanceConfig.COMBO_WRONG_DODGE_STUN_FRAMES (60).
+    const int UniformHitstunFrames = 48;
 
     // His art folder was created lowercase; every other fighter's matches the character name.
     static string Folder(string character) => character == "Salaadin" ? "salaadin" : character;

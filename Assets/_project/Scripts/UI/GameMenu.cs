@@ -32,6 +32,7 @@ public class GameMenu : MonoBehaviour
         LocalSetup, CharSelect, ArenaSelect, Difficulty, PracticeRules, Vs,
         Pause, Settings, Controls, Help, Moves, MatchOver,
         Online, OnlineHost, OnlineJoin,
+        Replay,
     }
 
     /// <summary>Which path through the select screens we are on.</summary>
@@ -156,6 +157,25 @@ public class GameMenu : MonoBehaviour
     int winnerNumber;
     int movesPage;
 
+    // the K.O. card's pending "are you sure" question (null = the normal card)
+    string confirmAsk;
+    Action confirmYes;
+
+    // the game record screen
+    bool replayPlaying;
+    float replayTime, trimStart, trimEnd;
+    int replayMarker;                   // which event marker "Jump to" is on
+    bool exportingUi;                   // the menu is hidden while a video is being written
+
+    ReplayRecorder Rec
+    {
+        get
+        {
+            if (ReplayRecorder.Instance == null) gameObject.AddComponent<ReplayRecorder>();
+            return ReplayRecorder.Instance;
+        }
+    }
+
     // ================================================================ lifecycle
 
     void Awake()
@@ -191,6 +211,7 @@ public class GameMenu : MonoBehaviour
                 PlaceFighters();
                 inMatch = true;
                 FreezeFighters(false);
+                Rec.BeginRecording(roster, Camera.main);
                 Net.GuestEnterMatch();
                 if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(1);
                 if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
@@ -243,6 +264,7 @@ public class GameMenu : MonoBehaviour
 
         if (screen == Screen.Boot) { UpdateBoot(); return; }
         if (screen == Screen.Vs) return;               // runs itself, then starts the fight
+        if (screen == Screen.Replay && UpdateReplay()) return;   // exporting: input lands nowhere
 
         if ((screen == Screen.OnlineHost || screen == Screen.OnlineJoin) && Time.unscaledTime >= nextOnlineRefresh)
         {
@@ -458,11 +480,20 @@ public class GameMenu : MonoBehaviour
     void EndMatchToMenu()
     {
         inMatch = false;
+        // Leaving during the count-in used to strand the coroutine (it only counts down while the
+        // match is on screen), so "FIGHT" stayed up over the main menu until the next fight.
+        if (countIn != null) { StopCoroutine(countIn); countIn = null; }
+        if (stage != null) stage.ClearBeat();
+        if (ReplayRecorder.Instance != null) ReplayRecorder.Instance.StopRecording();
         SetAi(false, AiController.Rules.Full);
         if (PracticeMode.Instance != null) PracticeMode.Instance.End();
         if (netRole != NetSession.Role.None) { Net?.GuestLeaveMatch(); Net?.Leave(); netRole = NetSession.Role.None; }
         if (TouchControls.Instance != null) TouchControls.Instance.Hide();
         Time.timeScale = GameSpeed();
+        // Bench everyone the select screens may have woken (ShowWholeRoster): left active, the
+        // extras land stacked on the two marks, push each other off the ground, and stand in the
+        // arena behind every later screen until the next fight.
+        ApplySides(p1Character, p2Character);
         PlaceFighters();
         FreezeFighters(true);
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
@@ -492,6 +523,7 @@ public class GameMenu : MonoBehaviour
         FreezeFighters(false);
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
         SetAi(vsAi, flow == Flow.Practice ? practiceRules : AiController.Rules.Full);
+        Rec.BeginRecording(roster, Camera.main);   // the game record starts at FIGHT, like the players
 
         if (stage != null)
             stage.Beat("Fight!", MenuArt.BloodLit, 210, flow == Flow.Practice ? "pause for the rules" : null);
@@ -542,6 +574,8 @@ public class GameMenu : MonoBehaviour
     IEnumerator ShowMatchOver(Fighter loser)
     {
         yield return new WaitForSecondsRealtime(1.9f);
+        // Stop here, not at the K.O. itself: the death and the kill shot belong in the record.
+        if (ReplayRecorder.Instance != null) ReplayRecorder.Instance.StopRecording();
         Fighter winner = null;
         foreach (var f in roster) if (f != loser && f.gameObject.activeInHierarchy) winner = f;
         winnerName = winner != null ? winner.CharacterName : "Nobody";
@@ -626,6 +660,11 @@ public class GameMenu : MonoBehaviour
         if (push && screen != Screen.None && screen != s && screen != Screen.Boot) history.Add(screen);
 
         if (s == Screen.CharSelect && screen != Screen.CharSelect && !rebuilding) pickingP2 = false;
+        // Leaving the record screen hands the fighters, their components and the camera back,
+        // and restores the K.O. tableau the playback interrupted.
+        if (screen == Screen.Replay && s != Screen.Replay && ReplayRecorder.Instance != null)
+            ReplayRecorder.Instance.EndPlayback();
+        if (s != Screen.MatchOver) { confirmAsk = null; confirmYes = null; }
         // The kill-shot darkness holds through the K.O. screen (the corpse under a black sky IS
         // the shot); any real menu screen brings the arena lights back for the select views.
         if (s != Screen.None && s != Screen.Pause && s != Screen.MatchOver) KillShot.RestoreLights();
@@ -643,7 +682,7 @@ public class GameMenu : MonoBehaviour
             CrucibleAudio.Scene(CrucibleAudio.MusicMode.Fight);
             CrucibleAudio.Ducked(false);
         }
-        else if (s == Screen.Pause || s == Screen.MatchOver)
+        else if (s == Screen.Pause || s == Screen.MatchOver || s == Screen.Replay)
         {
             CrucibleAudio.Ducked(true);
         }
@@ -658,7 +697,7 @@ public class GameMenu : MonoBehaviour
         content.gameObject.SetActive(menuVisible);
         if (stage != null)
         {
-            stage.SetBackdrop(s == Screen.None ? MenuStage.Backdrop.None
+            stage.SetBackdrop(s == Screen.None || s == Screen.Replay ? MenuStage.Backdrop.None
                             : s == Screen.Boot ? MenuStage.Backdrop.Black
                             : onStage ? MenuStage.Backdrop.Stage
                             : s == Screen.Pause || s == Screen.MatchOver ? MenuStage.Backdrop.Pause
@@ -669,7 +708,7 @@ public class GameMenu : MonoBehaviour
                               // with the arena plainly visible through it. Every other screen
                               // keeps the ramp - that gradual settle is what makes the wipes read.
                               s == Screen.Boot);
-            stage.ShowWatermark(s != Screen.Boot && !onStage);
+            stage.ShowWatermark(s != Screen.Boot && !onStage && s != Screen.Replay);
         }
 
         // The select screens show the REAL fighters idling in the arena, so the pair has to be
@@ -816,11 +855,102 @@ public class GameMenu : MonoBehaviour
             case Screen.MatchOver:
                 SetTitle(winnerNumber > 0 ? (vsAi ? (winnerNumber == 1 ? "You Win" : "You Lose") : $"Player {winnerNumber} Wins") : "Draw",
                          winnerNumber > 0 ? winnerName + " is left standing" : "");
-                items.Add(new Item { label = "Rematch", confirm = () => { if (stage != null) stage.Wipe(StartMatch); else StartMatch(); } });
-                items.Add(new Item { label = "Change fighters", confirm = () => { inMatch = false; GoWiped(Screen.CharSelect); } });
-                items.Add(new Item { label = "Main Menu", confirm = () => { if (stage != null) stage.Wipe(EndMatchToMenu); else EndMatchToMenu(); } });
+                if (confirmAsk != null)
+                {
+                    // One honest question before anything that throws the result away: a stray
+                    // confirm on the K.O. card used to restart the fight on the spot.
+                    subtitle.text = confirmAsk;
+                    items.Add(new Item { label = "Yes", confirm = () =>
+                    {
+                        var yes = confirmYes;
+                        confirmAsk = null; confirmYes = null;
+                        yes?.Invoke();
+                    } });
+                    items.Add(new Item { label = "No, not yet", confirm = CancelMatchOverAsk });
+                    footerText.text = NavHint();
+                    break;
+                }
+                items.Add(new Item { label = "Rematch", confirm = () =>
+                    AskMatchOver("Fight the same pair again?", () => { if (stage != null) stage.Wipe(StartMatch); else StartMatch(); }) });
+                items.Add(new Item { label = "Change fighters", confirm = () =>
+                    AskMatchOver("Leave for the character select?", () => { inMatch = false; GoWiped(Screen.CharSelect); }) });
+                if (ReplayRecorder.Instance != null && ReplayRecorder.Instance.HasRecording)
+                    items.Add(new Item { label = "Save the game record", value = () => "watch, trim and export the fight",
+                                         confirm = () => Show(Screen.Replay) });
+                items.Add(new Item { label = "Main Menu", confirm = () =>
+                    AskMatchOver("Back to the main menu?", () => { if (stage != null) stage.Wipe(EndMatchToMenu); else EndMatchToMenu(); }) });
                 footerText.text = NavHint();
                 break;
+
+            // ------------------------------------------------------------ the game record
+            case Screen.Replay:
+            {
+                var rec = ReplayRecorder.Instance;
+                bool has = rec != null && rec.HasRecording;
+                SetTitle("Game Record", has ? "the fight as it was played - the export carries no sound" : "");
+                if (!has)
+                {
+                    items.Add(new Item { label = "Nothing recorded yet.", header = true, quiet = true });
+                    items.Add(new Item { label = "Back", confirm = Back });
+                    footerText.text = NavHint();
+                    break;
+                }
+                if (!rec.PlaybackActive)
+                {
+                    rec.BeginPlayback();
+                    trimStart = 0f;
+                    trimEnd = rec.Duration;
+                    replayTime = 0f;
+                    replayMarker = 0;
+                    replayPlaying = true;
+                    exportingUi = false;
+                }
+                items.Add(new Item
+                {
+                    label = "Playback",
+                    value = () => (replayPlaying ? "Playing" : "Paused") + $"   {Clock(replayTime)} / {Clock(rec.Duration)}",
+                    confirm = () => replayPlaying = !replayPlaying,
+                    adjust = d => { replayPlaying = false; replayTime = Mathf.Clamp(replayTime + d, trimStart, trimEnd); },
+                });
+                if (rec.MarkerCount > 0)
+                    items.Add(new Item
+                    {
+                        label = "Jump to",
+                        value = () => $"{rec.MarkerLabel(replayMarker)}  ({replayMarker + 1} of {rec.MarkerCount})",
+                        adjust = d => { replayMarker = ((replayMarker + d) % rec.MarkerCount + rec.MarkerCount) % rec.MarkerCount; JumpToMarker(rec); },
+                        confirm = () => { replayMarker = (replayMarker + 1) % rec.MarkerCount; JumpToMarker(rec); },
+                    });
+                items.Add(new Item
+                {
+                    label = "Camera",
+                    value = () => rec.ViewName,
+                    adjust = d => rec.CycleView(d),
+                    confirm = () => rec.CycleView(1),
+                });
+                items.Add(new Item
+                {
+                    label = "Cut from",
+                    value = () => Clock(trimStart),
+                    adjust = d => { trimStart = Mathf.Clamp(trimStart + d * 0.5f, 0f, trimEnd - 0.5f); replayTime = Mathf.Max(replayTime, trimStart); },
+                    confirm = () => trimStart = Mathf.Min(replayTime, trimEnd - 0.5f),
+                });
+                items.Add(new Item
+                {
+                    label = "Cut to",
+                    value = () => Clock(trimEnd),
+                    adjust = d => { trimEnd = Mathf.Clamp(trimEnd + d * 0.5f, trimStart + 0.5f, rec.Duration); replayTime = Mathf.Min(replayTime, trimEnd); },
+                    confirm = () => trimEnd = Mathf.Max(replayTime, trimStart + 0.5f),
+                });
+                items.Add(new Item
+                {
+                    label = "Export as video",
+                    value = () => $"the {Clock(trimEnd - trimStart)} cut, {ReplayRecorder.ExportFps} fps .avi",
+                    confirm = BeginVideoExport,
+                });
+                items.Add(new Item { label = "Back", confirm = Back });
+                footerText.text = "Left / Right scrubs and trims    Confirm on a cut marks the current moment    " + NavHint();
+                break;
+            }
 
             // ------------------------------------------------------------ settings
             case Screen.Settings:
@@ -1274,8 +1404,11 @@ public class GameMenu : MonoBehaviour
 
         switch (screen)
         {
-            case Screen.Main:
             case Screen.MatchOver:
+                // Backing out of the confirmation question is a "No"; the card itself has no back.
+                if (confirmAsk != null) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Back); CancelMatchOverAsk(); }
+                return;
+            case Screen.Main:
                 return;
             case Screen.Pause:
                 // Deliberately NOT a resume: Circle is the parry button, and a stray press used to
@@ -1301,6 +1434,76 @@ public class GameMenu : MonoBehaviour
 #else
         Application.Quit();
 #endif
+    }
+
+    // ================================================================ K.O. confirmation
+
+    /// <summary>Turns the K.O. card into one question with Yes / No before <paramref name="yes"/>
+    /// runs - every way off that card throws the result away, so each asks first.</summary>
+    void AskMatchOver(string question, Action yes)
+    {
+        confirmAsk = question;
+        confirmYes = yes;
+        Show(Screen.MatchOver, push: false);
+    }
+
+    void CancelMatchOverAsk()
+    {
+        confirmAsk = null;
+        confirmYes = null;
+        Show(Screen.MatchOver, push: false);
+    }
+
+    // ================================================================ game record
+
+    static string Clock(float s) => $"{(int)(Mathf.Max(0f, s) / 60f)}:{Mathf.Max(0f, s) % 60f:00.0}";
+
+    /// <summary>
+    /// Drives the replay while the Game Record screen is up. Returns true while a video is being
+    /// written: the menu is hidden then (anything drawn would be baked into the video) and input
+    /// must land nowhere.
+    /// </summary>
+    bool UpdateReplay()
+    {
+        var rec = ReplayRecorder.Instance;
+        if (rec == null) return false;
+        if (rec.Exporting) { exportingUi = true; return true; }
+        if (exportingUi)
+        {
+            // the export just finished: bring the menu back and say where the file went
+            exportingUi = false;
+            content.gameObject.SetActive(true);
+            subtitle.text = rec.ExportError != null ? "Export failed - " + rec.ExportError
+                          : "Saved to " + rec.ExportResult;
+        }
+        if (!rec.PlaybackActive) return false;
+        if (replayPlaying)
+        {
+            replayTime += Time.unscaledDeltaTime;
+            if (replayTime > trimEnd) replayTime = trimStart;      // loop the cut
+        }
+        rec.Apply(replayTime);
+        Refresh();                                                 // the clock readout ticks live
+        return false;
+    }
+
+    /// <summary>Puts the playhead a moment before the chosen event marker and lets it play.</summary>
+    void JumpToMarker(ReplayRecorder rec)
+    {
+        replayTime = Mathf.Clamp(rec.MarkerTime(replayMarker) - 1.5f, 0f, rec.Duration);
+        replayPlaying = true;
+    }
+
+    void BeginVideoExport()
+    {
+        var rec = ReplayRecorder.Instance;
+        if (rec == null || rec.Exporting || !rec.PlaybackActive) return;
+        replayPlaying = false;
+        // The export reads frames straight off the screen, so the whole menu disappears while it
+        // runs; UpdateReplay brings it back and reports the file when Exporting drops.
+        content.gameObject.SetActive(false);
+        exportingUi = true;
+        rec.BeginExport(trimStart, trimEnd);
     }
 
     // ================================================================ rebinding
@@ -1456,7 +1659,8 @@ public class GameMenu : MonoBehaviour
         int shown = Mathf.Min(items.Count, visibleRows);
         float height = Mathf.Clamp(shown * rowHeight + 64f, 180f, 640f);
         panel.sizeDelta = new Vector2(1380f, height);
-        panel.anchoredPosition = new Vector2(0f, -56f);
+        // The record screen's controls sit low, so the replay playing behind them stays in view.
+        panel.anchoredPosition = new Vector2(0f, screen == Screen.Replay ? -540f + height * 0.5f + 48f : -56f);
     }
 
     Row BuildRow(int index)
@@ -1868,6 +2072,10 @@ public class GameMenu : MonoBehaviour
         var cam = Camera.main;
         var fightCam = cam != null ? cam.GetComponent<FightCamera>() : null;
         if (fightCam != null) fightCam.enabled = true;
+        // The select screens woke the whole roster; everyone not fighting goes back to the bench,
+        // or the extras end up stacked on the two spawn marks, climbing each other - the floating
+        // bystanders that haunted the menus until the next fight.
+        ApplySides(p1Character, p2Character);
         PlaceFighters();
     }
 

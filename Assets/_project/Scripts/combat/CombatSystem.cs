@@ -217,6 +217,7 @@ public class CombatSystem : MonoBehaviour
             {
                 inHitstun = false;
                 hitstunTimer = 0f;
+                comboStun = false;
                 if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: hitstun OVER");
             }
         }
@@ -696,12 +697,25 @@ public class CombatSystem : MonoBehaviour
     /// <summary>True while this fighter is locked in a get-hit flinch and cannot act.</summary>
     public bool IsInHitstun => inHitstun;
 
+    // The current stun came off a clean, combo-able hit, so a timed dodge may still escape the
+    // follow-up (the user's call, 2026-10-24). Walking, blocking and attacking stay locked; only
+    // the dash is open. A parry stun or the wrong-dodge penalty stun is NOT dodgeable.
+    private bool comboStun;
+
+    /// <summary>True while this fighter is stunned but still allowed to DASH out of the combo.</summary>
+    public bool ComboStun => inHitstun && comboStun;
+
+    /// <summary>Bumped on every stun. A dash remembers the serial it started under, so a dash
+    /// begun INSIDE a combo stun survives it while any NEW hit still stops a running dash.</summary>
+    public int StunSerial { get; private set; }
+
     /// <summary>
     /// Locks this fighter out of attacking (and, via <see cref="Fighter"/>, moving and dashing)
     /// for <paramref name="frames"/> frames at 60fps. A longer hitstun already running is kept.
     /// Optionally cancels an attack in progress so its hitbox cannot land under the flinch.
+    /// <paramref name="dodgeable"/> marks a combo stun: the victim may still dash (and only dash).
     /// </summary>
-    public void ApplyHitstun(int frames)
+    public void ApplyHitstun(int frames, bool dodgeable = false)
     {
         if (hitInterruptsAttack && isAttacking)
         {
@@ -711,10 +725,13 @@ public class CombatSystem : MonoBehaviour
         float seconds = Mathf.Max(frames, 1) * BalanceConfig.FRAME_TIME;
         hitstunTimer = Mathf.Max(hitstunTimer, seconds);
         inHitstun = true;
+        comboStun = dodgeable;
+        StunSerial++;
         chainCount = 0; // a flinch breaks the chain; no lockout on top of the hitstun
         comboGapTimer = 999f; // and breaks the pressure: the comeback swing pays no combo surcharge
 
-        if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: hitstun for {frames} frames ({seconds:0.00}s)");
+        if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: hitstun for {frames} frames ({seconds:0.00}s)" +
+                                 (dodgeable ? " [dodgeable - combo stun]" : ""));
     }
 
     /// <summary>The attack currently being performed, or null when idle.</summary>
@@ -838,6 +855,7 @@ public class CombatSystem : MonoBehaviour
         bannedAttackTimer = 0f;
         inHitstun = false;
         hitstunTimer = 0f;
+        comboStun = false;
         evadedExtraRecovery = 0f;
         whiffExtraRecovery = 0f;
         currentAttackWeakened = false;
@@ -1043,10 +1061,16 @@ public class CombatSystem : MonoBehaviour
 
             EndAttack("PARRIED");
             fighter.NotifyParried(stunFrames);
+            if (ReplayRecorder.Instance != null) ReplayRecorder.Instance.Mark($"P{target.PlayerNumber} parry");
             return;
         }
 
-        bool blocked = target.IsBlocking;
+        // A string whose opener landed CLEAN cannot be blocked (the user's call, 2026-10-24): once
+        // the first hit of a combo connects, the defender's only outs are the dodge - away from the
+        // side the strike comes from - or eating it.
+        bool blocked = target.IsBlocking && !StringArmored;
+        if (target.IsBlocking && !blocked && debugLogs)
+            Debug.Log($"P{target.PlayerNumber}: guard BYPASSED - {currentAttack.AttackName} is a string follow-up");
         int blockReduction = blocked ? target.BlockDamageReduction : 0;
         float bonus = currentAttackIsDashCounter ? BalanceConfig.DASH_COUNTER_DAMAGE_MULTIPLIER : 1f;
         if (currentAttackIsParryCounter) bonus *= fighter.ParryCounterDamageMultiplier;
@@ -1089,7 +1113,23 @@ public class CombatSystem : MonoBehaviour
                                      $"{target.Combat.CurrentAttack.AttackName} keeps swinging" +
                                      (target.Combat.CurrentAttack.HyperArmor ? "" : " (string earned by the clean opener)"));
         }
-        else target.NotifyHit(currentAttack.HitSide, currentAttack.HitstunFrames);
+        else
+        {
+            int stunFrames = currentAttack.HitstunFrames;
+            // Dodging TOWARD a string follow-up (or too late) is the punished read: the hit lands
+            // and the stun is a full second, not dodgeable (the user's call, 2026-10-24).
+            bool wrongDodge = target.IsDashing && StringArmored;
+            if (wrongDodge)
+            {
+                stunFrames = BalanceConfig.COMBO_WRONG_DODGE_STUN_FRAMES;
+                if (debugLogs) Debug.Log($"P{target.PlayerNumber}: dodged INTO the follow-up - {stunFrames} f stun");
+            }
+            // A clean hit by a move that can string on leaves the victim a dodge: they cannot
+            // block or walk under the stun, but a dash in the right direction still escapes.
+            bool dodgeable = !blocked && !wrongDodge &&
+                             currentAttack.ComboLinks != null && currentAttack.ComboLinks.Length > 0;
+            target.NotifyHit(currentAttack.HitSide, stunFrames, dodgeable);
+        }
 
         // Remembered for string links that must be earned by connecting.
         attackTouched = true;
@@ -1129,6 +1169,19 @@ public class CombatSystem : MonoBehaviour
         // Landing the punish a dodge or parry earned pays the attacker health back. Deliberately on
         // the HIT, not on starting the counter: the window alone is not the reward, cashing it is.
         if (currentAttackIsDashCounter || currentAttackIsParryCounter) fighter.RecoverHealthForCounterHit();
+
+        // The game record keeps a marker on every moment worth re-watching; the record screen
+        // jumps between them. One label per hit, most dramatic first.
+        if (ReplayRecorder.Instance != null)
+        {
+            if (!target.Stats.IsAlive()) ReplayRecorder.Instance.Mark("The kill");
+            else if (currentAttackIsDashCounter || currentAttackIsParryCounter)
+                ReplayRecorder.Instance.Mark($"P{fighter.PlayerNumber} counter");
+            else if (currentAttack.IsSpecial && !blocked)
+                ReplayRecorder.Instance.Mark($"P{fighter.PlayerNumber} special");
+            else if (stringDepth > 0 && !blocked)
+                ReplayRecorder.Instance.Mark($"P{fighter.PlayerNumber} combo x{stringDepth + 1}");
+        }
 
         if (debugLogs)
         {

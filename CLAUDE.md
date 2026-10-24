@@ -1151,6 +1151,28 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
 - Spin or slash is settled by the **pelvis sweep, unwrapped through its wraps**: Salaadin's light
   was 429 deg as a spin clip and is 16 deg now; Miyamoto's heavy is 16 deg, his Kuruma 100 deg.
 
+- **The fight records itself and the K.O. card can replay and export it** (2026-10-24).
+  `ReplayRecorder` (new, GameMangers, exec order 300 = after TwoHandGrip): all transforms under
+  both fighting roots + the camera at 30 Hz on an UNSCALED clock, FIGHT -> the K.O. card, 600 s
+  ring; markers tag parries/counters/specials/combo links/the kill (hooks in `ResolveHit`).
+  `Screen.Replay` ("Save the game record") plays it in the arena: scrub, Cut from/to, Jump to
+  marker, Camera row (As played + five locked angles computed from the pair), Export = own
+  Motion-JPEG .avi writer, 30 fps, silent, to `%USERPROFILE%\Videos\CRUCIBLE\`, menu hidden
+  during capture (frames come off the screen). Playback disables Animator/TwoHandGrip/WeaponAim/
+  FightCamera + kinematic rigidbodies; EndPlayback restores the exact tableau. No export on web.
+- **The K.O. card asks "are you sure" before Rematch / Change fighters / Main Menu**
+  (`confirmAsk`/`confirmYes` on GameMenu; Esc answers No).
+- **Parry window 0.9 s roster-wide and every get-hit stun 0.8 s** (`UniformHitstunFrames` 48),
+  2026-10-24. **Stun locks the guard** (HandleBlock checks hitstun). **Combo escape**: a clean
+  hit by a linked move applies a DODGEABLE stun (`ComboStun` - dash allowed, block/walk not); a
+  follow-up with a clean opener BYPASSES a raised guard (`blocked = IsBlocking &&
+  !StringArmored`); dodging the wrong way into a follow-up = hit + 1.0 s non-dodgeable stun
+  (`COMBO_WRONG_DODGE_STUN_FRAMES`). A dash remembers its `StunSerial`, so a combo-stun dodge
+  survives the stun while any NEW hit still ends a running dash.
+- **`EndMatchToMenu` stops the count-in and `ClearBeat()`s** (else "FIGHT" stayed over the main
+  menu), and it + `Unstage()` re-run `ApplySides` - the select screens wake the WHOLE roster, and
+  leaving them any other way stacked the extras on the two marks, capsules climbing (the floating
+  bystanders).
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `PlayProbe`, `BladeTrace`

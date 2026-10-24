@@ -48,7 +48,12 @@ public static class BalanceConfig
     public const int BLOCK_SPECIAL_STAMINA = 25;
 
     // ==================== COMBAT TIMING ====================
-    public const float PARRY_WINDOW = 0.12f;        // 9 frames at 60fps
+    // The FALLBACK only - the roster's live value is 0.9 s, written per fighter by CrucibleBalance
+    // (raised from the 0.10-0.18 spread on the user's call, 2026-10-24).
+    public const float PARRY_WINDOW = 0.9f;
+    // Dodging TOWARD a string follow-up (or too late): the hit lands and the stun is a full
+    // second, not dodgeable - the punished read of the combo-escape rule (user, 2026-10-24).
+    public const int COMBO_WRONG_DODGE_STUN_FRAMES = 60;
     // The FALLBACK for Fighter.dashIFrameDuration only - the real per-fighter values live in
     // CrucibleBalance (Plan_Balance 2.5; coverage of the dash, not absolute time, is the dial).
     // Before 2026-10-23 this constant was dead code and the WHOLE dash evaded.

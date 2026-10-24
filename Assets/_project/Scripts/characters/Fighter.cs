@@ -140,6 +140,7 @@ public class Fighter : MonoBehaviour
     [SerializeField] private float dashIFrameDuration = BalanceConfig.DASH_IFRAME_DURATION;
     private bool isDashing = false;
     private float dashTimer = 0f;
+    private int dashStunSerial;        // the stun serial this dash began under (combo-stun dodges)
     private Vector3 dashVelocity = Vector3.zero;
     private float dashForwardAmount = 0f; // dash direction relative to facing: +1 forward, -1 back
     private float dashRightAmount = 0f;   // +1 right, -1 left
@@ -525,7 +526,9 @@ public class Fighter : MonoBehaviour
         bool wasBlocking = isBlocking;
         bool attacking = combatSystem != null && combatSystem.IsAttacking;
 
-        isBlocking = currentInput.blockHeld && !isDashing && !attacking && stats.currentStamina > 0;
+        // A stunned fighter cannot hold or raise the guard (the user's call, 2026-10-24): under
+        // hitstun the only out left is the combo-stun dodge, handled in HandleDash.
+        isBlocking = currentInput.blockHeld && !isDashing && !attacking && !IsInHitstun && stats.currentStamina > 0;
 
         if (isBlocking && stats.DrainStamina(Time.deltaTime, blockStaminaDrainPerSecond))
         {
@@ -862,10 +865,10 @@ private void HandleKnockback()
     /// fighter out of attacking, dashing and walking while the flinch plays. Getting hit
     /// also means the dash did not dodge anything, so any pending dash counter is lost.
     /// </summary>
-    public void NotifyHit(HitSide side, int hitstunFrames)
+    public void NotifyHit(HitSide side, int hitstunFrames, bool dodgeable = false)
     {
         PlayHitAnimation(side);
-        if (combatSystem != null) combatSystem.ApplyHitstun(hitstunFrames);
+        if (combatSystem != null) combatSystem.ApplyHitstun(hitstunFrames, dodgeable);
 
         if (isDashing) hitDuringDash = true;
 
@@ -1056,8 +1059,10 @@ private void HandleDash()
     {
         // A hit mid-dash (the punishable tail) stops the slide: hitstun means you stop moving.
         // Without this the dash carried the fighter ~2 world units THROUGH the stun (measured),
-        // which is what let a stunned player drift out of a parry counter's reach.
-        if (IsInHitstun)
+        // which is what let a stunned player drift out of a parry counter's reach. The serial
+        // tells a NEW hit from the stun the dash legitimately STARTED under (a combo-stun dodge):
+        // only a new hit ends the dash.
+        if (IsInHitstun && combatSystem != null && combatSystem.StunSerial != dashStunSerial)
         {
             EndDash("hit mid-dash");
             return;
@@ -1095,9 +1100,12 @@ private void HandleDash()
         return;
     }
 
-    // Can't initiate a new dash if attacking, flinching from a hit, or no input
+    // Can't initiate a new dash if attacking, flinching from a hit, or no input. The one
+    // exception is a COMBO stun (a clean, combo-able hit): the victim cannot block or walk,
+    // but a timed dash is still allowed - that is the whole escape the combo rule leaves open.
     if (currentInput.dashDirection == Vector2.zero) return;
-    if (combatSystem != null && (combatSystem.IsAttacking || combatSystem.IsInHitstun)) return;
+    if (combatSystem != null && (combatSystem.IsAttacking ||
+                                 (combatSystem.IsInHitstun && !combatSystem.ComboStun))) return;
 
     // Check stamina
     if (Stats == null || !Stats.HasStamina(dashStaminaCost))
@@ -1110,6 +1118,7 @@ private void HandleDash()
     Stats.UseStamina(dashStaminaCost);
     isDashing = true;
     dashTimer = 0f;
+    dashStunSerial = combatSystem != null ? combatSystem.StunSerial : 0;
     dashStartPosition = transform.position;
     dodgedAttackThisDash = false;
     hitDuringDash = false;

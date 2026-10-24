@@ -3602,3 +3602,52 @@ Three fixes off the user's playtest of the full roster, all play-verified throug
   player table to Player.log on startup and on every pad change.
 - Test harness gotcha: `AssetDatabase.FindAssets("Bjorn_Heavy")[0]` grabbed a non-AttackData
   asset and the coroutine died with an empty result file - filter with `t:AttackData`.
+
+### 2026-10-24 — The game record, K.O. confirmations, and the combo-escape rules
+
+- **The K.O. card asks before it acts.** Rematch, Change fighters and Main Menu each turn the
+  card into one question (subtitle = the question, items = Yes / "No, not yet"); Esc/Circle is a
+  No. `confirmAsk`/`confirmYes` on GameMenu, cleared whenever the screen is not MatchOver.
+- **The fight records itself** (`ReplayRecorder`, new, on GameMangers, exec order 300 so it
+  samples AFTER TwoHandGrip/WeaponAim): every transform under both fighting roots + the camera,
+  30 Hz samples on an unscaled clock (playback interpolates; pause frames skipped via
+  `Time.deltaTime <= 0`; the kill shot's slow-mo records as seen). Starts at FIGHT, stops when
+  the K.O. card shows, so the kill is in the clip; buffer caps at 600 s. Event MARKERS tag
+  parries, counters, landed specials, combo links and the kill (hooked in
+  `CombatSystem.ResolveHit`), and the record screen's "Jump to" cycles them.
+- **"Save the game record"** on the K.O. card opens `Screen.Replay`: the fight plays in the
+  arena (backdrop None, panel parked at the bottom), with Play/Pause + scrub, Cut from/to
+  (confirm marks the current moment), a Camera row (As played / Side A / Side B / Behind P1 /
+  Behind P2 / Overhead — locked angles computed per frame from the pair), and "Export as video".
+  Playback disables Animator/TwoHandGrip/WeaponAim/FightCamera, makes the rigidbodies kinematic,
+  and EndPlayback restores the exact K.O. tableau. Export writes a Motion-JPEG .avi (own writer,
+  no external encoder, silent) at 30 fps to `%USERPROFILE%\Videos\CRUCIBLE\`, reading frames off
+  the screen with the menu hidden - play-verified: 24.5 MB file, plays, menu returns with
+  "Saved to <path>". Export is refused on WebGL (no reachable file system).
+- **Parry window is 0.9 s roster-wide** (was 0.10-0.18; Miyamoto's edge moved to his cooldown)
+  and **every get-hit stun is 0.8 s** (`UniformHitstunFrames` 48). Both in `CrucibleBalance`,
+  applied, `AssetDatabase.SaveAssets()` called, assets verified on disk (hitstun 48).
+- **Stun locks the guard**: `Fighter.HandleBlock` now refuses `isBlocking` under hitstun.
+  Walking and attacking were already locked.
+- **The combo-escape rules** (all play-verified at captureDeltaTime 1/60):
+  - A clean hit by a move with combo links applies a DODGEABLE stun (`ApplyHitstun(frames,
+    dodgeable)`, `CombatSystem.ComboStun`): the victim can't block or walk but CAN start a dash.
+    Measured: dash starts while `IsInHitstun` is still true.
+  - A string follow-up whose opener landed clean goes THROUGH a raised guard
+    (`blocked = IsBlocking && !StringArmored`). Measured: blocked heavy 5 dmg, same heavy as a
+    follow-up 13 through the same guard.
+  - Dodging the WRONG WAY into a follow-up = hit + 1.0 s non-dodgeable stun
+    (`BalanceConfig.COMBO_WRONG_DODGE_STUN_FRAMES` 60). Measured: stun timer 1.000.
+  - A dash remembers the stun SERIAL it started under (`CombatSystem.StunSerial`): a dash begun
+    inside a combo stun survives it, while any NEW hit still ends a running dash (keeps the
+    2026-10-24 "hitstun stops a running dash" fix).
+- **Two menu bugs dead**: `EndMatchToMenu` now stops the count-in coroutine and `ClearBeat()`s
+  (aborting during READY-3-2-1 left "FIGHT" over the main menu until the next fight - the
+  coroutine's `WaitWhilePlaying` stalls off-screen); and it + `Unstage()` re-run
+  `ApplySides(p1,p2)`, because the select screens wake the WHOLE roster and leaving them any
+  other way parked the extras stacked on the two spawn marks, where their capsules climbed each
+  other - the floating bystanders behind later menus.
+- Test-harness gotchas for the record: the combo-pressure FLOW RULE refuses the same geometry
+  twice in pressure, so a two-hit test needs different openers (a refused `TryAttack` measures
+  the idle); and a held block's RAISE opens the new 0.9 s parry window, so a block-the-hit test
+  must burn 60+ frames before swinging or the hit is parried.
