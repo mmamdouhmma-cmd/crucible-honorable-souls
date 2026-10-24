@@ -1054,6 +1054,14 @@ private void HandleDash()
     // If currently dashing, advance the dash
     if (isDashing)
     {
+        // A hit mid-dash (the punishable tail) stops the slide: hitstun means you stop moving.
+        // Without this the dash carried the fighter ~2 world units THROUGH the stun (measured),
+        // which is what let a stunned player drift out of a parry counter's reach.
+        if (IsInHitstun)
+        {
+            EndDash("hit mid-dash");
+            return;
+        }
         // Trim the last frame so the dash covers exactly dashDistance, never more
         float frameTime = Mathf.Min(Time.deltaTime, dashDuration - dashTimer);
         dashTimer += Time.deltaTime;

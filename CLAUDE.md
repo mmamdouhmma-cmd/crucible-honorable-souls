@@ -927,6 +927,20 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   grep it to verify a build), and `VfxMaterials` falls back to `Sprites/Default` with a LogError
   instead of throwing. **For any works-in-Editor-not-in-app report, read the player log first**:
   `%USERPROFILE%\AppData\LocalLow\DefaultCompany\CRUCIBLE test\Player.log` (+ `Player-prev.log`).
+- **Hitstun stops an in-progress dash** (2026-10-24, the user's call after a parried special
+  whiffed): `HandleDash` ends the dash the frame `IsInHitstun` goes up - before that the dash
+  carried a STUNNED fighter 1.96 world units (play-measured), which is what let a parried player
+  drift out of the AI's counter. Walking and dash STARTS were already gated; the running dash was
+  the hole. And **the AI counter fires from blade range**: a parry happens at weapon contact (up
+  to ~3.4 away), so AiController's counter branch allows `gap <= 3.4` when a counter window is
+  open (recovery punishes keep 2.7) - Salaadin's counter specials land from 3.3-3.4 on a stunned
+  victim (contact f21 < the 30 f stun; range 3.0+ plus 1.2 lunge). Walking cannot escape the
+  stun (play-measured 0.000 movement, counters land through a held move-away).
+- **Two gamepads already drive the two players** - `ControlBindings.PadFor`: first pad -> the
+  Settings "controller player" (default P2), second pad -> the other; play-verified with two
+  virtual pads, no cross-talk. `InputManager.LogPads` logs every pad change and the assignment
+  ("Pads (...): 2 connected - P1 <- ..., P2 <- ...") so a dead second controller is diagnosable
+  from Player.log - a pad on a charge-only USB cable never appears there at all.
 - **The killing blow has a presentation** (`KillShot`, 2026-10-24): on the fatal hit time drops to
   x0.2 of match speed (0.9 s real hold, 0.8 s ramp back), every light + ambient + a skybox CLONE
   dim to ~10-15% so the arena goes near-black while the UNLIT blood keeps its colour, and an extra

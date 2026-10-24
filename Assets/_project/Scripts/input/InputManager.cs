@@ -62,6 +62,31 @@ public class InputManager : MonoBehaviour
         Bindings = ControlBindings.Load();
 
         Application.targetFrameRate = BalanceConfig.TARGET_FPS;
+
+        InputSystem.onDeviceChange += OnDeviceChange;
+        LogPads("startup");
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) InputSystem.onDeviceChange -= OnDeviceChange;
+    }
+
+    private void OnDeviceChange(InputDevice device, InputDeviceChange change)
+    {
+        if (device is Gamepad) LogPads(change.ToString());
+    }
+
+    /// <summary>
+    /// Logs every connected pad and which player it drives - the Player.log evidence for
+    /// "my second controller does nothing" (a pad on a charge-only cable never appears here).
+    /// </summary>
+    private void LogPads(string why)
+    {
+        var all = Gamepad.all;
+        string p1 = Bindings != null && Bindings.PadFor(1) != null ? Bindings.PadFor(1).displayName : "keyboard only";
+        string p2 = Bindings != null && Bindings.PadFor(2) != null ? Bindings.PadFor(2).displayName : "keyboard only";
+        Debug.Log($"Pads ({why}): {all.Count} connected - P1 <- {p1}, P2 <- {p2}");
     }
 
     public void ReloadBindings() { Bindings = ControlBindings.Load(); }

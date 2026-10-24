@@ -248,8 +248,12 @@ public class AiController : MonoBehaviour
         if (busy) return input;
 
         // ---- counter after a clean dodge or a parry, or punish a recovery
+        // A parry happens at BLADE contact, so the foe may stand a full weapon length away
+        // (up to ~3.4): the counter is allowed from there - range 3.0+ plus the lunge covers
+        // it - where a recovery punish still wants real closeness.
         bool counterOpen = me.DashCounterOpen || me.ParryCounterTimeLeft > 0f;
-        if (rules.punish && rules.attack && (counterOpen || (p.punish && foeRecovering)) && gap <= 2.7f && stamina >= 10)
+        if (rules.punish && rules.attack && stamina >= 10 &&
+            ((counterOpen && gap <= 3.4f) || (p.punish && foeRecovering && gap <= 2.7f)))
         {
             Pick(ref input, preferHeavy: foeRecovering, stamina);
             if (debugLogs) Debug.Log(counterOpen ? "AI: COUNTER" : "AI: PUNISH");

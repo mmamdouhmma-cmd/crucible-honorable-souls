@@ -3578,3 +3578,27 @@ Three fixes off the user's playtest of the full roster, all play-verified throug
 - The background wait-loop watching the build was killed by the harness for system memory
   pressure mid-build; the build itself (inside Unity) was untouched — checked the buildreport
   and dll mtimes directly instead of restarting the watcher.
+
+### 2026-10-24 — The parried man who slid away, and the counter that now reaches
+
+- The user, playing the app: Salaadin (AI) parried twice and his counter special whiffed - "if he
+  is able to parry that means he is close enough to counter"; and "make sure during a parry or
+  hit stun player can't move."
+- Measured first: walking during hitstun was ALREADY impossible (0.000 movement with move-away
+  held; immediate counters land through it, SP+M f22 / SP+H f32 vs the 30 f stun). The real hole
+  was the DASH: a fighter hit mid-dash kept sliding 1.956 world units through the stun -
+  `HandleDash` advanced the dash with no hitstun check and `ApplyHitstun` never cancelled it.
+  Fixed in `HandleDash` (EndDash the frame IsInHitstun goes up); re-measured 0.000.
+- Second hole: the AI counter branch required `gap <= 2.7`, but a parry happens at BLADE contact
+  - Bjorn's heavy parries from up to ~3.4 - so a long parry earned no counter at all. The gate is
+  now 3.4 for an open counter window (2.7 stays for recovery punishes). Verified: SP+Medium from
+  3.3 and SP+Light from 3.4 both land at f21 on a stunned victim.
+- Also this session (the user, mid-diagnosis): two PS5 controllers - only one worked over USB,
+  Bluetooth would not pair. The game code already supports two pads (`PadFor`: first pad -> the
+  Settings player, second -> the other; verified with two virtual pads, no cross-talk), so the
+  fault is at the Windows layer - told the user: charge-only USB cable, pairing mode is
+  Create+PS held together, remove stale BT pairings, charge the flapping pad (the log shows one
+  DualSense disconnecting every ~15 s all night). `InputManager.LogPads` now writes the pad ->
+  player table to Player.log on startup and on every pad change.
+- Test harness gotcha: `AssetDatabase.FindAssets("Bjorn_Heavy")[0]` grabbed a non-AttackData
+  asset and the coroutine died with an empty result file - filter with `t:AttackData`.
