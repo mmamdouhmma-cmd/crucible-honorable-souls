@@ -3753,3 +3753,25 @@ Three fixes off the user's playtest of the full roster, all play-verified throug
   whose eval call drops with a network error has written NOTHING — same silent shape as the
   HTTP-400 menu bridge; read the scene fighters back before trusting it (the first Apply of the
   evening did exactly this).
+
+### 2026-10-25 — Miyamoto's strings confirmed, and the build goes to the boys
+
+- **Miyamoto's two-way normals still link under every rule added since 2026-10-18** — play-proven,
+  not asserted: L->M, M->L, and L->M again after the pause all linked (both hits landing, 10 dmg),
+  each follow-up at the new x1.30 dialed pace. The lockouts never touched links by design: the
+  1.5 rule, the flow rule and the free-form cap gate only RAW presses in `TryAttack`, and the
+  0.5 s string lockout paces the NEXT string, not the links inside one.
+- **The "fast presses drop the combo" report resolved itself in the code**: `BufferInput` already
+  STRETCHES a buffered press to cover the whole cancel window when the pressed button matches a
+  link on the current move - the 8-frame expiry only applies to presses that link to nothing. The
+  user's failed fast-dials were on the pre-16:50 desktop build; a retest on the updated app came
+  back "perfect". Know this before "fixing" the buffer: the stretch is in `BufferInput`, lines
+  595-601.
+- **Session wrap**: today shipped the double-flick run at dash speed (commit `0f242e4`), the
+  0.2 s just-guard parry with 0.8 s attempt pacing, and the x1.1-1.3 dialed-combo pace (commit
+  `c5e5bbe`, both pushed). The Win64 app at `Builds/CrucibleLite-Win64/Crucible.exe` was rebuilt
+  at 16:50 with ALL of it; the desktop shortcut needed no change. The user is taking the build
+  to a live playtest ("with the boys") - **next session starts from that feedback**. Watch
+  items they may bring back: the flattened Bjorn parry cooldown (1.2 -> 0.8, his "worst parry"
+  identity is gone), whether 0.2 s is parryable by humans at all against lights, whether the
+  x1.3 follow-ups read as too fast, and the run's 3.2/unit drain in real neutral.
