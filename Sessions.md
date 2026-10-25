@@ -3855,3 +3855,26 @@ Three fixes off the user's playtest of the full roster, all play-verified throug
   whatever the game renders at.
 - Known gap carried: the kill shot's light dimming is not recorded, so an exported kill plays
   at full brightness.
+
+### 2026-10-25 — The records library and the highlight reel
+
+The user asked for an in-game records library (watch saved fights from the main menu, export
+from there too) with an option to export a HIGHLIGHT video of just the fight's events.
+
+- Every finished fight now auto-saves at the K.O. (`ShowMatchOver` -> `SaveRecord`): a gzipped
+  binary `.crec` in `persistentDataPath/Records/`, newest 20 kept. ~3 s save-time hitch risk was
+  checked in play and the write lands during the K.O. card, where a pause is invisible.
+- The format stores tracks by path-under-fighter-root and sounds by clip name, so `LoadRecord`
+  re-binds to the live scene (`CrucibleAudio.FindClip` resolves names from the serialized clip
+  fields). A missing fighter refuses the load with a reason; a missing bone just stops animating.
+- Main menu -> Records lists the library (header-only reads, newest first); opening one switches
+  the arena, applies the recorded pair's sides and enters the existing Game Record screen -
+  scrub, markers, cameras, both exports all work on a loaded record because `LoadRecord` fills
+  the same buffers `BeginRecording` does.
+- `BeginExport` takes a list of (from, to) segments now; "Export the highlights" builds them from
+  the markers + blood/parry events (2.0 s before to 1.6 s after, merged when within 0.75 s).
+  Audio is mixed per segment at its own sample offset. The single-cut export is a one-segment
+  call of the same routine.
+- Gotcha: `eval_file` returned a 5 s timeout and had NOT run (screen still Boot, DebugTimeScale
+  untouched) - the opposite of the usual "timeout but landed" case. Probe state before deciding
+  either way.

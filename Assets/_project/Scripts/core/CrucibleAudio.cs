@@ -254,6 +254,37 @@ public class CrucibleAudio : MonoBehaviour
     }
 
     /// <summary>
+    /// One of this component's clips by name - how a saved fight record resolves its sound events
+    /// back to the real assets. The index is built once per domain from the serialized clip
+    /// fields; an unknown name (a clip that left the build) returns null and the event is dropped.
+    /// </summary>
+    public static AudioClip FindClip(string name)
+    {
+        if (Instance == null || string.IsNullOrEmpty(name)) return null;
+        if (clipIndex == null)
+        {
+            clipIndex = new Dictionary<string, AudioClip>();
+            void Note(AudioClip c) { if (c != null && !clipIndex.ContainsKey(c.name)) clipIndex[c.name] = c; }
+            void NoteAll(AudioClip[] set) { if (set != null) foreach (var c in set) Note(c); }
+            var i = Instance;
+            NoteAll(i.uiNavigate); NoteAll(i.uiSelect); NoteAll(i.uiBack); NoteAll(i.uiWipe);
+            NoteAll(i.uiBoot); NoteAll(i.uiCountBeat); NoteAll(i.uiCountFight);
+            NoteAll(i.swish); NoteAll(i.block); NoteAll(i.parry); NoteAll(i.hit); NoteAll(i.dodge);
+            if (i.voices != null)
+                foreach (var v in i.voices)
+                {
+                    if (v == null) continue;
+                    NoteAll(v.effortLight); NoteAll(v.effortHeavy); NoteAll(v.death);
+                }
+            Note(i.menuMusic); Note(i.fightMusic); Note(i.windLoop);
+        }
+        clipIndex.TryGetValue(name, out var found);
+        return found;
+    }
+
+    static Dictionary<string, AudioClip> clipIndex;
+
+    /// <summary>
     /// The continuous beds under a fight - the fight track and the wind loop, each with the level
     /// it plays at (Settings included) - so the video export can mix them under the one-shots.
     /// </summary>

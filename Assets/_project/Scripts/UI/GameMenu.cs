@@ -34,6 +34,7 @@ public class GameMenu : MonoBehaviour
         Online, OnlineHost, OnlineJoin,
         Replay,
         PickDevices,    // 2-player: who holds what (appended - keep the order)
+        Records,        // the saved-fights library on the main menu (appended - keep the order)
     }
 
     /// <summary>Which path through the select screens we are on.</summary>
@@ -584,6 +585,15 @@ public class GameMenu : MonoBehaviour
         foreach (var f in roster) if (f != loser && f.gameObject.activeInHierarchy) winner = f;
         winnerName = winner != null ? winner.CharacterName : "Nobody";
         winnerNumber = winner != null ? winner.PlayerNumber : 0;
+        // Every finished fight lands in the records library, so the main menu can replay it later.
+        if (ReplayRecorder.Instance != null && ReplayRecorder.Instance.HasRecording
+            && ReplayRecorder.Instance.Duration >= 3f)
+        {
+            string arena = ArenaDirectory.Instance != null ? ArenaDirectory.Instance.NameOf(arenaChoice) : "";
+            string a = roster[p1Character] != null ? roster[p1Character].CharacterName : "?";
+            string b = roster[p2Character] != null ? roster[p2Character].CharacterName : "?";
+            ReplayRecorder.Instance.SaveRecord($"{a} vs {b} - {winnerName} wins", arena);
+        }
         history.Clear();
         Show(Screen.MatchOver);
     }
@@ -668,6 +678,11 @@ public class GameMenu : MonoBehaviour
         // and restores the K.O. tableau the playback interrupted.
         if (screen == Screen.Replay && s != Screen.Replay && ReplayRecorder.Instance != null)
             ReplayRecorder.Instance.EndPlayback();
+        // Leaving the records area outside a match puts the SELECTED pair back on their sides -
+        // a record watched from the library may have woken a different pair.
+        if ((screen == Screen.Replay || screen == Screen.Records)
+            && s != Screen.Replay && s != Screen.Records && !rebuilding && !inMatch)
+            ApplySides(p1Character, p2Character);
         if (s != Screen.MatchOver) { confirmAsk = null; confirmYes = null; }
         // The kill-shot darkness holds through the K.O. screen (the corpse under a black sky IS
         // the shot); any real menu screen brings the arena lights back for the select views.
@@ -766,6 +781,7 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Online", value = () => "play over the link", confirm = () => { flow = Flow.Online; InputManager.Instance?.ClearPlayerDevices(); Show(Screen.Online); } });
                 items.Add(new Item { label = "Practice", value = () => "a dummy that obeys your rules", confirm = () => { flow = Flow.Practice; playerCount = 1; InputManager.Instance?.ClearPlayerDevices(); GoWiped(Screen.CharSelect); } });
                 items.Add(new Item { label = "Move List", confirm = () => Show(Screen.Moves) });
+                items.Add(new Item { label = "Records", value = () => "watch and export saved fights", confirm = () => Show(Screen.Records) });
                 items.Add(new Item { label = "Settings", confirm = () => Show(Screen.Settings) });
                 items.Add(new Item { label = "Quit", confirm = Quit });
                 footerText.text = NavHint();
@@ -901,7 +917,7 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Change fighters", confirm = () =>
                     AskMatchOver("Leave for the character select?", () => { inMatch = false; GoWiped(Screen.CharSelect); }) });
                 if (ReplayRecorder.Instance != null && ReplayRecorder.Instance.HasRecording)
-                    items.Add(new Item { label = "Save the game record", value = () => "watch, trim and export the fight",
+                    items.Add(new Item { label = "Watch the game record", value = () => "kept in Records - watch, trim and export",
                                          confirm = () => Show(Screen.Replay) });
                 items.Add(new Item { label = "Main Menu", confirm = () =>
                     AskMatchOver("Back to the main menu?", () => { if (stage != null) stage.Wipe(EndMatchToMenu); else EndMatchToMenu(); }) });
@@ -913,7 +929,7 @@ public class GameMenu : MonoBehaviour
             {
                 var rec = ReplayRecorder.Instance;
                 bool has = rec != null && rec.HasRecording;
-                SetTitle("Game Record", has ? "the fight as it was played - the export carries no sound" : "");
+                SetTitle("Game Record", has ? "the fight as it was played - HUD, effects and sound in the export" : "");
                 if (!has)
                 {
                     items.Add(new Item { label = "Nothing recorded yet.", header = true, quiet = true });
@@ -973,8 +989,43 @@ public class GameMenu : MonoBehaviour
                     value = () => $"the {Clock(trimEnd - trimStart)} cut, {ReplayRecorder.ExportFps} fps .avi",
                     confirm = BeginVideoExport,
                 });
+                var moments = rec.HighlightSegments();
+                if (moments.Count > 0)
+                {
+                    float highlightLen = 0f;
+                    foreach (var m in moments) highlightLen += m.y - m.x;
+                    items.Add(new Item
+                    {
+                        label = "Export the highlights",
+                        value = () => $"{moments.Count} moments, {Clock(highlightLen)} .avi",
+                        confirm = () => BeginSegmentsExport(moments),
+                    });
+                }
                 items.Add(new Item { label = "Back", confirm = Back });
                 footerText.text = "Left / Right scrubs and trims    Confirm on a cut marks the current moment    " + NavHint();
+                break;
+            }
+
+            // ------------------------------------------------------------ the records library
+            case Screen.Records:
+            {
+                SetTitle("Records", "every finished fight, kept on this machine");
+                var saved = ReplayRecorder.ListRecords();
+                if (saved.Count == 0)
+                    items.Add(new Item { label = "No fights on record yet - finish a match and it lands here.", header = true, quiet = true });
+                int shown = Mathf.Min(saved.Count, 12);
+                for (int i = 0; i < shown; i++)
+                {
+                    var r = saved[i];
+                    items.Add(new Item
+                    {
+                        label = r.title,
+                        value = () => $"{r.date:MMM d, HH:mm}   {Clock(r.duration)}   {r.arena}",
+                        confirm = () => OpenRecord(r),
+                    });
+                }
+                items.Add(new Item { label = "Back", confirm = Back });
+                footerText.text = NavHint();
                 break;
             }
 
@@ -1576,7 +1627,11 @@ public class GameMenu : MonoBehaviour
         replayPlaying = true;
     }
 
-    void BeginVideoExport()
+    void BeginVideoExport() => BeginSegmentsExport(null);
+
+    /// <summary>Starts an export - the trimmed cut when <paramref name="segments"/> is null, or
+    /// the given cuts stitched into one video (the highlight reel).</summary>
+    void BeginSegmentsExport(System.Collections.Generic.List<Vector2> segments)
     {
         var rec = ReplayRecorder.Instance;
         if (rec == null || rec.Exporting || !rec.PlaybackActive) return;
@@ -1585,7 +1640,38 @@ public class GameMenu : MonoBehaviour
         // runs; UpdateReplay brings it back and reports the file when Exporting drops.
         content.gameObject.SetActive(false);
         exportingUi = true;
-        rec.BeginExport(trimStart, trimEnd);
+        if (segments != null) rec.BeginExport(segments);
+        else rec.BeginExport(trimStart, trimEnd);
+    }
+
+    /// <summary>
+    /// Loads a saved fight from the library: the recorded pair takes the arena, the record's
+    /// arena goes up behind them, and the ordinary Game Record screen plays it. Leaving the
+    /// records area puts the selected pair back (the teardown in Show).
+    /// </summary>
+    void OpenRecord(ReplayRecorder.RecordInfo r)
+    {
+        int ia = -1, ib = -1;
+        for (int i = 0; i < roster.Length; i++)
+        {
+            if (roster[i] == null) continue;
+            if (ia < 0 && roster[i].CharacterName == r.castA) ia = i;
+            else if (ib < 0 && roster[i].CharacterName == r.castB) ib = i;
+        }
+        if (ia < 0 || ib < 0) { subtitle.text = "A fighter in this record is not in this build."; return; }
+
+        var dir = ArenaDirectory.Instance;
+        if (dir != null && !string.IsNullOrEmpty(r.arena))
+        {
+            var sel = dir.Selectable;
+            for (int i = 0; i < sel.Count; i++)
+                if (sel[i].displayName == r.arena) { dir.Select(i, remember: false); break; }
+        }
+
+        ApplySides(ia, ib);
+        FreezeFighters(true);
+        if (Rec.LoadRecord(r.path, roster, Camera.main, out string err)) GoWiped(Screen.Replay);
+        else subtitle.text = "Could not load the record - " + err;
     }
 
     // ================================================================ rebinding

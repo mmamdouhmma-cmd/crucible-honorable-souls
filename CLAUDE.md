@@ -1208,6 +1208,24 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `Texture2D.EncodeToJPG` is not an option off the main thread) and one writer thread streams
   the .avi in frame order with the audio interleaved. Inline, the ~40 ms 1080p encode alone
   exceeded the 33 ms frame budget.
+- **Every finished fight auto-saves to a RECORDS LIBRARY, listed on the main menu** (2026-10-25):
+  `ShowMatchOver` calls `ReplayRecorder.SaveRecord` (gzipped binary `.crec`, magic CREC v1, to
+  `persistentDataPath/Records/`, newest 20 kept, duration >= 3 s only - an abandoned match via
+  EndMatchToMenu is NOT saved). Transforms are stored by PATH under each fighter's root and
+  sounds by CLIP NAME, so `LoadRecord` re-binds to the LIVE roster + `CrucibleAudio.FindClip`;
+  a record of a fighter not in the build refuses to load rather than half-playing, and a renamed
+  bone just stops animating (null track, skipped). Main menu `Records` -> `Screen.Records`
+  (APPENDED to the enum) lists them (`ListRecords` reads only gzip headers - meta sits before the
+  bulk on purpose); `OpenRecord` switches to the record's arena (`Select(i, remember:false)`),
+  `ApplySides` the recorded pair by name, loads, and enters the same `Screen.Replay`. The Show()
+  teardown re-applies the SELECTED sides when leaving Records/Replay outside a match, so a watched
+  record cannot leave the wrong pair active behind the menus.
+- **Exports take SEGMENTS now, and "Export the highlights" uses them** (2026-10-25):
+  `BeginExport(List<Vector2>)` stitches cuts into one .avi (the single-cut call is a one-segment
+  wrapper); audio is mixed per segment at its own sample offset, so one silent cut cannot cost
+  the reel its soundtrack, and `FireEvents`' 0.5 s forward-step guard already swallows the seam
+  between cuts. `HighlightSegments(pre 2.0, post 1.6)` builds windows around every marker +
+  every Blood/Parry fx event, merging windows that come within 0.75 s of each other.
 - **The K.O. card asks "are you sure" before Rematch / Change fighters / Main Menu**
   (`confirmAsk`/`confirmYes` on GameMenu; Esc answers No).
 - **Parry window 0.2 s / cooldown 0.8 s roster-wide** (the user's call, 2026-10-25, killing the

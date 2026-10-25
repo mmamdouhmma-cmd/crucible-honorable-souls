@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Threading;
 using UnityEngine;
 
@@ -529,12 +530,45 @@ public class ReplayRecorder : MonoBehaviour
     /// <see cref="ExportError"/>.
     /// </summary>
     public void BeginExport(float from, float to)
+        => BeginExport(new List<Vector2> { new Vector2(from, to) });
+
+    /// <summary>Writes several cuts of the record stitched into one video - the highlight reel.
+    /// Each segment is (from, to) in playback seconds, played in order.</summary>
+    public void BeginExport(List<Vector2> segments)
     {
-        if (Exporting || !PlaybackActive) return;
-        StartCoroutine(ExportRoutine(from, to));
+        if (Exporting || !PlaybackActive || segments == null || segments.Count == 0) return;
+        StartCoroutine(ExportRoutine(segments));
     }
 
-    IEnumerator ExportRoutine(float from, float to)
+    /// <summary>
+    /// The record's eventful windows - a few seconds around every marker (parries, counters,
+    /// specials, combo links, the kill) and every landed hit or parry flash - merged where they
+    /// overlap or nearly touch (a sub-second gap would re-fire its events across the seam anyway).
+    /// Playback-relative seconds, ready for <see cref="BeginExport(List{Vector2})"/>.
+    /// </summary>
+    public List<Vector2> HighlightSegments(float pre = 2.0f, float post = 1.6f)
+    {
+        var outList = new List<Vector2>();
+        if (frames.Count < 2) return outList;
+        float t0 = frames[0].t;
+        var times = new List<float>();
+        foreach (var m in markers) times.Add(m.t - t0);
+        foreach (var e in fxEvents) if (e.kind == Fx.Blood || e.kind == Fx.Parry) times.Add(e.t - t0);
+        times.Sort();
+        foreach (float t in times)
+        {
+            float a = Mathf.Clamp(t - pre, 0f, Duration);
+            float b = Mathf.Clamp(t + post, 0f, Duration);
+            if (b - a < 0.2f) continue;
+            if (outList.Count > 0 && a <= outList[outList.Count - 1].y + 0.75f)
+                outList[outList.Count - 1] = new Vector2(outList[outList.Count - 1].x,
+                                                         Mathf.Max(outList[outList.Count - 1].y, b));
+            else outList.Add(new Vector2(a, b));
+        }
+        return outList;
+    }
+
+    IEnumerator ExportRoutine(List<Vector2> segs)
     {
         Exporting = true;
         ExportProgress = 0f;
@@ -565,7 +599,22 @@ public class ReplayRecorder : MonoBehaviour
             yield break;
         }
 
-        int total = Mathf.Max(1, Mathf.CeilToInt(Mathf.Max(0.1f, to - from) * ExportFps));
+        // Flatten the cuts into one list of capture times: the writer and the audio only ever see
+        // the global frame index, so a multi-cut reel streams exactly like a single cut.
+        int total = 0;
+        var segFrames = new int[segs.Count];
+        for (int s = 0; s < segs.Count; s++)
+        {
+            segFrames[s] = Mathf.Max(1, Mathf.CeilToInt(Mathf.Max(0.1f, segs[s].y - segs[s].x) * ExportFps));
+            total += segFrames[s];
+        }
+        var times = new float[total];
+        {
+            int gi = 0;
+            for (int s = 0; s < segs.Count; s++)
+                for (int i = 0; i < segFrames[s]; i++)
+                    times[gi++] = segs[s].x + i / (float)ExportFps;
+        }
 
         // The soundtrack is MIXED, not captured: every recorded one-shot at its exact moment
         // (final volume and pitch), under the fight-music and wind beds, sample-accurate against
@@ -573,9 +622,26 @@ public class ReplayRecorder : MonoBehaviour
         // ships silent rather than not at all.
         int audioRate = AudioSettings.outputSampleRate;
         if (audioRate < 8000) audioRate = 48000;
+        // Each segment is mixed on its own and laid at its own sample offset, so one silent cut
+        // cannot cost the whole reel its soundtrack.
         short[] pcm = null;
-        try { pcm = MixAudio(from, total, audioRate); }
-        catch (Exception e) { Debug.LogWarning($"Replay export: no audio track ({e.Message})"); }
+        try
+        {
+            long allSamples = (long)total * audioRate / ExportFps;
+            int done = 0;
+            for (int s = 0; s < segs.Count; s++)
+            {
+                var part = MixAudio(segs[s].x, segFrames[s], audioRate);
+                if (part != null)
+                {
+                    if (pcm == null) pcm = new short[allSamples * 2];
+                    long off = (long)done * audioRate / ExportFps * 2;
+                    Array.Copy(part, 0, pcm, off, Math.Min(part.Length, pcm.Length - off));
+                }
+                done += segFrames[s];
+            }
+        }
+        catch (Exception e) { Debug.LogWarning($"Replay export: no audio track ({e.Message})"); pcm = null; }
 
         // One rendered frame = exactly 1/fps of game time, so particle effects re-fired by Apply
         // advance in lockstep with the captured frames whatever the real frame rate is. The game
@@ -646,7 +712,7 @@ public class ReplayRecorder : MonoBehaviour
 
         for (int i = 0; i < total; i++)
         {
-            Apply(from + i / (float)ExportFps);
+            Apply(times[i]);
             yield return new WaitForEndOfFrame();
 
             Texture2D shot = null;
@@ -709,6 +775,291 @@ public class ReplayRecorder : MonoBehaviour
         public byte[] raw;
         public UnityEngine.Experimental.Rendering.GraphicsFormat fmt;
         public int w, h;
+    }
+
+    // ================================================================ records on disk
+    // Every finished fight is saved to the records library (gzipped binary, ~1 MB per fight
+    // minute), listed on the main menu's Records screen and loaded back for the same playback
+    // and export the K.O. card offers. Transforms are stored by their path under each fighter's
+    // root and sounds by clip name, so a record binds to the LIVE roster when it is loaded -
+    // which is why a record of a fighter who left the build refuses to load rather than
+    // half-playing.
+
+    /// <summary>How many fights the library keeps; the oldest file goes when a new one lands.</summary>
+    public const int MaxSavedRecords = 20;
+
+    const int FileVersion = 1;
+    static readonly byte[] FileMagic = { (byte)'C', (byte)'R', (byte)'E', (byte)'C' };
+
+    public static string RecordsDir => Path.Combine(Application.persistentDataPath, "Records");
+
+    public struct RecordInfo
+    {
+        public string path, title, arena, castA, castB;
+        public DateTime date;
+        public float duration;
+    }
+
+    /// <summary>Writes the finished recording to the records library. Returns the path, or null
+    /// (a failed save never costs the match flow anything but a warning).</summary>
+    public string SaveRecord(string title, string arenaName)
+    {
+        if (!HasRecording || cast.Length == 0) return null;
+        try
+        {
+            Directory.CreateDirectory(RecordsDir);
+            string path = Path.Combine(RecordsDir, $"fight_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.crec");
+            using (var w = new BinaryWriter(new GZipStream(File.Create(path), System.IO.Compression.CompressionLevel.Fastest)))
+            {
+                w.Write(FileMagic);
+                w.Write(FileVersion);
+                w.Write(title ?? "");
+                w.Write(DateTime.Now.Ticks);
+                w.Write(arenaName ?? "");
+                w.Write(Duration);
+                w.Write(cast.Length);
+                foreach (var f in cast) w.Write(f != null ? f.CharacterName : "");
+                w.Write(tracks.Length);
+                for (int i = 0; i < tracks.Length; i++)
+                {
+                    string p = TrackPath(tracks[i], out int ci);
+                    w.Write((byte)(ci < 0 ? 255 : ci));
+                    w.Write(p);
+                }
+                w.Write(frames.Count);
+                foreach (var f in frames)
+                {
+                    w.Write(f.t);
+                    for (int i = 0; i < tracks.Length; i++)
+                    {
+                        var p = f.pos[i]; var q = f.rot[i];
+                        w.Write(p.x); w.Write(p.y); w.Write(p.z);
+                        w.Write(q.x); w.Write(q.y); w.Write(q.z); w.Write(q.w);
+                    }
+                    w.Write(f.camPos.x); w.Write(f.camPos.y); w.Write(f.camPos.z);
+                    w.Write(f.camRot.x); w.Write(f.camRot.y); w.Write(f.camRot.z); w.Write(f.camRot.w);
+                    for (int i = 0; i < cast.Length; i++)
+                    {
+                        w.Write((short)(f.hp != null && i < f.hp.Length ? f.hp[i] : 0));
+                        w.Write((short)(f.st != null && i < f.st.Length ? f.st[i] : 0));
+                    }
+                }
+                w.Write(markers.Count);
+                foreach (var m in markers) { w.Write(m.t); w.Write(m.label ?? ""); }
+                w.Write(fxEvents.Count);
+                foreach (var e in fxEvents)
+                {
+                    w.Write(e.t); w.Write((byte)e.kind); w.Write(e.a); w.Write(e.b);
+                    w.Write(e.point.x); w.Write(e.point.y); w.Write(e.point.z);
+                    w.Write(e.dir.x); w.Write(e.dir.y); w.Write(e.dir.z);
+                    w.Write(e.radius); w.Write(e.strength);
+                    w.Write(e.color.r); w.Write(e.color.g); w.Write(e.color.b); w.Write(e.color.a);
+                }
+                w.Write(soundEvents.Count);
+                foreach (var e in soundEvents)
+                {
+                    w.Write(e.t);
+                    w.Write(e.clip != null ? e.clip.name : "");
+                    w.Write(e.volume); w.Write(e.pitch);
+                }
+            }
+            Prune();
+            return path;
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"Record save failed: {e.Message}");
+            return null;
+        }
+    }
+
+    static void Prune()
+    {
+        var files = Directory.GetFiles(RecordsDir, "*.crec");
+        if (files.Length <= MaxSavedRecords) return;
+        Array.Sort(files, (a, b) => File.GetLastWriteTimeUtc(a).CompareTo(File.GetLastWriteTimeUtc(b)));
+        for (int i = 0; i < files.Length - MaxSavedRecords; i++) File.Delete(files[i]);
+    }
+
+    /// <summary>The track's path under its fighter's root ("" for the root itself), and which
+    /// cast member owns it (-1 when it belongs to neither - a destroyed transform).</summary>
+    string TrackPath(Transform tr, out int castIdx)
+    {
+        castIdx = -1;
+        if (tr == null) return "";
+        for (int c = 0; c < cast.Length; c++)
+        {
+            if (cast[c] == null) continue;
+            var root = cast[c].transform;
+            if (!tr.IsChildOf(root)) continue;      // IsChildOf includes the root itself
+            castIdx = c;
+            if (tr == root) return "";
+            string p = tr.name;
+            for (var up = tr.parent; up != null && up != root; up = up.parent) p = up.name + "/" + p;
+            return p;
+        }
+        return "";
+    }
+
+    /// <summary>The library, newest first. Reads only each file's header, so it is cheap to call
+    /// every time the Records screen opens.</summary>
+    public static List<RecordInfo> ListRecords()
+    {
+        var list = new List<RecordInfo>();
+        try
+        {
+            if (!Directory.Exists(RecordsDir)) return list;
+            foreach (var path in Directory.GetFiles(RecordsDir, "*.crec"))
+            {
+                try
+                {
+                    using (var r = new BinaryReader(new GZipStream(File.OpenRead(path), CompressionMode.Decompress)))
+                    {
+                        if (!ReadMagic(r)) continue;
+                        if (r.ReadInt32() != FileVersion) continue;
+                        var info = new RecordInfo { path = path };
+                        info.title = r.ReadString();
+                        info.date = new DateTime(r.ReadInt64());
+                        info.arena = r.ReadString();
+                        info.duration = r.ReadSingle();
+                        int nCast = r.ReadInt32();
+                        info.castA = nCast > 0 ? r.ReadString() : "";
+                        info.castB = nCast > 1 ? r.ReadString() : "";
+                        list.Add(info);
+                    }
+                }
+                catch { /* a truncated or foreign file is simply not listed */ }
+            }
+        }
+        catch { }
+        list.Sort((a, b) => b.date.CompareTo(a.date));
+        return list;
+    }
+
+    static bool ReadMagic(BinaryReader r)
+    {
+        var m = r.ReadBytes(4);
+        return m.Length == 4 && m[0] == 'C' && m[1] == 'R' && m[2] == 'E' && m[3] == 'C';
+    }
+
+    /// <summary>
+    /// Loads a saved record and binds it to the live roster - the caller has already activated
+    /// the recorded pair (<c>ApplySides</c>). After it, <see cref="BeginPlayback"/> and the
+    /// exports work exactly as on a fresh recording. On failure the current buffer is left alone
+    /// where possible and <paramref name="error"/> says why.
+    /// </summary>
+    public bool LoadRecord(string path, Fighter[] roster, Camera camera, out string error)
+    {
+        error = null;
+        if (PlaybackActive) EndPlayback();
+        recording = false;
+        try
+        {
+            using (var r = new BinaryReader(new GZipStream(File.OpenRead(path), CompressionMode.Decompress)))
+            {
+                if (!ReadMagic(r)) { error = "not a fight record"; return false; }
+                if (r.ReadInt32() != FileVersion) { error = "saved by a different version of the game"; return false; }
+                r.ReadString(); r.ReadInt64(); r.ReadString(); r.ReadSingle();   // title, date, arena, duration
+
+                int nCast = r.ReadInt32();
+                if (nCast < 1 || nCast > 8) { error = "the record is damaged"; return false; }
+                var newCast = new Fighter[nCast];
+                for (int i = 0; i < nCast; i++)
+                {
+                    string name = r.ReadString();
+                    foreach (var f in roster)
+                        if (f != null && f.CharacterName == name && Array.IndexOf(newCast, f) < 0) { newCast[i] = f; break; }
+                    if (newCast[i] == null) { error = $"{name} is not in this build"; return false; }
+                }
+
+                int nTracks = r.ReadInt32();
+                if (nTracks < 1 || nTracks > 4096) { error = "the record is damaged"; return false; }
+                var newTracks = new Transform[nTracks];
+                var newRoots = new bool[nTracks];
+                for (int i = 0; i < nTracks; i++)
+                {
+                    int ci = r.ReadByte();
+                    string p = r.ReadString();
+                    if (ci >= nCast) continue;      // a track that belonged to nobody stays null
+                    var root = newCast[ci].transform;
+                    newTracks[i] = p.Length == 0 ? root : root.Find(p);   // a renamed bone stays null and is skipped
+                    newRoots[i] = p.Length == 0;
+                }
+
+                int nFrames = r.ReadInt32();
+                if (nFrames < 2 || nFrames > 1_000_000) { error = "the record is empty"; return false; }
+                var newFrames = new List<Frame>(nFrames);
+                for (int fi = 0; fi < nFrames; fi++)
+                {
+                    var f = new Frame
+                    {
+                        t = r.ReadSingle(),
+                        pos = new Vector3[nTracks],
+                        rot = new Quaternion[nTracks],
+                        hp = new int[nCast],
+                        st = new int[nCast],
+                    };
+                    for (int i = 0; i < nTracks; i++)
+                    {
+                        f.pos[i] = new Vector3(r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
+                        f.rot[i] = new Quaternion(r.ReadSingle(), r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
+                    }
+                    f.camPos = new Vector3(r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
+                    f.camRot = new Quaternion(r.ReadSingle(), r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
+                    for (int i = 0; i < nCast; i++)
+                    {
+                        f.hp[i] = r.ReadInt16();
+                        f.st[i] = r.ReadInt16();
+                    }
+                    newFrames.Add(f);
+                }
+
+                var newMarkers = new List<Marker>();
+                int nM = r.ReadInt32();
+                for (int i = 0; i < nM; i++)
+                    newMarkers.Add(new Marker { t = r.ReadSingle(), label = r.ReadString() });
+
+                var newFx = new List<FxEvent>();
+                int nFx = r.ReadInt32();
+                for (int i = 0; i < nFx; i++)
+                {
+                    var e = new FxEvent { t = r.ReadSingle(), kind = (Fx)r.ReadByte(), a = r.ReadInt32(), b = r.ReadInt32() };
+                    e.point = new Vector3(r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
+                    e.dir = new Vector3(r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
+                    e.radius = r.ReadSingle(); e.strength = r.ReadSingle();
+                    e.color = new Color(r.ReadSingle(), r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
+                    newFx.Add(e);
+                }
+
+                var newSounds = new List<SoundEvent>();
+                int nS = r.ReadInt32();
+                for (int i = 0; i < nS; i++)
+                {
+                    float t = r.ReadSingle();
+                    string clipName = r.ReadString();
+                    float vol = r.ReadSingle(), pitch = r.ReadSingle();
+                    var clip = CrucibleAudio.FindClip(clipName);
+                    if (clip != null) newSounds.Add(new SoundEvent { t = t, clip = clip, volume = vol, pitch = pitch });
+                }
+
+                // Everything read clean - only now does the live buffer change hands.
+                cast = newCast;
+                tracks = newTracks;
+                isRoot = newRoots;
+                frames.Clear(); frames.AddRange(newFrames);
+                markers.Clear(); markers.AddRange(newMarkers);
+                fxEvents.Clear(); fxEvents.AddRange(newFx);
+                soundEvents.Clear(); soundEvents.AddRange(newSounds);
+                cam = camera != null ? camera : Camera.main;
+                playhead = 0;
+            }
+            return true;
+        }
+        catch (Exception e)
+        {
+            error = e.Message;
+            return false;
+        }
     }
 
     // ================================================================ audio mixing
