@@ -3878,3 +3878,21 @@ from there too) with an option to export a HIGHLIGHT video of just the fight's e
 - Gotcha: `eval_file` returned a 5 s timeout and had NOT run (screen still Boot, DebugTimeScale
   untouched) - the opposite of the usual "timeout but landed" case. Probe state before deciding
   either way.
+
+### 2026-10-25 — The export carries the parry flash and the dodge burst, proven on the frames
+Verified end to end that exported videos show the parry and dodge effects: recorded a scripted
+fight injecting `SpawnParryFlash` and `SpawnDodgeBurst` through the real HitEffects choke points,
+exported it, and read the JPEG frames straight out of the .avi (the frames are `00dc` chunks, not
+`00db`). The parry's gold sparks + blue-white core are plainly visible at the flash's frame; the
+dodge burst shows as the cold blue glow in a frame diff (it was spawned behind another fighter —
+test artifact: the script skipped `ApplySides`, so a third man stood mid-arena). The pipeline was
+already sound: `ExportRoutine` calls `Apply` per frame, `Apply` runs `FireEvents`, and
+`captureDeltaTime = 1/fps` advances the particles in lockstep; only the SOUNDS are skipped during
+export (mixed sample-exact instead).
+One real gap fixed: **"Export the highlights" never windowed a dodge** — `HighlightSegments` keyed
+on markers + Blood/Parry fx only, so a clean dodge away from any hit was cut from the reel, burst
+and all. `Fx.Dodge` is now a highlight trigger too; it is safe because `SpawnDodgeBurst` only ever
+fires from `Fighter.NotifyEvaded` (a SUCCESSFUL dodge) — plain dash dust is `Fx.Dust`. Play-verified:
+a record with a parry at 0.7s and a lone dodge at 6.3s yields two segments (0.00–2.34, 4.32–7.37).
+Gotcha re-confirmed: an `eval_file` 400 ("Main thread operation timed out") can mean the eval never
+ran — read back for the artifact it should have produced before re-running.

@@ -542,8 +542,9 @@ public class ReplayRecorder : MonoBehaviour
 
     /// <summary>
     /// The record's eventful windows - a few seconds around every marker (parries, counters,
-    /// specials, combo links, the kill) and every landed hit or parry flash - merged where they
-    /// overlap or nearly touch (a sub-second gap would re-fire its events across the seam anyway).
+    /// specials, combo links, the kill) and every landed hit, parry flash or successful dodge -
+    /// merged where they overlap or nearly touch (a sub-second gap would re-fire its events
+    /// across the seam anyway).
     /// Playback-relative seconds, ready for <see cref="BeginExport(List{Vector2})"/>.
     /// </summary>
     public List<Vector2> HighlightSegments(float pre = 2.0f, float post = 1.6f)
@@ -553,7 +554,8 @@ public class ReplayRecorder : MonoBehaviour
         float t0 = frames[0].t;
         var times = new List<float>();
         foreach (var m in markers) times.Add(m.t - t0);
-        foreach (var e in fxEvents) if (e.kind == Fx.Blood || e.kind == Fx.Parry) times.Add(e.t - t0);
+        // Fx.Dodge only ever marks a SUCCESSFUL dodge (Fighter.NotifyEvaded); plain dash dust is Fx.Dust.
+        foreach (var e in fxEvents) if (e.kind == Fx.Blood || e.kind == Fx.Parry || e.kind == Fx.Dodge) times.Add(e.t - t0);
         times.Sort();
         foreach (float t in times)
         {
