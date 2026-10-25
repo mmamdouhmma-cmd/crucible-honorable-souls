@@ -49,6 +49,65 @@ public class InputManager : MonoBehaviour
     private bool ai1, ai2;
     private InputData aiInput1, aiInput2;
 
+    // ---------------------------------------------------------------- explicit device choice
+    // Set by the "Choose Controls" screen before a 2-player match (the user's call, 2026-10-25:
+    // with two identical pads - or one pad listed twice over Bluetooth AND the cable - the index
+    // guess in ControlBindings.PadFor hands a player a dead device). A chosen player reads ONLY
+    // his device: his keyboard keys when Keyboard was picked, only that pad when a pad was.
+    // Unchosen players keep the legacy auto routing (keyboard + PadFor).
+
+    private bool device1Chosen, device2Chosen;
+    private Gamepad device1Pad, device2Pad;      // null while chosen = keyboard only
+
+    /// <summary>Pins a player to one device: a specific pad, or the keyboard (pad = null).</summary>
+    public void SetPlayerDevice(int player, Gamepad pad)
+    {
+        if (player == 1) { device1Chosen = true; device1Pad = pad; }
+        else { device2Chosen = true; device2Pad = pad; }
+        Debug.Log($"Controls: P{player} <- {(pad != null ? pad.displayName : "keyboard")} (chosen)");
+    }
+
+    /// <summary>Back to the automatic routing (1-player modes, and anything not local-2P).</summary>
+    public void ClearPlayerDevices()
+    {
+        device1Chosen = device2Chosen = false;
+        device1Pad = device2Pad = null;
+    }
+
+    /// <summary>
+    /// The pad this player reads, honouring an explicit choice. A chosen KEYBOARD returns null
+    /// with keys allowed; a chosen pad returns it with keys OFF; a chosen pad that has since
+    /// disconnected falls back to the automatic routing so the player is never dead in a fight.
+    /// </summary>
+    private Gamepad PadForPlayer(int player, out bool keysAllowed)
+    {
+        bool chosen = player == 1 ? device1Chosen : device2Chosen;
+        if (chosen)
+        {
+            var p = player == 1 ? device1Pad : device2Pad;
+            if (p == null) { keysAllowed = true; return null; }          // keyboard by choice
+            if (p.added) { keysAllowed = false; return p; }              // exactly this pad
+        }
+        keysAllowed = true;
+        return Bindings.PadFor(player);
+    }
+
+    /// <summary>A short rumble on one pad, so a player can tell which physical controller a menu
+    /// row just picked (two DualSenses look identical in a list).</summary>
+    public void IdentifyPulse(Gamepad pad)
+    {
+        if (pad == null) return;
+        StopCoroutine(nameof(PulseRoutine));
+        StartCoroutine(PulseRoutine(pad));
+    }
+
+    private System.Collections.IEnumerator PulseRoutine(Gamepad pad)
+    {
+        pad.SetMotorSpeeds(0.4f, 0.6f);
+        yield return new WaitForSecondsRealtime(0.25f);
+        pad.SetMotorSpeeds(0f, 0f);
+    }
+
     /// <summary>Hand a player over to the AI (its snapshot replaces the human one) or back.</summary>
     public void SetAi(int player, bool on)
     {
@@ -129,13 +188,13 @@ public class InputManager : MonoBehaviour
     private InputData Read(int player, PadFlickState flick)
     {
         var b = Bindings.Player(player);
-        var pad = Bindings.PadFor(player);
+        var pad = PadForPlayer(player, out bool keys);
         InputData data = new InputData();
 
         // Movement: screen left/right. Keyboard keys, d-pad buttons or the left stick.
         float move = 0f;
-        if (Held(b, pad, GameAction.MoveLeft)) move -= 1f;
-        if (Held(b, pad, GameAction.MoveRight)) move += 1f;
+        if (Held(b, pad, GameAction.MoveLeft, keys)) move -= 1f;
+        if (Held(b, pad, GameAction.MoveRight, keys)) move += 1f;
         if (pad != null && Mathf.Approximately(move, 0f))
         {
             float x = pad.leftStick.x.ReadValue();
@@ -143,22 +202,22 @@ public class InputManager : MonoBehaviour
         }
         data.moveDirection = move;
 
-        data.taunt = Held(b, pad, GameAction.Up) || (pad != null && pad.leftStick.y.ReadValue() >= stickDeadZone);
-        data.crouch = Held(b, pad, GameAction.Down) || (pad != null && pad.leftStick.y.ReadValue() <= -stickDeadZone);
+        data.taunt = Held(b, pad, GameAction.Up, keys) || (pad != null && pad.leftStick.y.ReadValue() >= stickDeadZone);
+        data.crouch = Held(b, pad, GameAction.Down, keys) || (pad != null && pad.leftStick.y.ReadValue() <= -stickDeadZone);
 
-        data.run = Held(b, pad, GameAction.Run);
-        data.specialModifier = Held(b, pad, GameAction.Special);
-        data.lowModifier = Held(b, pad, GameAction.Low);
-        data.blockHeld = Held(b, pad, GameAction.Block);
+        data.run = Held(b, pad, GameAction.Run, keys);
+        data.specialModifier = Held(b, pad, GameAction.Special, keys);
+        data.lowModifier = Held(b, pad, GameAction.Low, keys);
+        data.blockHeld = Held(b, pad, GameAction.Block, keys);
 
-        data.lightAttack = Pressed(b, pad, GameAction.Light);
-        data.mediumAttack = Pressed(b, pad, GameAction.Medium);
-        data.heavyAttack = Pressed(b, pad, GameAction.Heavy);
-        data.defenseButton = Pressed(b, pad, GameAction.Defense);
-        data.throwButton = Pressed(b, pad, GameAction.Throw);
-        data.stanceSwitch = Pressed(b, pad, GameAction.Stance);
+        data.lightAttack = Pressed(b, pad, GameAction.Light, keys);
+        data.mediumAttack = Pressed(b, pad, GameAction.Medium, keys);
+        data.heavyAttack = Pressed(b, pad, GameAction.Heavy, keys);
+        data.defenseButton = Pressed(b, pad, GameAction.Defense, keys);
+        data.throwButton = Pressed(b, pad, GameAction.Throw, keys);
+        data.stanceSwitch = Pressed(b, pad, GameAction.Stance, keys);
 
-        data.dashDirection = ReadDash(player, b, pad, flick);
+        data.dashDirection = ReadDash(player, b, pad, keys, flick);
 
         // Run: the double-flick latch (set in ReadDash) while the stick is still held, or the
         // Run key held while walking (the keyboard route - P1 is on the keyboard).
@@ -195,20 +254,23 @@ public class InputManager : MonoBehaviour
     /// pressed (or the dash key pressed with directions held); Player 1 also keeps the number-row layout
     /// (7 8 9 / 4 6 / 1 2 3). Pad = a flick of the right stick, or the pad dash button with the left stick.
     /// </summary>
-    private Vector2 ReadDash(int player, ControlBindings.PlayerBindings b, Gamepad pad, PadFlickState flickState)
+    private Vector2 ReadDash(int player, ControlBindings.PlayerBindings b, Gamepad pad, bool keys, PadFlickState flickState)
     {
-        KeyCode dashKey = b.Key(GameAction.Dash);
-        KeyCode l = b.Key(GameAction.MoveLeft), r = b.Key(GameAction.MoveRight), u = b.Key(GameAction.Up), d = b.Key(GameAction.Down);
-        bool dirDown = Input.GetKeyDown(l) || Input.GetKeyDown(r) || Input.GetKeyDown(u) || Input.GetKeyDown(d);
-        bool dirHeld = Input.GetKey(l) || Input.GetKey(r) || Input.GetKey(u) || Input.GetKey(d);
-        bool fire = dashKey != KeyCode.None && ((Input.GetKey(dashKey) && dirDown) || (Input.GetKeyDown(dashKey) && dirHeld));
-        if (fire)
+        if (keys)
         {
-            Vector2 v = new Vector2((Input.GetKey(r) ? 1f : 0f) - (Input.GetKey(l) ? 1f : 0f), (Input.GetKey(u) ? 1f : 0f) - (Input.GetKey(d) ? 1f : 0f));
-            if (v.magnitude >= dashThreshold) return v.normalized;
+            KeyCode dashKey = b.Key(GameAction.Dash);
+            KeyCode l = b.Key(GameAction.MoveLeft), r = b.Key(GameAction.MoveRight), u = b.Key(GameAction.Up), d = b.Key(GameAction.Down);
+            bool dirDown = Input.GetKeyDown(l) || Input.GetKeyDown(r) || Input.GetKeyDown(u) || Input.GetKeyDown(d);
+            bool dirHeld = Input.GetKey(l) || Input.GetKey(r) || Input.GetKey(u) || Input.GetKey(d);
+            bool fire = dashKey != KeyCode.None && ((Input.GetKey(dashKey) && dirDown) || (Input.GetKeyDown(dashKey) && dirHeld));
+            if (fire)
+            {
+                Vector2 v = new Vector2((Input.GetKey(r) ? 1f : 0f) - (Input.GetKey(l) ? 1f : 0f), (Input.GetKey(u) ? 1f : 0f) - (Input.GetKey(d) ? 1f : 0f));
+                if (v.magnitude >= dashThreshold) return v.normalized;
+            }
         }
 
-        if (player == 1)
+        if (player == 1 && keys)
         {
             bool numDown = Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Alpha3) ||
                            Input.GetKeyDown(KeyCode.Alpha4) || Input.GetKeyDown(KeyCode.Alpha6) || Input.GetKeyDown(KeyCode.Alpha7) ||
@@ -255,18 +317,18 @@ public class InputManager : MonoBehaviour
         return Vector2.zero;
     }
 
-    private static bool Held(ControlBindings.PlayerBindings b, Gamepad pad, GameAction a)
+    private static bool Held(ControlBindings.PlayerBindings b, Gamepad pad, GameAction a, bool keys = true)
     {
         KeyCode k = b.Key(a);
-        if (k != KeyCode.None && Input.GetKey(k)) return true;
+        if (keys && k != KeyCode.None && Input.GetKey(k)) return true;
         int btn = b.Pad(a);
         return pad != null && btn >= 0 && pad[(GamepadButton)btn].isPressed;
     }
 
-    private static bool Pressed(ControlBindings.PlayerBindings b, Gamepad pad, GameAction a)
+    private static bool Pressed(ControlBindings.PlayerBindings b, Gamepad pad, GameAction a, bool keys = true)
     {
         KeyCode k = b.Key(a);
-        if (k != KeyCode.None && Input.GetKeyDown(k)) return true;
+        if (keys && k != KeyCode.None && Input.GetKeyDown(k)) return true;
         int btn = b.Pad(a);
         return pad != null && btn >= 0 && pad[(GamepadButton)btn].wasPressedThisFrame;
     }

@@ -33,6 +33,7 @@ public class GameMenu : MonoBehaviour
         Pause, Settings, Controls, Help, Moves, MatchOver,
         Online, OnlineHost, OnlineJoin,
         Replay,
+        PickDevices,    // 2-player: who holds what (appended - keep the order)
     }
 
     /// <summary>Which path through the select screens we are on.</summary>
@@ -86,6 +87,9 @@ public class GameMenu : MonoBehaviour
     bool inMatch;
     bool vsAi;
     int playerCount = 1;
+
+    // The device-choice screen's state: -1 = keyboard, otherwise an index into Gamepad.all.
+    int p1Device = -1, p2Device = -1;
     int p1Character;                    // roster index Player 1 drives
     int p2Character = 1;                // roster index Player 2 (or the computer) drives
     bool pickingP2;                     // the select screen is on the second pick
@@ -730,7 +734,9 @@ public class GameMenu : MonoBehaviour
         subtitle.gameObject.SetActive(!logoTitle);
 
         var hud = FindAnyObjectByType<FightHud>();
-        if (hud != null) hud.SetVisible(s == Screen.None);
+        // The record screen keeps the HUD up: playback drives the bars with the RECORDED health
+        // and stamina, and the export bakes them into the video (the user's call, 2026-10-25).
+        if (hud != null) hud.SetVisible(s == Screen.None || s == Screen.Replay);
 
         if (s == Screen.None) return;
         if (s == Screen.Boot) { BuildBoot(); return; }
@@ -757,8 +763,8 @@ public class GameMenu : MonoBehaviour
             case Screen.Main:
                 SetTitle("Crucible", "Honourable Souls");
                 items.Add(new Item { label = "Battle Now", value = () => "1 or 2 players on this device", confirm = () => { flow = Flow.Local; GoWiped(Screen.LocalSetup); } });
-                items.Add(new Item { label = "Online", value = () => "play over the link", confirm = () => { flow = Flow.Online; Show(Screen.Online); } });
-                items.Add(new Item { label = "Practice", value = () => "a dummy that obeys your rules", confirm = () => { flow = Flow.Practice; playerCount = 1; GoWiped(Screen.CharSelect); } });
+                items.Add(new Item { label = "Online", value = () => "play over the link", confirm = () => { flow = Flow.Online; InputManager.Instance?.ClearPlayerDevices(); Show(Screen.Online); } });
+                items.Add(new Item { label = "Practice", value = () => "a dummy that obeys your rules", confirm = () => { flow = Flow.Practice; playerCount = 1; InputManager.Instance?.ClearPlayerDevices(); GoWiped(Screen.CharSelect); } });
                 items.Add(new Item { label = "Move List", confirm = () => Show(Screen.Moves) });
                 items.Add(new Item { label = "Settings", confirm = () => Show(Screen.Settings) });
                 items.Add(new Item { label = "Quit", confirm = Quit });
@@ -768,10 +774,30 @@ public class GameMenu : MonoBehaviour
             // ------------------------------------------------------------ local setup
             case Screen.LocalSetup:
                 SetTitle("Battle Now", "how many of you are there?");
-                items.Add(new Item { label = "One Player", value = () => "you against the computer", confirm = () => { playerCount = 1; GoWiped(Screen.CharSelect); } });
-                items.Add(new Item { label = "Two Players", value = () => "both fighters on this device", confirm = () => { playerCount = 2; GoWiped(Screen.CharSelect); } });
+                items.Add(new Item { label = "One Player", value = () => "you against the computer", confirm = () => { playerCount = 1; InputManager.Instance?.ClearPlayerDevices(); GoWiped(Screen.CharSelect); } });
+                items.Add(new Item { label = "Two Players", value = () => "both fighters on this device", confirm = () => { playerCount = 2; DefaultDeviceChoices(); GoWiped(Screen.PickDevices); } });
                 items.Add(new Item { label = "Back", confirm = Back });
                 footerText.text = NavHint();
+                break;
+
+            // ------------------------------------------------------------ 2P device choice
+            // Who holds what (the user's call, 2026-10-25): every CONNECTED controller is offered
+            // by name, plus the keyboard; the two players may not share a pad, two keyboards are
+            // fine (each has his own key set). Picking a pad pulses its rumble, so two identical
+            // DualSenses - or a live pad next to a Bluetooth ghost of itself - tell themselves
+            // apart in the hand. The choice pins InputManager's routing for the whole session.
+            case Screen.PickDevices:
+                SetTitle("Choose Controls", InputManager.AnyPad
+                    ? "pick a device each - a chosen pad answers with a rumble"
+                    : "no controller connected - both of you are on the keyboard");
+                items.Add(new Item { label = "Player 1", value = () => DeviceName(1),
+                                     adjust = d => CycleDevice(1, d), confirm = () => CycleDevice(1, 1) });
+                items.Add(new Item { label = "Player 2", value = () => DeviceName(2),
+                                     adjust = d => CycleDevice(2, d), confirm = () => CycleDevice(2, 1) });
+                items.Add(new Item { label = "", header = true });
+                items.Add(new Item { label = "Begin", confirm = () => { ApplyDeviceChoices(); GoWiped(Screen.CharSelect); } });
+                items.Add(new Item { label = "Back", confirm = Back });
+                footerText.text = "Left / Right to change    " + NavHint();
                 break;
 
             // ------------------------------------------------------------ difficulty
@@ -1457,6 +1483,62 @@ public class GameMenu : MonoBehaviour
     // ================================================================ game record
 
     static string Clock(float s) => $"{(int)(Mathf.Max(0f, s) / 60f)}:{Mathf.Max(0f, s) % 60f:00.0}";
+
+    // ================================================================ 2P device choice
+
+    /// <summary>Sensible defaults when the screen opens: two pads = one each, one pad = keyboard
+    /// and pad (the game's historic P1 keyboard / P2 pad split), none = two keyboards.</summary>
+    void DefaultDeviceChoices()
+    {
+        int pads = UnityEngine.InputSystem.Gamepad.all.Count;
+        if (pads >= 2) { p1Device = 0; p2Device = 1; }
+        else if (pads == 1) { p1Device = -1; p2Device = 0; }
+        else { p1Device = -1; p2Device = -1; }
+    }
+
+    string DeviceName(int player)
+    {
+        int choice = player == 1 ? p1Device : p2Device;
+        var all = UnityEngine.InputSystem.Gamepad.all;
+        if (choice < 0 || choice >= all.Count) return "Keyboard";
+        return $"{all[choice].displayName}  (pad {choice + 1})";
+    }
+
+    /// <summary>Cycles a player through Keyboard and every connected pad, skipping the pad the
+    /// OTHER player holds. Landing on a pad pulses its rumble - that is how two identical
+    /// controllers (or a live pad beside its Bluetooth ghost) tell themselves apart.</summary>
+    void CycleDevice(int player, int dir)
+    {
+        var all = UnityEngine.InputSystem.Gamepad.all;
+        int other = player == 1 ? p2Device : p1Device;
+        int choice = player == 1 ? p1Device : p2Device;
+        int options = all.Count + 1;                       // keyboard + each pad
+        for (int step = 0; step < options; step++)
+        {
+            choice += dir >= 0 ? 1 : -1;
+            if (choice >= all.Count) choice = -1;          // wrap past the last pad to keyboard
+            else if (choice < -1) choice = all.Count - 1;  // wrap back from keyboard to the last pad
+            if (choice < 0 || choice != other) break;      // keyboard is shareable; a pad is not
+        }
+        if (player == 1) p1Device = choice; else p2Device = choice;
+        if (choice >= 0 && choice < all.Count && InputManager.Instance != null)
+            InputManager.Instance.IdentifyPulse(all[choice]);
+        Refresh();
+    }
+
+    /// <summary>Pins InputManager to the chosen devices for the match (and any rematches).</summary>
+    void ApplyDeviceChoices()
+    {
+        var im = InputManager.Instance;
+        if (im == null) return;
+        var all = UnityEngine.InputSystem.Gamepad.all;
+        // A pad unplugged while the screen was up: fall back to the keyboard rather than a ghost.
+        if (p1Device >= all.Count) p1Device = -1;
+        if (p2Device >= all.Count) p2Device = -1;
+        if (p1Device >= 0 && p1Device == p2Device) p2Device = -1;
+        im.SetPlayerDevice(1, p1Device < 0 ? null : all[p1Device]);
+        im.SetPlayerDevice(2, p2Device < 0 ? null : all[p2Device]);
+    }
 
     /// <summary>
     /// Drives the replay while the Game Record screen is up. Returns true while a video is being

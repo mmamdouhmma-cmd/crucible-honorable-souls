@@ -957,6 +957,21 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   virtual pads, no cross-talk. `InputManager.LogPads` logs every pad change and the assignment
   ("Pads (...): 2 connected - P1 <- ..., P2 <- ...") so a dead second controller is diagnosable
   from Player.log - a pad on a charge-only USB cable never appears there at all.
+- **A 2-player match now opens on a CHOOSE CONTROLS screen** (the user's call, 2026-10-25, after
+  "both controllers work in menus but only one in game"): menus poll EVERY pad (`Gamepad.all`
+  loops in MenuNavigate/MenuConfirm) while the fight used `PadFor`'s index guess - and a DualSense
+  paired over Bluetooth AND plugged in with a data cable is listed TWICE, so a player could be
+  handed the dead ghost entry. `Screen.PickDevices` (appended to the enum) sits between Two
+  Players and character select: each player cycles Keyboard / every connected pad by name; the two
+  may not share a pad (two keyboards are fine); landing on a pad PULSES ITS RUMBLE
+  (`InputManager.IdentifyPulse`) so identical pads - and ghosts, which cannot rumble - tell
+  themselves apart. Defaults: 2 pads = one each, 1 pad = keyboard P1 / pad P2, none = two
+  keyboards. `InputManager.SetPlayerDevice(player, pad-or-null)` pins the routing: a chosen pad is
+  read EXCLUSIVELY (that player's keyboard goes dead), a chosen keyboard ignores all pads, a
+  chosen pad that disconnects falls back to the auto routing rather than leaving the player dead.
+  One Player / Practice / Online entries call `ClearPlayerDevices()` so a stale pin never leaks
+  into other modes; rematches keep the choice. Play-verified with virtual pads: pinned pads land
+  on their own players only, keyboard-only ignores pad presses, disconnect falls back.
 - **The killing blow has a presentation** (`KillShot`, 2026-10-24): on the fatal hit time drops to
   x0.2 of match speed (0.9 s real hold, 0.8 s ramp back), every light + ambient + a skybox CLONE
   dim to ~10-15% so the arena goes near-black while the UNLIT blood keeps its colour, and an extra
@@ -1173,9 +1188,26 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   ring; markers tag parries/counters/specials/combo links/the kill (hooks in `ResolveHit`).
   `Screen.Replay` ("Save the game record") plays it in the arena: scrub, Cut from/to, Jump to
   marker, Camera row (As played + five locked angles computed from the pair), Export = own
-  Motion-JPEG .avi writer, 30 fps, silent, to `%USERPROFILE%\Videos\CRUCIBLE\`, menu hidden
+  Motion-JPEG .avi writer, 30 fps, to `%USERPROFILE%\Videos\CRUCIBLE\`, menu hidden
   during capture (frames come off the screen). Playback disables Animator/TwoHandGrip/WeaponAim/
   FightCamera + kinematic rigidbodies; EndPlayback restores the exact tableau. No export on web.
+- **The record carries the fight's EVENTS, and the export carries HUD + effects + SOUND**
+  (2026-10-25): choke-point hooks record every hit effect (`ReplayRecorder.NoteFx`/`NoteBlood`
+  inside HitEffects' spawns), every one-shot exactly as played - final volume AND jittered pitch
+  (`NoteSound` inside `CrucibleAudio.Shot`) - and each fighter's hp/stamina per 30 Hz sample.
+  Playback re-fires effects (and sounds, outside export) on small forward steps (0 < dt <= 0.5 s)
+  and drives the real FightHud by writing recorded bars into the frozen fighters' Stats
+  (`FightHud` polls stats, so it just works; the HUD stays visible on `Screen.Replay`). The
+  export's soundtrack is MIXED, not captured - one-shots at exact sample positions over the
+  fight-music + wind beds (`CrucibleAudio.ExportBeds`), muxed as a second AVI stream ('01wb'
+  PCM 16-bit stereo); `AudioClip.GetData` only works on DecompressOnLoad clips, so a streaming
+  clip ships the video silent rather than not at all. The kill shot's light dimming is the one
+  presentation not recorded. **Export is PIPELINED** (same day, the user's call - it ran slower
+  than real time): the main thread only captures raw pixels; JPEG encoding runs on 2-6 worker
+  threads (`ImageConversion.EncodeArrayToJPG` takes plain arrays and is thread-safe - a
+  `Texture2D.EncodeToJPG` is not an option off the main thread) and one writer thread streams
+  the .avi in frame order with the audio interleaved. Inline, the ~40 ms 1080p encode alone
+  exceeded the 33 ms frame budget.
 - **The K.O. card asks "are you sure" before Rematch / Change fighters / Main Menu**
   (`confirmAsk`/`confirmYes` on GameMenu; Esc answers No).
 - **Parry window 0.2 s / cooldown 0.8 s roster-wide** (the user's call, 2026-10-25, killing the

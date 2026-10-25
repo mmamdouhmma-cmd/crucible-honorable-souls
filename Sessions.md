@@ -3812,3 +3812,46 @@ Three fixes off the user's playtest of the full roster, all play-verified throug
   it is NOT resting stick drift and NOT a leftover test input. Not reproduced yet; next time it
   happens, sample the pads LIVE while it is doing it (the watcher is
   scratchpad/p2_drift_watch via eval). Committed and shipped to the Win64 app tonight.
+
+### 2026-10-25 — Choose Controls: each player picks his device
+
+- The user's report from the app: both controllers navigate the menus, but in a 2P match only
+  one fights. Cause shape: the menus poll every pad (`Gamepad.all` loops), the fight assigned by
+  INDEX (`ControlBindings.PadFor`), and a DualSense paired over Bluetooth while plugged in on a
+  data cable appears as TWO devices — a player can be handed the dead ghost. (The user's pad was
+  exactly that: dead battery, charging over the cable mid-session.)
+- The fix is a flow, per the user's spec: after "Two Players" a **Choose Controls** screen
+  (`Screen.PickDevices`) where each player cycles Keyboard / every connected pad by display name.
+  Picking a pad pulses its rumble (`InputManager.IdentifyPulse`) — a ghost can't rumble, two
+  identical DualSenses tell apart in the hand. The two players may not share a pad; two keyboards
+  are fine. Defaults: 2 pads = one each, 1 pad = keyboard P1 / pad P2, 0 = both keyboards.
+- Routing: `InputManager.SetPlayerDevice(player, padOrNull)` pins a player to exactly one device
+  — a chosen pad reads exclusively (keyboard dead for him), keyboard choice ignores all pads, a
+  disconnected chosen pad falls back to auto so nobody is ever dead mid-fight. One Player /
+  Practice / Online clear the pins; rematches keep them.
+- Play-verified with virtual pads: T1/T2 each pinned pad lands only on its own player; T3
+  keyboard-only ignores pad presses; T4 disconnect falls back while the other player keeps his
+  pad; defaults and the share-skip cycle behaved with 3 pads connected.
+
+### 2026-10-25 — The export carries HUD, effects and sound, and runs pipelined
+
+- The video export was silent and bare: playback moved bones only, so an exported clip had no
+  blood, no sparks, no HUD and no audio. Now the record carries the fight's EVENTS - every hit
+  effect (hooks inside HitEffects' spawn methods), every one-shot sound exactly as played with
+  its final volume and jittered pitch (hook in `CrucibleAudio.Shot`), and both fighters' health
+  and stamina per 30 Hz sample. Playback re-fires effects and sounds on small forward steps and
+  writes the recorded bars into the frozen fighters' Stats, which the untouched FightHud reads -
+  so scrubbing shows the bars of that moment and the export films the real HUD.
+- The soundtrack is MIXED, not captured: each one-shot placed sample-accurate over the
+  fight-music and wind beds (`CrucibleAudio.ExportBeds`), muxed into the .avi as a second
+  stream (PCM 16-bit stereo '01wb' chunks). A streaming clip has no readable samples
+  (`AudioClip.GetData` needs DecompressOnLoad), so mixing failure ships the video silent
+  rather than failing the export.
+- The user's report: export took longer than the clip. Measured cause: the inline
+  `Texture2D.EncodeToJPG` costs ~40 ms per 1080p frame on the main thread, over the 33 ms
+  budget by itself. The export is a pipeline now - main thread captures raw pixels only,
+  2-6 worker threads run `ImageConversion.EncodeArrayToJPG` (thread-safe on plain arrays),
+  one writer thread streams frames in order with audio interleaved. Export speed is now
+  whatever the game renders at.
+- Known gap carried: the kill shot's light dimming is not recorded, so an exported kill plays
+  at full brightness.
