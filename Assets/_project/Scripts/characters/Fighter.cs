@@ -540,8 +540,11 @@ public class Fighter : MonoBehaviour
         bool attacking = combatSystem != null && combatSystem.IsAttacking;
 
         // A stunned fighter cannot hold or raise the guard (the user's call, 2026-10-24): under
-        // hitstun the only out left is the combo-stun dodge, handled in HandleDash.
-        isBlocking = currentInput.blockHeld && !isDashing && !attacking && !IsInHitstun && stats.currentStamina > 0;
+        // hitstun the only out left is the combo-stun dodge, handled in HandleDash. The one
+        // exception is the stun from a hit he BLOCKED (GuardStun, the user's call, 2026-10-25):
+        // the guard stays up through it, so a combo cannot break a block that can still pay.
+        bool stunLocksGuard = IsInHitstun && !(combatSystem != null && combatSystem.GuardStun);
+        isBlocking = currentInput.blockHeld && !isDashing && !attacking && !stunLocksGuard && stats.currentStamina > 0;
 
         if (isBlocking && stats.DrainStamina(Time.deltaTime, blockStaminaDrainPerSecond))
         {
@@ -896,6 +899,19 @@ private void HandleKnockback()
         dashCounterTimer = 0f;
         lastDodgeTime = -1f;
 
+        healthRegenDelayTimer = healthRegenDelay;
+    }
+
+    /// <summary>
+    /// Called when this fighter BLOCKS a hit (the user's call, 2026-10-25): the stun locks
+    /// attacking, walking and new raises like any other, but the guard it is holding stays UP
+    /// (no flinch animation - the block pose is the point), and when the blocked move can string
+    /// on, a dash is still allowed so the defender can dodge out of the combo instead of paying
+    /// the escalating block costs. Away from the strike only - comesFrom judges the direction.
+    /// </summary>
+    public void NotifyBlockedHit(int hitstunFrames, bool dodgeable)
+    {
+        if (combatSystem != null) combatSystem.ApplyHitstun(hitstunFrames, dodgeable, guardHolds: true);
         healthRegenDelayTimer = healthRegenDelay;
     }
 

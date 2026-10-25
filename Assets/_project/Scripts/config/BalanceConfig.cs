@@ -87,6 +87,16 @@ public static class BalanceConfig
     // Dodging TOWARD a string follow-up (or too late): the hit lands and the stun is a full
     // second, not dodgeable - the punished read of the combo-escape rule (user, 2026-10-24).
     public const int COMBO_WRONG_DODGE_STUN_FRAMES = 60;
+    // BLOCKING a combo (the user's call, 2026-10-25, replacing the 2026-10-24 guard bypass): a
+    // string follow-up no longer walks through a raised guard. The guard HOLDS as long as the
+    // defender can pay for it - each strike of the string costs the normal block stamina times
+    // (1 + GROWTH * stringDepth), and the 3rd strike pays a further x1.25 on top (the user's
+    // call, same day), so a heavy string runs 18 / 36 / 68 and a medium one 10 / 20 / 38. The
+    // moment the bar cannot cover the price the guard BREAKS: the strike lands at full damage,
+    // the rest of the bar is gone, and the stun is the ordinary non-dodgeable get-hit stun. The
+    // dodge-out (away from the strike only, comesFrom judges it) stays the other escape.
+    public const float COMBO_BLOCK_COST_GROWTH = 1.0f;
+    public const float COMBO_BLOCK_THIRD_HIT_MULTIPLIER = 1.25f;
     // The FALLBACK for Fighter.dashIFrameDuration only - the real per-fighter values live in
     // CrucibleBalance (Plan_Balance 2.5; coverage of the dash, not absolute time, is the dial).
     // Before 2026-10-23 this constant was dead code and the WHOLE dash evaded.

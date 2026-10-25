@@ -3775,3 +3775,40 @@ Three fixes off the user's playtest of the full roster, all play-verified throug
   items they may bring back: the flattened Bjorn parry cooldown (1.2 -> 0.8, his "worst parry"
   identity is gone), whether 0.2 s is parryable by humans at all against lights, whether the
   x1.3 follow-ups read as too fast, and the run's 3.2/unit drain in real neutral.
+
+### 2026-10-25 — A guard that can pay holds against the combo
+
+- One adjustment before the playtest proper (the user, same afternoon): the 2026-10-24 rule that
+  a clean-opener combo BYPASSES a raised guard is gone. Now a string follow-up is blocked like
+  any hit — but each strike of the string costs the defender more to block (base block cost
+  x (1 + stringDepth): medium 10/20/30, heavy 18/36/54, `COMBO_BLOCK_COST_GROWTH` 1.0), and the
+  moment the bar cannot pay the guard BREAKS: full damage, the rest of the bar gone, ordinary
+  stun. The dodge-out survives as the other escape — away from the strike only (`comesFrom`),
+  timed into the dash's i-frame head.
+- The enabling piece was NOT the cost table, it was the stun: a blocked hit already stunned the
+  blocker 48 f and `HandleBlock` drops the guard under any hitstun, so the 2nd strike always
+  landed on a lowered guard whatever the bypass said. New `GuardStun` (ApplyHitstun's
+  `guardHolds`): the stun from a hit you BLOCKED keeps the guard up, and when the blocked move
+  strings on it is also `comboStun`, so the dash out is open. `Fighter.NotifyBlockedHit` carries
+  both; no flinch animation on a blocked hit (the block pose is the point).
+- Play-verified (Salaadin L→M into Richard): full bar = the whole string blocked, guard never
+  down, exactly 5+20 stamina, 2 chip; starved to 12 = the 20-cost follow-up breaks the guard
+  for full damage, bar emptied, stunned guard-down; a back-dash 8 f into the block-stun evades
+  the follow-up (0 dmg) while a sideways dash toward the blade eats it.
+- Two hours of wrong test results first, worth remembering: `SetAiInput` is a ONE-FRAME
+  snapshot, so a block "held" with one call before a settle loop evaporates, and the attack
+  loop's first re-feed is a fresh raise = a fresh parry window — the opener got PARRIED every
+  run, deterministically. The tell in the numbers: the defender paid exactly his parry connect
+  cost (8) and the string never linked. Feed held inputs every frame, and pin the parry shut
+  (`parryCooldownTimer = 999`) when the parry is not the thing under test.
+- NOT rebuilt into the desktop app yet; the user was heading out to play when they asked for
+  this, so the 16:50 build they carry predates it.
+- Addendum, same evening: the 3rd strike of a string bites 25% harder to block
+  (`COMBO_BLOCK_THIRD_HIT_MULTIPLIER` 1.25, the user's call) — medium 10/20/38, heavy 18/36/68.
+  Play-verified on Salaadin's dialed L→M→L into a full-bar Richard: all three blocked, guard
+  never down, stamina paid exactly 5 + 20 + 19 = 44, 3 chip.
+- The user reported P2 "keeps moving right" mid-play. Measured at rest: both DualSense sticks
+  read 0.000 on every axis, no keys down, P2's Fighter receives move=0 and does not move — so
+  it is NOT resting stick drift and NOT a leftover test input. Not reproduced yet; next time it
+  happens, sample the pads LIVE while it is doing it (the watcher is
+  scratchpad/p2_drift_watch via eval). Committed and shipped to the Win64 app tonight.

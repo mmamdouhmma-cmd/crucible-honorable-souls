@@ -1196,12 +1196,32 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   x0.85 does. Play-verified: instant dial = animator 1.30, +4 f late = 1.25 (the lerp exactly),
   and the victim's stun held with NO gap from the opener's contact through the follow-up.
 - **Every get-hit stun is 0.8 s** (`UniformHitstunFrames` 48),
-  2026-10-24. **Stun locks the guard** (HandleBlock checks hitstun). **Combo escape**: a clean
-  hit by a linked move applies a DODGEABLE stun (`ComboStun` - dash allowed, block/walk not); a
-  follow-up with a clean opener BYPASSES a raised guard (`blocked = IsBlocking &&
-  !StringArmored`); dodging the wrong way into a follow-up = hit + 1.0 s non-dodgeable stun
-  (`COMBO_WRONG_DODGE_STUN_FRAMES`). A dash remembers its `StunSerial`, so a combo-stun dodge
-  survives the stun while any NEW hit still ends a running dash.
+  2026-10-24. **Stun locks the guard** (HandleBlock checks hitstun) - EXCEPT the stun from a hit
+  the fighter BLOCKED (`GuardStun`, 2026-10-25): that one holds the guard UP, so a block is
+  continuous under pressure. **Combo escape**: a clean hit by a linked move applies a DODGEABLE
+  stun (`ComboStun` - dash allowed, block/walk not); dodging the wrong way into a follow-up =
+  hit + 1.0 s non-dodgeable stun (`COMBO_WRONG_DODGE_STUN_FRAMES`). A dash remembers its
+  `StunSerial`, so a combo-stun dodge survives the stun while any NEW hit still ends a running
+  dash.
+- **A combo cannot break a guard that can still pay** (the user's call, 2026-10-25, REPLACING
+  the 2026-10-24 guard bypass `blocked = IsBlocking && !StringArmored`): a string follow-up
+  against a raised block is blocked like any hit, but each strike of the string costs the
+  defender MORE - base block cost x (1 + `COMBO_BLOCK_COST_GROWTH` (1.0) x stringDepth), and the
+  3rd strike pays a further x1.25 (`COMBO_BLOCK_THIRD_HIT_MULTIPLIER`, the user's call later the
+  same day) - so a medium string runs 10/20/38 and a heavy one 18/36/68. The moment the bar
+  cannot cover the price the guard BREAKS: full damage, the rest of the bar emptied, ordinary
+  non-dodgeable stun.
+  A blocked hit's stun holds the guard (`Fighter.NotifyBlockedHit` -> `ApplyHitstun(...,
+  guardHolds: true)`), and when the blocked move strings on the dash OUT of that stun is open -
+  but only the direction the move's `comesFrom` evades (or straight back against a sideways
+  strike), and only inside the dash's i-frame HEAD, so the dodge-out is TIMED against the
+  follow-up, not mashed at the opener. Play-verified (Salaadin L->M vs Richard): full bar =
+  guard holds the whole string, exactly 5+20 stamina, 2 chip; 12 stamina = the 20-cost
+  follow-up BREAKS the guard (full 6 dmg, bar emptied, stunned guard-down); a back-dash 8 f
+  into the block-stun evades the follow-up outright, a sideways dash toward the blade eats it.
+  Testing note: `InputManager.SetAiInput` is a ONE-FRAME snapshot - feed `blockHeld` EVERY
+  frame including settle waits, or each re-raise opens a fresh parry window and the opener gets
+  PARRIED (the tell: the defender pays exactly his parry cost, 8, and the string never links).
 - **`EndMatchToMenu` stops the count-in and `ClearBeat()`s** (else "FIGHT" stayed over the main
   menu), and it + `Unstage()` re-run `ApplySides` - the select screens wake the WHOLE roster, and
   leaving them any other way stacked the extras on the two marks, capsules climbing (the floating

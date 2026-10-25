@@ -227,6 +227,7 @@ public class CombatSystem : MonoBehaviour
                 inHitstun = false;
                 hitstunTimer = 0f;
                 comboStun = false;
+                guardStun = false;
                 if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: hitstun OVER");
             }
         }
@@ -742,6 +743,14 @@ public class CombatSystem : MonoBehaviour
     /// <summary>True while this fighter is stunned but still allowed to DASH out of the combo.</summary>
     public bool ComboStun => inHitstun && comboStun;
 
+    // The current stun came off a BLOCKED hit: the guard stays up through it (the user's call,
+    // 2026-10-25 - a combo must not break a block the defender can still pay for), while
+    // attacking, walking and new dashes stay locked like any other stun.
+    private bool guardStun;
+
+    /// <summary>True while this fighter is stunned by a hit he BLOCKED: the guard holds.</summary>
+    public bool GuardStun => inHitstun && guardStun;
+
     /// <summary>Bumped on every stun. A dash remembers the serial it started under, so a dash
     /// begun INSIDE a combo stun survives it while any NEW hit still stops a running dash.</summary>
     public int StunSerial { get; private set; }
@@ -752,7 +761,7 @@ public class CombatSystem : MonoBehaviour
     /// Optionally cancels an attack in progress so its hitbox cannot land under the flinch.
     /// <paramref name="dodgeable"/> marks a combo stun: the victim may still dash (and only dash).
     /// </summary>
-    public void ApplyHitstun(int frames, bool dodgeable = false)
+    public void ApplyHitstun(int frames, bool dodgeable = false, bool guardHolds = false)
     {
         if (hitInterruptsAttack && isAttacking)
         {
@@ -763,6 +772,7 @@ public class CombatSystem : MonoBehaviour
         hitstunTimer = Mathf.Max(hitstunTimer, seconds);
         inHitstun = true;
         comboStun = dodgeable;
+        guardStun = guardHolds;
         StunSerial++;
         chainCount = 0; // a flinch breaks the chain; no lockout on top of the hitstun
         comboGapTimer = 999f; // and breaks the pressure: the comeback swing pays no combo surcharge
@@ -893,6 +903,7 @@ public class CombatSystem : MonoBehaviour
         inHitstun = false;
         hitstunTimer = 0f;
         comboStun = false;
+        guardStun = false;
         evadedExtraRecovery = 0f;
         whiffExtraRecovery = 0f;
         currentAttackWeakened = false;
@@ -1102,12 +1113,33 @@ public class CombatSystem : MonoBehaviour
             return;
         }
 
-        // A string whose opener landed CLEAN cannot be blocked (the user's call, 2026-10-24): once
-        // the first hit of a combo connects, the defender's only outs are the dodge - away from the
-        // side the strike comes from - or eating it.
-        bool blocked = target.IsBlocking && !StringArmored;
-        if (target.IsBlocking && !blocked && debugLogs)
-            Debug.Log($"P{target.PlayerNumber}: guard BYPASSED - {currentAttack.AttackName} is a string follow-up");
+        // A raised guard HOLDS against a combo as long as the defender can pay for it (the user's
+        // call, 2026-10-25, replacing the 2026-10-24 bypass): each strike of a string costs more
+        // stamina to block (base x (1 + GROWTH x stringDepth)), and the moment the bar cannot
+        // cover the price the guard BREAKS - full damage, the rest of the bar gone, ordinary stun.
+        bool blocked = target.IsBlocking;
+        bool guardBroken = false;
+        int blockCost = 0;
+        if (blocked)
+        {
+            blockCost = GetBlockStaminaCost(currentAttack.AttackType);
+            if (stringDepth > 0)
+            {
+                float escalated = blockCost * (1f + BalanceConfig.COMBO_BLOCK_COST_GROWTH * stringDepth);
+                // The 3rd strike of a string bites a further 25% harder (the user's call, 2026-10-25).
+                if (stringDepth >= 2) escalated *= BalanceConfig.COMBO_BLOCK_THIRD_HIT_MULTIPLIER;
+                blockCost = Mathf.RoundToInt(escalated);
+                if (target.Stats.currentStamina < blockCost)
+                {
+                    blocked = false;
+                    guardBroken = true;
+                    target.Stats.UseStamina(target.Stats.currentStamina);
+                    if (debugLogs)
+                        Debug.Log($"P{target.PlayerNumber}: GUARD BROKEN - blocking strike {stringDepth + 1} " +
+                                  $"of the string costs {blockCost} and the bar cannot pay");
+                }
+            }
+        }
         int blockReduction = blocked ? target.BlockDamageReduction : 0;
         float bonus = currentAttackIsDashCounter ? BalanceConfig.DASH_COUNTER_DAMAGE_MULTIPLIER : 1f;
         if (currentAttackIsParryCounter) bonus *= fighter.ParryCounterDamageMultiplier;
@@ -1161,11 +1193,22 @@ public class CombatSystem : MonoBehaviour
                 stunFrames = BalanceConfig.COMBO_WRONG_DODGE_STUN_FRAMES;
                 if (debugLogs) Debug.Log($"P{target.PlayerNumber}: dodged INTO the follow-up - {stunFrames} f stun");
             }
-            // A clean hit by a move that can string on leaves the victim a dodge: they cannot
-            // block or walk under the stun, but a dash in the right direction still escapes.
-            bool dodgeable = !blocked && !wrongDodge &&
-                             currentAttack.ComboLinks != null && currentAttack.ComboLinks.Length > 0;
-            target.NotifyHit(currentAttack.HitSide, stunFrames, dodgeable);
+            bool canStringOn = currentAttack.ComboLinks != null && currentAttack.ComboLinks.Length > 0;
+            if (blocked)
+            {
+                // A blocked hit stuns, but the guard stays UP through it (the user's call,
+                // 2026-10-25) - and when the attack can string on, the dash out (away from the
+                // strike only; comesFrom judges it) is still open as the cheaper escape.
+                target.NotifyBlockedHit(stunFrames, canStringOn);
+            }
+            else
+            {
+                // A clean hit by a move that can string on leaves the victim a dodge: they cannot
+                // block or walk under the stun, but a dash in the right direction still escapes.
+                // A BROKEN guard earns no dodge - running the bar dry is the punished state.
+                bool dodgeable = !wrongDodge && !guardBroken && canStringOn;
+                target.NotifyHit(currentAttack.HitSide, stunFrames, dodgeable);
+            }
         }
 
         // Remembered for string links that must be earned by connecting.
@@ -1191,11 +1234,10 @@ public class CombatSystem : MonoBehaviour
             FightCamera.Instance.OnImpact(finalDamage, currentAttack.AttackType, blocked);
         }
 
-        // Blocking a hit costs the blocker stamina, scaled by how heavy the attack is.
-        int blockCost = 0;
+        // Blocking a hit costs the blocker stamina, scaled by how heavy the attack is - and
+        // escalated per strike of a string (blockCost was computed with the block judgment above).
         if (blocked)
         {
-            blockCost = GetBlockStaminaCost(currentAttack.AttackType);
             target.Stats.UseStamina(blockCost);
         }
 
