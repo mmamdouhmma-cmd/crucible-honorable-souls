@@ -31,7 +31,21 @@ public class InputManager : MonoBehaviour
 
     private InputData player1Input;
     private InputData player2Input;
-    private bool p1PadFlickHeld, p2PadFlickHeld;
+
+    /// <summary>
+    /// Per-player right-stick state: flick edge detection for the dash, plus the double-flick
+    /// run latch (two flicks the same way inside RUN_DOUBLE_FLICK_WINDOW, second one held =
+    /// run until the stick returns to centre).
+    /// </summary>
+    private class PadFlickState
+    {
+        public bool held;                   // stick is beyond the dash threshold right now
+        public float lastFlickTime = -99f;  // unscaled time of the last flick
+        public Vector2 lastFlickDir;
+        public bool runLatch;               // a second flick landed in the window and is still held
+    }
+    private readonly PadFlickState p1Flick = new PadFlickState();
+    private readonly PadFlickState p2Flick = new PadFlickState();
     private bool ai1, ai2;
     private InputData aiInput1, aiInput2;
 
@@ -99,8 +113,8 @@ public class InputManager : MonoBehaviour
             player2Input = new InputData();
             return;
         }
-        player1Input = ai1 ? aiInput1 : Read(1, ref p1PadFlickHeld);
-        player2Input = ai2 ? aiInput2 : Read(2, ref p2PadFlickHeld);
+        player1Input = ai1 ? aiInput1 : Read(1, p1Flick);
+        player2Input = ai2 ? aiInput2 : Read(2, p2Flick);
         if (ai1) aiInput1 = new InputData();
         if (ai2) aiInput2 = new InputData();
 
@@ -112,7 +126,7 @@ public class InputManager : MonoBehaviour
 
     // ----- fighters -------------------------------------------------------------------------------
 
-    private InputData Read(int player, ref bool padFlickHeld)
+    private InputData Read(int player, PadFlickState flick)
     {
         var b = Bindings.Player(player);
         var pad = Bindings.PadFor(player);
@@ -144,7 +158,21 @@ public class InputManager : MonoBehaviour
         data.throwButton = Pressed(b, pad, GameAction.Throw);
         data.stanceSwitch = Pressed(b, pad, GameAction.Stance);
 
-        data.dashDirection = ReadDash(player, b, pad, ref padFlickHeld);
+        data.dashDirection = ReadDash(player, b, pad, flick);
+
+        // Run: the double-flick latch (set in ReadDash) while the stick is still held, or the
+        // Run key held while walking (the keyboard route - P1 is on the keyboard).
+        if (pad != null && flick.runLatch)
+        {
+            Vector2 rs = pad.rightStick.ReadValue();
+            data.runHeld = true;
+            data.runDirection = rs.normalized;
+        }
+        else if (data.run && !Mathf.Approximately(data.moveDirection, 0f))
+        {
+            data.runHeld = true;
+            data.runDirection = new Vector2(data.moveDirection, 0f);
+        }
 
         // on-screen touch buttons (phones / web build)
         if (TouchControls.Instance != null)
@@ -167,7 +195,7 @@ public class InputManager : MonoBehaviour
     /// pressed (or the dash key pressed with directions held); Player 1 also keeps the number-row layout
     /// (7 8 9 / 4 6 / 1 2 3). Pad = a flick of the right stick, or the pad dash button with the left stick.
     /// </summary>
-    private Vector2 ReadDash(int player, ControlBindings.PlayerBindings b, Gamepad pad, ref bool padFlickHeld)
+    private Vector2 ReadDash(int player, ControlBindings.PlayerBindings b, Gamepad pad, PadFlickState flickState)
     {
         KeyCode dashKey = b.Key(GameAction.Dash);
         KeyCode l = b.Key(GameAction.MoveLeft), r = b.Key(GameAction.MoveRight), u = b.Key(GameAction.Up), d = b.Key(GameAction.Down);
@@ -201,9 +229,21 @@ public class InputManager : MonoBehaviour
         {
             Vector2 rs = pad.rightStick.ReadValue();
             bool beyond = rs.magnitude >= dashThreshold;
-            bool flick = beyond && !padFlickHeld;
-            padFlickHeld = beyond;
-            if (flick) return rs.normalized;
+            bool flick = beyond && !flickState.held;
+            flickState.held = beyond;
+            if (!beyond) flickState.runLatch = false;   // stick back to centre = the run input ends
+            if (flick)
+            {
+                // A SECOND flick the same way inside the window starts the RUN instead of paying
+                // for a second dash (Fighter checks it points at the opponent). Unscaled time, so
+                // the window does not stretch with the Settings game speed.
+                bool second = Time.unscaledTime - flickState.lastFlickTime <= BalanceConfig.RUN_DOUBLE_FLICK_WINDOW
+                              && Vector2.Dot(rs.normalized, flickState.lastFlickDir) >= 0.5f;
+                flickState.lastFlickTime = Time.unscaledTime;
+                flickState.lastFlickDir = rs.normalized;
+                if (second) { flickState.runLatch = true; return Vector2.zero; }
+                return rs.normalized;
+            }
 
             int dashBtn = b.Pad(GameAction.Dash);
             if (dashBtn >= 0 && pad[(GamepadButton)dashBtn].wasPressedThisFrame)

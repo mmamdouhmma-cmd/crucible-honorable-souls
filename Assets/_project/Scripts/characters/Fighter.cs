@@ -120,6 +120,7 @@ public class Fighter : MonoBehaviour
     private float blockLegsWeight;
     private const string ANIM_DASH = "Dash";         // trigger: a dash just started
     private const string ANIM_DASH_DIR = "DashDir";  // int: 0 forward, 1 back, 2 left, 3 right (relative to facing)
+    private const string ANIM_RUNNING = "Running";   // bool: held double-flick run toward the opponent
     private const string ANIM_PARRY_SUCCESS = "ParrySuccess"; // trigger: a parry caught a strike
     private const string ANIM_PARRY_SPEED = "ParrySpeed";     // float: Parry_Success playback speed
     private const string ANIM_DEATH = "Death";                // trigger: health reached zero
@@ -127,6 +128,7 @@ public class Fighter : MonoBehaviour
     private bool animatorHasParry;
     private bool animatorHasDeath;
     private bool animatorHasDash;
+    private bool animatorHasRunning;
 
     [Header("Dash")]
     [SerializeField] private float dashDistance = 2.5f;
@@ -146,6 +148,15 @@ public class Fighter : MonoBehaviour
     private float dashRightAmount = 0f;   // +1 right, -1 left
     private Vector3 dashStartPosition;    // where the fighter stood when the current dash began
     public bool IsDashing { get { return isDashing; } }
+
+    // Run: double-flick of the right stick toward the opponent, held on the second flick
+    // (InputData.runHeld / runDirection, latched in InputManager). The run itself is free -
+    // getting into it costs the first flick's dash - and ends the moment the stick returns,
+    // anything interrupts the fighter, or the opponent's body is reached.
+    private bool isRunning = false;
+
+    /// <summary>True while the held double-flick run is carrying this fighter forward.</summary>
+    public bool IsRunning => isRunning;
     /// <summary>True while the counter window after a clean dodge is open.</summary>
     public bool DashCounterOpen => dashCounterTimer > 0f;
 
@@ -353,6 +364,7 @@ public class Fighter : MonoBehaviour
         blockLegsLayer = animator != null && animator.runtimeAnimatorController != null
             ? animator.GetLayerIndex(BLOCK_LEGS_LAYER) : -1;
         animatorHasDash = HasAnimatorParameters(ANIM_DASH, ANIM_DASH_DIR);
+        animatorHasRunning = HasAnimatorParameters(ANIM_RUNNING);
         animatorHasParry = HasAnimatorParameters(ANIM_PARRY_SUCCESS);
         animatorHasDeath = HasAnimatorParameters(ANIM_DEATH);
         ResolveIdleState();
@@ -440,6 +452,7 @@ public class Fighter : MonoBehaviour
         HandleFacing();
         HandleKnockback();
         HandleDash();
+        HandleRun();
         HandleMovement();
         HandleAttackLunge();
         HandleStaminaRecovery();
@@ -646,10 +659,12 @@ public class Fighter : MonoBehaviour
         isDead = true;
         isBlocking = false;
         isDashing = false;
+        isRunning = false;
         dashVelocity = Vector3.zero;
         knockbackVelocity = Vector3.zero;
 
         if (animatorHasBlocking && animator != null) animator.SetBool(ANIM_BLOCKING, false);
+        if (animatorHasRunning && animator != null) animator.SetBool(ANIM_RUNNING, false);
         if (blockLegsLayer >= 0 && animator != null) { blockLegsWeight = 0f; animator.SetLayerWeight(blockLegsLayer, 0f); }
         if (animatorHasDeath && animator != null) animator.SetTrigger(ANIM_DEATH);
         else Debug.Log($"P{playerNumber}: DEAD (animator has no '{ANIM_DEATH}' trigger yet)");
@@ -716,6 +731,7 @@ public void ResetForMatch(Vector3 position, Quaternion rotation)
 {
     stats = new FighterStats(MaxHealth, MaxStamina, Armor);
     isDashing = false;
+    isRunning = false;
     dashTimer = 0f;
     dashCounterTimer = 0f;
     lastDodgeTime = -1f;
@@ -759,6 +775,7 @@ private void ResetAnimator()
 
     animator.SetFloat("MoveSpeed", 0f);
     if (animatorHasBlocking) animator.SetBool(ANIM_BLOCKING, false);
+    if (animatorHasRunning) animator.SetBool(ANIM_RUNNING, false);
     if (blockLegsLayer >= 0) { blockLegsWeight = 0f; animator.SetLayerWeight(blockLegsLayer, 0f); }
 
     if (idleStateHash != 0) animator.Play(idleStateHash, 0, 0f);
@@ -1026,7 +1043,8 @@ private void HandleMovement()
     }
 
     // No walking while locked into a dash (otherwise it stacks on top of dash distance)
-    if (isDashing)
+    // or while running (HandleRun owns the movement then)
+    if (isDashing || isRunning)
     {
         desiredMove = Vector3.zero;
     }
@@ -1044,6 +1062,91 @@ private void HandleMovement()
     {
         animator.SetFloat("MoveSpeed", forwardAmount);
     }
+}
+
+/// <summary>
+/// The held double-flick RUN (the user's call, 2026-10-25): one flick of the right stick is a
+/// dash, a second flick toward the opponent inside the window - held - keeps the fighter
+/// running at RUN_SPEED_MULTIPLIER times his walk until the stick returns to centre. The
+/// second flick starts the run instead of a second dash (no extra stamina, no i-frames), and
+/// the run ends on anything that interrupts the fighter: a dash, an attack, raising the
+/// guard, hitstun, or reaching the opponent's body. Keyboard route: Run key held + a
+/// direction toward the opponent. Runs AFTER HandleDash, so a run latched during a forward
+/// dash picks up seamlessly the frame the dash ends.
+/// </summary>
+private void HandleRun()
+{
+    bool wantsRun = RunInputTowardOpponent();
+
+    if (isRunning)
+    {
+        bool busy = combatSystem != null && (combatSystem.IsAttacking || combatSystem.IsInHitstun);
+        if (!wantsRun || busy || isDashing || isBlocking || isDead)
+        {
+            StopRun(!wantsRun ? "stick released" : "interrupted");
+            return;
+        }
+
+        // The run moves at this fighter's own dash speed, so the dash table is the run table.
+        float runSpeed = dashDistance / Mathf.Max(dashDuration, 0.05f);
+        Vector3 forward = transform.forward;
+        forward.y = 0f;
+        Vector3 step = forward.normalized * runSpeed * Time.deltaTime;
+        if (WouldCollideWithOpponent(step))
+        {
+            StopRun("reached the opponent");
+            return;
+        }
+
+        // Running costs stamina per unit of ground covered (DrainStamina is a plain multiply, so
+        // distance x per-unit works exactly like seconds x per-second, fractional carry and all).
+        // Regen is paused while running (HandleStaminaRecovery); an empty bar ends the run.
+        if (stats != null && stats.DrainStamina(step.magnitude, BalanceConfig.RUN_STAMINA_PER_UNIT))
+        {
+            StopRun("out of stamina");
+            return;
+        }
+        transform.position += step;
+        return;
+    }
+
+    if (!wantsRun || isDashing || isBlocking || isDead || IsInHitstun) return;
+    if (combatSystem != null && combatSystem.IsAttacking) return;
+    if (stats == null || stats.currentStamina <= 0) return;   // no starting a run on an empty bar
+
+    // Don't start a run whose first step is already blocked by the opponent's body. Without this
+    // the run that stopped at contact restarts the very next frame (the stick is still held) and
+    // stops again, flapping the Running bool - and the animator - every other frame.
+    Vector3 firstStep = transform.forward;
+    firstStep.y = 0f;
+    firstStep = firstStep.normalized * (dashDistance / Mathf.Max(dashDuration, 0.05f))
+                * Mathf.Max(Time.deltaTime, BalanceConfig.FRAME_TIME);
+    if (WouldCollideWithOpponent(firstStep)) return;
+
+    StartRun();
+}
+
+/// <summary>True while the run input is held and points at the opponent (screen-space, like the dash).</summary>
+private bool RunInputTowardOpponent()
+{
+    if (!currentInput.runHeld) return false;
+    float forwardAmount = facingRight ? currentInput.runDirection.x : -currentInput.runDirection.x;
+    return forwardAmount >= BalanceConfig.RUN_MIN_FORWARD;
+}
+
+private void StartRun()
+{
+    isRunning = true;
+    if (animatorHasRunning && animator != null) animator.SetBool(ANIM_RUNNING, true);
+    if (debugLogs) Debug.Log($"P{playerNumber}: RUN started");
+}
+
+private void StopRun(string reason)
+{
+    if (!isRunning) return;
+    isRunning = false;
+    if (animatorHasRunning && animator != null) animator.SetBool(ANIM_RUNNING, false);
+    if (debugLogs) Debug.Log($"P{playerNumber}: run ended - {reason}");
 }
 
 /// <summary>
@@ -1393,7 +1496,9 @@ private bool WouldCollideWithOpponent(Vector3 desiredMove)
     private void HandleStaminaRecovery()
     {
         // Guarding pauses recovery (unless allowed per character), so block has a real cost.
-        if (!isBlocking || staminaRecoversWhileBlocking)
+        // Running pauses it too, or the 15/s regen would out-earn the run drain and running
+        // would cost nothing.
+        if ((!isBlocking || staminaRecoversWhileBlocking) && !isRunning)
         {
             // Recovery runs at ONE rate however low the bar is. The cost of running it down is
             // paid on the attacks instead: below BalanceConfig.WEAKENED_STAMINA_FRACTION a swing

@@ -41,6 +41,27 @@ public static class BalanceConfig
     public const int TACKLE_STAMINA = 55;
     public const int DASH_STAMINA = 18;
 
+    // ==================== RUN ====================
+    // Double-flick the right stick TOWARD the opponent and HOLD the second flick: the fighter
+    // runs until the stick is released (or a dash, attack, block, hit or the opponent's body
+    // ends it). One flick stays a dash; the SECOND flick starts the run instead of paying for a
+    // second dash, so a run costs one dash's stamina and nothing while it lasts. Keyboard: hold
+    // the Run key while walking toward the opponent.
+    // The run moves at the fighter's OWN DASH SPEED (dashDistance / dashDuration, the user's call
+    // 2026-10-25 - it replaced a walk multiplier, 1.3x at its last value), so the per-fighter dash
+    // table in CrucibleBalance is also the run table: Miyamoto 11.8 u/s, Salaadin 8.8, Bjorn 7.3,
+    // Richard 5.9. No multiplier constant exists any more; tune a fighter's run by tuning his dash.
+    public const float RUN_DOUBLE_FLICK_WINDOW = 0.5f;   // max seconds between the two flicks (0.35 proved too tight to land deliberately)
+    public const float RUN_MIN_FORWARD = 0.5f;           // how squarely toward the opponent the held stick must point
+    // Running costs stamina per DISTANCE covered (the user's call, 2026-10-25), so a fast runner
+    // and a slow one pay the same for the same ground - the fast one just pays it sooner. The
+    // price rides the speed: it was 2/unit when the run moved 1.3x walk, and moving it to dash
+    // speed raised the roster's average run speed by ~61%, so the cost went up by the same ratio
+    // (the user's call). For scale: a dash is 7-8 stamina per unit WITH i-frames; crossing the
+    // 6.5-unit opening gap at a run costs ~21. Regen is paused while running - without the pause
+    // the recovery would out-earn the drain on a slow fighter. Emptying the bar ends the run.
+    public const float RUN_STAMINA_PER_UNIT = 3.2f;
+
     // ==================== BLOCK STAMINA COSTS (paid by the blocker per blocked hit) ====================
     public const int BLOCK_LIGHT_STAMINA = 5;
     public const int BLOCK_MEDIUM_STAMINA = 10;

@@ -3651,3 +3651,74 @@ Three fixes off the user's playtest of the full roster, all play-verified throug
   twice in pressure, so a two-hit test needs different openers (a refused `TryAttack` measures
   the idle); and a held block's RAISE opens the new 0.9 s parry window, so a block-the-hit test
   must burn 60+ frames before swinging or the hit is parried.
+
+### 2026-10-25 — The held double-flick RUN, and dash-forward becomes a run stride
+
+- **Forward dash animation**: Bjorn and Miyamoto's `Dash_Forward` played a WALK stride
+  (`standing walk forward`), which read as shifting; both now play a run stride - Bjorn AxePack
+  `standing run forward` (x1.22), Miyamoto GreatSwordPack `great sword run` (x1.67). Richard and
+  Salaadin already had the SwordShieldPack run. Back/left/right dashes keep the walks.
+- **The run**: double-flick the right stick toward the opponent and HOLD the second flick - the
+  fighter runs at 2x his own walk until the stick returns to centre. One flick is still exactly
+  one dash; the SECOND flick inside `RUN_DOUBLE_FLICK_WINDOW` (0.5 s - 0.35 proved too tight to
+  land deliberately) starts the run INSTEAD of a second dash, so the gesture costs one dash and
+  the run itself drains stamina per DISTANCE (`RUN_STAMINA_PER_UNIT` 2/unit, the user's call -
+  distance, not time, so fast and slow fighters pay the same for the same ground). Regen is
+  paused while running or the 15/s recovery would out-earn the drain. Keyboard route: the Run
+  key (LShift / RShift) held while walking toward the opponent.
+- Pieces: latch in `InputManager.PadFlickState` (unscaled time; the latch drops the moment the
+  stick re-centres), `InputData.runHeld/runDirection`, `Fighter.HandleRun` (between HandleDash
+  and HandleMovement - a run latched during a forward dash picks up the frame the dash ends,
+  play-verified seamless), `Running` bool + looping `Run_Forward` state on all four controllers
+  (`Crucible > Animation > Wire the run state`, new `Editor/CrucibleRun.cs`, idempotent; Any
+  State -> Run appended LAST so every trigger transition still wins its frame).
+- The run ends on: release, dash, attack (press fires the attack same frame, play-verified),
+  block raise, hitstun, death, empty bar, or the opponent's body. **The start gate needs the
+  same collision check as the moving run** - without it the run that stopped at contact
+  restarted every other frame and flapped the animator bool.
+- Play-verified: Bjorn AI-injected run 0.1264 u/frame (= 2x walk exactly), stamina 110->101
+  over 4.80 units; Miyamoto real-pad double-flick = dash 13 f then 31 contiguous run frames at
+  9.59 u/s, stamina 92->83, clean stop at contact, clean release. Single flick = one dash, no
+  run.
+- Harness gotchas: `GameMenu.StartMatch` called too early in a play session is OVERRIDDEN by
+  the boot flow re-asserting `screen=Boot` (ts stays 0.8 - the tell StartMatch ran) and the
+  count-in dies; wait for the boot screen, then call it. And `WaitWhilePlaying` counts only
+  while the editor TICKS - focus the editor (`editor_focus`) or the count-in never advances
+  under the CLI. `Time.unscaledTime` does NOT follow `captureDeltaTime`, so real-time input
+  windows (the flick latch) must fit inside the editor's REAL frame rate when testing.
+- **Re-tuned the same day on the user's call**: the run MOVED 2x walk while the clip played at
+  x1.00, so the body outran the stride and read as sliding. Now movement x1.3 of walk
+  (`RUN_SPEED_MULTIPLIER`, -35%) and the clip at x1.10 (`RunAnimSpeed` in `CrucibleMixamoSetup`,
+  set by `Use Mixamo packs` so a re-wire keeps it). Play-verified: Miyamoto 6.24 u/s exactly
+  (4.8 x 1.3), stamina still 2/unit (92->77 over 7.8), and the clip LOOPS for the whole hold -
+  normalizedTime ran 0.20 -> 1.70 through one uninterrupted 76-frame run ending only at the
+  opponent's body. The dash->run handoff passes through ~9 frames of dash-end/idle BLEND before
+  Run_Forward is the current state (the dash's exit-time transition is already in flight and the
+  Any State -> Run transition waits it out); movement is continuous through it, so it reads fine.
+
+### 2026-10-25 — The run is the dash speed, and the barbarian run for both axe-and-katana
+
+- **Run speed = the fighter's own dash speed** (the user's call: "same as the dash"):
+  `HandleRun` moves at `dashDistance / dashDuration`, so the per-fighter dash table is the run
+  table — Miyamoto 11.8 u/s, Salaadin 8.8, Bjorn 7.3, Richard 5.9. `RUN_SPEED_MULTIPLIER` is
+  DELETED from BalanceConfig; tune a fighter's run by tuning his dash.
+- **Stamina rode up with the speed, same ratio**: `RUN_STAMINA_PER_UNIT` 2 → 3.2 (the average
+  speed rise over the old 1.3x walk was ~61%). Play-measured 3.0-3.1/unit (integer bar rounding).
+- **Clip changes** (all read back from the controllers, per the HTTP-400 rule — the FIRST
+  `UseMixamo` pass updated Bjorn and left Miyamoto on the old clip, the second landed):
+  - Miyamoto's Dash_Forward + Run_Forward: GreatSwordPack `great sword run` (Maria's, with her
+    sway) → **AxePack `standing run forward`**, the barbarian run. Photographed mid-run: reads
+    committed, katana carried high, TwoHandGrip keeps the left hand on the hilt.
+  - Bjorn's Walk_Back + Dash_Back: AxePack2H `standing walk back` (the re-posed two-hand carry)
+    → the **plain AxePack `standing walk back`**. TwoHandGrip holds the haft whatever the clip
+    does, so the 2H re-pose bought nothing.
+- Play-verified with the pair FORCED to Bjorn vs Miyamoto and `Time.timeScale` pinned to 1 every
+  frame of the sample: Miyamoto ran 11.82 u/s exact, Bjorn 7.33 exact, both on a contiguous
+  looping Run_Forward, walk-back moved -2.79 over 45 f.
+- **The user's three live DualSense pads can wreck a CLI play test**: a first pass measured
+  Miyamoto at 4.99 u/s and "run ended - stick released" — a real pad press had paused the game
+  (the pause re-applies the Settings speed and empties the input snapshots, which reads as a
+  released stick), and a real right-stick flick fired a P1 dash mid-sample. ALSO: ApplySides
+  keeps the menus' LAST pick, so "P1" was Salaadin, not Bjorn, and the screenshots lied.
+  Force the pair by roster lookup + reflection ApplySides, and re-pin
+  timeScale/captureDeltaTime INSIDE the sample loop, not once at the top.

@@ -32,7 +32,9 @@ public static class CrucibleMixamoSetup
         // the belly where the left-hand IK can reach the haft
         ("Bjorn_Idle",                   "AxePack2H", "standing idle",                   true),
         ("Bjorn_Walk_Forward",           "AxePack2H", "standing walk forward",           true),
-        ("Bjorn_Walk_Back",              "AxePack2H", "standing walk back",              true),
+        // the PLAIN barbarian walk back (the user's call, 2026-10-25), not the re-posed 2H carry;
+        // TwoHandGrip puts the left hand back on the haft whatever the clip does with the arms
+        ("Bjorn_Walk_Back",              "AxePack", "standing walk back",                true),
         ("Bjorn_Light_Slash",            "AxePack", "standing melee attack horizontal",  false),
         ("Bjorn_Medium_SpinningSlash",   "AxePack2H", "standing melee attack 360 high",  false),   // arms re-posed: axe extended at chest, body spins
         ("Bjorn_Heavy_OverheadDoubleAxe","GreatSwordPack", "great sword slash",       false),   // two-handed overhead that comes down in front; the axe pack's chop bottoms out by the left hip
@@ -57,11 +59,14 @@ public static class CrucibleMixamoSetup
         // guard raise IS the attempt). Speed comes from the ParrySpeed parameter, not the fit.
         ("Parry_Success",                "AxePack", "standing block react large",            false),
         ("Death",                        "GreatSwordPack", "two handed sword death",         false),
-        // dashes = one big step: the first stride (half cycle) of the two-handed walks, fitted to the dash time
-        ("Dash_Forward",                 "AxePack2H", "standing walk forward",           false),
-        ("Dash_Back",                    "AxePack2H", "standing walk back",              false),
+        // dashes = one big step, fitted to the dash time. Forward is a RUN stride (the user's call,
+        // 2026-10-25: the walk stride read as "shifting forward"); the other three keep the walks.
+        ("Dash_Forward",                 "AxePack", "standing run forward",              false),
+        ("Dash_Back",                    "AxePack", "standing walk back",                false),  // same plain clip as his walk back, so the stride does not change carriage mid-dodge
         ("Dash_Left",                    "AxePack2H", "standing walk left",              false),
         ("Dash_Right",                   "AxePack2H", "standing walk right",             false),
+        // the held double-flick run (Fighter.HandleRun): the full run cycle, looping
+        ("Run_Forward",                  "AxePack", "standing run forward",              true),
     };
     static readonly (string state, string pack, string clip, bool loop)[] P2Map =
     {
@@ -95,10 +100,14 @@ public static class CrucibleMixamoSetup
         ("Block_Impact",                 "AxePack",        "standing block react large", false),  // jolt that settles back into the guard (the sword pack has none)
         ("Parry_Success",                "AxePack",        "standing block react large", false),
         ("Death",                        "GreatSwordPack", "two handed sword death (2)",  false),
-        ("Dash_Forward",                 "AxePack2H", "standing walk forward",           false),
+        // forward dash = a run stride (2026-10-25); back/left/right keep the walk strides.
+        // The run is the BARBARIAN run, shared with Bjorn - "great sword run" is Maria's pack
+        // and carried her sway (the user's call, same day).
+        ("Dash_Forward",                 "AxePack", "standing run forward",              false),
         ("Dash_Back",                    "AxePack2H", "standing walk back",              false),
         ("Dash_Left",                    "AxePack2H", "standing walk left",              false),
         ("Dash_Right",                   "AxePack2H", "standing walk right",             false),
+        ("Run_Forward",                  "AxePack", "standing run forward",              true),
     };
 
     // Richard: the Pro Sword and Shield pack, plus the four clips it does not contain
@@ -164,6 +173,7 @@ public static class CrucibleMixamoSetup
         ("Dash_Back",                      "SwordShieldPack", "sword and shield run (2)",    false),
         ("Dash_Left",                      "SwordShieldPack", "sword and shield strafe (3)", false),
         ("Dash_Right",                     "SwordShieldPack", "sword and shield strafe (4)", false),
+        ("Run_Forward",                    "SwordShieldPack", "sword and shield run",        true),
     };
 
     // Salaadin shares the pack with Richard but not his clips: Richard holds the pack's only
@@ -196,6 +206,7 @@ public static class CrucibleMixamoSetup
         ("Death",                          "SwordShieldPack", "sword and shield death (2)",    false),  // the pack's other death, so he does not fall like Richard
         ("Dash_Forward",                   "SwordShieldPack", "sword and shield run",          false),
         ("Dash_Back",                      "SwordShieldPack", "sword and shield run (2)",      false),
+        ("Run_Forward",                    "SwordShieldPack", "sword and shield run",          true),
     };
 
     // Attack clips are trimmed to their swing core (measured in Blender: Animation/Clips/Mixamo/swing_trims.json,
@@ -241,6 +252,7 @@ public static class CrucibleMixamoSetup
     }
 
     const float ContactSpeed = 1.8f;   // playback speed used for contact-calibrated windows
+    const float RunAnimSpeed = 1.1f;   // Run_Forward playback: +10% over the clip's own pace (the user's call, 2026-10-25)
     const float ReactDuration = 0.45f; // seconds a get-hit flinch takes on screen
     const float ParryDuration = 0.40f; // base on-screen length of the parry catch; Fighter's
                                        // parryAnimSpeed (the ParrySpeed parameter) multiplies it
@@ -518,6 +530,14 @@ public static class CrucibleMixamoSetup
             {
                 cs.state.speed = clip.length / Mathf.Max(dashDuration, 0.05f);
                 Debug.Log($"{m.state}: one stride {clip.length:F2}s fitted to the {dashDuration:F2}s dash, speed x{cs.state.speed:F2}");
+            }
+            // The held run: the clip loops for as long as the Running bool is up, a touch faster
+            // than authored so the stride reads urgent. The MOVEMENT speed is independent
+            // (BalanceConfig.RUN_SPEED_MULTIPLIER x walk, in Fighter.HandleRun).
+            if (m.state == "Run_Forward")
+            {
+                cs.state.speed = RunAnimSpeed;
+                Debug.Log($"{m.state}: looping run at x{RunAnimSpeed:F2}");
             }
             // attack states: fit the clip to the AttackData frame count
             var atk = attacks.FirstOrDefault(a => a.name == m.state);

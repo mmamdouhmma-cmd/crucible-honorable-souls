@@ -25,6 +25,10 @@ public struct InputData
     public bool taunt;           // Up on stick
     public bool run;             // L3 click
 
+    // ==================== RUNNING ====================
+    public bool runHeld;          // double-flick of the right stick still held, or Run key + a direction
+    public Vector2 runDirection;  // screen-space direction of the held run input (x = left/right)
+
     // ==================== DASHING ====================
     public Vector2 dashDirection; // 8-way dash, Vector2.zero if none
 
@@ -47,7 +51,7 @@ public struct InputData
         return HasAttackInput()
             || specialModifier || lowModifier || blockHeld || throwButton
             || moveDirection != 0f
-            || crouch || taunt || run
+            || crouch || taunt || run || runHeld
             || dashDirection != Vector2.zero
             || stanceSwitch;
     }

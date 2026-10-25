@@ -936,6 +936,22 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   open (recovery punishes keep 2.7) - Salaadin's counter specials land from 3.3-3.4 on a stunned
   victim (contact f21 < the 30 f stun; range 3.0+ plus 1.2 lunge). Walking cannot escape the
   stun (play-measured 0.000 movement, counters land through a held move-away).
+- **The held double-flick RUN** (2026-10-25): one right-stick flick = a dash; a second flick
+  toward the opponent inside 0.5 s, HELD, keeps the fighter running at HIS OWN DASH SPEED
+  (dashDistance/dashDuration - Miyamoto 11.8 u/s, Salaadin 8.8, Bjorn 7.3, Richard 5.9; no
+  multiplier constant exists, tune the dash to tune the run) until the stick re-centres,
+  anything interrupts him, the bar empties or he reaches the opponent. No second dash and no
+  second dash cost; the run drains `RUN_STAMINA_PER_UNIT` 3.2/unit of ground (the cost rode the
+  speed up from 2/unit, the user's calls), regen paused while running. The Run_Forward clip
+  loops at x1.10 (`RunAnimSpeed`, set by `Use Mixamo packs`). Keyboard: Run key + walk toward.
+  The run clip is the BARBARIAN run for Bjorn AND Miyamoto ("great sword run" is Maria's and
+  carried her sway); Bjorn's Walk_Back + Dash_Back are the PLAIN AxePack walk back now, not the
+  re-posed 2H carry - TwoHandGrip holds the haft whatever the clip does. Latch in
+  `InputManager.PadFlickState`; movement in `Fighter.HandleRun`; animator = `Running` bool +
+  looping `Run_Forward` state on all four controllers (`Crucible > Animation > Wire the run
+  state`, `Editor/CrucibleRun.cs`; the clip entries live in the `CrucibleMixamoSetup` maps).
+  Bjorn/Miyamoto's `Dash_Forward` is a RUN stride now (AxePack `standing run forward`), not the
+  walk. Touch controls have no run gesture yet.
 - **Two gamepads already drive the two players** - `ControlBindings.PadFor`: first pad -> the
   Settings "controller player" (default P2), second pad -> the other; play-verified with two
   virtual pads, no cross-talk. `InputManager.LogPads` logs every pad change and the assignment
