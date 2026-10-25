@@ -59,12 +59,12 @@ public static class CrucibleBalance
                      health = 80, stamina = 100, armor = 13, damageMultiplier = 92, moveSpeed = 48,
                      regen = 20f, dashDistance = 2.6f, dashDuration = 0.22f, dashStamina = 12,
                      blockReduction = 60, blockDrain = 0f,
-                     // The COUNTER fighter: 82% dash coverage, the shortest parry cooldown, and
-                     // the only x1.5 riposte - his damage lives here, not in neutral. The parry
-                     // WINDOW is 0.9 s roster-wide now (the user's call, 2026-10-24), so his old
-                     // widest-window edge moved into the cooldown.
+                     // The COUNTER fighter: 82% dash coverage and the only x1.5 riposte - his
+                     // damage lives here, not in neutral. Parry window 0.2 s / cooldown 0.8 s
+                     // ROSTER-WIDE (the user's call, 2026-10-25, killing the block-spam parry:
+                     // the guard must go up just before contact, and attempts are paced).
                      dashIFrames = 0.18f,
-                     parryWindow = 0.9f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
+                     parryWindow = 0.2f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
                      parryCounterWindow = 1f, parryCounterDamage = 1.5f },
 
         new Vitals { character = "Bjorn", player = "Player1", fighterName = "Bjorn", archetype = "Berserker",
@@ -74,10 +74,10 @@ public static class CrucibleBalance
                      // 80 -> 68 (Plan_Balance 2.4): aggression should not also carry the
                      // second-best guard in the game.
                      blockReduction = 68, blockDrain = 0f,
-                     // 47% dash coverage; the dearest, slowest parry - defence is not his game
-                     // on any axis. (Window 0.9 roster-wide, user 2026-10-24.)
+                     // 47% dash coverage; the dearest parry - defence is not his game on any
+                     // axis. (Window 0.2 / cooldown 0.8 roster-wide, user 2026-10-25.)
                      dashIFrames = 0.14f,
-                     parryWindow = 0.9f, parryCost = 10, parryCooldown = 1.2f, parryStun = 0.5f,
+                     parryWindow = 0.2f, parryCost = 10, parryCooldown = 0.8f, parryStun = 0.5f,
                      parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
 
         // The wall: the shield makes his guard the strongest per hit, the small tank makes it short.
@@ -89,7 +89,7 @@ public static class CrucibleBalance
                      blockReduction = 85, blockDrain = 0f,
                      // 35% dash coverage - the wall blocks, he does not slip. Base parry.
                      dashIFrames = 0.12f,
-                     parryWindow = 0.9f, parryCost = 8, parryCooldown = 1f, parryStun = 0.5f,
+                     parryWindow = 0.2f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
                      parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
 
         // The middle of the roster on every axis: Miyamoto's damage scalar on a frame, armour
@@ -109,7 +109,7 @@ public static class CrucibleBalance
                      blockReduction = 75, blockDrain = 0f,
                      // 62% dash coverage (second to Miyamoto), base parry everywhere else.
                      dashIFrames = 0.16f,
-                     parryWindow = 0.9f, parryCost = 8, parryCooldown = 1f, parryStun = 0.5f,
+                     parryWindow = 0.2f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
                      parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
     };
 

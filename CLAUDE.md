@@ -1178,7 +1178,24 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   FightCamera + kinematic rigidbodies; EndPlayback restores the exact tableau. No export on web.
 - **The K.O. card asks "are you sure" before Rematch / Change fighters / Main Menu**
   (`confirmAsk`/`confirmYes` on GameMenu; Esc answers No).
-- **Parry window 0.9 s roster-wide and every get-hit stun 0.8 s** (`UniformHitstunFrames` 48),
+- **Parry window 0.2 s / cooldown 0.8 s roster-wide** (the user's call, 2026-10-25, killing the
+  block-spam parry: 0.9 window + ~1.0 cooldown kept a window open half the time under rhythmic
+  tapping). The guard must now go up in the LAST 0.2 s before contact - the end of the incoming
+  swing, not its wind-up - and a re-raise inside 0.8 s of the previous raise opens NO window (it
+  is an ordinary block; blocking itself is never locked out). Numbers in the `CrucibleBalance`
+  parry table (all four rows) + `BalanceConfig.PARRY_WINDOW`; the mechanics were already there.
+  Play-verified: window gates exact (open f2, expired f15, refused f23, re-open f55), raise 9 f
+  before a heavy = parry, holding block from the swing's first frame = plain chip block.
+- **String follow-ups play FASTER when dialed fast** (the user's call, 2026-10-25): a string
+  link's attack clock AND animation run at `currentAttackPace`, lerped from
+  `COMBO_FOLLOWUP_MAX_PACE` 1.3 (press already buffered when the cancel opened - the dialed
+  combo) down to `COMBO_FOLLOWUP_MIN_PACE` 1.1 across `COMBO_FOLLOWUP_RESPONSE_WINDOW` 0.25 s of
+  lateness. MAX is the speed limit; fresh swings and raw pressure swings stay x1. `cancelOpen` /
+  `cancelOpenedAt` are stamped once per swing in `CombatSystem.Update` (window entered AND hit
+  resolved / active passed); the pace rides `BeginAttack(attack, depth, pace)` like the weakened
+  x0.85 does. Play-verified: instant dial = animator 1.30, +4 f late = 1.25 (the lerp exactly),
+  and the victim's stun held with NO gap from the opener's contact through the follow-up.
+- **Every get-hit stun is 0.8 s** (`UniformHitstunFrames` 48),
   2026-10-24. **Stun locks the guard** (HandleBlock checks hitstun). **Combo escape**: a clean
   hit by a linked move applies a DODGEABLE stun (`ComboStun` - dash allowed, block/walk not); a
   follow-up with a clean opener BYPASSES a raised guard (`blocked = IsBlocking &&

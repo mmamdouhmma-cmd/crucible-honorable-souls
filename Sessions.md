@@ -3722,3 +3722,34 @@ Three fixes off the user's playtest of the full roster, all play-verified throug
   keeps the menus' LAST pick, so "P1" was Salaadin, not Bjorn, and the screenshots lied.
   Force the pair by roster lookup + reflection ApplySides, and re-pin
   timeScale/captureDeltaTime INSIDE the sample loop, not once at the top.
+
+### 2026-10-25 — The just-guard parry and the dialed-combo pace
+
+- **The block-spam parry is dead** (the user's report: anyone spamming the block button parried
+  every incoming attack). The cause was pure numbers: window 0.9 s with ~1.0 s cooldown = a parry
+  window open ~half the time under rhythmic tapping. Now **window 0.2 / cooldown 0.8 roster-wide**
+  (`CrucibleBalance` table, all four rows; `BalanceConfig.PARRY_WINDOW` fallback matches): the
+  guard must go up in the last 0.2 s before contact — the end of the incoming swing, not its
+  wind-up — and a re-raise inside 0.8 s opens no window and is just a block. No code change; the
+  gating already existed. Play-verified on Richard vs Salaadin's heavy (startup 17 f): raise at
+  f8 = PARRY (0 damage, attacker stunned, flash); block held from f0 = ordinary chip block; and
+  the four ParryReady gates read exactly (open f2, expired f15, cooldown-refused f23, re-open f55).
+- **String follow-ups speed up with the dial** (the user's call: "the faster the buttons of the
+  combo is pressed the faster the attack, but put speed limit"). New `currentAttackPace` in
+  CombatSystem: a link fires at a pace lerped from **x1.3** (press was already buffered when the
+  cancel opened) to **x1.1** (press 0.25 s late), applied to the attack clock AND `animator.speed`
+  together — the same both-at-once pattern as the weakened x0.85, so the frames and the picture
+  never part. `cancelOpen`/`cancelOpenedAt` stamp the first frame a cancel became possible
+  (window entered AND hit resolved or active passed); the delay from that stamp to the actual
+  link is the "how fast you pressed" measurement. Fresh swings and raw pressure swings stay x1.
+  Play-verified: instant dial = 1.30 on the follow-up, +4 f late = 1.25 (the lerp's own figure).
+- **The stun already holds through a fast-dialed string** — measured, not assumed: Salaadin's
+  L->M on a standing Richard kept `IsInHitstun` true with no gap from the opener's contact
+  through the follow-up's (29 stun frames sampled, zero interruptions). Each clean hit re-applies
+  the 48-frame stun, and the pace boost only tightens the contact-to-contact gap further.
+- Two test artifacts worth keeping: a press that misses the cancel window entirely (the first
+  "slow dial" probe, +10 f after open vs Salaadin's light window of 8-18) simply does not link —
+  that is the string system working, not the pace code failing; and an `Apply the roster balance`
+  whose eval call drops with a network error has written NOTHING — same silent shape as the
+  HTTP-400 menu bridge; read the scene fighters back before trusting it (the first Apply of the
+  evening did exactly this).

@@ -69,9 +69,21 @@ public static class BalanceConfig
     public const int BLOCK_SPECIAL_STAMINA = 25;
 
     // ==================== COMBAT TIMING ====================
-    // The FALLBACK only - the roster's live value is 0.9 s, written per fighter by CrucibleBalance
-    // (raised from the 0.10-0.18 spread on the user's call, 2026-10-24).
-    public const float PARRY_WINDOW = 0.9f;
+    // The FALLBACK only - the roster's live value is 0.2 s, written per fighter by CrucibleBalance.
+    // Cut from 0.9 on the user's call (2026-10-25): with a 0.9 window and ~1.0 cooldown, tapping
+    // block rhythmically kept a parry window open half the time, so spam parried everything. 0.2
+    // means the guard must go up in the LAST fifth of a second before contact - the end of the
+    // incoming swing, not its wind-up - and parryCooldown (0.8 roster-wide) paces the attempts.
+    public const float PARRY_WINDOW = 0.2f;
+
+    // String follow-ups play FASTER when dialed fast (the user's call, 2026-10-25): the 2nd/3rd
+    // hit of a string runs its attack clock and animation at a pace between MIN (press came late
+    // in the cancel window) and MAX (press was already buffered when the cancel opened - the
+    // dialed combo), judged by how many seconds after the cancel first opened the link fired,
+    // against RESPONSE_WINDOW. MAX is the speed limit the user asked for. Fresh swings are x1.
+    public const float COMBO_FOLLOWUP_MIN_PACE = 1.1f;
+    public const float COMBO_FOLLOWUP_MAX_PACE = 1.3f;
+    public const float COMBO_FOLLOWUP_RESPONSE_WINDOW = 0.25f;
     // Dodging TOWARD a string follow-up (or too late): the hit lands and the stun is a full
     // second, not dodgeable - the punished read of the combo-escape rule (user, 2026-10-24).
     public const int COMBO_WRONG_DODGE_STUN_FRAMES = 60;

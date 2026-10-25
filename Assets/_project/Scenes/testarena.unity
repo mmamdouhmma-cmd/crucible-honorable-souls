@@ -546,8 +546,8 @@ MonoBehaviour:
   dashIFrameDuration: 0.14
   blockDamageReduction: 68
   blockStaminaDrainPerSecond: 0
-  parryWindow: 0.9
-  parryCooldown: 1.2
+  parryWindow: 0.2
+  parryCooldown: 0.8
   parryStaminaCost: 10
   parryAnimSpeed: 2
   parryStunDuration: 0.5
@@ -4416,8 +4416,8 @@ MonoBehaviour:
   dashIFrameDuration: 0.12
   blockDamageReduction: 85
   blockStaminaDrainPerSecond: 0
-  parryWindow: 0.9
-  parryCooldown: 1
+  parryWindow: 0.2
+  parryCooldown: 0.8
   parryStaminaCost: 8
   parryAnimSpeed: 2
   parryStunDuration: 0.5
@@ -6619,8 +6619,8 @@ MonoBehaviour:
   dashIFrameDuration: 0.16
   blockDamageReduction: 75
   blockStaminaDrainPerSecond: 0
-  parryWindow: 0.9
-  parryCooldown: 1
+  parryWindow: 0.2
+  parryCooldown: 0.8
   parryStaminaCost: 8
   parryAnimSpeed: 2
   parryStunDuration: 0.5
@@ -7227,7 +7227,7 @@ MonoBehaviour:
   dashIFrameDuration: 0.18
   blockDamageReduction: 60
   blockStaminaDrainPerSecond: 0
-  parryWindow: 0.9
+  parryWindow: 0.2
   parryCooldown: 0.8
   parryStaminaCost: 8
   parryAnimSpeed: 2

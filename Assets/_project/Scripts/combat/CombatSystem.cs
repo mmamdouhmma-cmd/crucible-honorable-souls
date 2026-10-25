@@ -123,6 +123,15 @@ public class CombatSystem : MonoBehaviour
     private bool stringUsedSpecial;    // a string carries at most ONE special, and it ends there
     private bool stringArmored;        // the opener landed CLEAN, so the rest of the string powers through hits
 
+    // Dialed strings play faster (the user's call, 2026-10-25): a follow-up's attack clock AND
+    // animation run at a pace between COMBO_FOLLOWUP_MIN_PACE and _MAX_PACE, judged by how soon
+    // after the cancel first OPENED the link fired - a press already buffered when it opens is
+    // the dialed combo and takes the cap; a press arriving RESPONSE_WINDOW later takes the floor.
+    // Fresh swings stay x1. cancelOpenedAt is stamped once per swing, in Update.
+    private float currentAttackPace = 1f;
+    private bool cancelOpen;
+    private float cancelOpenedAt;
+
     [Header("Anti-spam")]
     [Tooltip("Seconds with no attacking after a STRING finishes its last move (0 = use BalanceConfig.STRING_LOCKOUT).")]
     [SerializeField] private float stringLockout = 0f;
@@ -172,7 +181,7 @@ public class CombatSystem : MonoBehaviour
         if (animator != null)
         {
             animator.speed = frozen ? 0f
-                : (isAttacking && currentAttackWeakened) ? BalanceConfig.WEAKENED_ATTACK_PACE_MULTIPLIER
+                : isAttacking ? currentAttackPace * (currentAttackWeakened ? BalanceConfig.WEAKENED_ATTACK_PACE_MULTIPLIER : 1f)
                 : 1f;
         }
         if (frozen) return;
@@ -230,10 +239,26 @@ public class CombatSystem : MonoBehaviour
 
         if (!isAttacking || currentAttack == null) return;
 
-        // The attack clock and the animator slow together for a weakened swing, so startup,
-        // active and recovery all stretch and the animation stays on the frame windows.
-        currentAttackTime += Time.deltaTime *
+        // The attack clock and the animator run at the same pace, so startup, active and
+        // recovery stretch (weakened) or compress (dialed follow-up) together and the
+        // animation stays on the frame windows.
+        currentAttackTime += Time.deltaTime * currentAttackPace *
             (currentAttackWeakened ? BalanceConfig.WEAKENED_ATTACK_PACE_MULTIPLIER : 1f);
+
+        // Stamp the moment a cancel first becomes possible (window entered AND the hitbox has
+        // resolved or the active frames have passed) - TryCancelIntoFollowUp measures how long
+        // after this the follow-up actually fired, which is what sets the dialed pace.
+        if (!cancelOpen)
+        {
+            int cFrame = Mathf.FloorToInt(currentAttackTime / BalanceConfig.FRAME_TIME);
+            float cActiveEnd = (currentAttack.StartupFrames + currentAttack.ActiveFrames) * BalanceConfig.FRAME_TIME;
+            if (cFrame >= currentAttack.CancelStartFrame &&
+                (currentAttackTime >= cActiveEnd || attackTouched || swingEvaded))
+            {
+                cancelOpen = true;
+                cancelOpenedAt = currentAttackTime;
+            }
+        }
 
         // A buffered press inside the cancel window drops the rest of the recovery.
         if (hasBufferedInput && TryCancelIntoFollowUp()) return;
@@ -449,15 +474,24 @@ public class CombatSystem : MonoBehaviour
         // The armour is earned by the OPENER landing clean: a whiffed or blocked first hit leaves
         // the whole string interruptible. BeginAttack carries the flag down the later links.
         if (stringDepth == 0) stringArmored = attackHitClean;
+
+        // The dialed pace: the sooner the follow-up fired after the cancel opened, the faster it
+        // plays. A press that was waiting in the buffer fires the frame the cancel opens (delay
+        // ~0 = the cap); one arriving RESPONSE_WINDOW later takes the floor. Capped by design.
+        float delay = cancelOpen ? Mathf.Max(0f, currentAttackTime - cancelOpenedAt) : 0f;
+        float pace = Mathf.Lerp(BalanceConfig.COMBO_FOLLOWUP_MAX_PACE, BalanceConfig.COMBO_FOLLOWUP_MIN_PACE,
+                                Mathf.Clamp01(delay / BalanceConfig.COMBO_FOLLOWUP_RESPONSE_WINDOW));
+
         EndAttack("CANCELLED into the string");
-        BeginAttack(link.followUp, depth);
+        BeginAttack(link.followUp, depth, pace);
         hasBufferedInput = false;
         bufferTimer = 0f;
 
         if (debugLogs)
         {
             Debug.Log($"P{fighter.PlayerNumber}: {from} -> {link.followUp.AttackName} " +
-                      $"(cancelled on frame {frame}, window {window0}-{window1}, hit {depth + 1} of the string)");
+                      $"(cancelled on frame {frame}, window {window0}-{window1}, hit {depth + 1} of the string, " +
+                      $"pace x{pace:0.00} - fired {delay:0.00}s after the cancel opened)");
         }
         return true;
     }
@@ -467,11 +501,14 @@ public class CombatSystem : MonoBehaviour
     /// Shared by <see cref="TryAttack"/> and the string cancel, so a follow-up behaves exactly
     /// like a normal swing once it is out.
     /// </summary>
-    private void BeginAttack(AttackData attack, int depth)
+    private void BeginAttack(AttackData attack, int depth, float pace = 1f)
     {
         isAttacking = true;
         currentAttack = attack;
         currentAttackTime = 0f;
+        currentAttackPace = Mathf.Max(0.01f, pace);
+        cancelOpen = false;
+        cancelOpenedAt = 0f;
         hitboxActive = false;
         hitboxStarted = false;
         swingEvaded = false;
