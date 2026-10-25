@@ -16,6 +16,8 @@ public static class HitEffects
     public static void SpawnBlood(Fighter target, Fighter attacker, Color color)
     {
         if (target == null || attacker == null) return;
+        // The game record replays this call against the re-posed fighters (no-op unless recording).
+        ReplayRecorder.NoteBlood(target, attacker, color);
 
         float r = Mathf.Max(target.BodyRadius, 0.2f);
         Vector3 toAttacker = Flat(attacker.transform.position - target.transform.position, -target.transform.forward);
@@ -86,6 +88,14 @@ public static class HitEffects
     /// </summary>
     public static void SpawnSparks(Vector3 point, Vector3 direction, float bodyRadius, float strength = 1f)
     {
+        ReplayRecorder.NoteFx(ReplayRecorder.Fx.Sparks, point, direction, bodyRadius, strength);
+        SparksCore(point, direction, bodyRadius, strength);
+    }
+
+    // The body, shared with the parry flash so ITS sparks are not recorded a second time
+    // (the parry event alone replays the whole flash, sparks included).
+    static void SparksCore(Vector3 point, Vector3 direction, float bodyRadius, float strength)
+    {
         float s = Mathf.Max(0.1f, strength);
         float scale = Mathf.Sqrt(s);
         float r = Mathf.Max(bodyRadius, 0.2f);
@@ -111,9 +121,10 @@ public static class HitEffects
     /// </summary>
     public static void SpawnParryFlash(Vector3 point, Vector3 direction, float bodyRadius, float strength)
     {
+        ReplayRecorder.NoteFx(ReplayRecorder.Fx.Parry, point, direction, bodyRadius, strength);
         float s = Mathf.Max(0.1f, strength);
         float scale = Mathf.Sqrt(s);
-        SpawnSparks(point, direction, bodyRadius, s);
+        SparksCore(point, direction, bodyRadius, s);
 
         float r = Mathf.Max(bodyRadius, 0.2f);
         Color steel = new Color(0.55f, 0.85f, 1f);
@@ -168,6 +179,7 @@ public static class HitEffects
     /// </summary>
     public static void SpawnDust(Vector3 point, float bodyRadius, float strength = 1f)
     {
+        ReplayRecorder.NoteFx(ReplayRecorder.Fx.Dust, point, Vector3.up, bodyRadius, strength);
         float s = Mathf.Max(0.1f, strength);
         float scale = Mathf.Sqrt(s);
         float r = Mathf.Max(bodyRadius, 0.2f);
@@ -192,6 +204,7 @@ public static class HitEffects
     /// </summary>
     public static void SpawnDodgeBurst(Vector3 point, float bodyRadius, float strength = 1f)
     {
+        ReplayRecorder.NoteFx(ReplayRecorder.Fx.Dodge, point, Vector3.up, bodyRadius, strength);
         float s = Mathf.Max(0.1f, strength);
         float scale = Mathf.Sqrt(s);
         float r = Mathf.Max(bodyRadius, 0.2f);

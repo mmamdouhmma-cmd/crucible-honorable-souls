@@ -235,6 +235,39 @@ public class CrucibleAudio : MonoBehaviour
         if (bank != null) Instance.Shot(bank.death, Instance.voiceVolume, 1f, 0.02f);
     }
 
+    /// <summary>
+    /// Replays a recorded one-shot EXACTLY as it was heard: the clip, the final volume and the
+    /// final (jittered) pitch come from the game record, so no variant pick and no MasterLevel -
+    /// both are already inside the recorded numbers. Used by ReplayRecorder's playback.
+    /// </summary>
+    public static void PlayExact(AudioClip clip, float volume, float pitch)
+    {
+        if (Instance == null || clip == null || Instance.shots == null) return;
+        var s = Instance.shots[Instance.nextShot];
+        Instance.nextShot = (Instance.nextShot + 1) % Instance.shots.Length;
+        if (s == null) return;
+        s.Stop();
+        s.clip = clip;
+        s.volume = volume;
+        s.pitch = pitch;
+        s.Play();
+    }
+
+    /// <summary>
+    /// The continuous beds under a fight - the fight track and the wind loop, each with the level
+    /// it plays at (Settings included) - so the video export can mix them under the one-shots.
+    /// </summary>
+    public static bool ExportBeds(out AudioClip music, out float musicVol, out AudioClip wind, out float windVol)
+    {
+        music = null; wind = null; musicVol = 0f; windVol = 0f;
+        if (Instance == null) return false;
+        music = Instance.fightMusic;
+        musicVol = Instance.musicVolume * MasterLevel;
+        wind = Instance.windLoop;
+        windVol = Instance.windLevel * Instance.effectsVolume * MasterLevel;
+        return true;
+    }
+
     // ---------------------------------------------------------------- internals
 
     static float Weight(AttackType t) =>
@@ -288,5 +321,9 @@ public class CrucibleAudio : MonoBehaviour
         s.volume = Mathf.Clamp01(volume) * MasterLevel;
         s.pitch = pitch * (1f + UnityEngine.Random.Range(-jitter, jitter));
         s.Play();
+
+        // The game record keeps the sound exactly as played (final volume and jittered pitch),
+        // so the replay and the video export can reproduce it. No-ops unless recording.
+        ReplayRecorder.NoteSound(clip, s.volume, s.pitch);
     }
 }

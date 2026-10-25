@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using UnityEngine;
 
 /// <summary>
@@ -17,11 +18,21 @@ using UnityEngine;
 /// Playback disables everything that writes a pose (the Animator, TwoHandGrip, WeaponAim, the
 /// FightCamera) and applies interpolated frames instead; <see cref="EndPlayback"/> puts every bone,
 /// both rigidbodies and the camera back exactly where they were, so the K.O. tableau survives a
-/// visit to the record screen. Hit effects and lights are not recorded - the replay is the motion.
+/// visit to the record screen. The record also carries the fight's EVENTS (2026-10-25): every
+/// hit effect (hooked inside HitEffects' spawns), every one-shot sound exactly as played (hooked
+/// inside CrucibleAudio.Shot) and each fighter's health and stamina per sample - playback re-fires
+/// the effects and sounds and drives the real FightHud by writing the recorded bars into the
+/// (frozen) fighters' stats. The kill shot's light dimming is the one presentation not recorded.
 ///
 /// Export writes a Motion-JPEG .avi (each frame a whole JPEG, no external encoder, plays in VLC
 /// and Windows) to the user's Videos folder, reading frames straight off the screen - so whoever
-/// starts an export must hide any UI that should not be baked into the video. No sound.
+/// starts an export must hide any UI that should not be baked into the video; the HUD and the
+/// re-fired effects ARE in the frames, kept in lockstep by Time.captureDeltaTime = 1/fps. The
+/// soundtrack is MIXED, not captured: the recorded one-shots at their exact moments over the
+/// fight-music and wind beds, written as a PCM stream into the same .avi. The main thread only
+/// CAPTURES: JPEG encoding runs on worker threads (ImageConversion.EncodeArrayToJPG is
+/// thread-safe) and the file is written in frame order by its own thread, so the export runs at
+/// whatever rate the game can render instead of stalling ~40 ms per frame on the encode.
 ///
 /// Sits on the GameMangers object; GameMenu drives it.
 /// </summary>
@@ -65,6 +76,8 @@ public class ReplayRecorder : MonoBehaviour
         public Quaternion[] rot;    // per track: localRotation (fighter roots: world rotation)
         public Vector3 camPos;
         public Quaternion camRot;
+        public int[] hp;            // per cast fighter: health at this sample - drives the HUD in playback
+        public int[] st;            // per cast fighter: stamina
     }
 
     struct Marker
@@ -73,8 +86,33 @@ public class ReplayRecorder : MonoBehaviour
         public string label;
     }
 
+    /// <summary>The visual effects the record can replay (hooked inside HitEffects' spawns).</summary>
+    public enum Fx : byte { Sparks, Parry, Dust, Dodge, Blood }
+
+    struct FxEvent
+    {
+        public float t;             // on the same clock as Frame.t
+        public Fx kind;
+        public int a, b;            // Blood: cast indices of target and attacker; -1 otherwise
+        public Vector3 point, dir;  // world-space, where the fight record will re-pose the fighters
+        public float radius, strength;
+        public Color color;
+    }
+
+    struct SoundEvent
+    {
+        public float t;
+        public AudioClip clip;      // the exact variant played
+        public float volume, pitch; // FINAL values (MasterLevel, Settings and jitter included)
+    }
+
     readonly List<Frame> frames = new List<Frame>();
     readonly List<Marker> markers = new List<Marker>();
+    readonly List<FxEvent> fxEvents = new List<FxEvent>();
+    readonly List<SoundEvent> soundEvents = new List<SoundEvent>();
+    float lastEventT;               // absolute record time of the last Apply, for event firing
+    int[] savedHp = new int[0];     // the real stats, remembered across a playback
+    int[] savedSt = new int[0];
     Transform[] tracks = new Transform[0];
     bool[] isRoot = new bool[0];
     Fighter[] cast = new Fighter[0];
@@ -103,6 +141,50 @@ public class ReplayRecorder : MonoBehaviour
     /// <summary>The marker's moment in playback time (seconds from the start of the record).</summary>
     public float MarkerTime(int i) => i >= 0 && i < markers.Count && frames.Count > 0
         ? Mathf.Clamp(markers[i].t - frames[0].t, 0f, Duration) : 0f;
+
+    // ---------------------------------------------------------------- effect and sound hooks
+    // Called from the choke points every effect and one-shot already goes through (HitEffects'
+    // spawns, CrucibleAudio.Shot), so every caller is covered without knowing about the recorder.
+    // All no-op unless a recording is running and game time is advancing - a pause menu's UI
+    // ticks are not part of the fight. Playback has recording off, so re-fired events never
+    // re-record themselves.
+
+    static bool Noting => Instance != null && Instance.recording && Time.deltaTime > 0f;
+
+    /// <summary>Records a positional effect (sparks, parry flash, dust, dodge burst).</summary>
+    public static void NoteFx(Fx kind, Vector3 point, Vector3 dir, float radius, float strength)
+    {
+        if (!Noting) return;
+        Instance.fxEvents.Add(new FxEvent
+        {
+            t = Instance.clock, kind = kind, a = -1, b = -1,
+            point = point, dir = dir, radius = radius, strength = strength,
+        });
+    }
+
+    /// <summary>Records a blood spray by its two fighters - playback re-fires it against the
+    /// re-posed pair, so the spray leaves the body exactly where it did in the fight.</summary>
+    public static void NoteBlood(Fighter target, Fighter attacker, Color color)
+    {
+        if (!Noting) return;
+        var r = Instance;
+        int a = r.CastIndex(target), b = r.CastIndex(attacker);
+        if (a < 0 || b < 0) return;
+        r.fxEvents.Add(new FxEvent { t = r.clock, kind = Fx.Blood, a = a, b = b, color = color });
+    }
+
+    /// <summary>Records a one-shot sound exactly as played (clip variant, final volume and pitch).</summary>
+    public static void NoteSound(AudioClip clip, float volume, float pitch)
+    {
+        if (!Noting || clip == null) return;
+        Instance.soundEvents.Add(new SoundEvent { t = Instance.clock, clip = clip, volume = volume, pitch = pitch });
+    }
+
+    int CastIndex(Fighter f)
+    {
+        for (int i = 0; i < cast.Length; i++) if (cast[i] == f) return i;
+        return -1;
+    }
 
     // ---------------------------------------------------------------- playback bookkeeping
 
@@ -157,6 +239,8 @@ public class ReplayRecorder : MonoBehaviour
         cam = camera != null ? camera : Camera.main;
         frames.Clear();
         markers.Clear();
+        fxEvents.Clear();
+        soundEvents.Clear();
         playhead = 0;
         clock = 0f;
         lastSampleT = -1f;
@@ -190,6 +274,17 @@ public class ReplayRecorder : MonoBehaviour
             else { f.pos[i] = tr.localPosition; f.rot[i] = tr.localRotation; }
         }
         if (cam != null) { f.camPos = cam.transform.position; f.camRot = cam.transform.rotation; }
+
+        // The bars: health and stamina per fighter, so playback can drive the real HUD.
+        f.hp = new int[cast.Length];
+        f.st = new int[cast.Length];
+        for (int i = 0; i < cast.Length; i++)
+        {
+            var s = cast[i] != null ? cast[i].Stats : null;
+            if (s == null) continue;
+            f.hp[i] = s.currentHealth;
+            f.st[i] = s.currentStamina;
+        }
         frames.Add(f);
 
         // The ring: trim in batches, since RemoveRange shifts the whole list.
@@ -201,6 +296,8 @@ public class ReplayRecorder : MonoBehaviour
             {
                 frames.RemoveRange(0, cut);
                 markers.RemoveAll(m => m.t < frames[0].t);
+                fxEvents.RemoveAll(e => e.t < frames[0].t);
+                soundEvents.RemoveAll(e => e.t < frames[0].t);
             }
         }
     }
@@ -245,7 +342,21 @@ public class ReplayRecorder : MonoBehaviour
         }
         if (cam != null) { savedCamPos = cam.transform.position; savedCamRot = cam.transform.rotation; }
 
+        // The real stats, so playback can drive the HUD with the RECORDED bars and still hand the
+        // K.O. tableau back untouched. The fighters are frozen (disabled) outside a match, so the
+        // writes are inert everywhere but the HUD, which polls them.
+        savedHp = new int[cast.Length];
+        savedSt = new int[cast.Length];
+        for (int i = 0; i < cast.Length; i++)
+        {
+            var s = cast[i] != null ? cast[i].Stats : null;
+            if (s == null) continue;
+            savedHp[i] = s.currentHealth;
+            savedSt[i] = s.currentStamina;
+        }
+
         playhead = 0;
+        lastEventT = frames.Count > 0 ? frames[0].t : 0f;
         Apply(0f);
     }
 
@@ -273,6 +384,13 @@ public class ReplayRecorder : MonoBehaviour
         foreach (var (rb, was) in savedBodies) if (rb != null) rb.isKinematic = was;
         savedBehaviours.Clear();
         savedBodies.Clear();
+        for (int i = 0; i < cast.Length && i < savedHp.Length; i++)
+        {
+            var s = cast[i] != null ? cast[i].Stats : null;
+            if (s == null) continue;
+            s.currentHealth = savedHp[i];
+            s.currentStamina = savedSt[i];
+        }
         if (cam != null) { cam.transform.position = savedCamPos; cam.transform.rotation = savedCamRot; }
         if (FightCamera.Instance != null) FightCamera.Instance.enabled = savedFightCam;
         Physics.SyncTransforms();
@@ -311,6 +429,64 @@ public class ReplayRecorder : MonoBehaviour
             }
             else ApplyLockedView();
         }
+
+        if (PlaybackActive)
+        {
+            // The bars: write the recorded health and stamina into the (frozen) fighters, and the
+            // live FightHud animates them exactly as it did in the fight. Restored by EndPlayback.
+            if (a.hp != null)
+            {
+                for (int i = 0; i < cast.Length && i < a.hp.Length; i++)
+                {
+                    var s = cast[i] != null ? cast[i].Stats : null;
+                    if (s == null) continue;
+                    s.currentHealth = a.hp[i];
+                    s.currentStamina = a.st[i];
+                }
+            }
+            FireEvents(t);
+        }
+    }
+
+    /// <summary>
+    /// Re-fires the effects (and, outside an export, the sounds) whose moment just passed. Only a
+    /// small FORWARD step fires anything: a scrub, a jump to a marker or the loop back to the
+    /// cut's start moves the playhead without replaying half a fight's blood in one frame.
+    /// </summary>
+    void FireEvents(float absT)
+    {
+        float step = absT - lastEventT;
+        if (step > 0f && step <= 0.5f)
+        {
+            for (int i = 0; i < fxEvents.Count; i++)
+            {
+                var e = fxEvents[i];
+                if (e.t <= lastEventT || e.t > absT) continue;
+                switch (e.kind)
+                {
+                    case Fx.Blood:
+                        if (e.a >= 0 && e.a < cast.Length && e.b >= 0 && e.b < cast.Length &&
+                            cast[e.a] != null && cast[e.b] != null)
+                            HitEffects.SpawnBlood(cast[e.a], cast[e.b], e.color);
+                        break;
+                    case Fx.Sparks: HitEffects.SpawnSparks(e.point, e.dir, e.radius, e.strength); break;
+                    case Fx.Parry: HitEffects.SpawnParryFlash(e.point, e.dir, e.radius, e.strength); break;
+                    case Fx.Dust: HitEffects.SpawnDust(e.point, e.radius, e.strength); break;
+                    case Fx.Dodge: HitEffects.SpawnDodgeBurst(e.point, e.radius, e.strength); break;
+                }
+            }
+            // The export mixes its own soundtrack sample-exact instead; live playback hears them.
+            if (!Exporting)
+            {
+                for (int i = 0; i < soundEvents.Count; i++)
+                {
+                    var e = soundEvents[i];
+                    if (e.t <= lastEventT || e.t > absT) continue;
+                    CrucibleAudio.PlayExact(e.clip, e.volume, e.pitch);
+                }
+            }
+        }
+        lastEventT = absT;
     }
 
     /// <summary>
@@ -389,8 +565,85 @@ public class ReplayRecorder : MonoBehaviour
             yield break;
         }
 
-        MjpegAviWriter writer = null;
         int total = Mathf.Max(1, Mathf.CeilToInt(Mathf.Max(0.1f, to - from) * ExportFps));
+
+        // The soundtrack is MIXED, not captured: every recorded one-shot at its exact moment
+        // (final volume and pitch), under the fight-music and wind beds, sample-accurate against
+        // the frames. Mixing can fail (a streaming clip has no readable samples) - the video then
+        // ships silent rather than not at all.
+        int audioRate = AudioSettings.outputSampleRate;
+        if (audioRate < 8000) audioRate = 48000;
+        short[] pcm = null;
+        try { pcm = MixAudio(from, total, audioRate); }
+        catch (Exception e) { Debug.LogWarning($"Replay export: no audio track ({e.Message})"); }
+
+        // One rendered frame = exactly 1/fps of game time, so particle effects re-fired by Apply
+        // advance in lockstep with the captured frames whatever the real frame rate is. The game
+        // is muted meanwhile - what the player hears during the write is not the video's track.
+        float savedCapture = Time.captureDeltaTime;
+        float savedListener = AudioListener.volume;
+        Time.captureDeltaTime = 1f / ExportFps;
+        AudioListener.volume = 0f;
+
+        // The pipeline: the MAIN thread only captures raw pixels (Apply + readback), WORKER
+        // threads JPEG-encode them (EncodeArrayToJPG takes plain arrays and is thread-safe),
+        // and one WRITER thread streams the frames to disk in order with the audio interleaved.
+        // Inline, the ~40 ms 1080p encode alone made every export slower than real time.
+        MjpegAviWriter writer = null;
+        var jobs = new System.Collections.Concurrent.BlockingCollection<EncodeJob>(16);
+        var jpegs = new System.Collections.Concurrent.ConcurrentDictionary<int, byte[]>();
+        Exception threadError = null;
+        bool encodersDone = false;
+        var encoders = new List<Thread>();
+        Thread writerThread = null;
+
+        void StartThreads()
+        {
+            int n = Mathf.Clamp(SystemInfo.processorCount - 2, 2, 6);
+            for (int t = 0; t < n; t++)
+            {
+                var enc = new Thread(() =>
+                {
+                    foreach (var j in jobs.GetConsumingEnumerable())
+                    {
+                        byte[] jpg = null;
+                        if (j.raw != null)
+                            try { jpg = ImageConversion.EncodeArrayToJPG(j.raw, j.fmt, (uint)j.w, (uint)j.h, 0, 88); }
+                            catch (Exception e) { threadError = e; }
+                        jpegs[j.index] = jpg;           // null = a skipped (resized) frame
+                    }
+                }) { IsBackground = true, Name = "ReplayJpeg" };
+                enc.Start();
+                encoders.Add(enc);
+            }
+            writerThread = new Thread(() =>
+            {
+                try
+                {
+                    for (int i = 0; i < total; i++)
+                    {
+                        byte[] jpg;
+                        while (!jpegs.TryRemove(i, out jpg))
+                        {
+                            // The capture loop aborted early: this index is never coming.
+                            if (encodersDone && !jpegs.ContainsKey(i)) return;
+                            Thread.Sleep(1);
+                        }
+                        if (jpg == null) continue;      // resized frame, dropped as before
+                        writer.AddFrame(jpg);
+                        if (pcm != null)
+                        {
+                            long s0 = (long)i * audioRate / ExportFps;
+                            long s1 = (long)(i + 1) * audioRate / ExportFps;
+                            writer.AddAudio(pcm, s0, (int)(s1 - s0));
+                        }
+                    }
+                }
+                catch (Exception e) { threadError = e; }
+            }) { IsBackground = true, Name = "ReplayAvi" };
+            writerThread.Start();
+        }
+
         for (int i = 0; i < total; i++)
         {
             Apply(from + i / (float)ExportFps);
@@ -400,10 +653,22 @@ public class ReplayRecorder : MonoBehaviour
             try
             {
                 shot = ScreenCapture.CaptureScreenshotAsTexture();
-                if (writer == null) writer = new MjpegAviWriter(path, shot.width, shot.height, ExportFps);
+                if (writer == null)
+                {
+                    writer = new MjpegAviWriter(path, shot.width, shot.height, ExportFps,
+                                                pcm != null ? audioRate : 0);
+                    StartThreads();
+                }
                 // A window resize mid-export changes the frame size, which an .avi cannot hold.
-                if (shot.width == writer.Width && shot.height == writer.Height)
-                    writer.AddFrame(shot.EncodeToJPG(88));
+                bool skip = shot.width != writer.Width || shot.height != writer.Height;
+                jobs.Add(new EncodeJob
+                {
+                    index = i,
+                    raw = skip ? null : shot.GetRawTextureData(),
+                    fmt = shot.graphicsFormat,
+                    w = shot.width,
+                    h = shot.height,
+                });
             }
             catch (Exception e)
             {
@@ -413,9 +678,21 @@ public class ReplayRecorder : MonoBehaviour
             {
                 if (shot != null) Destroy(shot);
             }
-            if (ExportError != null) break;
+            if (ExportError != null || threadError != null) break;
             ExportProgress = (i + 1) / (float)total;
         }
+
+        Time.captureDeltaTime = savedCapture;
+        AudioListener.volume = savedListener;
+
+        // Drain the pipeline: encoders exit when the queue completes, then the writer either
+        // finishes the run or bails on the index that will never arrive.
+        jobs.CompleteAdding();
+        foreach (var enc in encoders) while (enc.IsAlive) yield return null;
+        encodersDone = true;
+        if (writerThread != null) while (writerThread.IsAlive) yield return null;
+        jobs.Dispose();
+        if (threadError != null && ExportError == null) ExportError = threadError.Message;
 
         try { writer?.Finish(); }
         catch (Exception e) { if (ExportError == null) ExportError = e.Message; }
@@ -424,30 +701,157 @@ public class ReplayRecorder : MonoBehaviour
         Exporting = false;
     }
 
+    /// <summary>One captured frame on its way to a worker thread. raw == null marks a frame
+    /// dropped for a mid-export window resize (the writer skips it, as the inline path did).</summary>
+    struct EncodeJob
+    {
+        public int index;
+        public byte[] raw;
+        public UnityEngine.Experimental.Rendering.GraphicsFormat fmt;
+        public int w, h;
+    }
+
+    // ================================================================ audio mixing
+
+    /// <summary>
+    /// Builds the cut's stereo 16-bit soundtrack: the fight-music and wind beds looping under
+    /// every recorded one-shot, each placed at its exact moment with its recorded volume and
+    /// pitch. Returns null when nothing could be mixed (no readable clips).
+    /// </summary>
+    short[] MixAudio(float from, int totalFrames, int rate)
+    {
+        if (frames.Count == 0) return null;
+        long totalSamples = (long)totalFrames * rate / ExportFps;
+        if (totalSamples <= 0 || totalSamples > 100_000_000) return null;   // ~17 min cap, way past MaxSeconds
+
+        var mix = new float[totalSamples * 2];
+        float master = Mathf.Clamp01(AudioListener.volume);
+        float t0 = frames[0].t + from;   // the absolute record time of the cut's first sample
+        var cache = new Dictionary<AudioClip, float[]>();
+        bool any = false;
+
+        if (CrucibleAudio.ExportBeds(out var music, out float musicVol, out var wind, out float windVol))
+        {
+            any |= AddLoop(mix, music, musicVol * master, t0, rate, cache);
+            any |= AddLoop(mix, wind, windVol * master, t0, rate, cache);
+        }
+        foreach (var e in soundEvents)
+        {
+            if (e.clip == null) continue;
+            double start = (e.t - t0) * rate;
+            if (start >= totalSamples) continue;
+            any |= AddShot(mix, e.clip, e.volume * master, e.pitch, start, rate, cache);
+        }
+        if (!any) return null;
+
+        var pcm = new short[mix.Length];
+        for (long i = 0; i < mix.Length; i++)
+            pcm[i] = (short)Mathf.Clamp(mix[i] * 32767f, -32768f, 32767f);
+        return pcm;
+    }
+
+    /// <summary>The clip's raw samples, or null when they cannot be read (streaming/compressed-in-memory).</summary>
+    static float[] ClipData(AudioClip clip, Dictionary<AudioClip, float[]> cache)
+    {
+        if (clip == null) return null;
+        if (cache.TryGetValue(clip, out var cached)) return cached;
+        float[] data = null;
+        if (clip.loadType == AudioClipLoadType.DecompressOnLoad && clip.samples > 0)
+        {
+            if (clip.loadState != AudioDataLoadState.Loaded) clip.LoadAudioData();
+            if (clip.loadState == AudioDataLoadState.Loaded)
+            {
+                var d = new float[(long)clip.samples * clip.channels];
+                if (clip.GetData(d, 0)) data = d;
+            }
+        }
+        cache[clip] = data;
+        return data;
+    }
+
+    /// <summary>Mixes a looping bed across the whole buffer, phase-continuous with the record clock.</summary>
+    static bool AddLoop(float[] mix, AudioClip clip, float vol, float t0, int rate, Dictionary<AudioClip, float[]> cache)
+    {
+        var data = ClipData(clip, cache);
+        if (data == null || vol <= 0.0001f) return false;
+        int ch = clip.channels;
+        double step = (double)clip.frequency / rate;
+        double src = (t0 % clip.length) * clip.frequency;
+        long n = mix.Length / 2;
+        for (long o = 0; o < n; o++)
+        {
+            long s0 = (long)src % clip.samples;
+            long s1 = (s0 + 1) % clip.samples;
+            float k = (float)(src - Math.Floor(src));
+            for (int c = 0; c < 2; c++)
+            {
+                int sc = ch == 1 ? 0 : Math.Min(c, ch - 1);
+                float v = Mathf.Lerp(data[s0 * ch + sc], data[s1 * ch + sc], k);
+                mix[o * 2 + c] += v * vol;
+            }
+            src += step;
+        }
+        return true;
+    }
+
+    /// <summary>Mixes one one-shot at its moment, resampled by its recorded pitch.</summary>
+    static bool AddShot(float[] mix, AudioClip clip, float vol, float pitch, double startSample, int rate,
+                        Dictionary<AudioClip, float[]> cache)
+    {
+        var data = ClipData(clip, cache);
+        if (data == null || vol <= 0.0001f || pitch <= 0.01f) return false;
+        int ch = clip.channels;
+        double step = (double)clip.frequency * pitch / rate;
+        long outLen = (long)(clip.samples / step);
+        long o0 = Math.Max(0, (long)Math.Ceiling(startSample));
+        long o1 = Math.Min(mix.Length / 2, (long)Math.Floor(startSample + outLen));
+        for (long o = o0; o < o1; o++)
+        {
+            double src = (o - startSample) * step;
+            long s0 = (long)src;
+            if (s0 + 1 >= clip.samples) break;
+            float k = (float)(src - s0);
+            for (int c = 0; c < 2; c++)
+            {
+                int sc = ch == 1 ? 0 : Math.Min(c, ch - 1);
+                float v = Mathf.Lerp(data[s0 * ch + sc], data[(s0 + 1) * ch + sc], k);
+                mix[o * 2 + c] += v * vol;
+            }
+        }
+        return o1 > o0;
+    }
+
     /// <summary>
     /// A minimal Motion-JPEG AVI: RIFF header, one video stream whose every chunk is a whole JPEG,
-    /// and the idx1 index players expect. Written incrementally; <see cref="Finish"/> patches the
-    /// sizes and the frame counts. All values little-endian, which is what BinaryWriter writes.
+    /// an optional 16-bit stereo PCM audio stream interleaved per frame, and the idx1 index players
+    /// expect. Written incrementally; <see cref="Finish"/> patches the sizes and the counts. All
+    /// values little-endian, which is what BinaryWriter writes.
     /// </summary>
     class MjpegAviWriter
     {
         public readonly int Width, Height;
         readonly FileStream file;
         readonly BinaryWriter w;
-        readonly List<(long offset, int size)> index = new List<(long, int)>();
+        readonly List<(long offset, int size, bool audio)> index = new List<(long, int, bool)>();
         readonly long riffSizePos, aviTotalFramesPos, streamLengthPos, moviSizePos, moviStart;
+        readonly long audioLengthPos;
+        readonly bool hasAudio;
+        int videoFrames;
+        long audioSamples;
 
-        public MjpegAviWriter(string path, int width, int height, int fps)
+        public MjpegAviWriter(string path, int width, int height, int fps, int audioRate = 0)
         {
             Width = width;
             Height = height;
+            hasAudio = audioRate > 0;
             file = new FileStream(path, FileMode.Create, FileAccess.Write);
             w = new BinaryWriter(file);
 
             Four("RIFF"); riffSizePos = file.Position; w.Write(0); Four("AVI ");
 
-            // hdrl: the avih header and one stream (strh + strf). 192 = "hdrl" + (8+56) + (8+116).
-            Four("LIST"); w.Write(192); Four("hdrl");
+            // hdrl: the avih header and the streams. "hdrl"(4) + avih(8+56) + video strl(8+116)
+            // = 192; the audio strl (8 + [4 + (8+56) + (8+16)]) adds 100.
+            Four("LIST"); w.Write(hasAudio ? 292 : 192); Four("hdrl");
 
             Four("avih"); w.Write(56);
             w.Write((uint)(1000000 / fps));          // microseconds per frame
@@ -456,7 +860,7 @@ public class ReplayRecorder : MonoBehaviour
             w.Write(0x10);                           // AVIF_HASINDEX
             aviTotalFramesPos = file.Position; w.Write(0);
             w.Write(0);                              // initial frames
-            w.Write(1);                              // one stream
+            w.Write(hasAudio ? 2 : 1);               // streams
             w.Write(Width * Height * 3);             // suggested buffer size
             w.Write(Width); w.Write(Height);
             w.Write(0); w.Write(0); w.Write(0); w.Write(0);
@@ -482,6 +886,31 @@ public class ReplayRecorder : MonoBehaviour
             w.Write(Width * Height * 3);
             w.Write(0); w.Write(0); w.Write(0); w.Write(0);
 
+            if (hasAudio)
+            {
+                Four("LIST"); w.Write(92); Four("strl");
+                Four("strh"); w.Write(56);
+                Four("auds"); w.Write(0);            // handler: none (plain PCM)
+                w.Write(0);                          // flags
+                w.Write(0);                          // priority + language
+                w.Write(0);                          // initial frames
+                w.Write(1); w.Write(audioRate);      // scale / rate = samples per second
+                w.Write(0);                          // start
+                audioLengthPos = file.Position; w.Write(0);   // length, in samples
+                w.Write(audioRate * 4);              // suggested buffer size (one second)
+                w.Write(-1);                         // quality
+                w.Write(4);                          // sample size = block align (2ch x 16 bit)
+                w.Write((short)0); w.Write((short)0); w.Write((short)0); w.Write((short)0);
+
+                Four("strf"); w.Write(16);           // WAVEFORMATEX, PCM, no cbSize
+                w.Write((short)1);                   // PCM
+                w.Write((short)2);                   // stereo
+                w.Write(audioRate);
+                w.Write(audioRate * 4);              // bytes per second
+                w.Write((short)4);                   // block align
+                w.Write((short)16);                  // bits per sample
+            }
+
             Four("LIST"); moviSizePos = file.Position; w.Write(0); Four("movi");
             moviStart = file.Position;
         }
@@ -490,11 +919,25 @@ public class ReplayRecorder : MonoBehaviour
 
         public void AddFrame(byte[] jpeg)
         {
-            index.Add((file.Position, jpeg.Length));
+            index.Add((file.Position, jpeg.Length, false));
             Four("00dc");
             w.Write(jpeg.Length);
             w.Write(jpeg);
             if ((jpeg.Length & 1) == 1) w.Write((byte)0);   // RIFF chunks are word-aligned
+            videoFrames++;
+        }
+
+        /// <summary>One frame's slice of the premixed stereo track, interleaved after its picture.</summary>
+        public void AddAudio(short[] pcm, long startSample, int sampleCount)
+        {
+            if (!hasAudio || pcm == null || sampleCount <= 0) return;
+            int bytes = sampleCount * 4;                     // 2 channels x 16 bit; always even
+            index.Add((file.Position, bytes, true));
+            Four("01wb");
+            w.Write(bytes);
+            long i0 = startSample * 2, i1 = (startSample + sampleCount) * 2;
+            for (long i = i0; i < i1 && i < pcm.Length; i++) w.Write(pcm[i]);
+            audioSamples += sampleCount;
         }
 
         public void Finish()
@@ -502,18 +945,19 @@ public class ReplayRecorder : MonoBehaviour
             long moviEnd = file.Position;
 
             Four("idx1"); w.Write(index.Count * 16);
-            foreach (var (offset, size) in index)
+            foreach (var (offset, size, audio) in index)
             {
-                Four("00dc");
-                w.Write(0x10);                               // keyframe (every JPEG is one)
+                Four(audio ? "01wb" : "00dc");
+                w.Write(0x10);                               // keyframe (every chunk stands alone)
                 w.Write((int)(offset - moviStart + 4));      // offset from the 'movi' fourcc
                 w.Write(size);
             }
             long end = file.Position;
 
             file.Position = riffSizePos; w.Write((int)(end - riffSizePos - 4));
-            file.Position = aviTotalFramesPos; w.Write(index.Count);
-            file.Position = streamLengthPos; w.Write(index.Count);
+            file.Position = aviTotalFramesPos; w.Write(videoFrames);
+            file.Position = streamLengthPos; w.Write(videoFrames);
+            if (hasAudio) { file.Position = audioLengthPos; w.Write((int)audioSamples); }
             file.Position = moviSizePos; w.Write((int)(moviEnd - moviSizePos - 4));
             w.Flush();
             file.Close();
