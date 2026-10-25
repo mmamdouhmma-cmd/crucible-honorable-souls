@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
+  m_Name: Buwaka_Heavy_IklwaThrust
+  m_EditorClassIdentifier: Assembly-CSharp::AttackData
+  attackName: Iklwa Thrust
+  damage: 10
+  staminaCost: 23
+  armorPierce: 8
+  startupFrames: 18
+  activeFrames: 4
+  recoveryFrames: 14
+  animationClip: {fileID: 0}
+  animatorTriggerName: HeavyAttack
+  attackHeight: 1
+  attackType: 2
+  specialButton: 0
+  comesFrom: 3
+  swingFlow: 1
+  hitSide: 0
+  hitstunFrames: 48
+  hyperArmor: 0
+  hitboxRange: 3.8
+  hitboxOffset: {x: 0, y: 1, z: 0}
+  hitboxSize: {x: 0.8, y: 1, z: 1}
+  aimMode: 0
+  aimMaxAngle: -1
+  aimRollDegrees: 0
+  lungeStopDistance: 2.6
+  lungeMaxDistance: 1
+  hitsWithWeapon: 1
+  comboLinks:
+  - input: 0
+    withSpecialModifier: 0
+    followUp: {fileID: 11400000, guid: d52cb7f7171a92340a081047dcccf6d5, type: 2}
+    requires: 0
+    openerOnly: 1
+  - input: 2
+    withSpecialModifier: 1
+    followUp: {fileID: 11400000, guid: 3f46163e413d1f3488b312ec5ba79a38, type: 2}
+    requires: 1
+    openerOnly: 0
+  cancelStartFrame: -1
+  cancelEndFrame: -1
+  dodgedRecoveryFrames: -1

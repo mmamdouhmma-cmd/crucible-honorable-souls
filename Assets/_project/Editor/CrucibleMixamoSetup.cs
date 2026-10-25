@@ -21,6 +21,8 @@ public static class CrucibleMixamoSetup
     const string P2Ctrl = "Assets/_project/Animation/Controllers/P2_Miyamoto.controller";
     const string P3Ctrl = "Assets/_project/Animation/Controllers/P3_Richard.controller";
     const string P4Ctrl = "Assets/_project/Animation/Controllers/P4_Salaadin.controller";
+    const string P5Ctrl = "Assets/_project/Animation/Controllers/P5_Genghis.controller";
+    const string P6Ctrl = "Assets/_project/Animation/Controllers/P6_Buwaka.controller";
 
     /// <summary>Where a pack lives. "Custom" is the hand-keyed set in Animation/Clips/Custom.</summary>
     static string PackDir(string pack) => pack == "Custom" ? CustomDir : $"{MixamoDir}/{pack}";
@@ -209,6 +211,68 @@ public static class CrucibleMixamoSetup
         ("Run_Forward",                    "SwordShieldPack", "sword and shield run",          true),
     };
 
+    // Genghis: two-handed, so the GreatSwordPack's narrow grip is right for him. His three strikes
+    // are Miyamoto's three (the brief: slash from the left, slash from the right, overhead) and
+    // each special plays its own normal's clip at its own per-STATE contact - Richard's pattern.
+    static readonly (string state, string pack, string clip, bool loop)[] P5Map =
+    {
+        ("Genghis_Idle",                   "AxePack2H", "standing idle",                   true),
+        ("Genghis_Walk_Forward",           "AxePack2H", "standing walk forward",           true),
+        ("Genghis_Walk_Back",              "AxePack2H", "standing walk back",              true),
+        ("Genghis_Light_SteppeCut",        "GreatSwordPack", "great sword slash (3)",     false),  // the horizontal middle slash
+        ("Genghis_Medium_HordeSlash",      "GreatSwordPack", "great sword slash",         false),  // the diagonal
+        ("Genghis_Heavy_KhanCleave",       "GreatSwordPack", "great sword casting",       false),  // the only non-spinning overhead in the pack
+        ("Genghis_Special_SteppeStorm",    "GreatSwordPack", "great sword slash (3)",     false),  // his Light, heavier (per-state contact)
+        ("Genghis_Special_HordeBreaker",   "GreatSwordPack", "great sword slash",         false),  // his Medium, heavier
+        ("Genghis_Special_WrathOfTengri",  "GreatSwordPack", "great sword casting",       false),  // his Heavy, heavier
+        ("Genghis_Riposte_Dash",           "GreatSwordPack", "great sword kick",          false),  // a boot, judged on the body box
+        ("Genghis_Riposte_Parry",          "GreatSwordPack", "great sword high spin attack", false), // THE WHEEL: the roster's hardest parry punish
+        ("React_Front",                    "GreatSwordPack", "great sword impact",        false),
+        ("React_Left",                     "GreatSwordPack", "great sword impact (2)",    false),
+        ("React_Right",                    "GreatSwordPack", "great sword impact (3)",    false),
+        ("Block_Hold",                     "GreatSwordPack", "great sword blocking (2)",  true),
+        ("Block_Impact",                   "AxePack",        "standing block react large", false),
+        ("Parry_Success",                  "AxePack",        "standing block react large", false),
+        ("Death",                          "GreatSwordPack", "two handed sword death",    false),
+        ("Dash_Forward",                   "AxePack", "standing run forward",              false),
+        ("Dash_Back",                      "AxePack2H", "standing walk back",              false),
+        ("Dash_Left",                      "AxePack2H", "standing walk left",              false),
+        ("Dash_Right",                     "AxePack2H", "standing walk right",             false),
+        ("Run_Forward",                    "AxePack", "standing run forward",              true),
+    };
+
+    // Buwaka: a shield fighter on the SwordShieldPack locomotion (shared with Richard and
+    // Salaadin), one-handed AxePack strikes where the pack runs out, and Richard's ORPHANED
+    // authored thrust (Clips/Custom/Richard_Thrust.fbx) as his Heavy and his SP+Heavy - no state
+    // had played it since 2026-10-23. The GreatSwordPack is off limits: grip_spread 0.11-0.20
+    // would drag his shield arm onto the haft.
+    static readonly (string state, string pack, string clip, bool loop)[] P6Map =
+    {
+        ("Buwaka_Idle",                    "SwordShieldPack", "sword and shield idle (4)",     true),
+        ("Buwaka_Walk_Forward",            "SwordShieldPack", "sword and shield walk",         true),
+        ("Buwaka_Walk_Back",               "SwordShieldPack", "sword and shield walk (2)",     true),
+        ("Buwaka_Light_HornCut",           "AxePack",         "standing melee attack backhand", false),  // the swing from the left; FOURTH state on this clip, own contact
+        ("Buwaka_Medium_SavannaCut",       "SwordShieldPack", "sword and shield slash (5)",    false),  // the low cut from the right, shared with Richard's and Salaadin's Mediums
+        ("Buwaka_Heavy_IklwaThrust",       "Custom",          "Richard_Thrust",                false),  // the authored thrust, orphaned since 2026-10-23
+        ("Buwaka_Special_SerpentSweep",    "AxePack",         "standing melee attack 360 low", false),  // the low sweep (Bjorn's Hewing Charge clip)
+        ("Buwaka_Special_FallingSpear",    "SwordShieldPack", "sword and shield slash",        false),  // the pack's true overhead
+        ("Buwaka_Special_GreatImpale",     "Custom",          "Richard_Thrust",                false),  // the thrust again, driven in on the roster's longest lunge
+        ("Buwaka_Riposte_Dash",            "SwordShieldPack", "sword and shield attack (4)",   false),  // the shortest cut in the pack
+        ("Buwaka_Riposte_Parry",           "SwordShieldPack", "sword and shield kick",         false),  // a BOOT: hitsWithWeapon is off
+        ("React_Front",                    "SwordShieldPack", "sword and shield impact",       false),
+        ("React_Left",                     "SwordShieldPack", "sword and shield impact (2)",   false),
+        ("React_Right",                    "SwordShieldPack", "sword and shield impact (3)",   false),
+        ("Block_Hold",                     "SwordShieldPack", "sword and shield block idle",   true),
+        ("Block_Impact",                   "SwordShieldPack", "sword and shield block",        false),
+        ("Parry_Success",                  "SwordShieldPack", "sword and shield block (2)",    false),
+        ("Death",                          "SwordShieldPack", "sword and shield death",        false),
+        ("Dash_Forward",                   "SwordShieldPack", "sword and shield run",          false),
+        ("Dash_Back",                      "SwordShieldPack", "sword and shield run (2)",      false),
+        ("Dash_Left",                      "SwordShieldPack", "sword and shield strafe (3)",   false),
+        ("Dash_Right",                     "SwordShieldPack", "sword and shield strafe (4)",   false),
+        ("Run_Forward",                    "SwordShieldPack", "sword and shield run",          true),
+    };
+
     // Attack clips are trimmed to their swing core (measured in Blender: Animation/Clips/Mixamo/swing_trims.json,
     // peak right-hand speed + core window per clip) so the peak lands on the attack's hit frame.
     static Dictionary<string, (float first, float last, int frames)> Trims = new Dictionary<string, (float, float, int)>();
@@ -283,11 +347,15 @@ public static class CrucibleMixamoSetup
         ComputeTrims(P2Map, "Assets/_project/Characters/Miyamoto/Attacks");
         ComputeTrims(P3Map, "Assets/_project/Characters/Richard/Attacks");
         ComputeTrims(P4Map, "Assets/_project/Characters/salaadin/Attacks");
-        ImportAll(P1Map, P2Map, P3Map, P4Map);
+        ComputeTrims(P5Map, "Assets/_project/Characters/Genghis/Attacks");
+        ComputeTrims(P6Map, "Assets/_project/Characters/Buwaka/Attacks");
+        ImportAll(P1Map, P2Map, P3Map, P4Map, P5Map, P6Map);
         Wire(P1Ctrl, P1Map, "Assets/_project/Characters/Bjorn/Attacks", "Player1");
         Wire(P2Ctrl, P2Map, "Assets/_project/Characters/Miyamoto/Attacks", "Player2");
         if (File.Exists(P3Ctrl)) Wire(P3Ctrl, P3Map, "Assets/_project/Characters/Richard/Attacks", "Player3");
         if (File.Exists(P4Ctrl)) Wire(P4Ctrl, P4Map, "Assets/_project/Characters/salaadin/Attacks", "Player4");
+        if (File.Exists(P5Ctrl)) Wire(P5Ctrl, P5Map, "Assets/_project/Characters/Genghis/Attacks", "Player5");
+        if (File.Exists(P6Ctrl)) Wire(P6Ctrl, P6Map, "Assets/_project/Characters/Buwaka/Attacks", "Player6");
         AssetDatabase.SaveAssets();
         Debug.Log("Mixamo packs wired into P1_Bjorn and P2_Miyamoto. Play to check; Dash_* states keep the custom clips.");
     }

@@ -111,6 +111,37 @@ public static class CrucibleBalance
                      dashIFrames = 0.16f,
                      parryWindow = 0.2f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
                      parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
+
+        // The PARRY-COUNTER tank (the user's brief, 2026-10-25): a tank below Richard - less
+        // health, far less block - but faster (walk 3.6 against his 3.2), hitting about as hard
+        // (x1.00). His one crown is the parry punish: counter damage x1.7, the roster's highest
+        // (Miyamoto's is 1.5), paid through a 12-damage riposte - the great-sword wheel.
+        new Vitals { character = "Genghis", player = "Player5", fighterName = "Genghis", archetype = "Warlord",
+                     dataPath = "Assets/_project/Data/Fighters/genghis_data.asset",
+                     health = 105, stamina = 95, armor = 18, damageMultiplier = 100, moveSpeed = 36,
+                     regen = 20f, dashDistance = 2.1f, dashDuration = 0.30f, dashStamina = 16,
+                     // "lower block": a two-handed saber is no shield - between Miyamoto's 60 and
+                     // Bjorn's 68, on a TANK, so his defence has to be the parry.
+                     blockReduction = 62, blockDrain = 0f,
+                     // 43% dash coverage. The counter window runs longer than base so the wheel
+                     // (36 f + the stun maths) always fits inside it.
+                     dashIFrames = 0.13f,
+                     parryWindow = 0.2f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
+                     parryCounterWindow = 1.2f, parryCounterDamage = 1.7f },
+
+        // The RANGE fighter (the user's brief, 2026-10-25): the spear out-reaches every weapon in
+        // the roster (hitbox ranges 3.3-4.0, LungeOverride keeps him at the spear's length), and
+        // everything else is deliberately moderate - block Bjorn's 68, walk between Bjorn's 3.8
+        // and Salaadin's 4.1, base parry.
+        new Vitals { character = "Buwaka", player = "Player6", fighterName = "Buwaka", archetype = "Hunter",
+                     dataPath = "Assets/_project/Data/Fighters/buwaka_data.asset",
+                     health = 100, stamina = 100, armor = 15, damageMultiplier = 95, moveSpeed = 40,
+                     regen = 20f, dashDistance = 2.3f, dashDuration = 0.28f, dashStamina = 14,
+                     blockReduction = 68, blockDrain = 0f,
+                     // 54% dash coverage - mid-pack, like the rest of him.
+                     dashIFrames = 0.15f,
+                     parryWindow = 0.2f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
+                     parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
     };
 
     // ------------------------------------------------------------------ the moves
@@ -197,6 +228,35 @@ public static class CrucibleBalance
             N("Salaadin_Special_HattinCleave",        16,  44, 10,     26,  5, 20,  14),
             N("Salaadin_Riposte_Dash",                 9,  14,  0,     12,  4, 14,   9),
             N("Salaadin_Riposte_Parry",                8,  14,  0,     12,  4, 14,   9),
+        },
+
+        // Genghis: Richard's damage on quicker frames (startups between Miyamoto's and Richard's),
+        // paid for with a thinner guard. The RIPOSTE_PARRY row is the point of him: 12 damage at
+        // his x1.7 counter multiplier is a 20-point punish, the roster's hardest single answer.
+        ["Genghis"] = new[]
+        {                                          // dmg stam pierce  start act rec  hitstun
+            N("Genghis_Light_SteppeCut",               7,  17,  4,     10,  3,  8,   7),
+            N("Genghis_Medium_HordeSlash",             9,  20,  5,     14,  4, 10,   9),
+            N("Genghis_Heavy_KhanCleave",             11,  24,  8,     21,  5, 16,  11),
+            N("Genghis_Special_SteppeStorm",          14,  36, 10,     14,  4, 15,  13),
+            N("Genghis_Special_HordeBreaker",         15,  41, 12,     17,  5, 16,  13),
+            N("Genghis_Special_WrathOfTengri",        17,  46, 14,     24,  5, 19,  14),
+            N("Genghis_Riposte_Dash",                  9,  14,  4,     12,  4, 13,   9),
+            N("Genghis_Riposte_Parry",                12,  16, 10,     14,  5, 17,   9),
+        },
+
+        // Buwaka: moderate numbers on the longest reach. The damage order stays
+        // Bjorn 110 > Richard = Genghis 100 > Buwaka 95 > Miyamoto 92 > Salaadin 85.
+        ["Buwaka"] = new[]
+        {                                          // dmg stam pierce  start act rec  hitstun
+            N("Buwaka_Light_HornCut",                  7,  16,  2,     10,  3,  8,   7),
+            N("Buwaka_Medium_SavannaCut",              8,  19,  3,     13,  4, 10,   8),
+            N("Buwaka_Heavy_IklwaThrust",             10,  23,  8,     18,  4, 14,  10),
+            N("Buwaka_Special_SerpentSweep",          13,  35,  6,     18,  5, 17,  12),
+            N("Buwaka_Special_FallingSpear",          14,  40,  8,     20,  5, 18,  13),
+            N("Buwaka_Special_GreatImpale",           16,  45, 12,     25,  5, 20,  14),
+            N("Buwaka_Riposte_Dash",                   9,  14,  2,     12,  4, 14,   9),
+            N("Buwaka_Riposte_Parry",                  8,  14,  0,     12,  4, 14,   9),
         },
     };
 
@@ -321,6 +381,26 @@ public static class CrucibleBalance
         { "Salaadin_Special_VeiledRush",    SwingFlow.Thrust },   // the rush
         { "Salaadin_Riposte_Dash",        SwingFlow.CutLeft },
         { "Salaadin_Riposte_Parry",       SwingFlow.CutRight },   // the saber counter
+
+        // Genghis: alternating sides on the normals, the wheel on the parry answer.
+        { "Genghis_Light_SteppeCut",      SwingFlow.CutRight },   // from the left, travels right
+        { "Genghis_Medium_HordeSlash",    SwingFlow.CutLeft },
+        { "Genghis_Heavy_KhanCleave",     SwingFlow.Overhead },
+        { "Genghis_Special_SteppeStorm",  SwingFlow.CutRight },
+        { "Genghis_Special_HordeBreaker", SwingFlow.CutLeft },
+        { "Genghis_Special_WrathOfTengri",SwingFlow.Overhead },
+        { "Genghis_Riposte_Dash",         SwingFlow.Thrust },     // the boot
+        { "Genghis_Riposte_Parry",        SwingFlow.SpinRight },  // the wheel
+
+        // Buwaka: a thrusting heavy, a true 360 on SP+Light.
+        { "Buwaka_Light_HornCut",         SwingFlow.CutRight },   // the backhand sweeps out right
+        { "Buwaka_Medium_SavannaCut",     SwingFlow.CutLeft },
+        { "Buwaka_Heavy_IklwaThrust",     SwingFlow.Thrust },
+        { "Buwaka_Special_SerpentSweep",  SwingFlow.SpinRight },  // the full low turn
+        { "Buwaka_Special_FallingSpear",  SwingFlow.Overhead },
+        { "Buwaka_Special_GreatImpale",   SwingFlow.Thrust },
+        { "Buwaka_Riposte_Dash",          SwingFlow.CutLeft },
+        { "Buwaka_Riposte_Parry",         SwingFlow.Thrust },     // the boot
     };
 
     static SwingFlow FlowFor(string asset, int hitSideIndex)
@@ -347,6 +427,8 @@ public static class CrucibleBalance
         "Bjorn_Special_BloodEagle",
         "Richard_Special_DoubleHigh",
         "Salaadin_Special_HattinCleave",
+        "Genghis_Special_WrathOfTengri",
+        "Buwaka_Special_GreatImpale",
     };
 
     /// <summary>
@@ -364,6 +446,16 @@ public static class CrucibleBalance
     {
         { "Bjorn_Medium_SpinningSlash", (0.9f, 2.6f) },
         { "Bjorn_Heavy_SpinOverhead",   (0.9f, 2.6f) },
+        // Buwaka is the opposite case: the spear must KEEP its distance rather than close. The
+        // default stop (1.7) would walk him inside his own point; these hold him at the spear's
+        // length, and the Great Impale alone drives all the way in.
+        { "Buwaka_Light_HornCut",        (2.3f, 0.9f) },
+        { "Buwaka_Medium_SavannaCut",    (2.3f, 0.9f) },
+        { "Buwaka_Heavy_IklwaThrust",    (2.6f, 1.0f) },
+        { "Buwaka_Special_SerpentSweep", (2.2f, 1.2f) },
+        { "Buwaka_Special_FallingSpear", (2.4f, 1.2f) },
+        { "Buwaka_Special_GreatImpale",  (2.2f, 2.0f) },
+        { "Buwaka_Riposte_Dash",         (2.3f, 0.9f) },
     };
 
     // Every get-hit stun is 0.8 s (48 frames at 60fps) - the user's call, 2026-10-24, raising the

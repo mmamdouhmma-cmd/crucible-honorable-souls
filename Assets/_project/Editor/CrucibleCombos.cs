@@ -192,12 +192,59 @@ public static class CrucibleCombos
         }),
     };
 
+    // Genghis. "Not too diverse" is the brief: the SHORTEST table in the roster - one plain chain
+    // up the weights, one special ender off the heavy, and the ripostes open. No special hands a
+    // normal back, so a string ends where it ends. His reward lives in the parry counter, not here.
+    static readonly (string attack, Link[] links)[] Genghis =
+    {
+        ("Genghis_Light_SteppeCut", new[]
+        {
+            new Link(M, false, "Genghis_Medium_HordeSlash",      true,  Always),
+        }),
+        ("Genghis_Medium_HordeSlash", new[]
+        {
+            new Link(H, false, "Genghis_Heavy_KhanCleave",       true,  Always),
+        }),
+        ("Genghis_Heavy_KhanCleave", new[]
+        {
+            new Link(H, true,  "Genghis_Special_WrathOfTengri",  false, HitOrBlock),
+        }),
+        ("Genghis_Riposte_Dash",  new[] { new Link(L, false, "Genghis_Light_SteppeCut", true, Always) }),
+        ("Genghis_Riposte_Parry", new[] { new Link(L, false, "Genghis_Light_SteppeCut", true, Always) }),
+    };
+
+    // Buwaka. Richard's moderate shape: each normal one normal link and one special link, each
+    // special hands back one normal.
+    static readonly (string attack, Link[] links)[] Buwaka =
+    {
+        ("Buwaka_Light_HornCut", new[]
+        {
+            new Link(M, false, "Buwaka_Medium_SavannaCut",       true,  Always),
+            new Link(M, true,  "Buwaka_Special_FallingSpear",    false, HitOrBlock),
+        }),
+        ("Buwaka_Medium_SavannaCut", new[]
+        {
+            new Link(H, false, "Buwaka_Heavy_IklwaThrust",       true,  Always),
+            new Link(L, true,  "Buwaka_Special_SerpentSweep",    false, HitOrBlock),
+        }),
+        ("Buwaka_Heavy_IklwaThrust", new[]
+        {
+            new Link(L, false, "Buwaka_Light_HornCut",           true,  Always),
+            new Link(H, true,  "Buwaka_Special_GreatImpale",     false, HitOrBlock),
+        }),
+        ("Buwaka_Riposte_Dash",          new[] { new Link(L, false, "Buwaka_Light_HornCut", true, Always) }),
+        ("Buwaka_Riposte_Parry",         new[] { new Link(L, false, "Buwaka_Light_HornCut", true, Always) }),
+        ("Buwaka_Special_SerpentSweep",  new[] { new Link(M, false, "Buwaka_Medium_SavannaCut", true, Always) }),
+        ("Buwaka_Special_FallingSpear",  new[] { new Link(L, false, "Buwaka_Light_HornCut", true, Always) }),
+        ("Buwaka_Special_GreatImpale",   new[] { new Link(L, false, "Buwaka_Light_HornCut", true, Always) }),
+    };
+
     [MenuItem("Crucible/Combat/Wire combo strings")]
     public static void Wire()
     {
         var all = LoadAttacks(null);
         int written = 0;
-        foreach (var table in new[] { Bjorn, Miyamoto, Richard, Salaadin })
+        foreach (var table in new[] { Bjorn, Miyamoto, Richard, Salaadin, Genghis, Buwaka })
             foreach (var (attackName, links) in table)
             {
                 if (!all.TryGetValue(attackName, out var attack)) { Debug.LogError($"no AttackData named {attackName}"); continue; }
@@ -246,7 +293,9 @@ public static class CrucibleCombos
                                            ("Assets/_project/Characters/Richard/Attacks", "Richard"),
                                            // his folder is lowercase on purpose; renaming it
                                            // deadlocks the Editor (see CLAUDE.md)
-                                           ("Assets/_project/Characters/salaadin/Attacks", "Salaadin") })
+                                           ("Assets/_project/Characters/salaadin/Attacks", "Salaadin"),
+                                           ("Assets/_project/Characters/Genghis/Attacks", "Genghis"),
+                                           ("Assets/_project/Characters/Buwaka/Attacks", "Buwaka") })
         {
             var lines = new List<string>();
             foreach (var opener in LoadAttacks(dir).Values.OrderBy(a => a.name))

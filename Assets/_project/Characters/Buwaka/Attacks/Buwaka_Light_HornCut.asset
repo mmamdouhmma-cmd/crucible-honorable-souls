@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
+  m_Name: Buwaka_Light_HornCut
+  m_EditorClassIdentifier: Assembly-CSharp::AttackData
+  attackName: Horn Cut
+  damage: 7
+  staminaCost: 16
+  armorPierce: 2
+  startupFrames: 10
+  activeFrames: 3
+  recoveryFrames: 8
+  animationClip: {fileID: 0}
+  animatorTriggerName: LightAttack
+  attackHeight: 1
+  attackType: 0
+  specialButton: 0
+  comesFrom: 1
+  swingFlow: 3
+  hitSide: 2
+  hitstunFrames: 48
+  hyperArmor: 0
+  hitboxRange: 3.4
+  hitboxOffset: {x: 0, y: 1, z: 0}
+  hitboxSize: {x: 1.5, y: 0.9, z: 1}
+  aimMode: 3
+  aimMaxAngle: -1
+  aimRollDegrees: 0
+  lungeStopDistance: 2.3
+  lungeMaxDistance: 0.9
+  hitsWithWeapon: 1
+  comboLinks:
+  - input: 1
+    withSpecialModifier: 0
+    followUp: {fileID: 11400000, guid: 2dd87ac51e4175b438cd20500e8883ff, type: 2}
+    requires: 0
+    openerOnly: 1
+  - input: 1
+    withSpecialModifier: 1
+    followUp: {fileID: 11400000, guid: 6a27b26b2fb211e43975194ddd66d6ff, type: 2}
+    requires: 1
+    openerOnly: 0
+  cancelStartFrame: -1
+  cancelEndFrame: -1
+  dodgedRecoveryFrames: -1

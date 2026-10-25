@@ -3896,3 +3896,61 @@ fires from `Fighter.NotifyEvaded` (a SUCCESSFUL dodge) — plain dash dust is `F
 a record with a parry at 0.7s and a lone dodge at 6.3s yields two segments (0.00–2.34, 4.32–7.37).
 Gotcha re-confirmed: an `eval_file` 400 ("Main thread operation timed out") can mean the eval never
 ran — read back for the artifact it should have produced before re-running.
+
+### 2026-10-26 — Genghis and Buwaka: the roster goes to six
+Two new fighters built from the user's Tripo meshes (Downloads/Genghis, Downloads/Buaka — the
+spelling is Buwaka in game), through the full metarig chain:
+- **Rig anchor from Tripo's auto-rigger** (v3 API: upload the FBX for a file_token, POST
+  /v3/animations/rig with spec "mixamo", 25 credits each — the MCP's rig_model wants a Tripo task
+  id and 404s on web-app model UUIDs). Both came back 65-bone mixamorig skeletons with clean
+  weights. Per the user: the REAL rigging is the Blender pass — `fit_metarig.py` (Salaadin-shape
+  joints by construction: hips 52%, knee/elbow 164°, asym 0.000, weights transferred 100%) then
+  `metarig_to_mixamo.py` (79 bones, hand roll set). Blends in `ArtSource/Blender/metarigs/`,
+  rigged FBXs in `ArtSource/Characters/Mixamo/`, Tripo anchors kept in `ArtSource/Characters/Tripo/`.
+- **Weapons** prepped (`prep_weapon.py` / `prep_shield.py`): Genghis_Saber (0.55, grip 0.13,
+  EDGE=curve), Buwaka_Spear (1.10, grip 0.45 — the mass heuristic flipped it BLADE-DOWN, the butt
+  spike reads as the head; fixed with a 180° X flip in place), Buwaka_Shield (0.35, same source
+  model as Salaadin's). GOTCHA: prep's texture glob takes every `*.fbm` beside the source, so both
+  Buwaka weapons got the BODY texture; fixed by hand. New `ArtSource/Blender/mount_body.py`
+  mounts weapons on the rigged body (generalised salaadin_body.py, Salaadin's hand-frame offsets)
+  and writes `Characters/<Name>/Model/<Name>_Body.fbx`.
+- **Unity code**: `CrucibleGenghis.cs` (template P2_Miyamoto, clones Player2, keeps TwoHandGrip,
+  deletes the leftover Iaijutsu state) and `CrucibleBuwaka.cs` (template P3_Richard, clones
+  Player3). Extended: CrucibleBalance (Genghis 105/95/18/x1.00/36/blk62, parry counter x1.7 window
+  1.2 — THE archetype, his Riposte_Parry is 12 dmg so the punish is ~20; Buwaka
+  100/100/15/x0.95/40/blk68; Moves, Flow, HyperArmor, and Buwaka's LungeOverride rows that hold
+  him at SPEAR length: stops 2.2–2.6 instead of closing to 1.7), CrucibleCharacterSetup
+  (StandingHeight/Stature/GroundOffset placeholders to calibrate, TwoHanded += Genghis, WeaponSpec,
+  Buwaka_Shield_L mount seeded from Salaadin's solved entry, RebuildP5/P6), CrucibleMixamoSetup
+  (P5Map: GreatSwordPack — Miyamoto's three strikes, specials = heavier normals, parry riposte =
+  the WHEEL; P6Map: SwordShield + AxePack + **Richard_Thrust**, the orphaned authored clip, as
+  Buwaka's Heavy AND SP+Heavy), CrucibleSpecialStates/Run/BlockLegs (+2 controllers), CrucibleCombos
+  (Genghis: shortest table in the roster on purpose; Buwaka: Richard's shape), GameMenu.Tagline
+  (+Genghis/Buwaka/Salaadin — Salaadin never had one), swing_contacts.json (+14 pinned entries;
+  the two Richard_Thrust states deliberately have none yet — read the state speed back and pin).
+
+**Verified in play (same day).** The whole Unity chain ran through `eval` (one menu-bridge-style
+HTTP 400 on a doubled eval; single calls went through — read back as always): CreateMoves,
+BuildController, AddToScene, RebuildP5/P6, Wire specials, Use Mixamo packs, Wire run/block-legs/
+combos, Rewire, Apply + SaveAssets, scene saved. Read back:
+- Both controllers fully pointed (24 states each), every speed pinned x1.0–1.8 — EXCEPT the two
+  Richard_Thrust states, which came back x0.50 / x0.36 exactly as the thrust's 9-frame trim core
+  predicts. Pinned `{15, 1.3}` (Heavy) and `{15, 1.2}` (SP+Heavy) in swing_contacts.json; re-ran
+  Use Mixamo packs; they read x1.24 / x1.16 (window clamped at the clip's edges, fine). The
+  rig-mismatch errors in the import sweep are the PRE-EXISTING Tripo-era Custom clips falling back,
+  not the new fighters.
+- Avatars: 52 slots, 30/30 fingers, Head on mixamorig:Head, no eye hijack, both humans valid.
+- Statures calibrated in play (crown − baked foot-weighted sole): first pass read Genghis 2.568 /
+  Buwaka 2.611, StandingHeight re-set 3.20→3.46 and 3.05→3.10, second pass 2.779 / 2.656 on the
+  2.78 / 2.65 targets; GroundOffset trimmed to 0.113/3 and 0.110/3 (soles were −0.013 / −0.010).
+- Photographs: Genghis's two-handed saber grip is REAL (fists stacked, gap 0.069, weapon origin
+  0.087 from the hand); Buwaka's spear head UP in the fist (0.084), shield on the left arm.
+  Block_Hold measured: shield face·forward **+0.90** signed, upright; spear roughly level.
+- Move sweep (captureDeltaTime 1/60, re-spaced 4.2 per move): all 12 slot moves fire, hips
+  1.35–1.59 (nobody leaps), ten landed from 4.2; Genghis Light/Medium whiffed THERE but land for
+  6/8 from a 3.4 gap — their 2.6–2.7 ranges simply don't reach 3.3, which is the archetype.
+  Buwaka's GreatImpale travels 1.83 and lands from 4.2 (the spear keeps its distance; LungeOverride
+  stops verified by the gapEnd column, 2.37–3.43, never 1.7).
+- The signature: Buwaka heavy PARRIED by the timed raise (0 damage, counter window 1.05 s read
+  back), the punish auto-swapped to Genghis_Riposte_Parry (Khan's Verdict, the great-sword wheel)
+  and hit for **18** — the roster's hardest parry punish. CLAUDE.md roster facts updated.

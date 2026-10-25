@@ -27,6 +27,8 @@ public static class CrucibleBlockLegs
         "Assets/_project/Animation/Controllers/P2_Miyamoto.controller",
         "Assets/_project/Animation/Controllers/P3_Richard.controller",
         "Assets/_project/Animation/Controllers/P4_Salaadin.controller",
+        "Assets/_project/Animation/Controllers/P5_Genghis.controller",
+        "Assets/_project/Animation/Controllers/P6_Buwaka.controller",
     };
 
     [MenuItem("Crucible/Animation/Wire the block-walk legs")]

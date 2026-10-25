@@ -22,6 +22,8 @@ public static class CrucibleSpecialStates
     const string P3Ctrl = "Assets/_project/Animation/Controllers/P3_Richard.controller";
     // His character folder is lowercase on disk; see Folder() in CrucibleBalance.cs.
     const string P4Ctrl = "Assets/_project/Animation/Controllers/P4_Salaadin.controller";
+    const string P5Ctrl = "Assets/_project/Animation/Controllers/P5_Genghis.controller";
+    const string P6Ctrl = "Assets/_project/Animation/Controllers/P6_Buwaka.controller";
 
     // Blend into a special. The same rule the attack transitions already use: fixed duration, no
     // exit time, because the attack's own frame data decides when it starts and ends.
@@ -42,6 +44,8 @@ public static class CrucibleSpecialStates
         // Salaadin was missing from this list entirely, so every shared change made here - the
         // blend duration among them - stopped at three fighters while his stayed as first wired.
         if (System.IO.File.Exists(P4Ctrl)) Run(P4Ctrl, "Assets/_project/Characters/salaadin/Attacks", "Salaadin_Idle");
+        if (System.IO.File.Exists(P5Ctrl)) Run(P5Ctrl, "Assets/_project/Characters/Genghis/Attacks", "Genghis_Idle");
+        if (System.IO.File.Exists(P6Ctrl)) Run(P6Ctrl, "Assets/_project/Characters/Buwaka/Attacks", "Buwaka_Idle");
         AssetDatabase.SaveAssets();
         Debug.Log("Special and riposte states wired. Run 'Use Mixamo packs' next to give them their clips.");
     }

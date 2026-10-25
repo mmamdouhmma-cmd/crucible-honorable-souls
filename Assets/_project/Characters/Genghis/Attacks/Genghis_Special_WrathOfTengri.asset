@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
+  m_Name: Genghis_Special_WrathOfTengri
+  m_EditorClassIdentifier: Assembly-CSharp::AttackData
+  attackName: Wrath of Tengri
+  damage: 17
+  staminaCost: 46
+  armorPierce: 14
+  startupFrames: 24
+  activeFrames: 5
+  recoveryFrames: 19
+  animationClip: {fileID: 0}
+  animatorTriggerName: SpecialHeavy
+  attackHeight: 3
+  attackType: 3
+  specialButton: 2
+  comesFrom: 0
+  swingFlow: 0
+  hitSide: 0
+  hitstunFrames: 48
+  hyperArmor: 1
+  hitboxRange: 3
+  hitboxOffset: {x: 0, y: 1, z: 0}
+  hitboxSize: {x: 1, y: 1.7, z: 1}
+  aimMode: 1
+  aimMaxAngle: -1
+  aimRollDegrees: 0
+  lungeStopDistance: -1
+  lungeMaxDistance: 1.4
+  hitsWithWeapon: 1
+  comboLinks: []
+  cancelStartFrame: -1
+  cancelEndFrame: -1
+  dodgedRecoveryFrames: -1

@@ -1330,6 +1330,12 @@ public class GameMenu : MonoBehaviour
             return "Sword and kite shield. Slowest of the three, hardest to put down.";
         if (character.StartsWith("Bj", StringComparison.OrdinalIgnoreCase))
             return "Dane axe. Slow to start, heavy to stop, longest reach.";
+        if (character.StartsWith("Sal", StringComparison.OrdinalIgnoreCase))
+            return "Falchion and round shield. His strings flow where others stop.";
+        if (character.StartsWith("Gen", StringComparison.OrdinalIgnoreCase))
+            return "Two-handed saber. Catch his guard and no man punishes harder.";
+        if (character.StartsWith("Buw", StringComparison.OrdinalIgnoreCase))
+            return "Spear and hide shield. The longest reach, and he keeps it.";
         return "";
     }
 

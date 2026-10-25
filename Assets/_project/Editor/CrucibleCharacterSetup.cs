@@ -57,6 +57,11 @@ public static class CrucibleCharacterSetup
         { "Bjorn",    3.113f },   // -> stature 2.71  (was 3.498 -> 3.05, -11%)
         { "Salaadin", 3.857f },   // -> stature 2.80  (his idle crouches hardest, so the box has to be tallest)
         { "Miyamoto", 2.824f },   // -> stature 2.55
+        // 2026-10-25 PLACEHOLDERS, to be calibrated in play like the four above (measure stature,
+        // crown MINUS sole, in each man's own idle): Genghis reads as a big armoured tank
+        // (between Bjorn and Richard), Buwaka a lean mid-sized hunter.
+        { "Genghis",  3.46f },   // calibrated 2026-10-26: 3.20 measured 2.568 in play, x 2.78/2.568
+        { "Buwaka",   3.10f },   // calibrated 2026-10-26: 3.05 measured 2.611 in play, x 2.65/2.611
     };
 
     static float HeightOf(string charName) =>
@@ -73,6 +78,9 @@ public static class CrucibleCharacterSetup
         { "Bjorn",    2.71f },
         { "Salaadin", 2.80f },
         { "Miyamoto", 2.55f },
+        // 2026-10-25 placeholders; re-measure with StandingHeight.
+        { "Genghis",  2.78f },
+        { "Buwaka",   2.65f },
     };
 
     static float StandingStature(string charName) =>
@@ -158,6 +166,10 @@ public static class CrucibleCharacterSetup
         // SkinnedMeshRenderer's bounds are a loose box that does not track the pose, so they read
         // this wrong by half a metre): -0.1085 world, which is 0.0362 of root-local at root scale 3.
         { "Salaadin", 0.109f / 3f },
+        // 2026-10-25 placeholders for the metarig pair; measure in play as the lowest BAKED
+        // skinned vertex whose dominant bone is a foot/toe/ankle, in each man's own idle.
+        { "Genghis",  0.113f / 3f },   // re-measured 2026-10-26 at the calibrated stature: sole -0.013
+        { "Buwaka",   0.110f / 3f },   // re-measured 2026-10-26: sole -0.010
     };
 
     /// <summary>
@@ -169,7 +181,7 @@ public static class CrucibleCharacterSetup
         "Assets/_project/Characters/" + (charName == "Salaadin" ? "salaadin" : charName);
 
     /// <summary>Fighters whose off hand holds the haft. Richard's holds a shield, so he has no grip IK.</summary>
-    static readonly string[] TwoHanded = { "Bjorn", "Miyamoto" };
+    static readonly string[] TwoHanded = { "Bjorn", "Miyamoto", "Genghis" };
 
     [MenuItem("Crucible/Characters/Rebuild Player1 (Bjorn new body)")]
     public static void RebuildP1() => Rebuild("Player1", "Bjorn");
@@ -183,10 +195,16 @@ public static class CrucibleCharacterSetup
     [MenuItem("Crucible/Characters/Rebuild Player4 (Salaadin body)")]
     public static void RebuildP4() => Rebuild("Player4", "Salaadin");
 
+    [MenuItem("Crucible/Characters/Rebuild Player5 (Genghis body)")]
+    public static void RebuildP5() => Rebuild("Player5", "Genghis");
+
+    [MenuItem("Crucible/Characters/Rebuild Player6 (Buwaka body)")]
+    public static void RebuildP6() => Rebuild("Player6", "Buwaka");
+
     [MenuItem("Crucible/Characters/Report fighters")]
     public static void Report()
     {
-        foreach (var n in new[] { "Player1", "Player2", "Player3", "Player4" })
+        foreach (var n in new[] { "Player1", "Player2", "Player3", "Player4", "Player5", "Player6" })
         {
             var go = GameObject.Find(n);
             if (go == null) { Debug.Log($"{n}: not in scene"); continue; }
@@ -369,6 +387,8 @@ public static class CrucibleCharacterSetup
         { "Miyamoto_Katana", (0.24f, 0.04f) },   // blade starts past the tsuba; left hand near the kashira (0.023/0.57 up from the butt)
         { "Richard_Sword",   (0.20f, 0.00f) },   // 1.10 long with the grip at 0: the blade starts just past the cross guard
         { "Salaadin_Falchion", (0.24f, 0.00f) }, // 0.50 long, grip at 0: the curve starts just past the hilt
+        { "Genghis_Saber",   (0.24f, 0.04f) },   // 0.55 long, grip at 0.13 from the butt: blade past the guard; left hand near the pommel (two-handed)
+        { "Buwaka_Spear",    (0.72f, 0.00f) },   // 1.10 long, mid-haft grip: only the leaf head (top ~28%) is the hitting part
     };
 
     /// <summary>
@@ -459,6 +479,10 @@ public static class CrucibleCharacterSetup
         // showing the enemy the enarmes) still stands: a translation cannot turn a shield round.
         { "Richard_Shield_L",  (new Vector3(0.000856f, 0.002563f, -0.000085f), new Vector3(0.53f, 122.11f, 164.30f)) },   // pushed 0.125 further out along the disc's own normal: the worst LEFT-HAND vertex went from 0.090 PROUD of the front face to 0.035 behind it, so no fist shows through the paint
         { "Salaadin_Shield_L", (new Vector3(0.000209f, 0.000563f, -0.000347f), new Vector3(0.75f, 181.74f, 355.40f)) },
+        // Buwaka's shield is the SAME source model, prep and metarig hand convention as Salaadin's
+        // (mount_body.py even reuses his Blender offsets), so his solved entry is the starting
+        // point. Verify in Block_Hold - same clip - and re-solve only if the facing reads wrong.
+        { "Buwaka_Shield_L",   (new Vector3(0.000209f, 0.000563f, -0.000347f), new Vector3(0.75f, 181.74f, 355.40f)) },
     };
 
     static void SetupWeapon(GameObject player, GameObject inst, string charName, Animator rootAnim)

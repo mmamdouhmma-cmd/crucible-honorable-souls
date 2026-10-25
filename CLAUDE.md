@@ -10,7 +10,7 @@
 - `Assets/_project/Scripts/input/` — `InputManager` singleton on the `GameMangers` object.
 - `Assets/_project/Scripts/UI/FightHud.cs`, `Assets/_project/Scripts/core/FightCamera.cs`.
 - `Assets/_project/Characters/<Name>/Attacks/` — per-character `AttackData` assets, named `<Name>_<Weight>_<Move>`. `Characters/<Name>/Model/` — the Tripo rigged FBX + textures + material (git-ignored, see Git notes). `Characters/_Unrigged/` — Tripo meshes not rigged yet (git-ignored).
-- `Assets/_project/Animation/Controllers/` — `P1_Bjorn.controller`, `P2_Miyamoto.controller`, `P3_Richard.controller`. `Animation/Clips/{Mixamo,Maria}/` — placeholder test clips; `Animation/Clips/Custom/` — for Blender exports.
+- `Assets/_project/Animation/Controllers/` — `P1_Bjorn` … `P6_Buwaka` controllers, one per fighter. `Animation/Clips/{Mixamo,Maria}/` — placeholder test clips; `Animation/Clips/Custom/` — for Blender exports.
 - `Assets/_project/Data/Fighters/` — `FighterData` assets. `Assets/_project/Input/` — the Input System actions asset. `Assets/_project/Art/ConceptArt/` — character portraits.
 - `Assets/_project/_Legacy/` — unreferenced leftovers (old Bjorn test model, Maria mesh/material, `Player2Controller.cs`, URP template readme). Safe to delete once nobody misses them.
 - `Assets/_project/Scenes/testarena.unity` — the test scene.
@@ -132,6 +132,25 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   code. He shares only Richard's two WALK clips; his idle, his shin cut, his spin, his rush and
   his saber riposte are keyed in `ArtSource/Blender/salaadin_clips.py`; the light, both specials
   and the dodge riposte are pack clips Richard does not use.
+- **Six fighters now (2026-10-26).** Genghis (Player5, `P5_Genghis.controller`, `genghis_data`) —
+  two-handed ornate saber, the second tank: 105 hp / 95 stamina / 18 armour / x1.00 / walk 3.6,
+  block 62, dash i-frames 0.13, and the roster's biggest parry payoff (counter window 1.2,
+  riposte x1.7, Khan's Verdict = GreatSwordPack `high spin attack`). Move table in
+  `Editor/CrucibleGenghis.cs`; controller copied from P2_Miyamoto; animation is the
+  GreatSwordPack (the 2H pack the shield fighters cannot use), specials play the normals' clips
+  harder, like Richard's. He IS in `TwoHanded` (TwoHandGrip holds the saber hilt). Combos are
+  deliberately sparse: L→M, M→H, H→SP+H, no special hands back.
+  Buwaka (Player6, `P6_Buwaka.controller`, `buwaka_data`) — spear + round hide shield (the shield
+  is Salaadin's source model re-prepped): 100 / 100 / 15 / x0.95 / walk 4.0, block 68, the
+  roster's longest reach (ranges 3.3–4.0, GreatImpale lunge 2.0) with `LungeOverride` keeping the
+  spear at distance (stops 2.2–2.6). Move table in `Editor/CrucibleBuwaka.cs`; controller copied
+  from P3_Richard; strikes are SwordShieldPack + AxePack + **`Richard_Thrust` retargeted across
+  fighters** (his Heavy and SP+Heavy — an authored CopyFromOther clip retargets onto any humanoid;
+  both states take per-STATE contacts `{15, 1.3}` / `{15, 1.2}` or the thrust's 9-frame core smears
+  to x0.36). Both built by the metarig chain (`fit_metarig.py` Salaadin-shape targets →
+  `metarig_to_mixamo.py` → `mount_body.py`, weapons bone-parented); bodies/rigs are gitignored
+  like the rest. Statures calibrated 2026-10-26: Genghis 2.78, Buwaka 2.65 (StandingHeight
+  3.46 / 3.10, GroundOffset 0.113/3 and 0.110/3), soles verified within 0.013 of the arena.
 - **Porting a hand-keyed clip to another character's rig: convert, never scale by height.**
   Learned on Salaadin, whose rig is 1.00 tall against Richard's 1.85 but whose arms are half
   human proportion:

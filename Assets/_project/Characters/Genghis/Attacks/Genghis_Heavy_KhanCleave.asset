@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
+  m_Name: Genghis_Heavy_KhanCleave
+  m_EditorClassIdentifier: Assembly-CSharp::AttackData
+  attackName: Khan's Cleave
+  damage: 11
+  staminaCost: 24
+  armorPierce: 8
+  startupFrames: 21
+  activeFrames: 5
+  recoveryFrames: 16
+  animationClip: {fileID: 0}
+  animatorTriggerName: HeavyAttack
+  attackHeight: 3
+  attackType: 2
+  specialButton: 0
+  comesFrom: 0
+  swingFlow: 0
+  hitSide: 0
+  hitstunFrames: 48
+  hyperArmor: 0
+  hitboxRange: 2.8
+  hitboxOffset: {x: 0, y: 1, z: 0}
+  hitboxSize: {x: 0.9, y: 1.6, z: 1}
+  aimMode: 0
+  aimMaxAngle: -1
+  aimRollDegrees: 0
+  lungeStopDistance: -1
+  lungeMaxDistance: -1
+  hitsWithWeapon: 1
+  comboLinks:
+  - input: 2
+    withSpecialModifier: 1
+    followUp: {fileID: 11400000, guid: 953121e8f1ea8394d8e8c4dc42689508, type: 2}
+    requires: 1
+    openerOnly: 0
+  cancelStartFrame: -1
+  cancelEndFrame: -1
+  dodgedRecoveryFrames: -1
