@@ -1464,8 +1464,9 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `.asset`s, NOT through `<Name> > 1 Create move set`: that menu calls
   `CrucibleBalance.Apply()`, which would overwrite the user's hand-edited frames and damage
   (Miyamoto/Genghis frames; Richard's L/H damage 8/13 and Medium startup 13, 2026-10-27) with the
-  table's numbers. **The table and those assets disagree until someone copies the user's numbers
-  into the table.**
+  table's numbers. **Since resolved**: those numbers were copied into the table the same day, and
+  a table-vs-live diff over every field `Apply` writes reads "no differences". If the user tunes
+  numbers in the editor again, copy them in before running `Apply` or any `Create move set`.
 - **Bjorn's SP+Light (Haft Strike) is a FRONT CUT** - AxePack `standing melee combo attack
   ver. 3` (his dash riposte's clip, own contact `{28.6, 1.6}`), AimMode Level, LungeOverride
   (1.35, 1.5). The backhand it replaced met the target mid-turn with the axe wrapped round his

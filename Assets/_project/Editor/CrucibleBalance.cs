@@ -170,20 +170,21 @@ public static class CrucibleBalance
             // with every ACTIVE window left exactly as it was, so nothing starts whiffing. A budget
             // change also re-times the clip (Use Mixamo packs sets state.speed = clip.length /
             // (frames/60)), so each of these animations now plays faster on screen too.
-            N("Miyamoto_Light_Thrust",                 7,  14,  8,      5,  3,  5,   7),
-            N("Miyamoto_Medium_SideSlash",             7,  16,  10,      7,  4,  6,   8),
-            N("Miyamoto_Heavy_Overhead",               9,  18,  16,     13,  4,  9,  10),   // was 23 start: the slowest heavy in the game, on the fastest fighter
+            // Startups below are the user's own hand tune in the editor (copied in 2026-10-27).
+            N("Miyamoto_Light_Thrust",                 7,  14,  8,      7,  3,  5,   7),
+            N("Miyamoto_Medium_SideSlash",             7,  16,  10,      8,  4,  6,   8),
+            N("Miyamoto_Heavy_Overhead",               9,  18,  16,     10,  4,  9,  10),   // was 23 start: the slowest heavy in the game, on the fastest fighter
             // Special stamina across the ROSTER cut 15% on 2026-10-23 (the user's call): every
             // SP slot's cost is the old figure x0.85, rounded.
-            N("Miyamoto_Special_Nukitsuke",           13,  33,  18,      7,  4,  7,  12),   // SP+Light: was 18/5/20 = 0.72s. The user's call - too slow, and it is the pack's slowest strike (peak tip 0.286) so the clip could not carry that budget either
-            N("Miyamoto_Special_NitoCross",           14,  37,  20,     11,  5, 12,  12),
+            N("Miyamoto_Special_Nukitsuke",           13,  33,  18,     10,  4,  7,  12),   // SP+Light: was 18/5/20 = 0.72s. The user's call - too slow, and it is the pack's slowest strike (peak tip 0.286) so the clip could not carry that budget either
+            N("Miyamoto_Special_NitoCross",           14,  37,  20,     10,  5, 12,  12),
             // SP+Heavy. The 30-frame draw WAS deliberate and the user's verdict is that it does not
             // play: 0.50s of windup before the first active frame. Kuruma (the spin charge handed
             // down from the normal heavy) takes the slot at 0.53s total.
-            N("Miyamoto_Special_Kuruma",              15,  41, 24,      8,  4,  8,  14),
+            N("Miyamoto_Special_Kuruma",              15,  41, 24,     10,  4,  8,  14),
             // The double thrust, now reachable ONLY as the last hit of a string, so it needs no
             // tell - a confirmed finisher is paid for by the hit that opened the cancel window.
-            N("Miyamoto_Special_Iaijutsu",            15,  41, 24,      8,  5,  9,  14),   // all four specials cut about a quarter on the user's call: 30/47/32/36 frames -> 22/34/24/27
+            N("Miyamoto_Special_Iaijutsu",            15,  41, 24,     10,  5,  9,  14),   // all four specials cut about a quarter on the user's call: 30/47/32/36 frames -> 22/34/24/27
             N("Miyamoto_Riposte_Dash",                 9,  12,  8,     10,  4, 11,   9),
             N("Miyamoto_Riposte_Parry",                8,  12,  8,     16,  4,  5,   9),
         },
@@ -203,9 +204,9 @@ public static class CrucibleBalance
 
         ["Richard"] = new[]
         {
-            N("Richard_Light_Thrust",                  7,  17,  5,     11,  3,  9,   7),
-            N("Richard_Medium_Slash",                  9,  21,  2,     15,  4, 11,   9),
-            N("Richard_Heavy_Overhead",               11,  24,  8,     22,  5, 17,  11),
+            N("Richard_Light_Thrust",                  8,  17,  5,     11,  3,  9,   7),
+            N("Richard_Medium_Slash",                  9,  21,  2,     13,  4, 11,   9),
+            N("Richard_Heavy_Overhead",               13,  24,  8,     22,  5, 17,  11),
             N("Richard_Special_ShieldCharge",         14,  37, 10,     11,  4, 15,  13),   // the three specials run a little longer than the normals whose clips they play
             N("Richard_Special_ShieldBash",           15,  42, 12,     15,  5, 14,  13),
             N("Richard_Special_DoubleHigh",           16,  47, 10,     22,  5, 17,  14),   // 44 f, the same total as the Heavy, so the window maths match it exactly
@@ -240,7 +241,7 @@ public static class CrucibleBalance
             N("Genghis_Heavy_KhanCleave",             11,  24,  8,     21,  5, 16,  11),
             N("Genghis_Special_SteppeStorm",          14,  36, 10,     14,  4, 15,  13),
             N("Genghis_Special_HordeBreaker",         15,  41, 12,     17,  5, 16,  13),
-            N("Genghis_Special_WrathOfTengri",        17,  46, 14,     24,  5, 19,  14),
+            N("Genghis_Special_WrathOfTengri",        17,  46, 14,     20,  5, 19,  14),
             N("Genghis_Riposte_Dash",                  9,  14,  4,     12,  4, 13,   9),
             N("Genghis_Riposte_Parry",                12,  16, 10,     14,  5, 17,   9),
         },

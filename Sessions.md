@@ -4241,3 +4241,7 @@ Two more calls the same evening:
   `CrucibleCharacterSetup.HitVolumeScale` so a rebuild keeps it.
 - The scene save carried the user's own editor edits too: non-uniform fighter scales (Bjorn
   4.2/3.8/4, others 3.3/3.5/3.3, 3/2.8/3, 3->3.3) and Richard's L/H damage 8/13, M startup 13.
+- The user's editor numbers are now IN `CrucibleBalance` (11 cells: Miyamoto's seven startups
+  7/8/10 and 10 on all four specials, Richard L/H damage 8/13 and M startup 13, Genghis's Wrath of
+  Tengri startup 20). A table-vs-live diff over every field `Apply` writes (FighterData, the scene
+  Fighters, every move row) reads "no differences", so `Apply the roster balance` is safe again.
