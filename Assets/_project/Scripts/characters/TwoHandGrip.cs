@@ -42,7 +42,7 @@ public class TwoHandGrip : MonoBehaviour
 
     private Animator animator;
     private CombatSystem combat;
-    private Fighter me, opponent;
+    private Fighter me;
     private Transform weapon;
     private float bladeLength;
     private float armLength;
@@ -139,11 +139,10 @@ public class TwoHandGrip : MonoBehaviour
         if (strikeReachWeight <= 0f || armLength <= 0f) return;
         float w = StrikeWeight() * strikeReachWeight;
         if (w <= 1e-3f) return;
-        if (opponent == null)
-        {
-            foreach (var f in FindObjectsByType<Fighter>(FindObjectsSortMode.None)) if (f != me) { opponent = f; break; }
-            if (opponent == null) return;
-        }
+        // me.Opponent, refreshed by ApplySides - a cached first-other-Fighter points at a benched
+        // bystander once the roster is bigger than two (the WeaponAim lesson, 2026-10-26).
+        var opponent = me != null ? me.Opponent : null;
+        if (opponent == null) return;
         var rend = opponent.GetComponentInChildren<SkinnedMeshRenderer>();
         Vector3 target = rend != null
             ? new Vector3(opponent.transform.position.x, Mathf.Lerp(rend.bounds.min.y, rend.bounds.max.y, targetHeight), opponent.transform.position.z)

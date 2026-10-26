@@ -62,7 +62,7 @@ public class WeaponAim : MonoBehaviour
     [SerializeField] private bool debugLogs = false;
 
     private CombatSystem combat;
-    private Fighter me, opponent;
+    private Fighter me;
     private Vector3 bladeAxisLocal = Vector3.forward;
     private float fadeTimer;
     // The weapon is a static child of the hand bone: the Animator never rewrites its local rotation, so any
@@ -132,11 +132,12 @@ public class WeaponAim : MonoBehaviour
             }
         }
         if (hasRest) { weapon.localRotation = restLocalRotation; weapon.localPosition = restLocalPosition; }
-        if (opponent == null)
-        {
-            foreach (var f in FindObjectsByType<Fighter>(FindObjectsSortMode.None)) if (f != me) { opponent = f; break; }
-            if (opponent == null) return;
-        }
+        // The fighter's own Opponent, which ApplySides refreshes - a cached first-other-Fighter
+        // here aimed every blade at a BENCHED bystander once the roster went past two (found
+        // 2026-10-26: Buwaka's whole kit whiffed by ~1 unit with a perfect mount, because his
+        // spear was pointing at Bjorn standing on his spawn mark).
+        var opponent = me != null ? me.Opponent : null;
+        if (opponent == null) return;
         float w = 0f;
         if (combat.IsAttacking)
         {

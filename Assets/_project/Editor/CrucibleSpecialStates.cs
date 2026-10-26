@@ -69,7 +69,10 @@ public static class CrucibleSpecialStates
             // A riposte is reached only through a counter window, never from a library, so it is
             // identified by name rather than by weight - it carries an ordinary weight on purpose.
             bool isRiposte = asset.name.Contains("_Riposte_");
-            if (!isSpecial && !isRiposte) continue;
+            // A combo ENDER is reached only as a string's last link, never from a library - the
+            // same out-of-library pattern as a riposte (Buwaka's Serpent Coil, 2026-10-26).
+            bool isEnder = asset.name.Contains("_Ender_");
+            if (!isSpecial && !isRiposte && !isEnder) continue;
             specials.Add((asset.name, so.FindProperty("animatorTriggerName").stringValue));
         }
         if (specials.Count == 0) { Debug.LogWarning($"{attackDir}: no Special or Riposte assets found"); return; }

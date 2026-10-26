@@ -1324,6 +1324,56 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `Destroy` the extra afterwards - its Awake only kills the duplicate while `Instance` is set.
   Works: Genghis vs Buwaka fought to a KO and the record auto-saved. `GameMenu.Show` is
   `(Screen s, bool push)` - a one-arg reflective Invoke throws and silently kills the coroutine.
+- **`WeaponAim` and `TwoHandGrip` aimed every blade at a BENCHED BYSTANDER** (found 2026-10-26,
+  and it was most of "none of Buwaka's strikes land" + "Miyamoto barely lands point-blank"): both
+  cached `opponent` as the FIRST other Fighter in the scene, once, at a time when all six are
+  active - so after `ApplySides` every swing was aimed at Bjorn standing on his spawn mark across
+  the arena. Same family as the `FindOpponent`/`FightCamera` bugs. Both now read `me.Opponent`
+  (which `ApplySides` refreshes) every frame. The tell: a move whose mount, clip, contact and box
+  are all verified still whiffs by ~1 unit, and the whiff DIRECTION depends on where a benched
+  fighter happens to stand.
+- **Blade sizes eased on the user's call (2026-10-26)**: `sweepRadius` 0.12 -> 0.16 and
+  `BladeTipExtend` 0.02 -> 0.05 (point-blank strikes read too strict after the honest-reach cut);
+  capsules unchanged. Still under half the old fat 0.35/0.15. **Eased again the same day** -
+  "even miyamoto attack barely lands even when they are standing as close as they can" - to
+  sweep 0.20 / tip extend 0.08, stamped straight onto the six scene detectors and blade boxes
+  (the constants only reach the scene on a Rebuild) and saved.
+- **The whole roster has a MEASURED distance band per move** (2026-10-26, the sweep lives in the
+  session scratchpad pattern - see Sessions.md): every normal, special and authored string of all
+  six fighters thrown at 0.8 -> 6.5 in a live match against a standard defender (Richard; Bjorn
+  for Richard's own moves), landing judged off the defender's health. After the second easing
+  EVERY move in the game lands from 0.8 (point-blank is fixed); per-fighter max landing
+  distances: Miyamoto 2.8-3.6, Bjorn 2.6-3.6, Genghis 3.0-4.0, Salaadin 3.4-4.0, Buwaka 3.6-4.6,
+  Richard 3.8-4.8. Strings all convert in full at close range; at an opener's far edge the
+  knockback can carry the defender out of the follow-up's re-lunge, which the user ruled FINE
+  ("its fine if the first or second attack of the string miss, if he started 2 far").
+- **SP+Heavy steps further** (the user's call, 2026-10-26): `LungeOverride` entries (1.35, 1.5)
+  for BloodEagle / DoubleHigh / HattinCleave / WrathOfTengri, play-verified max landing 3.6 /
+  4.8 / 3.8 / 4.0. Two cannot gain from the table: Buwaka's GreatImpale (already (2.2, 2.0),
+  speed-capped at 1.83, roster-longest at 4.6) and **Miyamoto's Kuruma - his 8-frame startup
+  caps the lunge at 4 u/s x 0.17 s = 0.67**, so his SP+Heavy (3.0) lands SHORTER than his Heavy
+  (3.6) and only more startup frames can change that (open decision, the user tuned those frames
+  by hand). A lunge bump is also NOT 1:1 at the far edge: Bjorn's covered 1.50 of travel is
+  play-verified, but his axe tip only projects ~1.75 past his root (`HitDetector.MaxTipRadius`),
+  so reach = lunge + tip + sweep + half-capsule and the last 0.2 is contact-timing noise.
+- **Miyamoto's specials array holds TWO SP+Heavy entries** - Kuruma (3rd, hyper armour) and
+  Iaijutsu (4th). `FindAttack` returns the first match, so a raw SP+Heavy always throws Kuruma
+  and Iaijutsu is reachable ONLY as the authored string ender, which is the intent - but know
+  that reordering the scene array would silently swap them.
+- **An authored SPECIAL -> SPECIAL string link can never fire**: `TryCancelIntoFollowUp` allows
+  one special per string, counting the opener. `Buwaka_Special_FallingSpear ->
+  Buwaka_Special_SerpentSweep` (CrucibleCombos) was dead in every context - the string stopped
+  at 2 hits. **Fixed with a COMBO-ONLY ENDER** (the user's call, 2026-10-26, preferring "a
+  special animation for his last attack which is only in that combo"):
+  `Buwaka_Ender_SerpentCoil` ("Serpent Coil", trigger `ComboEnder`) is Medium-classed so the
+  one-special rule never sees it, lives in NO library so it cannot be thrown raw, and is dialed
+  by a plain Light press off Falling Spear. Its clip is the last unused barbarian strike,
+  AxePack `standing melee combo attack ver. 1` (233 deg advancing left sweep; measured
+  in-editor: 140 f @30, main swing 47-66, peak 59 - the trims entry was authored from that and
+  the contact is `{59.0, 1.2}`). The `_Ender_` name is now a recognized class in
+  `CrucibleSpecialStates` (state + trigger + Any State transition get wired like a riposte's).
+  Play-verified: both opener variants land 3/3 with Serpent Coil as the third hit. It does NOT
+  appear on the Moves screen (that lists the libraries) - a hidden finisher, by design.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `PlayProbe`, `BladeTrace`

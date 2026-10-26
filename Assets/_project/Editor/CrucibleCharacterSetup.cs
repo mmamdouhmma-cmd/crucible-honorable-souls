@@ -381,14 +381,16 @@ public static class CrucibleCharacterSetup
     /// <summary>Fraction of the blade length the hit box extends past the tip (user tuning 2026-10-12: strikes felt a little short).</summary>
     // Was 0.15 (15% of the blade PAST the tip): with the 0.35 sweep radius and the 0.60 capsules
     // it made every strike land well short of the weapon actually arriving - the user's "strikes
-    // reach way further than they should". 0.02 keeps a hair of margin against z-fighting at the
-    // very tip and nothing more.
-    const float BladeTipExtend = 0.02f;
+    // reach way further than they should". Cut to 0.02, then eased to 0.05, then 0.08 (the user's
+    // calls, 2026-10-26: point-blank strikes read too strict - "you may enlarge the collider a
+    // little", said twice; the second easing came with the distance-sweep test).
+    const float BladeTipExtend = 0.08f;
     // Radius of HitDetector's swept capsule between last frame's blade and this frame's, written
     // onto every detector by SetupWeapon (the field is serialized per instance, so changing the
     // script default alone would not touch the fighters already in the scene). 0.35 was a blade a
-    // third of a metre thick; 0.12 still catches an inter-frame crossing at real blade width.
-    const float BladeSweepRadius = 0.12f;
+    // third of a metre thick; 0.12 was the honest cut, 0.16 the first user-approved easing and
+    // 0.20 the second (2026-10-26) - still well under the old fat blade.
+    const float BladeSweepRadius = 0.20f;
     // Physics capsule radius as a fraction of stature. The bodies' honest half-widths (bare torso,
     // no cape) measure 0.31-0.52 world; the old uniform 0.600 was a quarter-metre proud of the
     // flesh on every fighter and paid out on both ends of every exchange. Vertex maxima are the
@@ -404,7 +406,19 @@ public static class CrucibleCharacterSetup
         { "Richard_Sword",   (0.20f, 0.00f) },   // 1.10 long with the grip at 0: the blade starts just past the cross guard
         { "Salaadin_Falchion", (0.24f, 0.00f) }, // 0.50 long, grip at 0: the curve starts just past the hilt
         { "Genghis_Saber",   (0.24f, 0.04f) },   // 0.55 long, grip at 0.13 from the butt: blade past the guard; left hand near the pommel (two-handed)
-        { "Buwaka_Spear",    (0.72f, 0.00f) },   // 1.10 long, mid-haft grip: only the leaf head (top ~28%) is the hitting part
+        // 0.72 only covered the leaf's top taper + point: the leaf is WIDEST at 0.51-0.71 of the
+        // shaft (mesh bands: maxR 0.0010 at z 0.0006-0.0028 against the shaft's 0.0002), so strikes
+        // with the flat of the leaf armed nothing - part of "only lands very close" (2026-10-26).
+        { "Buwaka_Spear",    (0.50f, 0.00f) },   // 1.10 long, mid-haft grip: the whole leaf head (top ~50%) is the hitting part
+    };
+
+    /// <summary>Per-weapon visual scale, applied to the weapon node (mesh + blade box shrink
+    /// together). Bjorn's axe read oversized next to the rest of the roster (the user's call,
+    /// 2026-10-26: minus 15%).</summary>
+    static readonly System.Collections.Generic.Dictionary<string, float> WeaponScale =
+        new System.Collections.Generic.Dictionary<string, float>
+    {
+        { "Bjorn_Axe", 0.85f },
     };
 
     /// <summary>
@@ -495,17 +509,12 @@ public static class CrucibleCharacterSetup
         // showing the enemy the enarmes) still stands: a translation cannot turn a shield round.
         { "Richard_Shield_L",  (new Vector3(0.000856f, 0.002563f, -0.000085f), new Vector3(0.53f, 122.11f, 164.30f)) },   // pushed 0.125 further out along the disc's own normal: the worst LEFT-HAND vertex went from 0.090 PROUD of the front face to 0.035 behind it, so no fist shows through the paint
         { "Salaadin_Shield_L", (new Vector3(0.000209f, 0.000563f, -0.000347f), new Vector3(0.75f, 181.74f, 355.40f)) },
-        // Buwaka's shield is the SAME source model, prep and metarig hand convention as Salaadin's
-        // (mount_body.py even reuses his Blender offsets), so his solved entry is the starting
-        // point. Verify in Block_Hold - same clip - and re-solve only if the facing reads wrong.
-        { "Buwaka_Shield_L",   (new Vector3(0.000209f, 0.000563f, -0.000347f), new Vector3(0.75f, 181.74f, 355.40f)) },
-        // The saber came off mount_body.py 180 deg reversed in the fists: at rest the vertical
-        // guard masked it, but with WeaponAim OFF the whole heavy swung with the blade pointing
-        // BACKWARD (blade.toOpponent -0.44..-0.95, tip BEHIND him) while Miyamoto on the same clip
-        // sweeps to +0.89 - the tip crossed his own body every attack. Flipping 180 about the
-        // node's local Y (270 -> 90) sends the blade out the other end of the fist and cannot
-        // confuse WeaponAim, whose blade axis is the LOCAL +Z either way. Position unchanged.
-        { "Genghis_Saber",     (new Vector3(0.000000f, 0.000300f, 0.000060f), new Vector3(0f, 90f, 0f)) },
+        // Genghis's saber and Buwaka's spear + shield have NO entries ON PURPOSE (2026-10-26): the
+        // user re-seats them by hand in Blender inside the body FBXs (the saber came off
+        // mount_body.py reversed, a 180-yaw Unity patch left it "dangling upside down", and the
+        // shield was Salaadin's source model where Buwaka has his own Weapons/Buwaka_Shield.fbx).
+        // The FBX-authored placement is the source of truth for those three - an entry here would
+        // stamp over the user's hand fix on every rebuild.
     };
 
     static void SetupWeapon(GameObject player, GameObject inst, string charName, Animator rootAnim)
@@ -561,6 +570,13 @@ public static class CrucibleCharacterSetup
             weapon.transform.localPosition = sm.localPos;
             weapon.transform.localRotation = Quaternion.Euler(sm.localEuler);
             Debug.Log($"{charName}: {weapon.name} mounted at {sm.localPos} / {sm.localEuler}");
+        }
+        var scaleKey = WeaponScale.Keys.FirstOrDefault(k => weapon.name.StartsWith(k));
+        if (scaleKey != null)
+        {
+            Undo.RecordObject(weapon.transform, "weapon scale");
+            weapon.transform.localScale = Vector3.one * WeaponScale[scaleKey];
+            Debug.Log($"{charName}: {weapon.name} scaled x{WeaponScale[scaleKey]} (mesh + blade box together)");
         }
         // The off hand's gear is not the weapon found above - SetupWeapon picks the BLADE, by
         // WeaponSpec - so without its own pass a shield entry in the table would never be applied.

@@ -255,6 +255,10 @@ public static class CrucibleBalance
             N("Buwaka_Special_SerpentSweep",          13,  35,  6,     18,  5, 17,  12),
             N("Buwaka_Special_FallingSpear",          14,  40,  8,     20,  5, 18,  13),
             N("Buwaka_Special_GreatImpale",           16,  45, 12,     25,  5, 20,  14),
+            // The combo-only ender (string: thrust -> Falling Spear -> this). Medium-classed so
+            // the one-special rule never refuses it; costs like a heavy, hits between his
+            // Medium and his specials - the string multiplier (x1.2 on the 3rd hit) tops it up.
+            N("Buwaka_Ender_SerpentCoil",             13,  26,  6,     15,  5, 16,  12),
             N("Buwaka_Riposte_Dash",                   9,  14,  2,     12,  4, 14,   9),
             N("Buwaka_Riposte_Parry",                  8,  14,  0,     12,  4, 14,   9),
         },
@@ -393,12 +397,13 @@ public static class CrucibleBalance
         { "Genghis_Riposte_Parry",        SwingFlow.SpinRight },  // the wheel
 
         // Buwaka: a thrusting heavy, a true 360 on SP+Light.
-        { "Buwaka_Light_HornCut",         SwingFlow.CutRight },   // the backhand sweeps out right
+        { "Buwaka_Light_HornCut",         SwingFlow.Thrust },     // the quick jab (2026-10-26 re-point)
         { "Buwaka_Medium_SavannaCut",     SwingFlow.CutLeft },
         { "Buwaka_Heavy_IklwaThrust",     SwingFlow.Thrust },
         { "Buwaka_Special_SerpentSweep",  SwingFlow.SpinRight },  // the full low turn
-        { "Buwaka_Special_FallingSpear",  SwingFlow.Overhead },
+        { "Buwaka_Special_FallingSpear",  SwingFlow.OverheadRight },  // the TURNING overhead (86 deg) - pairs with SerpentSweep's SpinRight, like Salaadin's Hattin
         { "Buwaka_Special_GreatImpale",   SwingFlow.Thrust },
+        { "Buwaka_Ender_SerpentCoil",     SwingFlow.SpinLeft },   // measured: the clip turns left through its main swing
         { "Buwaka_Riposte_Dash",          SwingFlow.CutLeft },
         { "Buwaka_Riposte_Parry",         SwingFlow.Thrust },     // the boot
     };
@@ -460,6 +465,18 @@ public static class CrucibleBalance
         // tightening (closest blade approach 0.20 from a dodge's 1.5 gap - it landed one run and
         // whiffed the next). A closer stop converts the marginal graze into a clean hit.
         { "Richard_Riposte_Dash",        (1.1f, 0.9f) },
+        // SP+HEAVY steps further (the user's call, 2026-10-26: "heavy special attacks should land
+        // from little further distance"). Default stop, lunge max 0.9 -> 1.5, which the distance
+        // sweep measured as ~+0.6 of landing range. The lunge speed cap (ATTACK_LUNGE_MAX_SPEED 4
+        // x (startup + active/2)/60) allows it on all four: 1.63-1.90. The two absentees are
+        // CAPPED, not forgotten: Buwaka_Special_GreatImpale already carries (2.2, 2.0) above and
+        // its 25 f startup caps the step at 1.83 (he is the roster's longest SP+Heavy at 4.6
+        // anyway), and Miyamoto_Special_Kuruma's 8 f startup caps his at 0.67 - a longer Kuruma
+        // step needs more startup frames, not a bigger number here.
+        { "Bjorn_Special_BloodEagle",     (1.35f, 1.5f) },
+        { "Richard_Special_DoubleHigh",   (1.35f, 1.5f) },
+        { "Salaadin_Special_HattinCleave",(1.35f, 1.5f) },
+        { "Genghis_Special_WrathOfTengri",(1.35f, 1.5f) },
     };
 
     // Every get-hit stun is 0.8 s (48 frames at 60fps) - the user's call, 2026-10-24, raising the

@@ -25,7 +25,7 @@ MonoBehaviour:
   attackType: 3
   specialButton: 1
   comesFrom: 0
-  swingFlow: 0
+  swingFlow: 7
   hitSide: 0
   hitstunFrames: 48
   hyperArmor: 0
@@ -41,9 +41,9 @@ MonoBehaviour:
   comboLinks:
   - input: 0
     withSpecialModifier: 0
-    followUp: {fileID: 11400000, guid: d52cb7f7171a92340a081047dcccf6d5, type: 2}
-    requires: 0
-    openerOnly: 1
+    followUp: {fileID: 11400000, guid: 0e02a8d66da10f741815fe91aa167879, type: 2}
+    requires: 1
+    openerOnly: 0
   cancelStartFrame: -1
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1

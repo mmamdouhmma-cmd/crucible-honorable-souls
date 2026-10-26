@@ -213,30 +213,32 @@ public static class CrucibleCombos
         ("Genghis_Riposte_Parry", new[] { new Link(L, false, "Genghis_Light_SteppeCut", true, Always) }),
     };
 
-    // Buwaka. Richard's moderate shape: each normal one normal link and one special link, each
-    // special hands back one normal.
+    // Buwaka. The user's three strings exactly (2026-10-26): 1) thrust, thrust; 2) swing into the
+    // turning overhead; 3) thrust, turning overhead, spinning sweep. Plus the standard riposte
+    // conversions into the thrust.
     static readonly (string attack, Link[] links)[] Buwaka =
     {
         ("Buwaka_Light_HornCut", new[]
         {
-            new Link(M, false, "Buwaka_Medium_SavannaCut",       true,  Always),
-            new Link(M, true,  "Buwaka_Special_FallingSpear",    false, HitOrBlock),
+            new Link(L, false, "Buwaka_Light_HornCut",           true,  Always),       // 1: thrust, thrust
+            new Link(M, true,  "Buwaka_Special_FallingSpear",    false, HitOrBlock),   // 3: thrust -> turning overhead...
         }),
         ("Buwaka_Medium_SavannaCut", new[]
         {
-            new Link(H, false, "Buwaka_Heavy_IklwaThrust",       true,  Always),
-            new Link(L, true,  "Buwaka_Special_SerpentSweep",    false, HitOrBlock),
+            new Link(M, true,  "Buwaka_Special_FallingSpear",    false, HitOrBlock),   // 2: swing -> turning overhead
         }),
-        ("Buwaka_Heavy_IklwaThrust", new[]
+        ("Buwaka_Special_FallingSpear", new[]
         {
-            new Link(L, false, "Buwaka_Light_HornCut",           true,  Always),
-            new Link(H, true,  "Buwaka_Special_GreatImpale",     false, HitOrBlock),
+            // 3: ...-> the sweeping ENDER. Was Buwaka_Special_SerpentSweep, which could NEVER
+            // fire: a string carries at most one special (TryCancelIntoFollowUp) and Falling
+            // Spear already spent it, so the showpiece string stopped at 2 hits in every
+            // context (proved by the 2026-10-26 distance sweep). Serpent Coil is the
+            // Medium-classed, combo-only replacement with its own clip; a plain Light press
+            // dials it.
+            new Link(L, false, "Buwaka_Ender_SerpentCoil",       false, HitOrBlock),
         }),
         ("Buwaka_Riposte_Dash",          new[] { new Link(L, false, "Buwaka_Light_HornCut", true, Always) }),
         ("Buwaka_Riposte_Parry",         new[] { new Link(L, false, "Buwaka_Light_HornCut", true, Always) }),
-        ("Buwaka_Special_SerpentSweep",  new[] { new Link(M, false, "Buwaka_Medium_SavannaCut", true, Always) }),
-        ("Buwaka_Special_FallingSpear",  new[] { new Link(L, false, "Buwaka_Light_HornCut", true, Always) }),
-        ("Buwaka_Special_GreatImpale",   new[] { new Link(L, false, "Buwaka_Light_HornCut", true, Always) }),
     };
 
     [MenuItem("Crucible/Combat/Wire combo strings")]

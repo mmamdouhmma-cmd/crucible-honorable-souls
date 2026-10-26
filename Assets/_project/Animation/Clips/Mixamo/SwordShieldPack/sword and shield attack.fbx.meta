@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Salaadin_Special_VeiledRush
+      name: Buwaka_Special_FallingSpear
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 13.900002
-      lastFrame: 56.9
+      firstFrame: 21.75
+      lastFrame: 60.45
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

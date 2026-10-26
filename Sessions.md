@@ -4008,3 +4008,61 @@ Moderate, KO'd in 24 s game time; record auto-saved to the library; exported via
 Screen.Replay → BeginVideoExport path to %USERPROFILE%\Videos\CRUCIBLE. Gotcha: `GameMenu.Show`
 is `(Screen, bool push)` - a one-arg reflective Invoke throws TargetParameterCountException and
 silently kills the calling coroutine.
+
+### 2026-10-26 — The distance-range sweep: every move of every fighter, measured
+
+The user's report: "even miyamoto attack barely lands even when they are standing as close as
+they can." Second collider easing of the day: sweep 0.16 -> 0.20, tip extend 0.05 -> 0.08,
+stamped straight onto the six scene HitDetectors + blade boxes in edit mode (a Rebuild is the
+only other path for those constants) and the scene saved.
+
+Then the harness the user asked for: a coroutine sweep (eval_file; captureDeltaTime 1/60; real
+StartMatch per pair with vsAi forced false; Fighter.ResetForMatch as the per-trial reset, which
+places, refills and clears every gate at once) throwing every normal, special and authored
+string at 0.8 -> 6.5 in 0.4 steps (0.2 refinement at the edges), landing judged off the
+defender's health, results streamed to CSV. Standard defender Richard (Bjorn for Richard's own
+moves). ~450 trials, ~35 min with the Editor FOCUSED (editor_focus: the unfocused CLI editor
+throttles to 4 fps and the focused one runs 5-10x faster).
+
+Gotchas the harness hit:
+- Specials are found by `SpecialButton`, not `AttackType` (every special asset is
+  attackType=Special). TryAttack(asset.AttackType, true) is refused silently; the first run
+  measured all three of Bjorn's specials as "never lands" when they were never thrown.
+- A string link's press is the LINK's `input` button, not the follow-up's own type.
+- One special per string counts the OPENER (`stringUsedSpecial`), so DFS-enumerated SP>N>SP
+  paths are refused BY DESIGN at the third press - read TryCancelIntoFollowUp before calling
+  a 2/3-hit string a bug.
+
+Findings (all play-measured, in the report to the user):
+- Point-blank is FIXED: all 37 moves land from 0.8 after the easing.
+- Max landing: Miyamoto 2.8-3.6, Bjorn 2.6-3.6, Genghis 3.0-4.0, Salaadin 3.4-4.0,
+  Buwaka 3.6-4.6, Richard 3.8-4.8.
+- SP+Heavy lunges raised to (1.35, 1.5) for BloodEagle/DoubleHigh/HattinCleave/WrathOfTengri
+  (Apply + SaveAssets + read the .asset back): 3.6 / 4.8 / 3.8 / 4.0. GreatImpale already
+  speed-capped at the roster-longest 4.6. Kuruma CANNOT step further - 8 f startup caps the
+  lunge at 0.67 - so Miyamoto's SP+H lands shorter than his Heavy; needs startup frames if the
+  user wants it longer.
+- A lunge bump is not 1:1 reach at the edge: Blood Eagle covered the full 1.50 (reflection on
+  lungeCovered) and still whiffed at 4.0 because the axe tip projects only ~1.75 past the root
+  (MaxTipRadius 1.73-1.78 across the trials); the band edge carries +-0.2 of contact-timing
+  noise (3.6 landed in one run, whiffed in another).
+- Buwaka's FallingSpear -> SerpentSweep authored ender is DEAD (special->special, one-special
+  rule): his showpiece string caps at 2 hits everywhere. Left for the user to re-author.
+- Miyamoto's specials array carries Kuruma AND Iaijutsu both on SP+Heavy; FindAttack takes the
+  first (Kuruma, the hyper-armour one - correct), Iaijutsu lives only as the string ender.
+
+### 2026-10-26 — Serpent Coil: Buwaka's combo-only ender
+
+The user's pick for the dead FallingSpear -> SerpentSweep link (special->special, which the
+one-special rule can never allow): not a swap to an existing normal but "a special animation for
+his last attack which is only in that combo". Built as `Buwaka_Ender_SerpentCoil` — the
+Iaijutsu pattern taken one step further: Medium-classed (the one-special rule never sees it),
+in NO library (unreachable raw), dialed by a plain Light press off Falling Spear, playing the
+one barbarian clip nobody used (`standing melee combo attack ver. 1`, the 233-deg advancing
+sweep). The `_Ender_` asset-name class is now recognized by CrucibleSpecialStates, so the state,
+trigger (`ComboEnder`) and Any State transition wire like a riposte's. The clip was measured
+in-editor (SampleAnimation on its own pack rig: 140 f @30, main swing 47-66, peak 59) to author
+its swing_trims entry; contact pinned {59.0, 1.2} and the state read back at x1.20 with the
+right motion. Play-verified: HornThrust and SavannaCut opener variants both land 3/3 with
+Serpent Coil as the third hit, at 1.2 and at 3.0. It does not appear on the Moves screen (that
+lists the libraries) — a hidden finisher, accepted.

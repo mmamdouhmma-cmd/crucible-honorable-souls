@@ -35,8 +35,8 @@ MonoBehaviour:
   aimMode: 1
   aimMaxAngle: -1
   aimRollDegrees: 0
-  lungeStopDistance: -1
-  lungeMaxDistance: 1.4
+  lungeStopDistance: 1.35
+  lungeMaxDistance: 1.5
   hitsWithWeapon: 1
   comboLinks: []
   cancelStartFrame: -1

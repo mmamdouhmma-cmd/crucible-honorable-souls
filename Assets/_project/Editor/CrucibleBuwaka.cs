@@ -56,14 +56,13 @@ public static class CrucibleBuwaka
 
     static readonly Move[] Moves =
     {
-        // LIGHT: the barbarian REVERSE slash (AxePack "standing melee attack backhand") - the swing
-        // from the left the brief asks for, and the one-handed clip with the highest tip arc (1.40)
-        // in the four packs. Three other states share this clip (Bjorn's, Richard's and Salaadin's
-        // SP+Light); each has its own per-STATE contact. AimLevel keeps the spear head on the
-        // horizon through the turn.
-        new Move { asset = "Buwaka_Light_HornCut", name = "Horn Cut", trigger = "LightAttack",
-                   height = Mid, type = Light, comesFrom = FromLeft, hitSide = HitRight, aim = AimLevel,
-                   range = 3.4f, size = new Vector3(1.5f, 0.9f, 1f), offset = new Vector3(0f, 1f, 0f),
+        // LIGHT: a quick THRUST (the user's call, 2026-10-26: "use Richard's attacks for him -
+        // thrusts, slash and overhead only"; the old backhand sweep carried the spear sideways so
+        // the leaf head never arrived and the light landed nothing). Richard's authored thrust
+        // clip - the same one his Heavy and dash riposte play, both verified landing on his rig.
+        new Move { asset = "Buwaka_Light_HornCut", name = "Horn Thrust", trigger = "LightAttack",
+                   height = Mid, type = Light, comesFrom = FromThrust, hitSide = HitStraight, aim = AimFull,
+                   range = 3.6f, size = new Vector3(0.8f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
         // MEDIUM: "sword and shield slash (5)" - the pack's LOW cut from the right (the hand never
@@ -90,8 +89,9 @@ public static class CrucibleBuwaka
                    aim = AimLevel, range = 3.3f, size = new Vector3(1.6f, 0.8f, 1f), offset = new Vector3(0f, 0.6f, 0f),
                    lunge = 1.2f, weapon = true },
 
-        // SP + Medium: the OVERHEAD the brief asks for - "sword and shield slash", the pack's true
-        // overhead (Richard's Heavy plays it). AimYaw: face the man, leave the descent alone.
+        // SP + Medium: the TURNING OVERHEAD (the user's combo 2 ender, 2026-10-26) - "sword and
+        // shield attack", the committed overhead with 86 deg of turn (Salaadin's Hattin Cleave
+        // clip). AimYaw: face the man, leave the descent alone.
         new Move { asset = "Buwaka_Special_FallingSpear", name = "Falling Spear", trigger = "SpecialMedium",
                    height = Overhead, type = Special, specialButton = Medium, comesFrom = FromOverhead, hitSide = HitStraight,
                    aim = AimYaw, range = 3.5f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),
@@ -103,6 +103,18 @@ public static class CrucibleBuwaka
                    height = Mid, type = Special, specialButton = Heavy, comesFrom = FromThrust, hitSide = HitStraight,
                    aim = AimFull, range = 4.0f, size = new Vector3(0.8f, 1.1f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 2.0f, weapon = true },
+
+        // COMBO ENDER (the user's call, 2026-10-26): reachable ONLY as the third hit of
+        // Horn Thrust / Savanna Cut -> Falling Spear -> this. attackType Medium ON PURPOSE: a
+        // string carries at most ONE special (TryCancelIntoFollowUp) and Falling Spear is it, so
+        // the authored special->special ender could never fire - this normal-classed showpiece
+        // takes its place. It is in NO library (WireCombat leaves it out), so it cannot be thrown
+        // raw; its clip is the one barbarian strike nobody used, "combo attack ver. 1" - a wide
+        // advancing left sweep (clip peak f59 of 140 @30fps, measured in-editor 2026-10-26).
+        new Move { asset = "Buwaka_Ender_SerpentCoil", name = "Serpent Coil", trigger = "ComboEnder",
+                   height = Mid, type = Medium, comesFrom = FromLeft, hitSide = HitRight, aim = AimLevel,
+                   range = 3.4f, size = new Vector3(1.6f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
+                   lunge = -1f, weapon = true },
 
         new Move { asset = "Buwaka_Riposte_Dash", name = "Lion's Answer", trigger = "RiposteDash",
                    height = Mid, type = Medium, comesFrom = FromRight, hitSide = HitLeft, aim = AimFull,
