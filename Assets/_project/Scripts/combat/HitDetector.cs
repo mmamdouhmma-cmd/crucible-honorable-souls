@@ -29,7 +29,7 @@ public class HitDetector : MonoBehaviour
 
     [Tooltip("Weapon boxes only: radius of the swept capsule between the blade's position last frame and now, " +
              "so a fast swing cannot pass through the opponent between two physics steps. World units.")]
-    [SerializeField] private float sweepRadius = 0.35f;
+    [SerializeField] private float sweepRadius = 0.12f;
 
     [Tooltip("Weapon boxes only: the blade tip must move at least this fast (world units per second) for a touch " +
              "to count, so a weapon resting against the opponent in the guard does not 'hit' the moment it arms.")]
@@ -38,6 +38,17 @@ public class HitDetector : MonoBehaviour
     private Vector3 lastBase, lastTip;
     private bool hasLast;
     private float tipSpeed;
+    private float maxTipRadius;
+
+    /// <summary>
+    /// Weapon boxes: the farthest the blade tip has reached TOWARD THE OPPONENT (ground-plane
+    /// projection from the owner's root) while this swing's hitbox has been armed. The front-box
+    /// fallback in CombatSystem clamps its authored range with this, so a stand-in box can never
+    /// land a hit the physical blade never reached for. Projected, not radial: Richard's overhead
+    /// carries its tip 2.7+ out to the SIDE on the backswing, and a radial measure let that
+    /// excursion authorize a forward hit the blade never made.
+    /// </summary>
+    public float MaxTipRadius => maxTipRadius;
 
     private void Awake()
     {
@@ -60,6 +71,7 @@ public class HitDetector : MonoBehaviour
         owner = ownerCombat;
         ownerFighter = ownerFighterRef;
         hasHit = false;
+        maxTipRadius = 0f;
 
         if (attack != null && !followWeapon)
         {
@@ -104,6 +116,18 @@ public class HitDetector : MonoBehaviour
         BladeSegment(out Vector3 bse, out Vector3 tip);
         if (hasLast)
             tipSpeed = Time.deltaTime > 1e-5f ? (tip - lastTip).magnitude / Time.deltaTime : 0f;
+        if (hitbox.enabled && ownerFighter != null && ownerFighter.Opponent != null)
+        {
+            Vector3 toOpp = ownerFighter.Opponent.transform.position - ownerFighter.transform.position;
+            toOpp.y = 0f;
+            if (toOpp.sqrMagnitude > 1e-6f)
+            {
+                toOpp.Normalize();
+                Vector3 d = tip - ownerFighter.transform.position; d.y = 0f;
+                float reach = Vector3.Dot(d, toOpp);
+                if (reach > maxTipRadius) maxTipRadius = reach;
+            }
+        }
         if (hitbox.enabled && !hasHit && owner != null && hasLast && tipSpeed >= minBladeSpeed)
         {
             TrySweep(lastTip, tip);

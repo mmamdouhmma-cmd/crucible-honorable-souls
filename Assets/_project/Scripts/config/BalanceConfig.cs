@@ -21,7 +21,11 @@ public static class BalanceConfig
     // at ATTACK_LUNGE_STOP (centre to centre, world units) instead of relying on the stock swing's reach.
     // Never more than ATTACK_LUNGE_MAX units per attack. AttackData can override both per move.
     public const float ATTACK_LUNGE_MAX = 0.9f;
-    public const float ATTACK_LUNGE_STOP = 1.7f;
+    // 1.35 as of 2026-10-26: 1.7 was calibrated against the old fat colliders (0.60 capsules,
+    // 0.35 sweep, 15% tip extend - roughly half a metre of free reach). With the honest ones a
+    // swing thrown from 1.7 passes 0.2-0.5 clear of the body; 1.35 stands the attacker where the
+    // real blade lands. Capsules are 0.33-0.38 world, so the bodies still never overlap.
+    public const float ATTACK_LUNGE_STOP = 1.35f;
     // Average lunge speed cap (units/s): a short-startup light steps less than a heavy, instead of jumping.
     public const float ATTACK_LUNGE_MAX_SPEED = 4f;
     public const float STAMINA_RECOVERY_PER_SECOND = 15f;          // default; each Fighter can override it in the Inspector

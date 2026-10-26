@@ -257,7 +257,7 @@ public static class CrucibleMixamoSetup
         ("Buwaka_Special_SerpentSweep",    "AxePack",         "standing melee attack 360 low", false),  // the low sweep (Bjorn's Hewing Charge clip)
         ("Buwaka_Special_FallingSpear",    "SwordShieldPack", "sword and shield slash",        false),  // the pack's true overhead
         ("Buwaka_Special_GreatImpale",     "Custom",          "Richard_Thrust",                false),  // the thrust again, driven in on the roster's longest lunge
-        ("Buwaka_Riposte_Dash",            "SwordShieldPack", "sword and shield attack (4)",   false),  // the shortest cut in the pack
+        ("Buwaka_Riposte_Dash",            "Custom",          "Richard_Thrust",                false),  // was "sword and shield attack (4)": a sword cut swings the spear like a sword and the LEAF HEAD (the only hitting part) never came within 0.99 of the target through the armed window. The thrust is his Heavy's clip, play-verified to land, and a spear's natural counter.
         ("Buwaka_Riposte_Parry",           "SwordShieldPack", "sword and shield kick",         false),  // a BOOT: hitsWithWeapon is off
         ("React_Front",                    "SwordShieldPack", "sword and shield impact",       false),
         ("React_Left",                     "SwordShieldPack", "sword and shield impact (2)",   false),

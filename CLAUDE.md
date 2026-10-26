@@ -1295,6 +1295,35 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   menu), and it + `Unstage()` re-run `ApplySides` - the select screens wake the WHOLE roster, and
   leaving them any other way stacked the extras on the two marks, capsules climbing (the floating
   bystanders).
+- **Reach is honest as of 2026-10-26** (the user's call: "the hit collider barely on the tip of
+  each weapon, player collider tight and precise"). Four generosities died together, and they only
+  work as a SET - loosen one and the contact timings stop matching:
+  `BladeTipExtend` 0.15 -> **0.02**; `sweepRadius` 0.35 -> **0.12** (a per-INSTANCE serialized
+  field, written by `SetupWeapon` from `BladeSweepRadius`); capsules 0.600 world -> **0.13 x
+  stature** (`CapsuleRadiusFrac`, 0.33-0.38 world - honest torso half-widths are 0.31-0.52, and
+  vertex maxima lie under cloth: Genghis's cape reads 1.20); `ATTACK_LUNGE_STOP` 1.7 -> **1.35**
+  (1.7 was calibrated against the old collider fat; real blades pass 0.2-0.5 clear from there).
+  The front-box fallback (kicks / slow frames / uneven ground) is CLAMPED by
+  `HitDetector.MaxTipRadius` - the tip's FORWARD-PROJECTED reach this swing actually achieved
+  (radial is wrong: a backswing carries Richard's tip 2.7 sideways and authorizes far hits).
+  Under the CLI editor every frame is "slow", so every pre-clamp CLI hit test was box theatre.
+  All 18 normals play-verified landing at 2.6 (blade dive inside the armed window); far heavies
+  whiff. **A whiffing move after a re-point is contact timing**: the fat colliders absorbed late
+  contacts for years - but check the dive frame against the ARMED window first; a dive after the
+  window is the return-to-guard follow-through, not the blow (re-timing Richard L/M on it was an
+  overcorrection, reverted). All six parry ripostes and all six back-dash dodge ripostes land
+  from ~1.5: Buwaka_Riposte_Dash plays his own Richard_Thrust clip now ({17.5, 1.2} - the old
+  sword-cut clip swung the spear so its leaf head, the only hitting part, never came within
+  0.99), and Richard_Riposte_Dash carries LungeOverride (1.1, 0.9) (it sat exactly on the 0.20
+  trigger boundary and flip-flopped).
+- **All six body materials are two-sided** (`_Cull 0`, written by `BuildMaterial(doubleSided:
+  true)`; weapons stay back-culled). Richard's "transparent cap/cape" was single-sided cloth
+  showing its backfaces - the mesh was fine. Photographed solid front and back.
+- **AI vs AI needs a second AiController past the singleton**: null the static `Instance` backing
+  (reflection), `AddComponent<AiController>`, `Activate(d, 1)`, and restore `Instance` +
+  `Destroy` the extra afterwards - its Awake only kills the duplicate while `Instance` is set.
+  Works: Genghis vs Buwaka fought to a KO and the record auto-saved. `GameMenu.Show` is
+  `(Screen s, bool push)` - a one-arg reflective Invoke throws and silently kills the coroutine.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `PlayProbe`, `BladeTrace`

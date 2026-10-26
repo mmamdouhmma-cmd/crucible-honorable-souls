@@ -671,7 +671,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Riposte_Dash
-  m_Speed: 1.1
+  m_Speed: 1.1333334
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -8863867264099751728}
@@ -684,7 +684,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 4061839508520268033, guid: 75e0ea05a934efc43a3e6e8a81bf7cdd, type: 3}
+  m_Motion: {fileID: 1592891273320650287, guid: a072b107c38a1054da46d270f79dd078, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 

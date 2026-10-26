@@ -204,6 +204,15 @@ public static class CrucibleGenghis
             // fourth special). Removing the state removes its transitions with it.
             foreach (var cs in layer.stateMachine.states.Where(s => s.state.name.StartsWith("Miyamoto_")).ToArray())
             { layer.stateMachine.RemoveState(cs.state); removed++; }
+            // Miyamoto's SP+Heavy fires his bespoke SpecialKuruma trigger; Genghis's AttackData
+            // fires the shared SpecialHeavy, so the inherited Any State transition never matched
+            // and the move played with the animator stuck on idle.
+            foreach (var tr in layer.stateMachine.anyStateTransitions)
+            {
+                if (tr.destinationState == null || tr.destinationState.name != "Genghis_Special_WrathOfTengri") continue;
+                foreach (var c in tr.conditions) tr.RemoveCondition(c);
+                tr.AddCondition(AnimatorConditionMode.If, 0f, "SpecialHeavy");
+            }
         }
         EditorUtility.SetDirty(ac);
         AssetDatabase.SaveAssets();

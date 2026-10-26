@@ -92,8 +92,8 @@ ModelImporter:
       name: Salaadin_Medium_ShinCut
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 10.4
-      lastFrame: 22.9
+      firstFrame: 20
+      lastFrame: 32.5
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

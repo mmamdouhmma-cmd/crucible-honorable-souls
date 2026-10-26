@@ -433,7 +433,7 @@ public static class CrucibleBalance
 
     /// <summary>
     /// Moves that have to CLOSE rather than reach. The default lunge stops at
-    /// BalanceConfig.ATTACK_LUNGE_STOP (1.7 centre to centre) and may travel
+    /// BalanceConfig.ATTACK_LUNGE_STOP (1.35 centre to centre) and may travel
     /// BalanceConfig.ATTACK_LUNGE_MAX (0.9) to get there, which is fine for a move that strikes
     /// out in front - but Bjorn's two SPINS carry the axe round his body, so at 1.7 apart the head
     /// is nowhere near the opponent while the hitbox (range 3.2-3.5) still scores. The axe missing
@@ -456,6 +456,10 @@ public static class CrucibleBalance
         { "Buwaka_Special_FallingSpear", (2.4f, 1.2f) },
         { "Buwaka_Special_GreatImpale",  (2.2f, 2.0f) },
         { "Buwaka_Riposte_Dash",         (2.3f, 0.9f) },
+        // Richard's Lion Riposte sat exactly on the trigger boundary after the 2026-10-26 reach
+        // tightening (closest blade approach 0.20 from a dodge's 1.5 gap - it landed one run and
+        // whiffed the next). A closer stop converts the marginal graze into a clean hit.
+        { "Richard_Riposte_Dash",        (1.1f, 0.9f) },
     };
 
     // Every get-hit stun is 0.8 s (48 frames at 60fps) - the user's call, 2026-10-24, raising the

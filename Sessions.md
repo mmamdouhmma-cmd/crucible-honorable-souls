@@ -3954,3 +3954,57 @@ combos, Rewire, Apply + SaveAssets, scene saved. Read back:
 - The signature: Buwaka heavy PARRIED by the timed raise (0 damage, counter window 1.05 s read
   back), the punish auto-swapped to Genghis_Riposte_Parry (Khan's Verdict, the great-sword wheel)
   and hit for **18** — the roster's hardest parry punish. CLAUDE.md roster facts updated.
+
+### 2026-10-26 — Honest reach: tip-true blades, tight capsules, and the counters re-proven
+
+**The user's brief.** Genghis: flip the saber 180 (it cut through his own body) and give SP+Heavy
+a real animation (it played nothing). Roster-wide: "strikes reach way further than they should -
+I need the hit collider to be barely on the tip of each weapon where it lands from. Also make sure
+player collider is tight and precise." Then, added mid-session: Richard's transparent cap/cape,
+"make sure the shorter range fighter can still land after a parry or a dodge", commit + session
+log, rebuild the app + desktop shortcut, and an AI-vs-AI fight recorded and exported as video.
+
+**Genghis (done early, pre-compaction).** Saber yaw 180 via ShieldWeaponMount (localRot (0,90,0)
+read back); SP+Heavy's missing animation was a SpecialKuruma→SpecialHeavy transition condition.
+
+**The reach system, before and after.** Reach generosity lived in four places that compounded:
+`BladeTipExtend` 0.15 (15% past the tip), `sweepRadius` 0.35 (a blade thicker than a leg),
+capsule radius 0.600 world on everyone (honest torso half-widths are 0.31–0.52), and the
+front-box fallback judging by authored ranges 3.2–4.0 whenever a frame was slow — which under
+the CLI editor is EVERY frame, so every CLI "LAND" before this session was box-judged theatre.
+Now: tip extend 0.02, sweep 0.12 (written per instance by SetupWeapon), capsules 0.13×stature
+(0.33–0.38 world), and the fallback box is clamped by `HitDetector.MaxTipRadius` — the blade
+tip's FORWARD-PROJECTED reach this swing actually achieved (radial was wrong: Richard's backswing
+carries the tip 2.7 sideways and authorized far hits). `ATTACK_LUNGE_STOP` 1.7→1.35: the old stop
+was calibrated against half a metre of collider fat; from 1.7 real blades pass 0.2–0.5 clear.
+- **The far probe that broke the illusion**: four heavies "landed" at gaps 4.2–4.8 with the blade
+  measured 0.73–2.08 from the capsule. After the clamp, all whiff; Bjorn's biggest closing move
+  tops out at 4.73 and nothing connects from MATCH_START_GAP.
+- **Contact re-timing**: the fat colliders had absorbed late contact entries. Final sweep: ALL 18
+  normals land at 2.6 with the blade dive inside the armed window (−0.03..−0.35 or in-box
+  0.03..0.27), after re-pins: Bjorn_Medium 58 (bare), Salaadin_Medium {27,1.0},
+  Salaadin_Heavy {31,1.0}, Genghis_Heavy {66,1.0}, Miyamoto_Heavy {67,1.0} (new entry - the lunge
+  change had pushed its dive 2 f past the window). Richard L/M were REVERTED after an
+  overcorrection: their late "dives" were the return-to-guard pose, not the blow - the real
+  strike was in-window all along and just needed the closer lunge. **Lesson: a post-move dive in
+  the telemetry is the follow-through; match it against the armed window before re-timing.**
+- **Counters, the user's worry, all proven at the real distances**: 6/6 parry ripostes land from
+  ~1.5 (Genghis 17 dmg, his x1.7 payoff), 6/6 dodge (back-dash) ripostes land. Two fixes fell
+  out: Buwaka_Riposte_Dash re-pointed from `sword and shield attack (4)` (a sword cut swings the
+  spear so the leaf head never comes within 0.99) to his own Richard_Thrust clip {17.5, 1.2} -
+  lands −0.23/−0.35; Richard_Riposte_Dash sat exactly on the 0.20 trigger boundary (landed one
+  run, whiffed the next) and got a LungeOverride (1.1, 0.9) - lands 0.00–0.06 clean.
+- Dodge-press timing in the harness is per-fighter (offsets 3–9 f before startup end); a NO EVADE
+  row usually means the press missed the i-frame head, not a game fault.
+
+**Richard's transparent cap/cape**: single-sided cloth under back-face culling (Blender probe:
+the mesh is fine, hair undersides + cape openings show backfaces). All six `<Name>_Body.mat` now
+carry `_Cull 0` and `BuildMaterial` writes doubleSided for bodies (weapons stay single-sided).
+Photographed in play front and back: solid.
+
+**AI vs AI + export**: a second AiController instanced past the singleton (null the static
+Instance backing, AddComponent, Activate(player 1), restore after). Genghis vs Buwaka, both
+Moderate, KO'd in 24 s game time; record auto-saved to the library; exported via the real
+Screen.Replay → BeginVideoExport path to %USERPROFILE%\Videos\CRUCIBLE. Gotcha: `GameMenu.Show`
+is `(Screen, bool push)` - a one-arg reflective Invoke throws TargetParameterCountException and
+silently kills the calling coroutine.

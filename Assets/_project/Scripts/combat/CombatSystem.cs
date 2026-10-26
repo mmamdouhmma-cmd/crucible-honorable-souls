@@ -318,7 +318,18 @@ public class CombatSystem : MonoBehaviour
             Fighter opp = fighter != null ? fighter.Opponent : null;
             bool unevenGround = opp != null &&
                 Mathf.Abs(opp.transform.position.y - fighter.transform.position.y) > BalanceConfig.UNEVEN_GROUND_HEIGHT_GAP;
-            if ((bodyAttack || slowFrame || unevenGround) &&
+            // A weapon move's stand-in box is clamped to where the blade tip has actually BEEN this
+            // swing: the authored ranges run 3.2-4.0 while the tightened blade path reaches ~2.6-3.0,
+            // and without the clamp a slow frame or a slope handed every heavy a metre of free reach
+            // (measured: four heavies landing at gap 4.2 with the blade 0.7-2.0 from the body).
+            // Kicks keep the pure authored box - there is no blade to clamp against.
+            bool bladeCanReach = true;
+            if (!bodyAttack && opp != null && hitDetector != null)
+            {
+                Vector3 g = opp.transform.position - fighter.transform.position; g.y = 0f;
+                bladeCanReach = g.magnitude <= hitDetector.MaxTipRadius + opp.BodyRadius + 0.2f;
+            }
+            if ((bodyAttack || slowFrame || unevenGround) && bladeCanReach &&
                 opp != null && !opp.IsDashing && IsWithinReach(currentAttack, opp.transform.position, opp.BodyRadius))
             {
                 if (debugLogs)

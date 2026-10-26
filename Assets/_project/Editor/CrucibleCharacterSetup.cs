@@ -310,7 +310,8 @@ public static class CrucibleCharacterSetup
             Undo.RecordObject(cap, "capsule");
             cap.height = h;
             cap.center = new Vector3(0f, h * 0.5f, 0f);
-            Debug.Log($"{charName}: capsule fitted to height {h:F3} root-local ({h * rootScale:F3} world), bottom on the soles");
+            cap.radius = CapsuleRadiusFrac * h;
+            Debug.Log($"{charName}: capsule fitted to height {h:F3} root-local ({h * rootScale:F3} world), radius {cap.radius * rootScale:F3} world, bottom on the soles");
         }
         Debug.Log($"{charName}: BODY height {bounds.size.y:F3} world units at child scale 1 under root scale {player.transform.lossyScale.y}; child scale set to {childScale:F3} for {want} units, ground offset {inst.transform.localPosition.y:F3}");
 
@@ -334,7 +335,7 @@ public static class CrucibleCharacterSetup
         // 5. materials
         string matDir = $"{charDir}/Materials";
         if (!AssetDatabase.IsValidFolder(matDir)) AssetDatabase.CreateFolder(charDir, "Materials");
-        var bodyMat = BuildMaterial($"{charDir}/Model/{charName}_Body.fbm", charName.ToLower(), $"{matDir}/{charName}_Body.mat");
+        var bodyMat = BuildMaterial($"{charDir}/Model/{charName}_Body.fbm", charName.ToLower(), $"{matDir}/{charName}_Body.mat", doubleSided: true);
         var weaponMats = Directory.Exists($"{charDir}/Weapons")
             ? Directory.GetDirectories($"{charDir}/Weapons", "*.fbm").ToDictionary(
                 d => Path.GetFileNameWithoutExtension(d),
@@ -378,7 +379,22 @@ public static class CrucibleCharacterSetup
     // Both values are fractions of the mesh's Y extent measured from its bottom (butt / kashira), because the
     // imported mesh is in its own units (the FBX node carries the unit scale), so absolute file units don't apply.
     /// <summary>Fraction of the blade length the hit box extends past the tip (user tuning 2026-10-12: strikes felt a little short).</summary>
-    const float BladeTipExtend = 0.15f;
+    // Was 0.15 (15% of the blade PAST the tip): with the 0.35 sweep radius and the 0.60 capsules
+    // it made every strike land well short of the weapon actually arriving - the user's "strikes
+    // reach way further than they should". 0.02 keeps a hair of margin against z-fighting at the
+    // very tip and nothing more.
+    const float BladeTipExtend = 0.02f;
+    // Radius of HitDetector's swept capsule between last frame's blade and this frame's, written
+    // onto every detector by SetupWeapon (the field is serialized per instance, so changing the
+    // script default alone would not touch the fighters already in the scene). 0.35 was a blade a
+    // third of a metre thick; 0.12 still catches an inter-frame crossing at real blade width.
+    const float BladeSweepRadius = 0.12f;
+    // Physics capsule radius as a fraction of stature. The bodies' honest half-widths (bare torso,
+    // no cape) measure 0.31-0.52 world; the old uniform 0.600 was a quarter-metre proud of the
+    // flesh on every fighter and paid out on both ends of every exchange. Vertex maxima are the
+    // wrong statistic here - Genghis's cape reads 1.20 from the axis - so the radius is sized to
+    // the man, not the cloth: 0.13 x stature = 0.33 (Miyamoto) to 0.38 (Richard) world.
+    const float CapsuleRadiusFrac = 0.13f;
 
     static readonly System.Collections.Generic.Dictionary<string, (float bladeStartFrac, float leftGripFrac)> WeaponSpec =
         new System.Collections.Generic.Dictionary<string, (float, float)>
@@ -483,6 +499,13 @@ public static class CrucibleCharacterSetup
         // (mount_body.py even reuses his Blender offsets), so his solved entry is the starting
         // point. Verify in Block_Hold - same clip - and re-solve only if the facing reads wrong.
         { "Buwaka_Shield_L",   (new Vector3(0.000209f, 0.000563f, -0.000347f), new Vector3(0.75f, 181.74f, 355.40f)) },
+        // The saber came off mount_body.py 180 deg reversed in the fists: at rest the vertical
+        // guard masked it, but with WeaponAim OFF the whole heavy swung with the blade pointing
+        // BACKWARD (blade.toOpponent -0.44..-0.95, tip BEHIND him) while Miyamoto on the same clip
+        // sweeps to +0.89 - the tip crossed his own body every attack. Flipping 180 about the
+        // node's local Y (270 -> 90) sends the blade out the other end of the fist and cannot
+        // confuse WeaponAim, whose blade axis is the LOCAL +Z either way. Position unchanged.
+        { "Genghis_Saber",     (new Vector3(0.000000f, 0.000300f, 0.000060f), new Vector3(0f, 90f, 0f)) },
     };
 
     static void SetupWeapon(GameObject player, GameObject inst, string charName, Animator rootAnim)
@@ -508,6 +531,7 @@ public static class CrucibleCharacterSetup
         if (det == null) det = Undo.AddComponent(weapon.gameObject, RuntimeType("HitDetector"));
         var sd = new SerializedObject(det);
         sd.FindProperty("followWeapon").boolValue = true;
+        sd.FindProperty("sweepRadius").floatValue = BladeSweepRadius;
         sd.ApplyModifiedProperties();
         // point the CombatSystem at it and park the old front box
         var combat = player.GetComponent(RuntimeType("CombatSystem"));
@@ -661,7 +685,7 @@ public static class CrucibleCharacterSetup
         return mat;
     }
 
-    static Material BuildMaterial(string fbmDir, string baseName, string matPath)
+    static Material BuildMaterial(string fbmDir, string baseName, string matPath, bool doubleSided = false)
     {
         Shader lit = Shader.Find("Universal Render Pipeline/Lit");
         if (lit == null) { Debug.LogError("URP/Lit shader not found; is URP active?"); return null; }
@@ -705,6 +729,10 @@ public static class CrucibleCharacterSetup
             mat.EnableKeyword("_METALLICSPECGLOSSMAP");
         }
         else { mat.SetFloat("_Metallic", 0f); mat.SetFloat("_Smoothness", 0.4f); }
+        // The Tripo bodies carry single-layer cloth (Richard's cape is the one the user caught:
+        // seen from its back side the culled faces vanish and the cape reads as transparent).
+        // Body materials render both faces; weapons stay single-sided solids.
+        mat.SetFloat("_Cull", doubleSided ? 0f : 2f);
         EditorUtility.SetDirty(mat);
         AssetDatabase.SaveAssets();
         Debug.Log($"material {matPath}: base {(baseMap ? baseMap.name : "-")} normal {(normal ? normal.name : "-")} mask {(mask ? mask.name : "-")}");

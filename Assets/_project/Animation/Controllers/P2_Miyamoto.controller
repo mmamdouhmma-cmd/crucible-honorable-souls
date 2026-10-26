@@ -1501,7 +1501,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Heavy_Overhead
-  m_Speed: 1.2307689
+  m_Speed: 1.0000001
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}
