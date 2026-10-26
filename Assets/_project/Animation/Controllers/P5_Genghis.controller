@@ -587,7 +587,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 4061839508520268033, guid: aed4781c8c311334c89d160426573b70, type: 3}
+  m_Motion: {fileID: -2061910772549006292, guid: aed4781c8c311334c89d160426573b70, type: 3}
   m_Tag: 
   m_SpeedParameter: Blend
   m_MirrorParameter: 
@@ -704,7 +704,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Riposte_Dash
-  m_Speed: 1.2000002
+  m_Speed: 1.4999999
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -8863867264099751728}
@@ -717,7 +717,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 4061839508520268033, guid: 6358256d00f703442b0fae7815d73275, type: 3}
+  m_Motion: {fileID: -7312523220118785054, guid: aed4781c8c311334c89d160426573b70, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1476,7 +1476,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Special_WrathOfTengri
-  m_Speed: 1.6000001
+  m_Speed: 1.5999999
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 5095289648131785075}
@@ -1827,7 +1827,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -2061910772549006292, guid: aed4781c8c311334c89d160426573b70, type: 3}
+  m_Motion: {fileID: -6556537087697243763, guid: aed4781c8c311334c89d160426573b70, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 

@@ -96,11 +96,12 @@ public static class CrucibleGenghis
                    aim = AimYaw, range = 3.0f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.4f, weapon = true },
 
-        // Dash counter: the great-sword KICK, like Miyamoto's - a boot, judged on the body box.
+        // Dash counter: his Light's horizontal cut, faster (it was a boot until 2026-10-27 - the
+        // user's call: no kicks on anyone).
         new Move { asset = "Genghis_Riposte_Dash", name = "Khan's Answer", trigger = "RiposteDash",
-                   height = Mid, type = Medium, comesFrom = FromRight, hitSide = HitLeft, aim = AimOff,
-                   range = 2.2f, size = new Vector3(1.0f, 1.2f, 1f), offset = new Vector3(0f, 1f, 0f),
-                   lunge = -1f, weapon = false },
+                   height = Mid, type = Medium, comesFrom = FromLeft, hitSide = HitRight, aim = AimFull,
+                   range = 2.7f, size = new Vector3(1.4f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
+                   lunge = -1f, weapon = true },
 
         // PARRY counter: the great-sword WHEEL ("great sword high spin attack" - Kuruma's clip).
         // THE move of his kit: 12 damage at parryCounterDamage x1.7 is the roster's hardest

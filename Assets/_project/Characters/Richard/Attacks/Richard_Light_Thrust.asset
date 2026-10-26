@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Richard_Light_Thrust
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Lion Chop
-  damage: 7
+  damage: 8
   staminaCost: 17
   armorPierce: 5
   startupFrames: 11

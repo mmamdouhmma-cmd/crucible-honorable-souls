@@ -259,7 +259,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Medium_SideSlash
-  m_Speed: 1.8
+  m_Speed: 1.7999998
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4285678766431743475}
@@ -761,7 +761,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Riposte_Dash
-  m_Speed: 1.2000002
+  m_Speed: 1.5
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -8863867264099751728}
@@ -774,7 +774,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 6358256d00f703442b0fae7815d73275, type: 3}
+  m_Motion: {fileID: 4061839508520268033, guid: aed4781c8c311334c89d160426573b70, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -837,7 +837,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Riposte_Parry
-  m_Speed: 1.48
+  m_Speed: 1.5999999
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -2551659555219594105}
@@ -850,7 +850,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: c2456425bb2c88347919297ca096b199, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: d8ab7aa897afdb74a8a09db1ab4cd607, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1215,7 +1215,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Special_Iaijutsu
-  m_Speed: 1.409091
+  m_Speed: 1.4166667
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1501,7 +1501,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Heavy_Overhead
-  m_Speed: 1.0000001
+  m_Speed: 1.0000004
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}
@@ -1553,7 +1553,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Special_NitoCross
-  m_Speed: 2.4000003
+  m_Speed: 2.4
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1611,7 +1611,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Special_Kuruma
-  m_Speed: 1.3000002
+  m_Speed: 1.1818181
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 5095289648131785075}

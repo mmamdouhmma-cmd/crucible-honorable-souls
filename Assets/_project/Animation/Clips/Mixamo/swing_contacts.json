@@ -25,7 +25,7 @@
     "speed": 1.2
   },
   "Buwaka_Riposte_Parry": {
-    "contact": 4.2,
+    "contact": 17.5,
     "speed": 1.2
   },
   "Buwaka_Special_SerpentSweep": {
@@ -61,8 +61,8 @@
     "speed": 1.6
   },
   "Genghis_Riposte_Dash": {
-    "contact": 10.0,
-    "speed": 1.2
+    "contact": 28.1,
+    "speed": 1.5
   },
   "Genghis_Riposte_Parry": {
     "contact": 36.2,
@@ -82,16 +82,16 @@
     "speed": 2.0
   },
   "Bjorn_Riposte_Parry": {
-    "contact": 15.0,
-    "speed": 1.6
+    "contact": 22.5,
+    "speed": 1.3
   },
   "Bjorn_Special_BloodEagle": {
     "contact": 52.0,
     "speed": 2.2
   },
   "Bjorn_Special_HaftStrike": {
-    "contact": 30.0,
-    "speed": 2.0
+    "contact": 28.6,
+    "speed": 1.6
   },
   "Bjorn_Special_HewingCharge": {
     "contact": 31.7,
@@ -100,12 +100,12 @@
   "Miyamoto_Light_Thrust": 28.1,
   "Miyamoto_Medium_SideSlash": 21.3,
   "Miyamoto_Riposte_Dash": {
-    "contact": 10.0,
-    "speed": 1.2
+    "contact": 28.1,
+    "speed": 1.5
   },
   "Miyamoto_Riposte_Parry": {
-    "contact": 46.0,
-    "speed": 1.5
+    "contact": 54.7,
+    "speed": 1.6
   },
   "Miyamoto_Special_Iaijutsu": {
     "contact": 32.0,
@@ -136,7 +136,7 @@
     "speed": 1.0
   },
   "Richard_Riposte_Parry": {
-    "contact": 4.2,
+    "contact": 26.0,
     "speed": 1.2
   },
   "Richard_Special_DoubleHigh": {

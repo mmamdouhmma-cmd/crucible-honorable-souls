@@ -121,12 +121,12 @@ public static class CrucibleBuwaka
                    range = 3.2f, size = new Vector3(1.2f, 1.1f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
-        // The parry answer is a BOOT ("sword and shield kick", Richard's): hitsWithWeapon off,
-        // the body box judges it.
+        // The parry answer is the spear thrust, like his dash answer (it was a boot until
+        // 2026-10-27 - the user's call: no kicks on anyone).
         new Move { asset = "Buwaka_Riposte_Parry", name = "War Dance", trigger = "RiposteParry",
-                   height = Mid, type = Medium, comesFrom = FromThrust, hitSide = HitStraight, aim = AimOff,
-                   range = 2.2f, size = new Vector3(1.0f, 1.2f, 1f), offset = new Vector3(0f, 1f, 0f),
-                   lunge = -1f, weapon = false },
+                   height = Mid, type = Medium, comesFrom = FromThrust, hitSide = HitStraight, aim = AimFull,
+                   range = 3.2f, size = new Vector3(1.2f, 1.1f, 1f), offset = new Vector3(0f, 1f, 0f),
+                   lunge = -1f, weapon = true },
     };
 
     [MenuItem("Crucible/Characters/Buwaka/1 Create move set")]

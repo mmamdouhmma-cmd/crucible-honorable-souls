@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Bjorn_Heavy_OverheadDoubleAxe
+      name: Bjorn_Riposte_Parry
       takeName: Scene
       internalID: -623603649343465320
-      firstFrame: 11.25
-      lastFrame: 42.75
+      firstFrame: 13.4
+      lastFrame: 32.9
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

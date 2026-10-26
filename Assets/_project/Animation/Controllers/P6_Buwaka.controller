@@ -796,7 +796,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Riposte_Parry
-  m_Speed: 1.2
+  m_Speed: 1.1333334
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -2551659555219594105}
@@ -809,7 +809,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 4061839508520268033, guid: 21e8d68d4a5c30140bd75ee7f98ad055, type: 3}
+  m_Motion: {fileID: -5387111581525453491, guid: a072b107c38a1054da46d270f79dd078, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 

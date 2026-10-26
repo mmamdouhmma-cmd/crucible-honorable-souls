@@ -395,6 +395,13 @@ public static class CrucibleCharacterSetup
     // third of a metre thick; 0.12 was the honest cut, 0.16 the first user-approved easing and
     // 0.20 the second (2026-10-26) - still well under the old fat blade.
     const float BladeSweepRadius = 0.20f;
+    // Per-fighter enlargement of the weapon's hit volume - the blade box (thickness, width and
+    // length, the length growing toward the tip) and the sweep radius together. Bjorn's axe is
+    // 15% bigger (the user's call, 2026-10-27: his SP+Light barely landed).
+    static readonly System.Collections.Generic.Dictionary<string, float> HitVolumeScale = new System.Collections.Generic.Dictionary<string, float>
+    {
+        { "Bjorn", 1.15f },
+    };
     // Physics capsule radius as a fraction of stature. The bodies' honest half-widths (bare torso,
     // no cape) measure 0.31-0.52 world; the old uniform 0.600 was a quarter-metre proud of the
     // flesh on every fighter and paid out on both ends of every exchange. Vertex maxima are the
@@ -536,14 +543,16 @@ public static class CrucibleCharacterSetup
         // The hit volume runs BladeTipExtend past the real tip: strikes read as landing a touch before the model
         // actually touches, and the swept detection has margin at the end of the reach.
         float tipExtend = BladeTipExtend * (b.max.z - y0);
-        box.center = new Vector3(b.center.x, b.center.y, (y0 + b.max.z + tipExtend) * 0.5f);
-        box.size = new Vector3(b.size.x, b.size.y, b.max.z - y0 + tipExtend);
+        float grow = HitVolumeScale.TryGetValue(charName, out var g) ? g : 1f;
+        float len = (b.max.z - y0 + tipExtend) * grow;
+        box.center = new Vector3(b.center.x, b.center.y, y0 + len * 0.5f);
+        box.size = new Vector3(b.size.x * grow, b.size.y * grow, len);
         box.enabled = false;   // HitDetector arms it on the active frames
         var det = weapon.GetComponent(RuntimeType("HitDetector"));
         if (det == null) det = Undo.AddComponent(weapon.gameObject, RuntimeType("HitDetector"));
         var sd = new SerializedObject(det);
         sd.FindProperty("followWeapon").boolValue = true;
-        sd.FindProperty("sweepRadius").floatValue = BladeSweepRadius;
+        sd.FindProperty("sweepRadius").floatValue = BladeSweepRadius * grow;
         sd.ApplyModifiedProperties();
         // point the CombatSystem at it and park the old front box
         var combat = player.GetComponent(RuntimeType("CombatSystem"));

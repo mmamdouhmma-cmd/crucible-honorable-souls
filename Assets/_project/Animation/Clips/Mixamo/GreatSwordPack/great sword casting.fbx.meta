@@ -34,7 +34,7 @@ ModelImporter:
       name: Miyamoto_Heavy_Overhead
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 59.5
+      firstFrame: 61
       lastFrame: 72.5
       wrapMode: 0
       orientationOffsetY: 0
@@ -92,7 +92,7 @@ ModelImporter:
       name: Genghis_Special_WrathOfTengri
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 43.8
+      firstFrame: 47
       lastFrame: 82.2
       wrapMode: 0
       orientationOffsetY: 0

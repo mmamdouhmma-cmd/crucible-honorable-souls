@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Richard_Heavy_Overhead
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
   attackName: Crusader Hew
-  damage: 11
+  damage: 13
   staminaCost: 24
   armorPierce: 8
   startupFrames: 22

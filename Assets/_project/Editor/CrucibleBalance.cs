@@ -340,16 +340,16 @@ public static class CrucibleBalance
     static readonly System.Collections.Generic.Dictionary<string, SwingFlow> Flow =
         new System.Collections.Generic.Dictionary<string, SwingFlow>
     {
-        // Bjorn: one-handed cuts, two true spins, a haft jab, a boot riposte.
+        // Bjorn: one-handed cuts, two true spins, a chop riposte.
         { "Bjorn_Light_Slash",            SwingFlow.CutLeft },
         { "Bjorn_Medium_SpinningSlash",   SwingFlow.SpinLeft },
         { "Bjorn_Heavy_OverheadDoubleAxe",SwingFlow.Overhead },
         { "Bjorn_Heavy_SpinOverhead",     SwingFlow.SpinRight },
         { "Bjorn_Special_BloodEagle",     SwingFlow.Overhead },   // the leaping overhead
-        { "Bjorn_Special_HaftStrike",     SwingFlow.Thrust },     // a jab with the haft
+        { "Bjorn_Special_HaftStrike",     SwingFlow.CutLeft },    // the front cut (was the backhand until 2026-10-27)
         { "Bjorn_Special_HewingCharge",   SwingFlow.CutLeft },
         { "Bjorn_Riposte_Dash",           SwingFlow.CutLeft },
-        { "Bjorn_Riposte_Parry",          SwingFlow.Thrust },     // the boot
+        { "Bjorn_Riposte_Parry",          SwingFlow.Overhead },   // the chop
 
         // Miyamoto: thrust, side cut, overhead; the specials are draw cuts and spins.
         { "Miyamoto_Light_Thrust",        SwingFlow.Thrust },
@@ -359,8 +359,8 @@ public static class CrucibleBalance
         { "Miyamoto_Special_Kuruma",      SwingFlow.SpinRight },  // 100 deg pelvis wheel
         { "Miyamoto_Special_NitoCross",   SwingFlow.SpinLeft },   // 356 deg pelvis
         { "Miyamoto_Special_Nukitsuke",   SwingFlow.CutLeft },
-        { "Miyamoto_Riposte_Dash",        SwingFlow.Thrust },
-        { "Miyamoto_Riposte_Parry",       SwingFlow.Thrust },     // the boot
+        { "Miyamoto_Riposte_Dash",        SwingFlow.CutRight },
+        { "Miyamoto_Riposte_Parry",       SwingFlow.SpinRight },  // the spinning cut
 
         // Richard: his Light plays the barbarian downward attack, so it IS an overhead.
         { "Richard_Light_Thrust",         SwingFlow.Overhead },
@@ -370,7 +370,7 @@ public static class CrucibleBalance
         { "Richard_Special_ShieldBash",   SwingFlow.Thrust },     // a forward shove
         { "Richard_Special_ShieldCharge", SwingFlow.Thrust },     // the running slam
         { "Richard_Riposte_Dash",         SwingFlow.CutLeft },
-        { "Richard_Riposte_Parry",        SwingFlow.Thrust },     // the boot
+        { "Richard_Riposte_Parry",        SwingFlow.CutLeft },    // the sword counter
 
         // Salaadin: the combo fighter gets alternating sides on his normals, a whirling heavy.
         { "Salaadin_Light_SaifCut",       SwingFlow.CutLeft },    // the flat sweep
@@ -393,7 +393,7 @@ public static class CrucibleBalance
         { "Genghis_Special_SteppeStorm",  SwingFlow.CutRight },
         { "Genghis_Special_HordeBreaker", SwingFlow.CutLeft },
         { "Genghis_Special_WrathOfTengri",SwingFlow.Overhead },
-        { "Genghis_Riposte_Dash",         SwingFlow.Thrust },     // the boot
+        { "Genghis_Riposte_Dash",         SwingFlow.CutRight },   // his Light's cut
         { "Genghis_Riposte_Parry",        SwingFlow.SpinRight },  // the wheel
 
         // Buwaka: a thrusting heavy, a true 360 on SP+Light.
@@ -405,7 +405,7 @@ public static class CrucibleBalance
         { "Buwaka_Special_GreatImpale",   SwingFlow.Thrust },
         { "Buwaka_Ender_SerpentCoil",     SwingFlow.SpinLeft },   // measured: the clip turns left through its main swing
         { "Buwaka_Riposte_Dash",          SwingFlow.CutLeft },
-        { "Buwaka_Riposte_Parry",         SwingFlow.Thrust },     // the boot
+        { "Buwaka_Riposte_Parry",         SwingFlow.Thrust },     // the spear
     };
 
     static SwingFlow FlowFor(string asset, int hitSideIndex)
@@ -477,6 +477,10 @@ public static class CrucibleBalance
         { "Richard_Special_DoubleHigh",   (1.35f, 1.5f) },
         { "Salaadin_Special_HattinCleave",(1.35f, 1.5f) },
         { "Genghis_Special_WrathOfTengri",(1.35f, 1.5f) },
+        // Bjorn's SP+Light (the user's call, 2026-10-27: it barely landed). The step in his other
+        // specials take; the speed cap (18 f startup) allows ~1.37 of it. With the front cut and
+        // the 15% bigger axe it lands from 3.4 (the old backhand reached 2.4).
+        { "Bjorn_Special_HaftStrike",     (1.35f, 1.5f) },
     };
 
     // Every get-hit stun is 0.8 s (48 frames at 60fps) - the user's call, 2026-10-24, raising the

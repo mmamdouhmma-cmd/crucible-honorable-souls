@@ -48,8 +48,8 @@ public static class CrucibleMixamoSetup
         // window is re-cut around its swing_contacts.json entry, like every other attack state.
         // Ripostes: the move a counter window gives instead of a normal strike.
         ("Bjorn_Riposte_Dash",           "AxePack", "standing melee combo attack ver. 3", false),  // fastest tip + tightest core in either pack
-        ("Bjorn_Riposte_Parry",          "AxePack", "standing melee attack kick ver. 2",  false),  // a KICK: hitsWithWeapon is off, the body box judges it
-        ("Bjorn_Special_HaftStrike",     "AxePack", "standing melee attack backhand",    false),   // big reverse horizontal, winds 245 deg and returns square
+        ("Bjorn_Riposte_Parry",          "AxePack2H", "standing melee attack downward",  false),  // the steepest chop in either pack, the 2H re-posed copy; was a kick until 2026-10-27 (the user's call: no kicks on anyone)
+        ("Bjorn_Special_HaftStrike",     "AxePack", "standing melee combo attack ver. 3", false),  // a fast horizontal cut swept out IN FRONT of him (the user's pick, 2026-10-27). The backhand it replaced wound 245 deg and met the target with the axe wrapped round his body - it hit sideways and barely landed. Shares the dash riposte's clip on its own contact
         ("Bjorn_Special_HewingCharge",   "AxePack", "standing melee attack 360 low",     false),   // the low twin of his medium: same full turn, tip 0.98 lower
         ("Bjorn_Special_BloodEagle",     "AxePack", "standing melee run jump attack",    false),   // leaping chop; its 3.64 m of root motion is discarded, so the AttackData lunges instead
         ("React_Front",                  "AxePack", "standing react large gut",          false),
@@ -89,8 +89,8 @@ public static class CrucibleMixamoSetup
         // spin=False, tip coming down 0.62 over a 10-frame core.
         ("Miyamoto_Heavy_Overhead",      "GreatSwordPack", "great sword casting",       false),
         // SPECIALS (SP + button)
-        ("Miyamoto_Riposte_Dash",        "GreatSwordPack", "great sword kick",          false),   // spinning kick, ends square
-        ("Miyamoto_Riposte_Parry",       "GreatSwordPack", "great sword kick (2)",      false),   // front push kick; contact is at the very end of the clip
+        ("Miyamoto_Riposte_Dash",        "GreatSwordPack", "great sword slash (3)",     false),   // his Light's horizontal cut, faster (per-state contact); was a spinning kick until 2026-10-27
+        ("Miyamoto_Riposte_Parry",       "GreatSwordPack", "great sword slash (2)",     false),   // the pack's unused spinning cut (498 deg): a parry answer is where a full turn reads as flourish; was a push kick until 2026-10-27
         ("Miyamoto_Special_Nukitsuke",   "GreatSwordPack", "great sword slash (5)",     false),   // rising reverse cut: a silhouette none of his normals have
         ("Miyamoto_Special_NitoCross",   "GreatSwordPack", "great sword slash (4)",     false),   // full-turn rising cut - keeps Nito Cross a katana move (no wakizashi exists)
         ("Miyamoto_Special_Iaijutsu",    "GreatSwordPack", "great sword attack",        false),   // the DOUBLE THRUST: f12-17 pushes, f18-23 retracts, f24-36 drives deeper. COMBO-ONLY now (see CrucibleCombos): it sits AFTER Kuruma in the scene's specials array, and FindAttack returns the first match, so SP+Heavy pressed cold throws Kuruma and only a live string can reach the thrust
@@ -162,7 +162,7 @@ public static class CrucibleMixamoSetup
         // only the four-frame join is authored.
         ("Richard_Special_DoubleHigh",     "SwordShieldPack", "sword and shield slash",      false),  // his Heavy's overhead
         ("Richard_Riposte_Dash",           "SwordShieldPack", "sword and shield attack (4)", false),  // 31 f, the shortest cut in the pack
-        ("Richard_Riposte_Parry",          "SwordShieldPack", "sword and shield kick",       false),  // a BOOT: hitsWithWeapon is off
+        ("Richard_Riposte_Parry",          "SwordShieldPack", "sword and shield slash (3)",  false),  // a sword counter (Salaadin's dash-riposte clip); was a boot until 2026-10-27
         ("React_Front",                    "SwordShieldPack", "sword and shield impact",     false),
         ("React_Left",                     "SwordShieldPack", "sword and shield impact (2)", false),
         ("React_Right",                    "SwordShieldPack", "sword and shield impact (3)", false),
@@ -225,7 +225,7 @@ public static class CrucibleMixamoSetup
         ("Genghis_Special_SteppeStorm",    "GreatSwordPack", "great sword slash (3)",     false),  // his Light, heavier (per-state contact)
         ("Genghis_Special_HordeBreaker",   "GreatSwordPack", "great sword slash",         false),  // his Medium, heavier
         ("Genghis_Special_WrathOfTengri",  "GreatSwordPack", "great sword casting",       false),  // his Heavy, heavier
-        ("Genghis_Riposte_Dash",           "GreatSwordPack", "great sword kick",          false),  // a boot, judged on the body box
+        ("Genghis_Riposte_Dash",           "GreatSwordPack", "great sword slash (3)",     false),  // his Light's horizontal cut, faster; was a boot until 2026-10-27
         ("Genghis_Riposte_Parry",          "GreatSwordPack", "great sword high spin attack", false), // THE WHEEL: the roster's hardest parry punish
         ("React_Front",                    "GreatSwordPack", "great sword impact",        false),
         ("React_Left",                     "GreatSwordPack", "great sword impact (2)",    false),
@@ -259,7 +259,7 @@ public static class CrucibleMixamoSetup
         ("Buwaka_Special_GreatImpale",     "Custom",          "Richard_Thrust",                false),  // the thrust again, driven in on the roster's longest lunge
         ("Buwaka_Ender_SerpentCoil",       "AxePack",         "standing melee combo attack ver. 1", false),  // the COMBO-ONLY ender (the last unused barbarian strike, 233 deg advancing sweep); state is created by 'Wire special and riposte states' via the _Ender_ name
         ("Buwaka_Riposte_Dash",            "Custom",          "Richard_Thrust",                false),  // was "sword and shield attack (4)": a sword cut swings the spear like a sword and the LEAF HEAD (the only hitting part) never came within 0.99 of the target through the armed window. The thrust is his Heavy's clip, play-verified to land, and a spear's natural counter.
-        ("Buwaka_Riposte_Parry",           "SwordShieldPack", "sword and shield kick",         false),  // a BOOT: hitsWithWeapon is off
+        ("Buwaka_Riposte_Parry",           "Custom",          "Richard_Thrust",                false),  // the spear thrust, like his dash riposte; was a boot until 2026-10-27
         ("React_Front",                    "SwordShieldPack", "sword and shield impact",       false),
         ("React_Left",                     "SwordShieldPack", "sword and shield impact (2)",   false),
         ("React_Right",                    "SwordShieldPack", "sword and shield impact (3)",   false),

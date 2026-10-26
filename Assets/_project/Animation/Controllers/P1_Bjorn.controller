@@ -1851,7 +1851,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Riposte_Parry
-  m_Speed: 1.5999999
+  m_Speed: 1.3000001
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -7925010876262673026}
@@ -1864,7 +1864,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 81dbbe4e953892e4db891fec0b868b2c, type: 3}
+  m_Motion: {fileID: -623603649343465320, guid: b1b3257a18ec1ff41985207946d21b44, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1903,7 +1903,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Special_HaftStrike
-  m_Speed: 2.0000002
+  m_Speed: 1.6000001
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 8796495972763646983}
@@ -1916,7 +1916,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 444c1b3430ded5841abb22bd19555487, type: 3}
+  m_Motion: {fileID: 4061839508520268033, guid: 5fb06499cff267041b82aeddaf4d9f98, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 

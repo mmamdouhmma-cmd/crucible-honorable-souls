@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Miyamoto_Medium_SideSlash
+      name: Miyamoto_Riposte_Parry
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 41.384617
-      lastFrame: 64.38461
+      firstFrame: 40.3
+      lastFrame: 60.3
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

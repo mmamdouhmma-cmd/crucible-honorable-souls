@@ -110,11 +110,11 @@ public static class CrucibleRichard
                    range = 2.9f, size = new Vector3(1.2f, 1.1f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
-        // A boot, like the other two ripostes: judged by the body box, not the blade.
-        new Move { asset = "Richard_Riposte_Parry", name = "Boot Riposte", trigger = "RiposteParry",
-                   height = Mid, type = Medium, comesFrom = FromThrust, hitSide = HitStraight, aim = AimOff,
-                   range = 1.9f, size = new Vector3(1.0f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
-                   lunge = -1f, weapon = false },
+        // A sword counter (it was a boot until 2026-10-27 - the user's call: no kicks on anyone).
+        new Move { asset = "Richard_Riposte_Parry", name = "Crusader's Answer", trigger = "RiposteParry",
+                   height = Mid, type = Medium, comesFrom = FromRight, hitSide = HitLeft, aim = AimFull,
+                   range = 2.9f, size = new Vector3(1.2f, 1.1f, 1f), offset = new Vector3(0f, 1f, 0f),
+                   lunge = -1f, weapon = true },
     };
 
     [MenuItem("Crucible/Characters/Richard/1 Create move set")]

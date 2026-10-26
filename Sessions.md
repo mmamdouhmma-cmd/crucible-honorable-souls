@@ -4224,3 +4224,20 @@ Two more calls the same evening:
   carried basecolor only - smart meshes; 10 matched the game byte-for-byte, 4 matched nothing
   (Bjorn axe, Miyamoto katana, Buwaka round shield, a Salaadin knight variant). Kept the
   generated maps on the user's call.
+
+### 2026-10-27 — No more kicks; Bjorn's Haft Strike becomes a front cut; a bigger axe
+
+- The user: "remove any kick counter from any character, bjorn special light barely lands now,
+  make sure axe reaches towards the opponent not sideways, enlarge the collider of the axe by
+  15%". Asked whether to drop the kick counters or replace them; the user chose weapon counters.
+- Six boot ripostes -> pack weapon clips with per-state contacts (see CLAUDE.md). Probe
+  (BeginAttack by reflection, live match, defender health): all six land at 1.5/2.2/2.8/3.3.
+- Haft Strike measured off the live blade (`BladeSegment` by reflection, 60 fps capture): the
+  backhand's tip never got further than 1.3 in front of Bjorn and the photograph at contact
+  showed him back-to-camera with the axe round his body. Level aim and a (1.35, 1.5) lunge took
+  it from 2.4 to 3.0, but aim cannot move the hands. On the user's pick it plays `combo attack
+  ver. 3` now: tip 2.0 forward, haft within 4 deg of the opponent at contact, lands from 3.4.
+- Bjorn's axe hit volume x1.15 (box + sweep 0.20 -> 0.23), in the scene and in
+  `CrucibleCharacterSetup.HitVolumeScale` so a rebuild keeps it.
+- The scene save carried the user's own editor edits too: non-uniform fighter scales (Bjorn
+  4.2/3.8/4, others 3.3/3.5/3.3, 3/2.8/3, 3->3.3) and Richard's L/H damage 8/13, M startup 13.

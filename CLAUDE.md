@@ -1454,6 +1454,26 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   folders are tracked). The user's re-exports from Tripo had no PBR maps either: these are
   SMART MESHES, and only HD models carry PBR. Real maps would mean baking an HD version of the
   SAME generation onto the smart mesh's UVs - do not regenerate, that is a new mesh and UVs.
+- **Nobody kicks (2026-10-27, the user's call).** The six boot ripostes are weapon strikes now,
+  each a pack clip on its own per-STATE contact: Bjorn parry = AxePack2H `standing melee attack
+  downward` (chop), Miyamoto dash = `great sword slash (3)`, Miyamoto parry = `great sword
+  slash (2)` (the pack's unused 498 deg spin), Richard parry = `sword and shield slash (3)`,
+  Genghis dash = `great sword slash (3)`, Buwaka parry = `Richard_Thrust`. All twelve ripostes
+  are `hitsWithWeapon` and play-verified landing from 1.5 to 3.3. The body-box path for
+  `hitsWithWeapon = false` is still in `CombatSystem`, unused. Written straight into the
+  `.asset`s, NOT through `<Name> > 1 Create move set`: that menu calls
+  `CrucibleBalance.Apply()`, which would overwrite the user's hand-edited frames and damage
+  (Miyamoto/Genghis frames; Richard's L/H damage 8/13 and Medium startup 13, 2026-10-27) with the
+  table's numbers. **The table and those assets disagree until someone copies the user's numbers
+  into the table.**
+- **Bjorn's SP+Light (Haft Strike) is a FRONT CUT** - AxePack `standing melee combo attack
+  ver. 3` (his dash riposte's clip, own contact `{28.6, 1.6}`), AimMode Level, LungeOverride
+  (1.35, 1.5). The backhand it replaced met the target mid-turn with the axe wrapped round his
+  body (photographed: back to camera), so its tip only reached 1.3 forward and it landed to 2.4;
+  the front cut reaches 2.0 and lands from 3.4. It is CutLeft like his Light now, so a RAW
+  L -> SP+L inside combo pressure is refused by the flow rule (the authored string still links).
+- **`HitVolumeScale` in `CrucibleCharacterSetup`** scales a fighter's blade box (thickness,
+  width, and length toward the tip) and sweep radius together: Bjorn 1.15 (sweep 0.23).
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `PlayProbe`, `BladeTrace`

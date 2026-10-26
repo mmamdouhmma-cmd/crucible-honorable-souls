@@ -132,8 +132,8 @@ public static class CrucibleSalaadin
                    range = 2.9f, size = new Vector3(1.2f, 1.1f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
-        // A short saber counter, NOT a boot: the other three fighters answer a parry with a kick and
-        // he does not kick at all, so this one is judged on the blade like the rest of his set.
+        // A short saber counter, judged on the blade like the rest of his set. (Nobody kicks any
+        // more - as of 2026-10-27 every riposte in the roster is a weapon strike.)
         new Move { asset = "Salaadin_Riposte_Parry", name = "Saber Riposte", trigger = "RiposteParry",
                    height = Mid, type = Medium, comesFrom = FromThrust, hitSide = HitStraight, aim = AimFull,
                    range = 2.6f, size = new Vector3(1.1f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),

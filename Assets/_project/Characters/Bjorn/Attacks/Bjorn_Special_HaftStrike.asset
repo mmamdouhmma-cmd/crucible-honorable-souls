@@ -24,19 +24,19 @@ MonoBehaviour:
   attackHeight: 0
   attackType: 3
   specialButton: 0
-  comesFrom: 1
-  swingFlow: 1
-  hitSide: 2
+  comesFrom: 2
+  swingFlow: 2
+  hitSide: 1
   hitstunFrames: 48
   hyperArmor: 0
   hitboxRange: 3.5
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1.8, y: 1.2, z: 1}
-  aimMode: 0
+  aimMode: 3
   aimMaxAngle: -1
   aimRollDegrees: 0
-  lungeStopDistance: -1
-  lungeMaxDistance: -1
+  lungeStopDistance: 1.35
+  lungeMaxDistance: 1.5
   hitsWithWeapon: 1
   comboLinks:
   - input: 0
