@@ -4202,3 +4202,20 @@ Two more calls the same evening:
   broken at the follow-up, 0.87 s stun, then 1.32 s of recovery in which an attack was refused
   and the guard stayed down with block held every frame, while walking moved him and a dash
   fired (the bar had regenerated to 16 by then); guard and attacks back the frame it ended.
+
+### 2026-10-26 — Mirror matches and the old glaze on every body
+
+- Mirror matches: select no longer walks past or refuses the other side's pick. P2 gets a runtime
+  clone (`GameMenu.EnsureTwin`) in alternate colours (`MirrorSkin`, textures from
+  `ArtSource/Textures/make_mirror_skins.py`; palette chosen by the user from suggested options).
+  Play-verified: Richard vs Richard, hits land both ways (115 -> 109 / 108), opponents point at
+  each other, HUD reads P1/P2 Richard, VS screen stages the blue twin; all six mirrors photographed.
+- First pass was too timid on three: Miyamoto's navy->red came out maroon-black (the navy is
+  v 0.15-0.25, so x1.35 was not enough - now x2.1), Bjorn's fur stayed grey, and Genghis's coat
+  mask (v < 0.26) left 29% of his texture copper-brown - his coat is mottled, value is the only
+  thing that finds all of it. Measure leftovers numerically, then look.
+- The old Tripo glaze: measured off the old masks (skin glossy, steel metallic, cloth matte), then
+  derived per-body masks + normal maps from the basecolors (`make_body_maps.py`) and rebuilt the
+  six body materials through `BuildMaterial`.
+- Found Miyamoto/Genghis AttackData frame edits in the working tree that were not made in this
+  session (likely Inspector edits flushed by a SaveAssets) - left untouched.

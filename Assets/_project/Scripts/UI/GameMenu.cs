@@ -128,8 +128,61 @@ public class GameMenu : MonoBehaviour
     Vector3[] sideMark = new Vector3[0];     // spawn marks BY SIDE (0 = P1's side)
     Quaternion[] sideRot = new Quaternion[0];
     float[] ownY = new float[0];             // each fighter keeps its own height; the roots differ
-    Vector3[] spawnPos = new Vector3[0];     // resolved per fighter for the current sides
-    Quaternion[] spawnRot = new Quaternion[0];
+
+    // A MIRROR match (both players on one fighter, 2026-10-26): the scene holds one rig per
+    // character, so Player 2 gets a clone of it in the alternate colours (MirrorSkin). It is made
+    // on demand, benched (not destroyed) when the pair stops being a mirror, and replaced when a
+    // mirror of a DIFFERENT fighter is picked. It is not in `roster` - the select ring counts
+    // characters off that array - so anything that walks the fighters IN PLAY uses Everyone().
+    Fighter twin;
+    int twinOf = -1;
+    Fighter[] everyone = new Fighter[0];
+
+    bool Mirror => p1Character == p2Character;
+    Fighter P1Fighter => roster[p1Character];
+    Fighter P2Fighter => Mirror && twin != null ? twin : roster[p2Character];
+    /// <summary>The roster plus the mirror twin, if one exists. Benched ones are in it too.</summary>
+    Fighter[] Everyone() => everyone;
+    void RebuildEveryone()
+    {
+        if (twin == null) { everyone = roster; return; }
+        everyone = new Fighter[roster.Length + 1];
+        Array.Copy(roster, everyone, roster.Length);
+        everyone[roster.Length] = twin;
+    }
+
+    /// <summary>
+    /// Player 2's copy of roster entry <paramref name="index"/>, cloned once and kept until a
+    /// mirror of someone else replaces it. The clone is made from the source while the source is
+    /// SWITCHED OFF, so it is born inactive and its Awake/Start run only when ApplySides wakes it
+    /// as Player 2 - otherwise it would wake as a second Player 1 and grab Player 1's opponent.
+    /// </summary>
+    void EnsureTwin(int index)
+    {
+        if (twin != null && twinOf == index) return;
+        // Off first: Destroy only lands at the end of the frame, and until then the old twin is
+        // an active Player 2 that RefreshOpponent below would happily pick.
+        if (twin != null) { twin.gameObject.SetActive(false); Destroy(twin.gameObject); }
+
+        var src = roster[index];
+        bool wasOn = src.gameObject.activeSelf;
+        src.gameObject.SetActive(false);
+        var go = Instantiate(src.gameObject, src.transform.parent);
+        src.gameObject.SetActive(wasOn);
+        go.name = src.name + "_Mirror";
+
+        twin = go.GetComponent<Fighter>();
+        twinOf = index;
+        twin.SetPlayerNumber(2);
+        MirrorSkin.Apply(twin);
+        RebuildEveryone();
+    }
+    float OwnY(Fighter f)
+    {
+        if (f == twin) return twinOf >= 0 ? ownY[twinOf] : f.transform.position.y;
+        int i = Array.IndexOf(roster, f);
+        return i >= 0 ? ownY[i] : f.transform.position.y;
+    }
 
     // ---------------------------------------------------------------- widgets
 
@@ -203,17 +256,15 @@ public class GameMenu : MonoBehaviour
         var found = FindObjectsByType<Fighter>(FindObjectsSortMode.None);
         Array.Sort(found, (a, b) => a.PlayerNumber.CompareTo(b.PlayerNumber));
         roster = found;
+        everyone = roster;
 
         int n = roster.Length;
         sideMark = new Vector3[n]; sideRot = new Quaternion[n]; ownY = new float[n];
-        spawnPos = new Vector3[n]; spawnRot = new Quaternion[n];
         for (int i = 0; i < n; i++)
         {
             sideMark[i] = roster[i].transform.position;
             sideRot[i] = roster[i].transform.rotation;
             ownY[i] = roster[i].transform.position.y;
-            spawnPos[i] = sideMark[i];
-            spawnRot[i] = sideRot[i];
         }
 
         LoadSettings();
@@ -231,7 +282,7 @@ public class GameMenu : MonoBehaviour
                 PlaceFighters();
                 inMatch = true;
                 FreezeFighters(false);
-                Rec.BeginRecording(roster, Camera.main);
+                Rec.BeginRecording(Everyone(), Camera.main);
                 Net.GuestEnterMatch();
                 if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(1);
                 if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
@@ -346,7 +397,7 @@ public class GameMenu : MonoBehaviour
     /// rather than hard-coding one keeps this working in an arena whose marks are somewhere else
     /// or at an angle, and the height still comes from a raycast at the NEW spot.
     /// </summary>
-    void ResolveSpawns()
+    void SpawnFor(Fighter f, out Vector3 pos, out Quaternion rot)
     {
         Vector3 markA = sideMark.Length > 0 ? sideMark[0] : Vector3.zero;
         Vector3 markB = sideMark.Length > 1 ? sideMark[1] : Vector3.zero;
@@ -357,37 +408,35 @@ public class GameMenu : MonoBehaviour
         axis.Normalize();
         float half = BalanceConfig.MATCH_START_GAP * 0.5f;
 
-        for (int i = 0; i < roster.Length; i++)
-        {
-            int side = Mathf.Clamp(roster[i].PlayerNumber - 1, 0, Mathf.Max(0, sideMark.Length - 1));
-            // Only the two FIGHTING sides are spread; anything else keeps its own mark, since a
-            // benched fighter is switched off and never placed anyway.
-            Vector3 mark = side == 0 ? mid - axis * half
-                         : side == 1 ? mid + axis * half
-                         : sideMark[side];
-            // X/Z from the mark, Y from a raycast with this fighter's own root as the fallback:
-            // the two roots sit at different heights because each model has its own ground
-            // offset, and averaging them is what left both fighters floating once before.
-            spawnPos[i] = new Vector3(mark.x, GroundedY(mark, ownY[i]), mark.z);
-            spawnRot[i] = sideRot[side];
-        }
+        int side = Mathf.Clamp(f.PlayerNumber - 1, 0, Mathf.Max(0, sideMark.Length - 1));
+        // Only the two FIGHTING sides are spread; anything else keeps its own mark, since a
+        // benched fighter is switched off and never placed anyway.
+        Vector3 mark = side == 0 ? mid - axis * half
+                     : side == 1 ? mid + axis * half
+                     : sideMark[side];
+        // X/Z from the mark, Y from a raycast with this fighter's own root as the fallback:
+        // the two roots sit at different heights because each model has its own ground
+        // offset, and averaging them is what left both fighters floating once before.
+        pos = new Vector3(mark.x, GroundedY(mark, OwnY(f)), mark.z);
+        rot = sideRot[side];
     }
 
     /// <summary>Everyone back in the scene: the select screens scroll through the whole roster.</summary>
     void ShowWholeRoster()
     {
+        if (twin != null && twin.gameObject.activeSelf) twin.gameObject.SetActive(false);   // the ring is one of each
         foreach (var f in roster) if (!f.gameObject.activeSelf) f.gameObject.SetActive(true);
     }
 
     void PlaceFighters()
     {
-        ResolveSpawns();
-        for (int i = 0; i < roster.Length; i++)
+        foreach (var f in Everyone())
         {
             // Benched fighters stay where they are: resetting one would poke an Animator on an
             // inactive object, which Unity warns about twice per call.
-            if (!roster[i].gameObject.activeSelf) continue;
-            roster[i].ResetForMatch(spawnPos[i], spawnRot[i]);
+            if (!f.gameObject.activeSelf) continue;
+            SpawnFor(f, out var pos, out var rot);
+            f.ResetForMatch(pos, rot);
         }
         // The pair is on its marks: let the camera re-find it. It resolves Player 1 and Player 2
         // once in Start, and with three rigs the numbers move between matches, so without this it
@@ -398,26 +447,33 @@ public class GameMenu : MonoBehaviour
     /// <summary>
     /// Hands Player 1 the roster entry <paramref name="first"/> and Player 2 <paramref name="second"/>.
     /// With more than two rigs in the scene everyone else is switched OFF, so only the chosen pair
-    /// is in the arena, in the HUD and in front of the AI. The fighters are not swapped or
-    /// cloned - only which controls they answer to.
+    /// is in the arena, in the HUD and in front of the AI. The same entry twice is a MIRROR
+    /// match: Player 1 keeps the rig and Player 2 gets its clone in the alternate colours.
     /// </summary>
     void ApplySides(int first, int second)
     {
         if (roster.Length < 2) return;
         p1Character = Mathf.Clamp(first, 0, roster.Length - 1);
         p2Character = Mathf.Clamp(second, 0, roster.Length - 1);
-        if (p2Character == p1Character) p2Character = (p1Character + 1) % roster.Length;
+        if (Mirror) EnsureTwin(p1Character);
+        // Twin first: it must be OFF before the roster entries change number, and wake (if at
+        // all) only once its source is Player 1, so neither finds a stale opponent.
+        if (twin != null && !Mirror && twin.gameObject.activeSelf) twin.gameObject.SetActive(false);
         for (int i = 0; i < roster.Length; i++)
         {
             bool fighting = i == p1Character || i == p2Character;
             if (roster[i].gameObject.activeSelf != fighting) roster[i].gameObject.SetActive(fighting);
             if (fighting) roster[i].SetPlayerNumber(i == p1Character ? 1 : 2);
         }
+        if (Mirror)
+        {
+            twin.SetPlayerNumber(2);
+            if (!twin.gameObject.activeSelf) twin.gameObject.SetActive(true);
+        }
         // Both numbers are set now, so each of the two can look the other up. Without this they
         // keep whoever they found in Start, which with three rigs in the scene is the wrong one.
-        roster[p1Character].RefreshOpponent();
-        roster[p2Character].RefreshOpponent();
-        ResolveSpawns();
+        P1Fighter.RefreshOpponent();
+        P2Fighter.RefreshOpponent();
 
         var hud = FindAnyObjectByType<FightHud>();
         if (hud != null) hud.Rebuild();
@@ -543,7 +599,7 @@ public class GameMenu : MonoBehaviour
         FreezeFighters(false);
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
         SetAi(vsAi, flow == Flow.Practice ? practiceRules : AiController.Rules.Full);
-        Rec.BeginRecording(roster, Camera.main);   // the game record starts at FIGHT, like the players
+        Rec.BeginRecording(Everyone(), Camera.main);   // the game record starts at FIGHT, like the players
 
         if (stage != null)
             stage.Beat("Fight!", MenuArt.BloodLit, 210, flow == Flow.Practice ? "pause for the rules" : null);
@@ -570,7 +626,7 @@ public class GameMenu : MonoBehaviour
     void CheckKO()
     {
         if (!inMatch) return;
-        foreach (var f in roster)
+        foreach (var f in Everyone())
         {
             if (!f.gameObject.activeInHierarchy) continue;    // a benched fighter is not in this match
             if (f.Stats != null && !f.Stats.IsAlive())
@@ -582,7 +638,7 @@ public class GameMenu : MonoBehaviour
                 if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
                 // The ending names the WINNER, not the fallen (the user's call, 2026-10-24).
                 Fighter standing = null;
-                foreach (var w in roster) if (w != f && w.gameObject.activeInHierarchy) standing = w;
+                foreach (var w in Everyone()) if (w != f && w.gameObject.activeInHierarchy) standing = w;
                 if (stage != null) stage.Announce((standing != null ? standing.CharacterName : "Nobody") + "\nwins",
                                                   MenuArt.BloodLit, 2.0f, null, 140);
                 StartCoroutine(ShowMatchOver(f));
@@ -597,7 +653,7 @@ public class GameMenu : MonoBehaviour
         // Stop here, not at the K.O. itself: the death and the kill shot belong in the record.
         if (ReplayRecorder.Instance != null) ReplayRecorder.Instance.StopRecording();
         Fighter winner = null;
-        foreach (var f in roster) if (f != loser && f.gameObject.activeInHierarchy) winner = f;
+        foreach (var f in Everyone()) if (f != loser && f.gameObject.activeInHierarchy) winner = f;
         winnerName = winner != null ? winner.CharacterName : "Nobody";
         winnerNumber = winner != null ? winner.PlayerNumber : 0;
         // Every finished fight lands in the records library, so the main menu can replay it later.
@@ -615,7 +671,7 @@ public class GameMenu : MonoBehaviour
 
     void FreezeFighters(bool freeze)
     {
-        foreach (var f in roster)
+        foreach (var f in Everyone())
         {
             f.enabled = !freeze;
             var an = f.GetComponent<Animator>();
@@ -1681,6 +1737,7 @@ public class GameMenu : MonoBehaviour
             if (ia < 0 && roster[i].CharacterName == r.castA) ia = i;
             else if (ib < 0 && roster[i].CharacterName == r.castB) ib = i;
         }
+        if (ia >= 0 && ib < 0 && r.castA == r.castB) ib = ia;   // a mirror match: the twin plays Player 2
         if (ia < 0 || ib < 0) { subtitle.text = "A fighter in this record is not in this build."; return; }
 
         var dir = ArenaDirectory.Instance;
@@ -1693,7 +1750,7 @@ public class GameMenu : MonoBehaviour
 
         ApplySides(ia, ib);
         FreezeFighters(true);
-        if (Rec.LoadRecord(r.path, roster, Camera.main, out string err)) GoWiped(Screen.Replay);
+        if (Rec.LoadRecord(r.path, Everyone(), Camera.main, out string err)) GoWiped(Screen.Replay);
         else subtitle.text = "Could not load the record - " + err;
     }
 
@@ -2048,8 +2105,6 @@ public class GameMenu : MonoBehaviour
         if (roster.Length == 0) return;
         p1Character = Mathf.Clamp(p1Character, 0, roster.Length - 1);
         p2Character = Mathf.Clamp(p2Character, 0, roster.Length - 1);
-        if (p2Character == p1Character && roster.Length > 1)
-            p2Character = (p1Character + 1) % roster.Length;
         RefreshCircleCards();
     }
 
@@ -2165,6 +2220,7 @@ public class GameMenu : MonoBehaviour
         SetPlate(vsCards[1], p2Character,
                  playerCount >= 2 && !vsAi ? "PLAYER 2" : flow == Flow.Practice ? "DUMMY" : "COMPUTER",
                  MenuArt.P2);
+        vsCards[1].follow = P2Fighter.transform;   // SetPlate points at the roster rig; a mirror's P2 is the twin
 
         const float punch = 0.45f;
         for (float k = 0f; k < 1f; k += Time.unscaledDeltaTime / punch)
@@ -2233,8 +2289,8 @@ public class GameMenu : MonoBehaviour
         // the screen-LEFT fighter further left and "-turn" swung the right one further right:
         // both outward, shoulders to the middle, which is the back-to-back look.
         // Negated, P1 (screen left) turns right and P2 turns left.
-        PlaceStaged(p1Character, mid - screenRight * spread, camPos, -turn);
-        PlaceStaged(p2Character, mid + screenRight * spread, camPos, turn);
+        PlaceStaged(P1Fighter, mid - screenRight * spread, camPos, -turn);
+        PlaceStaged(P2Fighter, mid + screenRight * spread, camPos, turn);    // the twin, in a mirror
         staged = true;
     }
 
@@ -2251,7 +2307,7 @@ public class GameMenu : MonoBehaviour
         int n = roster.Length;
         float step = 360f / n;
         for (int i = 0; i < n; i++)
-            PlaceStaged(i, mid + CircleDir(i * step) * CircleRadius, mid, 0f);   // toCam = the centre
+            PlaceStaged(roster[i], mid + CircleDir(i * step) * CircleRadius, mid, 0f);   // toCam = the centre
         staged = true;
         UpdateSelectCameras(true);
     }
@@ -2378,9 +2434,9 @@ public class GameMenu : MonoBehaviour
     }
 
     /// <summary>
-    /// Moves one player's cursor around the ring. A pick the other side already holds is walked
-    /// past - the lock in split mode, the standing pick in the 1P flow - and the camera's target
-    /// angle ACCUMULATES by the steps taken, so the sweep follows the direction scrolled and the
+    /// Moves one player's cursor around the ring, one fighter per step. Nobody is walked past any
+    /// more: the other side's pick is fair game, and picking it makes a mirror match. The
+    /// camera's target angle ACCUMULATES, so the sweep follows the direction scrolled and the
     /// ring loops without ever snapping the long way round.
     /// </summary>
     void MoveCursor(int player, int dir)
@@ -2388,20 +2444,10 @@ public class GameMenu : MonoBehaviour
         int n = roster.Length;
         if (n < 2) return;
         int cur = player == 1 ? p1Character : p2Character;
-        int avoid = splitSelect
-            ? (player == 1 ? (lock2 ? p2Character : -1) : (lock1 ? p1Character : -1))
-            : (pickingP2 ? p1Character : p2Character);
-        int steps = 0, next = cur;
-        for (int k = 0; k < n; k++)
-        {
-            next = (next + dir + n) % n;
-            steps++;
-            if (next != avoid || n < 3) break;
-        }
+        int next = (cur + dir + n) % n;
         if (player == 1) p1Character = next; else p2Character = next;
-        if (!splitSelect && p1Character == p2Character) p2Character = (p1Character + 1) % n;
 
-        float delta = dir * steps * (360f / n);
+        float delta = dir * (360f / n);
         if (splitSelect && player == 2) targA2 += delta;
         else targA1 += delta;
         RefreshCircleCards();
@@ -2410,18 +2456,9 @@ public class GameMenu : MonoBehaviour
     void LockPlayer(int p)
     {
         if (p == 1 ? lock1 : lock2) return;
-        bool otherLocked = p == 1 ? lock2 : lock1;
-        int mine = p == 1 ? p1Character : p2Character;
-        int theirs = p == 1 ? p2Character : p1Character;
-        if (otherLocked && mine == theirs)                   // taken: one rig per character
-        {
-            CrucibleAudio.Ui(CrucibleAudio.UiSound.Back);
-            return;
-        }
+        // The same man on both sides is allowed: Player 2 fights his twin in the other colours.
         if (p == 1) lock1 = true; else lock2 = true;
         CrucibleAudio.Ui(CrucibleAudio.UiSound.Select);
-        // Both hovering the same man and this one locked first: bump the other cursor off him.
-        if (!otherLocked && mine == theirs) MoveCursor(p == 1 ? 2 : 1, 1);
         RefreshCircleCards();
         if (lock1 && lock2) StartCoroutine(MergeSelectRoutine());
     }
@@ -2458,11 +2495,10 @@ public class GameMenu : MonoBehaviour
         GoWiped(Screen.ArenaSelect);                         // Show() restores the single camera
     }
 
-    void PlaceStaged(int index, Vector3 pos, Vector3 camPos, float yaw)
+    void PlaceStaged(Fighter f, Vector3 pos, Vector3 camPos, float yaw)
     {
-        if (index < 0 || index >= roster.Length) return;
-        var f = roster[index];
-        pos.y = GroundedY(pos, ownY[index]);                 // on the floor, whatever arena is up
+        if (f == null) return;
+        pos.y = GroundedY(pos, OwnY(f));                     // on the floor, whatever arena is up
         Vector3 toCam = camPos - pos;
         toCam.y = 0f;
         if (toCam.sqrMagnitude < 0.01f) toCam = Vector3.back;
@@ -2514,8 +2550,9 @@ public class GameMenu : MonoBehaviour
     List<(string name, CombatSystem combat, int player)> MovesRoster()
     {
         var list = new List<(string, CombatSystem, int)>();
-        foreach (var fighter in roster.OrderBy(f => f.PlayerNumber))
+        foreach (var fighter in Everyone().OrderBy(f => f.PlayerNumber))
         {
+            if (fighter == twin && !fighter.gameObject.activeInHierarchy) continue;   // a benched mirror twin
             // Mid-match (and from the pause menu) only the pair actually fighting is listed -
             // ApplySides switched the benched fighters' objects off.
             if (inMatch && !fighter.gameObject.activeInHierarchy) continue;

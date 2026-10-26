@@ -108,3 +108,9 @@ Server/cf.prev.log
 # Throwaway scene CrucibleBuild builds from (one arena only); deleted when the build ends.
 Assets/_project/Scenes/_build_temp.unity
 Assets/_project/Scenes/_build_temp.unity.meta
+
+# Mirror-match P2 skins: generated from the (gitignored) body basecolors by ArtSource/Textures/make_mirror_skins.py
+/Assets/_project/Resources/MirrorSkins/
+/Assets/_project/Resources/MirrorSkins.meta
+ArtSource/Textures/_preview/
+ArtSource/Textures/__pycache__/
