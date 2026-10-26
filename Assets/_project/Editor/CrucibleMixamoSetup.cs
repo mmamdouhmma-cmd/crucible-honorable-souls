@@ -38,7 +38,7 @@ public static class CrucibleMixamoSetup
         // TwoHandGrip puts the left hand back on the haft whatever the clip does with the arms
         ("Bjorn_Walk_Back",              "AxePack", "standing walk back",                true),
         ("Bjorn_Light_Slash",            "AxePack", "standing melee attack horizontal",  false),
-        ("Bjorn_Medium_SpinningSlash",   "AxePack2H", "standing melee attack 360 high",  false),   // arms re-posed: axe extended at chest, body spins
+        ("Bjorn_Medium_SpinningSlash",   "AxePack", "standing melee attack 360 low",     false),   // the user's call (2026-10-26): the SAME spin as his SP+Medium (Hewing Charge) - the special only hits harder
         ("Bjorn_Heavy_OverheadDoubleAxe","GreatSwordPack", "great sword slash",       false),   // two-handed overhead that comes down in front; the axe pack's chop bottoms out by the left hip
         // The string ender (Light -> this on Heavy, see AttackData.comboLinks). Deliberately the SAME clip as
         // Miyamoto's heavy - the 360 spin - so the combo finishes on a spinning strike; its own trim window is

@@ -229,6 +229,23 @@ public class CombatSystem : MonoBehaviour
                 comboStun = false;
                 guardStun = false;
                 if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: hitstun OVER");
+                // A guard broken by stamina buys a recovery AFTER the stun (the user's call,
+                // 2026-10-26): walk or dodge only - no strikes, no guard, no parry.
+                if (guardBreakPending)
+                {
+                    guardBreakPending = false;
+                    guardBreakTimer = BalanceConfig.GUARD_BREAK_RECOVERY;
+                    if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: guard-break recovery {guardBreakTimer:0.0}s - walk or dodge only");
+                }
+            }
+        }
+        else if (guardBreakTimer > 0f)
+        {
+            guardBreakTimer -= Time.deltaTime;
+            if (guardBreakTimer <= 0f)
+            {
+                guardBreakTimer = 0f;
+                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: guard-break recovery OVER");
             }
         }
 
@@ -630,6 +647,7 @@ public class CombatSystem : MonoBehaviour
     }
     if (fighter != null && fighter.IsDead) { Debug.Log($"P{pn}: BLOCKED - dead"); return false; }
     if (inHitstun)   { Debug.Log($"P{pn}: BLOCKED - in hitstun"); return false; }
+    if (GuardBreakRecovering) { Debug.Log($"P{pn}: BLOCKED - guard-break recovery, {guardBreakTimer:0.00}s left"); return false; }
     if (attackLockoutTimer > 0f) { Debug.Log($"P{pn}: BLOCKED - chain lockout, {attackLockoutTimer:0.00}s left"); return false; }
     if (fighter == null)         { Debug.Log($"P{pn}: BLOCKED - fighter null"); return false; }
     if (fighter.Stats == null)   { Debug.Log($"P{pn}: BLOCKED - Stats null"); return false; }
@@ -745,6 +763,14 @@ public class CombatSystem : MonoBehaviour
 
     /// <summary>True while this fighter is locked in a get-hit flinch and cannot act.</summary>
     public bool IsInHitstun => inHitstun;
+
+    // Guard broken by stamina: armed at the break, the timer starts when the break's stun ends.
+    private bool guardBreakPending;
+    private float guardBreakTimer;
+    /// <summary>True from a stamina guard break until its recovery ends: no attacks, no guard.</summary>
+    public bool GuardBreakRecovering => guardBreakPending || guardBreakTimer > 0f;
+    public float GuardBreakTimeLeft => guardBreakTimer;
+    public void BeginGuardBreak() { guardBreakPending = true; guardBreakTimer = 0f; }
 
     // The current stun came off a clean, combo-able hit, so a timed dodge may still escape the
     // follow-up (the user's call, 2026-10-24). Walking, blocking and attacking stay locked; only
@@ -915,6 +941,8 @@ public class CombatSystem : MonoBehaviour
         hitstunTimer = 0f;
         comboStun = false;
         guardStun = false;
+        guardBreakPending = false;
+        guardBreakTimer = 0f;
         evadedExtraRecovery = 0f;
         whiffExtraRecovery = 0f;
         currentAttackWeakened = false;
@@ -1145,6 +1173,7 @@ public class CombatSystem : MonoBehaviour
                     blocked = false;
                     guardBroken = true;
                     target.Stats.UseStamina(target.Stats.currentStamina);
+                    if (target.Combat != null) target.Combat.BeginGuardBreak();
                     if (debugLogs)
                         Debug.Log($"P{target.PlayerNumber}: GUARD BROKEN - blocking strike {stringDepth + 1} " +
                                   $"of the string costs {blockCost} and the bar cannot pay");

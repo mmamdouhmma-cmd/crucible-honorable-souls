@@ -101,6 +101,9 @@ public static class BalanceConfig
     // dodge-out (away from the strike only, comesFrom judges it) stays the other escape.
     public const float COMBO_BLOCK_COST_GROWTH = 1.0f;
     public const float COMBO_BLOCK_THIRD_HIT_MULTIPLIER = 1.25f;
+    // After a stamina guard break's stun ends, this many seconds more of walk-or-dodge only:
+    // no strikes, no guard, no parry (the user's call, 2026-10-26).
+    public const float GUARD_BREAK_RECOVERY = 1.3f;
     // The FALLBACK for Fighter.dashIFrameDuration only - the real per-fighter values live in
     // CrucibleBalance (Plan_Balance 2.5; coverage of the dash, not absolute time, is the dial).
     // Before 2026-10-23 this constant was dead code and the WHOLE dash evaded.

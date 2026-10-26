@@ -212,8 +212,19 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   off-centre and swung round. `PlaceFighters` now calls `FightCamera.RetargetToFighters()`, which
   re-finds the pair and re-reads the framing from the camera's AUTHORED scene transform (kept in
   `homePosition`, because the select screens move the camera and never put it back).
-  Character select takes two locks (Player 1, then Player 2 / the computer) whenever the roster is
-  bigger than two, and `StageFighters` lines up N.
+  **Character select is a RING (2026-10-26, the user's design)**: `StageCircle` stands the
+  whole roster on a circle (`CircleRadius` 5.2) round the marks' midpoint, facing in; the camera
+  sits just off centre (`CircleCamIn`) looking OUT at one fighter, and scrolling sweeps it round
+  (target angle ACCUMULATES, so it loops the way you scrolled). **2P = split screen**: Camera.main
+  takes the left half, a runtime `SelectCam2` the right; each player's own pad drives his half at
+  once (`InputManager.MenuNavigateFor/MenuConfirmFor/MenuBackFor(player)`, honouring the Choose
+  Controls pins; keyboard P1 = WASD+Space+Backspace, P2 = arrows+Enter+Delete). Cross locks,
+  Circle unlocks, Circle on an unlocked half with nobody locked leaves; Escape unwinds the latest
+  lock. Both locked -> `MergeSelectRoutine` slides the halves into one and goes to arena select,
+  which shows ONLY the picked pair. **1P / Practice** keep one full-screen camera and the
+  sequential two locks (you, then the computer/dummy). `RestoreSelectCameras` runs on ANY exit
+  from CharSelect and in `Unstage`, and leaving a stage screen for a menu sets the backdrop
+  INSTANTLY - the ramp from the stage's 0.42 showed the posed fighters through the main menu.
 - **Tasks 1–6 of `Design/Plan_LiteMobile.md` are done and play-verified**: six specials on
   `SP + Light/Medium/Heavy`, ten combo strings per character, four counter ripostes, defensive
   health recovery, per-fighter health/stamina/armour, a percentage HUD, a Moves screen, and a
@@ -1280,6 +1291,8 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   same day) - so a medium string runs 10/20/38 and a heavy one 18/36/68. The moment the bar
   cannot cover the price the guard BREAKS: full damage, the rest of the bar emptied, ordinary
   non-dodgeable stun.
+  **Then 1.3 s of RECOVERY after that stun** (`GUARD_BREAK_RECOVERY`, 2026-10-26): walk or dodge
+  only - `GuardBreakRecovering` refuses attacks, the guard and the parry.
   A blocked hit's stun holds the guard (`Fighter.NotifyBlockedHit` -> `ApplyHitstun(...,
   guardHolds: true)`), and when the blocked move strings on the dash OUT of that stun is open -
   but only the direction the move's `comesFrom` evades (or straight back against a sideways
@@ -1374,6 +1387,46 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `CrucibleSpecialStates` (state + trigger + Any State transition get wired like a riposte's).
   Play-verified: both opener variants land 3/3 with Serpent Coil as the third hit. It does NOT
   appear on the Moves screen (that lists the libraries) - a hidden finisher, by design.
+- **Bjorn and Miyamoto have NEW BODIES on Salaadin's exact rig** (2026-10-26, the user's two
+  downloaded models: `fantasy+barbarian+3d+model` and `samurai warrior 3d model` in `~/Downloads`,
+  both UNRIGGED Tripo meshes). Built by `ArtSource/Blender/rebody.py` - the OPPOSITE of
+  `fit_metarig.py`: the rig (imported untouched from `Salaadin_Body.fbx`, all 79 bones) stays
+  identical across fighters and the MESH is fitted to it - grounded, scaled to the donor body's
+  crown, arm-warped onto the rig's rest when the pose differs (the barbarian was A-posed 41 deg
+  down; the samurai matched to 6 deg), weights transferred from Salaadin's skinned body, and the
+  old body's weapon re-seated on the new hand with its bone-local placement (a bone-parent frame
+  measures from the TAIL). **The transferred weights MELTED THE ARMS in play** (the user's
+  report) - nearest-face interpolation across a 5k-vert donor in a different costume smears the
+  elbow gradients - so both were RE-SKINNED with bone heat (`reskin_heat.py`, same rig, mesh's
+  own topology; Bjorn solved 123k/123k). Heat fails on detached accessory shells, and filling
+  those from the transfer snapshot bound Miyamoto's tsuba to a THUMB - it floated beside him in
+  idle. `repair_weights.py` is the cure: any vert whose dominant bone's segment is further than
+  0.22 from it is mis-bound; re-bind from the nearest well-bound neighbour (266 on Miyamoto,
+  107 of them on thumbs). Heat is also NOT idempotent on its own output - a second pass on
+  Miyamoto's re-exported FBX failed 5318/5318 where the first solved 89% - so repair, don't
+  re-heat. Textures swapped in
+  place in each `.fbm` (Miyamoto's old normal/mask DELETED - old UVs; Bjorn's mask packed from
+  the download's metallic+roughness by `pack_mask.py` pattern: RGB=metallic, A=1-roughness).
+  Avatars verified 52 mapped / 30-30 fingers / Head on Head. Sizes are the user's call: Miyamoto
+  = Salaadin's stature (2.80, measured 2.86), Bjorn +10cm (2.95 exactly); StandingHeight
+  3.682 / 3.815, GroundOffset 0.153/4 and 0.104/3, soles verified +0.05 / +0.007. Old bodies in
+  `ArtSource/Characters/_backup_20261026/`. A desert SPAWN can sit on a terrain ridge, so a
+  sole-gap read at the marks can show +0.27 of honest ground - re-measure on flat before
+  touching GroundOffset.
+- **Buwaka holds his OWN tribal shield now** (2026-10-26): the "shield" in his Downloads folder
+  was a re-download of SALAADIN's (byte-identical basecolor, same 5,266-vert mesh - that is why
+  he appeared to carry Salaadin's shield), and the real one existed only as the render
+  `Ornate Tribal Shield with Fur and Bronze Boss.png`. Converted via the **Tripo REST API
+  directly** (the Studio site AND the tripo-ai MCP were down; the API key lives in the MCP env
+  in `~/.claude.json`, and `/v2/openapi/upload` -> `task` image_to_model -> poll works fine).
+  `ArtSource/Blender/swap_shield.py` seats a new disc INTO the old shield object's local frame
+  (thin axis to thin axis, boss side to boss side, diameter matched) and swaps the MESH DATA,
+  so object, bone parent, mount and material slot survive; the basecolor overwrites
+  `Weapons/Buwaka_Shield.fbm/Buwaka_Shield_basecolor.jpg` in place (the GUID
+  `Buwaka_Shield.mat` points at). **A Tripo glb carries Color/NormalGL/ORM images and the
+  biggest-packed-image fallback grabs the NORMAL MAP** - the shield rendered uniform blue; pick
+  the image by mean pixel colour (normal maps sit at ~(0.5,0.5,1.0)). Old body FBX + texture in
+  `_backup_20261026/`. Play-verified front and back.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `PlayProbe`, `BladeTrace`

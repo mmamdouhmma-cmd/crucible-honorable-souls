@@ -54,9 +54,12 @@ public static class CrucibleCharacterSetup
         // intended ranking (Bjorn now stands below Salaadin, 2.71 against 2.80); the brief was the
         // two big men against the two small ones, not the order among them.
         { "Richard",  3.340f },   // -> stature 2.89  (was 3.753 -> 3.25, -11%)
-        { "Bjorn",    3.113f },   // -> stature 2.71  (was 3.498 -> 3.05, -11%)
+        // 2026-10-26: NEW BODIES on Salaadin's rig (rebody.py) - re-calibrated to the user's call:
+        // Miyamoto = Salaadin's height (2.80), Bjorn ~10cm taller (2.95). First rebuild measured
+        // 2.494 / 2.119 in play; both scaled by target/measured.
+        { "Bjorn",    3.682f },   // -> stature 2.95  (3.113 x 2.95/2.494)
         { "Salaadin", 3.857f },   // -> stature 2.80  (his idle crouches hardest, so the box has to be tallest)
-        { "Miyamoto", 2.824f },   // -> stature 2.55
+        { "Miyamoto", 3.815f },   // -> stature 2.80  (second pass: 3.732 measured 2.739, x 2.80/2.739)
         // 2026-10-25 PLACEHOLDERS, to be calibrated in play like the four above (measure stature,
         // crown MINUS sole, in each man's own idle): Genghis reads as a big armoured tank
         // (between Bjorn and Richard), Buwaka a lean mid-sized hunter.
@@ -75,9 +78,9 @@ public static class CrucibleCharacterSetup
     static readonly System.Collections.Generic.Dictionary<string, float> Stature = new System.Collections.Generic.Dictionary<string, float>
     {
         { "Richard",  2.89f },
-        { "Bjorn",    2.71f },
+        { "Bjorn",    2.95f },    // 2026-10-26 new body: Salaadin + ~10cm, the user's call
         { "Salaadin", 2.80f },
-        { "Miyamoto", 2.55f },
+        { "Miyamoto", 2.80f },    // 2026-10-26 new body: Salaadin's height exactly
         // 2026-10-25 placeholders; re-measure with StandingHeight.
         { "Genghis",  2.78f },
         { "Buwaka",   2.65f },
@@ -146,8 +149,9 @@ public static class CrucibleCharacterSetup
     // renderer-bounds minimum: Bjorn 0.136 world under root scale 4, Miyamoto 0.623 under root scale 3.
     static readonly System.Collections.Generic.Dictionary<string, float> GroundOffset = new System.Collections.Generic.Dictionary<string, float>
     {
-        { "Bjorn", 0.119f / 4f },
-        { "Miyamoto", 0.117f / 3f },
+        // 2026-10-26 new bodies (rebody.py): re-measured in play at the calibrated statures.
+        { "Bjorn", 0.153f / 4f },      // sole read -0.034 at 0.119
+        { "Miyamoto", 0.104f / 3f },   // sole read +0.013 at 0.117
         // 2026-10-22c: re-measured after the -11% size change. GroundOffset is a FIXED root-local
         // lift, so shrinking the body left the same lift under shorter legs and he hovered 0.027.
         { "Richard", 0.119f / 3f },
@@ -418,7 +422,9 @@ public static class CrucibleCharacterSetup
     static readonly System.Collections.Generic.Dictionary<string, float> WeaponScale =
         new System.Collections.Generic.Dictionary<string, float>
     {
-        { "Bjorn_Axe", 0.85f },
+        // Bjorn_Axe (0.85) removed 2026-10-26: the user scaled the axe to 0.80 by hand in
+        // Bjorn_Studio.blend and apply_studio_weapons.py baked it into the body FBX's node
+        // scale - an entry here would stamp 0.85 back over it on every rebuild.
     };
 
     /// <summary>
@@ -464,13 +470,10 @@ public static class CrucibleCharacterSetup
         // the haft runs through the hand with the fingers in front of it. Nearest weapon vertex to
         // the fingertip centre 0.089 -> 0.045, and to the wrist 0.131 -> 0.183.
         { "Richard_Sword",     (new Vector3(0.000429f, 0.001780f, 0.000326f), new Vector3(340f, 270f, 0f)) },
-        // Miyamoto's katana had NO mount entry, so it sat at whatever rest rotation the FBX gave it
-        // under the hand bone - and the re-rig changed that bone's orientation, which left the blade
-        // pointing BACKWARD (blade . forward -0.94) straight through his chest, nearest vertex 0.038
-        // from his torso axis. His off hand then followed the hilt onto the wrong side of him, which
-        // is what read as handcuffed. Solved in play rather than guessed: the rotation that aims the
-        // blade forward, up and slightly out. Clears the torso by 0.396 and keeps the grip at 0.057.
-        { "Miyamoto_Katana",  (Vector3.zero, new Vector3(357.54f, 351.35f, 357.28f)) },
+        // Miyamoto's katana entry was REMOVED 2026-10-26: the user re-seated it by hand in
+        // Miyamoto_Studio.blend (carried into the body FBX by apply_studio_weapons.py), so the
+        // FBX-authored placement is the source of truth now, like Genghis's and Buwaka's below.
+        // The old play-solved rotation (357.54, 351.35, 357.28) belonged to the pre-rebody grip.
         { "Salaadin_Falchion", (new Vector3(0.0000f, 0.0003f,  0.0001f), new Vector3(340f, 270f, 180f)) },
         // His round shield was mounted with axis_y="-palm", squared up against his OLD hand-keyed
         // guard. On the pack's block idle the left hand rolls differently and the shield lay FLAT,

@@ -385,6 +385,75 @@ public class InputManager : MonoBehaviour
         return new Vector2(Mathf.Clamp(x, -1f, 1f), Mathf.Clamp(y, -1f, 1f));
     }
 
+    // ---------------------------------------------------------------- per-player menu input
+    // The split character select (2026-10-26): each player drives his OWN half, so the polling
+    // has to be per device, not the all-pads union above. A player reads the pad he was pinned
+    // to on the Choose Controls screen (PadForPlayer honours that, with the auto routing as the
+    // fallback) plus his half of the keyboard when keys are allowed: P1 = WASD + Space,
+    // P2 = arrows + Enter - the same split the fight bindings use.
+
+    private Vector2 lastMenuStick1, lastMenuStick2;
+
+    /// <summary>Menu navigation for ONE player (edge-triggered, like <see cref="MenuNavigate"/>).</summary>
+    public Vector2 MenuNavigateFor(int player)
+    {
+        float x = 0f, y = 0f;
+        var pad = PadForPlayer(player, out bool keys);
+        if (keys)
+        {
+            if (player == 1)
+            {
+                if (Input.GetKeyDown(KeyCode.W)) y += 1f;
+                if (Input.GetKeyDown(KeyCode.S)) y -= 1f;
+                if (Input.GetKeyDown(KeyCode.A)) x -= 1f;
+                if (Input.GetKeyDown(KeyCode.D)) x += 1f;
+            }
+            else
+            {
+                if (Input.GetKeyDown(KeyCode.UpArrow)) y += 1f;
+                if (Input.GetKeyDown(KeyCode.DownArrow)) y -= 1f;
+                if (Input.GetKeyDown(KeyCode.LeftArrow)) x -= 1f;
+                if (Input.GetKeyDown(KeyCode.RightArrow)) x += 1f;
+            }
+        }
+        if (pad != null)
+        {
+            if (pad.dpad.up.wasPressedThisFrame) y += 1f;
+            if (pad.dpad.down.wasPressedThisFrame) y -= 1f;
+            if (pad.dpad.left.wasPressedThisFrame) x -= 1f;
+            if (pad.dpad.right.wasPressedThisFrame) x += 1f;
+            Vector2 s = pad.leftStick.ReadValue();
+            Vector2 sd = new Vector2(Mathf.Abs(s.x) > 0.6f ? Mathf.Sign(s.x) : 0f,
+                                     Mathf.Abs(s.y) > 0.6f ? Mathf.Sign(s.y) : 0f);
+            Vector2 last = player == 1 ? lastMenuStick1 : lastMenuStick2;
+            if (sd.y != 0f && last.y == 0f) y += sd.y;
+            if (sd.x != 0f && last.x == 0f) x += sd.x;
+            if (player == 1) lastMenuStick1 = sd; else lastMenuStick2 = sd;
+        }
+        return new Vector2(Mathf.Clamp(x, -1f, 1f), Mathf.Clamp(y, -1f, 1f));
+    }
+
+    /// <summary>Confirm for ONE player: his pad's Cross, or his half of the keyboard.</summary>
+    public bool MenuConfirmFor(int player)
+    {
+        var pad = PadForPlayer(player, out bool keys);
+        if (keys)
+        {
+            if (player == 1 && Input.GetKeyDown(KeyCode.Space)) return true;
+            if (player == 2 && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))) return true;
+        }
+        return pad != null && pad.buttonSouth.wasPressedThisFrame;
+    }
+
+    /// <summary>Back for ONE player: his pad's Circle. (Escape stays the whole-screen back.)</summary>
+    public bool MenuBackFor(int player)
+    {
+        var pad = PadForPlayer(player, out bool keys);
+        if (keys && player == 1 && Input.GetKeyDown(KeyCode.Backspace)) return true;
+        if (keys && player == 2 && Input.GetKeyDown(KeyCode.Delete)) return true;
+        return pad != null && pad.buttonEast.wasPressedThisFrame;
+    }
+
     /// <summary>True if any gamepad is connected.</summary>
     public static bool AnyPad => Gamepad.all.Count > 0;
 

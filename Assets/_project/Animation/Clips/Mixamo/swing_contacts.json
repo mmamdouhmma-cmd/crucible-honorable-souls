@@ -73,7 +73,10 @@
     "speed": 2.0
   },
   "Bjorn_Light_Slash": 28.7,
-  "Bjorn_Medium_SpinningSlash": 58.0,
+  "Bjorn_Medium_SpinningSlash": {
+    "contact": 31.7,
+    "speed": 2.0
+  },
   "Bjorn_Riposte_Dash": {
     "contact": 28.6,
     "speed": 2.0

@@ -4066,3 +4066,139 @@ its swing_trims entry; contact pinned {59.0, 1.2} and the state read back at x1.
 right motion. Play-verified: HornThrust and SavannaCut opener variants both land 3/3 with
 Serpent Coil as the third hit, at 1.2 and at 3.0. It does not appear on the Moves screen (that
 lists the libraries) — a hidden finisher, accepted.
+
+### 2026-10-26 — New bodies for Bjorn and Miyamoto, on Salaadin's rig to the bone
+
+First the Win64 app and its desktop shortcut were brought current (incremental build: the exe
+keeps its old timestamp while level0/sharedassets/Assembly-CSharp.dll are fresh — check the
+payload, not the exe). Then the user's two downloads — a fantasy barbarian (975k verts, full
+PBR) and a samurai (5.3k verts, basecolor only), both UNRIGGED Tripo meshes — became the new
+Bjorn and Miyamoto through a new pipeline script, `ArtSource/Blender/rebody.py`, written to the
+user's brief: same rig as Salaadin's, every bone size and position his, Bjorn ~10cm taller.
+
+Where fit_metarig.py fits a rig to each mesh, rebody.py keeps the rig IDENTICAL (Salaadin's
+79 bones imported untouched) and fits the mesh to it. The samurai's canonical Tripo pose matched
+Salaadin's own body to 6 deg and bound as-is; the barbarian was A-posed and both arms were
+rotated 41 deg up onto the rig's rest about the shoulder joint, with a falloff seam and an axial
+length match to the rig's fingertips. Weights came by nearest-face TRANSFER from Salaadin's
+skinned body — the donor is skinned to this exact skeleton, and bone-heat has failed on Tripo
+meshes before — 0 unweighted verts on both. Each fighter's existing weapon was lifted from his
+old body FBX and re-seated on the new rig's hand bone with the same bone-local matrix.
+
+Gotchas for the next rebody: the arm-axis fit must use OUTER bands only (|x| 0.26..0.46) — a
+scabbard at the hip read as a 36-deg droop and warped a straight arm; the height target is the
+DONOR BODY's crown, not a bone tail (HeadTop_End's tail overshoots by 4.5%); bpy collections
+refuse stepped slicing. And a desert spawn mark can sit on a terrain ridge — Bjorn's third
+calibration pass read soleGap +0.267 of honest ground, and a flat-spot re-measure (+0.05) is
+what cleared GroundOffset of the blame.
+
+Unity side: Rebuild P1/P2 (avatars 52 mapped, 30/30 fingers, Head on Head — the one-bone-off
+trap checked), textures swapped in place (Miyamoto's old normal/mask deleted with their metas —
+old UVs; Bjorn's mask packed RGB=metallic / A=1-roughness at 4096), StandingHeight and
+GroundOffset recalibrated over three play passes to the user's sizes: Miyamoto = Salaadin
+(2.80, lands 2.86), Bjorn +10cm (2.95 exactly). Photographed in a live match: both textured,
+both weapons held two-handed, Bjorn visibly the bigger man. Old bodies backed up to
+ArtSource/Characters/_backup_20261026/.
+
+### 2026-10-26 — The melting arms: heat skinning over donor transfer
+
+The user's verdict on the new bodies: "they look good but both of their arms are melting."
+Diagnosis by elimination: Salaadin wears the SAME rig and the same pack clips and does not melt,
+so the one thing unique to the pair was the skin - weights transferred from Salaadin's 5k-vert
+donor body, whose nearest-face interpolation smears elbow gradients across a different costume.
+`ArtSource/Blender/reskin_heat.py` re-skinned both with bone-heat AUTO weights against the same
+79 bones (the rig untouched, per the user's "auto rig it anywhere" with the bones staying
+Salaadin's): Bjorn solved all 122,990 verts and was fixed outright; Miyamoto solved 89% and the
+603 heat-failed verts - detached accessory shells, his tsuba and hilt pieces - were filled from
+the old transfer snapshot, which bound them to a THUMB: they floated beside him in idle, plain
+in the close-up. Two lessons closed it out:
+- **Heat is not idempotent on its own output**: a second reskin pass on the re-exported FBX
+  failed 5318/5318 where the first solved 89%. The script now aborts (no export) when heat is
+  unusable, which is what saved the file.
+- **`repair_weights.py` finds a mis-bound vert geometrically**: dominant bone's segment further
+  than 0.22 (body=1.0) from the vert = bound to a bone it does not sit on. 266 verts flagged on
+  Miyamoto (83+24 on thumbs, the rest on donor-only helper groups like R_Skirt/L_Heel), each
+  re-bound from its nearest well-bound neighbour.
+Verified in play, close-up, in each man's own idle: no floating pieces, arms solid through the
+guard, both weapons held two-handed.
+
+### 2026-10-26 — Buwaka's own shield, converted through the Tripo API with the site down
+
+"Buwaka is holding the same Salaadin shield" - and the file in his Downloads folder proved WHY:
+`Buaka/ornate+round+shield+3d+model.fbx` is a re-download of Salaadin's shield conversion
+(basecolor byte-identical to `Salaadin_Shield_basecolor.jpg`, same 5,266 verts). His real
+shield - the tribal disc with fur and bronze boss - existed only as its Tripo render PNG.
+Tripo Studio showed "Something went wrong" in the user's browser and the tripo-ai MCP timed
+out, but the REST API behind them was healthy: upload the render, `image_to_model`, poll,
+~90 s. The swap itself is `ArtSource/Blender/swap_shield.py`: decimate (246k -> 13.7k), fit
+the new disc into the OLD shield object's local frame (thin axis to thin axis, boss side to
+boss side by which side of the mid-plane reaches further, diameter matched), then swap the
+object's MESH DATA - the object, its bone parent, its matrix and its material slot never
+change, so the hand grip and `ShieldWeaponMount` survive untouched. The basecolor overwrites
+the jpg whose GUID `Buwaka_Shield.mat` already points at. One trap found in play: the glb
+packs Color, NormalGL and ORM images, and a biggest-image fallback saved the NORMAL MAP as
+the basecolor - the shield photographed solid blue. Classify by mean pixel colour (a normal
+map sits at ~(0.5,0.5,1.0)) before saving. Verified in a live match front and back, and
+`Buwaka_Studio.blend` regenerated with the new disc.
+
+### 2026-10-26 — The user's hand-seated weapons, carried from the studios into the game
+
+The user re-seated Miyamoto's katana, Bjorn's axe and Genghis's saber by hand in the studio
+blends. `ArtSource/Blender/apply_studio_weapons.py` carries that into each `<Name>_Body.fbx`:
+a bone-parented object's placement is `matrix_parent_inverse @ matrix_basis` - pose-independent,
+so the pose the studio was left in does not matter - and both files share the rig, so the two
+matrices copy verbatim. Measured on arrival: katana moved 0.124 in rig space, axe 0.046 AND
+scaled to 0.80 (the user's own size), saber 0.000 (his earlier hand fix was already in the FBX).
+Two Unity tables had to stand down or they would stamp over the user's work on every rebuild:
+`ShieldWeaponMount["Miyamoto_Katana"]` (the pre-rebody play-solved rotation) and
+`WeaponScale["Bjorn_Axe"]` (0.85 vs the user's baked 0.80) - both removed, comments kept.
+Rebuilt P1/P2/P5 (which also re-derives each TwoHandGrip LeftGrip socket from the moved haft),
+scene saved, photographed all three in play: katana gripped at the hilt blade-forward, the axe
+smaller with the haft through both fists, the saber unchanged as measured.
+
+### 2026-10-26 — The ring: split-screen character select, one pad per player
+
+The user's design: the roster in a CIRCLE instead of a line, two cameras in the middle - one per
+player - each showing only the fighter its player is on and swinging past the others to the
+next; split screen; when both confirm, the halves merge and the menu moves to arena select with
+nobody else standing around. And pad 1 drives Player 1, pad 2 Player 2.
+
+Built in `GameMenu` (`StageCircle`, `BeginCharSelect`, `UpdateCharSelect`, `MoveCursor`,
+`LockPlayer`/`UnlockPlayer`, `MergeSelectRoutine`, `RefreshCircleCards`) plus per-player menu
+polling in `InputManager` (`MenuNavigateFor` etc. - the existing menu reads were the union of
+every pad, which is why both controllers could only ever drive one cursor). The select plates no
+longer track fighters across the screen: one fixed plate per half (bottom-centre in 1P), and a
+locked plate wears its player's colour. Arena select now stages just the picked pair. The
+old `MoveCharacter`/`RefreshCards` line layout is gone.
+
+Verified in play with two virtual pads (`InputSystem.AddDevice<Gamepad>` + `QueueStateEvent`):
+pad A moved P1 two places while pad B moved P2 one back, independently; P2 locked, then P1, the
+merge ran and arena select came up full-screen with SelectCam2 off and 2 of 6 fighters active.
+The user's "half confirmed then go back" case: P1 locks; P2's Circle does NOT leave (one player
+is still committed); P1's Circle unlocks; his second Circle leaves; backing on out reaches Main
+with the cameras restored and the bench applied - photographed identical to the startup main
+menu. Found on the way: the menu backdrop RAMPS from the stage's 0.42 up to 1, so the posed
+fighters showed through the main menu for about a second after leaving a select screen - now
+instant on any exit from a stage screen (field 1.000 on the first frame). The 1P flow (two locks
+in sequence, Back returns to P1's pick) and the ring in BOTH arenas (radius 5.20, grounded,
+nothing pushed by the desert's keep-out circles over 10 s) checked too. Two cosmetic fixes from
+the photos: the split seam stops under the title, and Richard's tagline ("Slowest of the three",
+stale with six) wrapped into his stats line - shortened.
+
+Two more calls the same evening:
+
+- **Bjorn's Medium plays his SP+Medium's spin** (`standing melee attack 360 low`, the Hewing
+  Charge clip) - the user's words: both attacks the same animation, the special just deals more.
+  Clip map entry re-pointed, the stale `{58.0}` contact (from `360 high`) replaced by the special's
+  `{31.7, 2.0}` so both states play at x2.00, and the Medium's hit geometry matched to the clip
+  (aim Full, box offset y 0.5 - Bjorn has no move table, so that is an asset edit). Frame budget,
+  cost and damage stay the Medium's. Read back: both states on the same FBX at speed 2.00. In play
+  against Richard: Medium 9 damage, SP+Medium 14. Adding a clip to the shared FBX re-listed its
+  sub-clips, which rewrote Buwaka's Serpent Sweep state's fileID - checked, still his own clip.
+- **A stamina guard break now costs 1.3 s of recovery AFTER its stun** - walk or dodge only: no
+  strikes, no guard, no parry (`BalanceConfig.GUARD_BREAK_RECOVERY`; `CombatSystem.BeginGuardBreak`
+  arms it at the break, the timer starts when the stun ends; gated in `TryAttack`, `HandleBlock`
+  and the parry opener). Play-verified with Salaadin L->M into a Richard blocking on 12 stamina:
+  broken at the follow-up, 0.87 s stun, then 1.32 s of recovery in which an attack was refused
+  and the guard stayed down with block held every frame, while walking moved him and a dash
+  fired (the bar had regenerated to 16 by then); guard and attacks back the frame it ended.

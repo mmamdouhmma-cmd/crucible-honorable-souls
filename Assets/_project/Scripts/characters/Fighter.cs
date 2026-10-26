@@ -520,7 +520,7 @@ public class Fighter : MonoBehaviour
 
         if (!currentInput.defenseButton && !blockRaised) return;
 
-        bool busy = combatSystem != null && (combatSystem.IsAttacking || combatSystem.IsInHitstun);
+        bool busy = combatSystem != null && (combatSystem.IsAttacking || combatSystem.IsInHitstun || combatSystem.GuardBreakRecovering);
         if (busy || isDashing) return;
 
         if (parryCooldownTimer > 0f)
@@ -544,7 +544,9 @@ public class Fighter : MonoBehaviour
         // exception is the stun from a hit he BLOCKED (GuardStun, the user's call, 2026-10-25):
         // the guard stays up through it, so a combo cannot break a block that can still pay.
         bool stunLocksGuard = IsInHitstun && !(combatSystem != null && combatSystem.GuardStun);
-        isBlocking = currentInput.blockHeld && !isDashing && !attacking && !stunLocksGuard && stats.currentStamina > 0;
+        // A guard broken by stamina stays down through the break's stun AND the recovery after it.
+        bool guardBroken = combatSystem != null && combatSystem.GuardBreakRecovering;
+        isBlocking = currentInput.blockHeld && !isDashing && !attacking && !stunLocksGuard && !guardBroken && stats.currentStamina > 0;
 
         if (isBlocking && stats.DrainStamina(Time.deltaTime, blockStaminaDrainPerSecond))
         {

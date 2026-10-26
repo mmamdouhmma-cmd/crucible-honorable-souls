@@ -93,7 +93,22 @@ public class GameMenu : MonoBehaviour
     int p1Device = -1, p2Device = -1;
     int p1Character;                    // roster index Player 1 drives
     int p2Character = 1;                // roster index Player 2 (or the computer) drives
-    bool pickingP2;                     // the select screen is on the second pick
+    bool pickingP2;                     // the select screen is on the second pick (1P flow)
+
+    // -------- the circle select (2026-10-26, the user's design): the roster stands in a ring,
+    // a camera near the centre orbits to whoever the cursor is on, and a 2-player match splits
+    // the screen so each pad drives its own half at the same time.
+    bool splitSelect;                   // 2P: both players pick at once on a split screen
+    bool lock1, lock2;                  // per-player confirmed picks (split mode)
+    float camA1, camA2;                 // each camera's CURRENT orbit angle, degrees, continuous
+    float targA1, targA2;               // where each camera is headed (accumulates, so it sweeps
+                                        // the way the player scrolled and loops without snapping)
+    Camera selectCam2;                  // right-half camera, created on demand, menu-only
+    Image splitDivider;                 // the seam between the two halves
+    bool mergingSelect;                 // both locked: the halves are animating into one
+    const float CircleRadius = 5.2f;    // fighters' ring around the marks' midpoint
+    const float CircleCamIn = 0.9f;     // camera's own ring, just off centre
+    static Vector3 CircleDir(float deg) => new Vector3(Mathf.Sin(deg * Mathf.Deg2Rad), 0f, Mathf.Cos(deg * Mathf.Deg2Rad));
     int arenaChoice;
     AiDifficulty aiDifficulty = AiDifficulty.Moderate;
     AiController.Rules practiceRules = AiController.Rules.Full;
@@ -251,8 +266,7 @@ public class GameMenu : MonoBehaviour
         if (inputGuard > 0f) inputGuard -= dt;
 
         AnimateRows(dt);
-        if (screen == Screen.CharSelect) TrackPlates(cards, -385f);
-        else if (screen == Screen.Vs) TrackPlates(vsCards, -385f);
+        if (screen == Screen.Vs) TrackPlates(vsCards, -385f);   // select cards are fixed to their halves now
 
         var im = InputManager.Instance;
         if (im == null) return;
@@ -269,6 +283,7 @@ public class GameMenu : MonoBehaviour
 
         if (screen == Screen.Boot) { UpdateBoot(); return; }
         if (screen == Screen.Vs) return;               // runs itself, then starts the fight
+        if (screen == Screen.CharSelect) { UpdateCharSelect(); return; }   // the circle runs its own input + cameras
         if (screen == Screen.Replay && UpdateReplay()) return;   // exporting: input lands nowhere
 
         if ((screen == Screen.OnlineHost || screen == Screen.OnlineJoin) && Time.unscaledTime >= nextOnlineRefresh)
@@ -671,9 +686,18 @@ public class GameMenu : MonoBehaviour
 
     void Show(Screen s, bool push = true)
     {
+        bool leavingStage = screen == Screen.CharSelect || screen == Screen.ArenaSelect || screen == Screen.Vs;
         if (push && screen != Screen.None && screen != s && screen != Screen.Boot) history.Add(screen);
 
-        if (s == Screen.CharSelect && screen != Screen.CharSelect && !rebuilding) pickingP2 = false;
+        if (s == Screen.CharSelect && screen != Screen.CharSelect && !rebuilding)
+        {
+            pickingP2 = false;
+            lock1 = lock2 = false;
+            mergingSelect = false;
+        }
+        // Leaving the character select hands the screen back to one camera, whatever state the
+        // split was in (merge finished, backed out, or a direct jump elsewhere).
+        if (screen == Screen.CharSelect && s != Screen.CharSelect) RestoreSelectCameras();
         // Leaving the record screen hands the fighters, their components and the camera back,
         // and restores the K.O. tableau the playback interrupted.
         if (screen == Screen.Replay && s != Screen.Replay && ReplayRecorder.Instance != null)
@@ -726,7 +750,11 @@ public class GameMenu : MonoBehaviour
                               // to black over about a second. Measured mid-ramp at alpha 0.670
                               // with the arena plainly visible through it. Every other screen
                               // keeps the ramp - that gradual settle is what makes the wipes read.
-                              s == Screen.Boot);
+                              // Leaving the stage screens for an ordinary menu is instant too: the
+                              // ramp up from the stage's 0.42 left the posed fighters showing
+                              // through the menu for a second (the user's call, 2026-10-26: the
+                              // menu must come back exactly as it starts).
+                              s == Screen.Boot || (leavingStage && !onStage));
             stage.ShowWatermark(s != Screen.Boot && !onStage && s != Screen.Replay);
         }
 
@@ -734,6 +762,7 @@ public class GameMenu : MonoBehaviour
         // posed for the camera instead of squared up against each other.
         if (onStage) StageFighters(s == Screen.Vs, s == Screen.ArenaSelect);
         else if (staged) Unstage();
+        if (s == Screen.CharSelect) BeginCharSelect();
 
         bootView.gameObject.SetActive(s == Screen.Boot);
         selectView.gameObject.SetActive(s == Screen.CharSelect);
@@ -1133,14 +1162,17 @@ public class GameMenu : MonoBehaviour
 
             // ------------------------------------------------------------ the custom views
             case Screen.CharSelect:
-                SetTitle("Choose Your Fighter",
-                         roster.Length > 2
-                           ? (pickingP2 ? (playerCount >= 2 ? "Player 2 picks" : "now who the computer brings")
-                                        : "Player 1 picks first")
-                           : playerCount >= 2 ? "Player 1 picks; Player 2 takes the other"
-                                              : "the computer takes the other");
+                SetTitle(playerCount >= 2 && flow != Flow.Practice ? "Choose Your Fighters" : "Choose Your Fighter",
+                         playerCount >= 2 && flow != Flow.Practice
+                           ? "both players pick at once"
+                           : roster.Length > 2
+                             ? (pickingP2 ? (flow == Flow.Practice ? "now who the dummy will be" : "now who the computer brings")
+                                          : "Player 1 picks first")
+                             : "the computer takes the other");
                 BuildCharSelect();
-                footerText.text = "Left / Right to choose    Enter / Cross to lock in    Esc to go back";
+                footerText.text = playerCount >= 2 && flow != Flow.Practice
+                    ? "Left / Right to choose    Cross / Space / Enter to lock in    Circle to unlock    Esc to go back"
+                    : "Left / Right to choose    Enter / Cross to lock in    Esc to go back";
                 break;
 
             case Screen.ArenaSelect:
@@ -1327,7 +1359,7 @@ public class GameMenu : MonoBehaviour
         if (character.StartsWith("Miy", StringComparison.OrdinalIgnoreCase))
             return "Katana. Quick, exact, unforgiving of a wasted swing.";
         if (character.StartsWith("Ric", StringComparison.OrdinalIgnoreCase))
-            return "Sword and kite shield. Slowest of the three, hardest to put down.";
+            return "Sword and kite shield. The hardest man to put down.";
         if (character.StartsWith("Bj", StringComparison.OrdinalIgnoreCase))
             return "Dane axe. Slow to start, heavy to stop, longest reach.";
         if (character.StartsWith("Sal", StringComparison.OrdinalIgnoreCase))
@@ -1339,32 +1371,17 @@ public class GameMenu : MonoBehaviour
         return "";
     }
 
-    void MoveCharacter(int dir)
-    {
-        int n = roster.Length;
-        if (n < 2) return;
-        int taken = pickingP2 ? p1Character : p2Character;
-        int next = pickingP2 ? p2Character : p1Character;
-        for (int step = 0; step < n; step++)            // walk past the pick the other side holds
-        {
-            next = (next + (dir > 0 ? 1 : n - 1)) % n;
-            if (next != taken || n < 3) break;
-        }
-        if (pickingP2) p2Character = next; else p1Character = next;
-        if (p1Character == p2Character) p2Character = (p1Character + 1) % n;
-        RefreshCards();
-        StageFighters(false);                           // the chosen fighter steps forward
-    }
-
     void ConfirmCharacter()
     {
-        // Three rigs or more means the second fighter is a choice too, so the screen takes two
-        // locks: Player 1, then Player 2 (the computer's fighter in a one-player match).
+        // The 1P flow (the split screen never comes here): two locks in sequence - the player's
+        // own fighter, then who the computer (or the practice dummy) brings.
         if (!pickingP2 && roster.Length > 2)
         {
             pickingP2 = true;
-            SetTitle("Choose Your Fighter", playerCount >= 2 ? "Player 2 picks" : "now who the computer brings");
-            RefreshCards();
+            SetTitle("Choose Your Fighter", flow == Flow.Practice ? "now who the dummy will be" : "now who the computer brings");
+            // The camera swings to the second cursor by the short way round.
+            targA1 = camA1 + Mathf.DeltaAngle(camA1, CircleAngleOf(p2Character));
+            RefreshCircleCards();
             return;
         }
         ApplySides(p1Character, p2Character);
@@ -1459,7 +1476,6 @@ public class GameMenu : MonoBehaviour
 
     void Adjust(int dir)
     {
-        if (screen == Screen.CharSelect) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate); MoveCharacter(dir); return; }
         if (screen == Screen.ArenaSelect) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate); MoveArena(dir); return; }
         if (selected < 0 || selected >= items.Count) return;
         if (items[selected].adjust != null) CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
@@ -1469,7 +1485,6 @@ public class GameMenu : MonoBehaviour
 
     void Confirm()
     {
-        if (screen == Screen.CharSelect) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Select); ConfirmCharacter(); return; }
         if (screen == Screen.ArenaSelect) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Select); ConfirmArena(); return; }
         if (selected < 0 || selected >= items.Count) return;
         if (items[selected].confirm != null) CrucibleAudio.Ui(CrucibleAudio.UiSound.Select);
@@ -1481,7 +1496,9 @@ public class GameMenu : MonoBehaviour
         if (screen == Screen.CharSelect && pickingP2)   // back to Player 1 before leaving the screen
         {
             pickingP2 = false;
-            Refresh();
+            targA1 = camA1 + Mathf.DeltaAngle(camA1, CircleAngleOf(p1Character));
+            SetTitle("Choose Your Fighter", "Player 1 picks first");
+            RefreshCircleCards();
             return;
         }
 
@@ -1987,6 +2004,12 @@ public class GameMenu : MonoBehaviour
         cards = new CharacterCard[Mathf.Max(2, roster.Length)];
         for (int i = 0; i < cards.Length; i++) cards[i] = BuildPlate(selectView, "Card" + i);
 
+        // The seam between the two halves of the split select.
+        splitDivider = MenuArt.Img(selectView, "Divider", MenuArt.Solid, MenuArt.Fade(MenuArt.Bronze, 0.75f));
+        // Stops under the header so it never cuts through the title.
+        MenuArt.Box(splitDivider.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(4f, 860f), new Vector2(0f, -110f));
+        splitDivider.gameObject.SetActive(false);
+
         selectView.gameObject.SetActive(false);
     }
 
@@ -2027,36 +2050,42 @@ public class GameMenu : MonoBehaviour
         p2Character = Mathf.Clamp(p2Character, 0, roster.Length - 1);
         if (p2Character == p1Character && roster.Length > 1)
             p2Character = (p1Character + 1) % roster.Length;
-        RefreshCards();
+        RefreshCircleCards();
     }
 
-    void RefreshCards()
+    /// <summary>
+    /// The circle select shows ONE plate per cursor, fixed to its half of the screen (split) or
+    /// bottom-centre (1P) - the camera frames one fighter at a time, so a plate per roster slot
+    /// has nothing to stand under any more.
+    /// </summary>
+    void RefreshCircleCards()
     {
-        for (int i = 0; i < cards.Length; i++)
-        {
-            var card = cards[i];
-            if (card == null) continue;
-            bool present = i < roster.Length;
-            card.rt.gameObject.SetActive(present);
-            if (!present) continue;
+        foreach (var c in cards) if (c != null) c.rt.gameObject.SetActive(false);
+        if (roster.Length == 0 || cards.Length == 0) return;
 
-            bool isP1 = i == p1Character;
-            bool isP2 = i == p2Character;
-            bool live = pickingP2 ? isP2 : isP1;        // the side doing the choosing right now
-            card.follow = roster[i].transform;
-            card.name.text = MenuArt.Track(roster[i].CharacterName.ToUpperInvariant(), 1);
-            card.tagText.text = isP1 ? "PLAYER 1"
-                              : isP2 ? (playerCount >= 2 ? "PLAYER 2" : flow == Flow.Practice ? "DUMMY" : "COMPUTER")
-                              : "";
-            card.tag.gameObject.SetActive(isP1 || isP2);
-            card.tag.color = isP1 ? MenuArt.P1 : MenuArt.P2;
-            card.frame.color = live ? MenuArt.BronzeLit : MenuArt.Fade(MenuArt.Bronze, 0.4f);
-            card.slab.color = new Color(0.11f, 0.09f, 0.08f, live ? 0.92f : 0.72f);
-            card.name.color = live ? MenuArt.BronzeLit : MenuArt.Fade(MenuArt.BronzeLit, 0.6f);
-            card.stats.text = StatsLine(roster[i]);
-            card.tagline.text = Tagline(roster[i].CharacterName);
-            card.rt.localScale = Vector3.one * (live ? 1f : 0.92f);
+        if (splitSelect)
+        {
+            FixPlate(cards[0], p1Character, lock1 ? "PLAYER 1  READY" : "PLAYER 1", MenuArt.P1,
+                     new Vector2(-480f, -385f), lock1);
+            if (cards.Length > 1)
+                FixPlate(cards[1], p2Character, lock2 ? "PLAYER 2  READY" : "PLAYER 2", MenuArt.P2,
+                         new Vector2(480f, -385f), lock2);
         }
+        else
+        {
+            string tag = pickingP2 ? (flow == Flow.Practice ? "DUMMY" : "COMPUTER") : "PLAYER 1";
+            FixPlate(cards[0], pickingP2 ? p2Character : p1Character, tag,
+                     pickingP2 ? MenuArt.P2 : MenuArt.P1, new Vector2(0f, -385f), false);
+        }
+    }
+
+    void FixPlate(CharacterCard card, int rosterIndex, string tag, Color tagColor, Vector2 at, bool locked)
+    {
+        if (card == null) return;
+        SetPlate(card, rosterIndex, tag, tagColor);
+        card.follow = null;                              // fixed to its half, never tracked
+        card.rt.anchoredPosition = at;
+        card.frame.color = locked ? tagColor : MenuArt.BronzeLit;   // a locked plate wears its player's colour
     }
 
     void BuildArenaView()
@@ -2164,10 +2193,11 @@ public class GameMenu : MonoBehaviour
         if (roster.Length < 2 || sideMark.Length < 2) return;
         var cam = Camera.main;
         if (cam == null) return;
-        if (!vs) ShowWholeRoster();                         // select scrolls through everyone
 
         var fightCam = cam.GetComponent<FightCamera>();
         if (fightCam != null) fightCam.enabled = false;     // it would drag the view back every frame
+
+        if (!vs && !wide) { StageCircle(); return; }        // character select: the ring
 
         Vector3 mid = (sideMark[0] + sideMark[1]) * 0.5f;
         Vector3 camDir = cam.transform.position - mid;      // keep the arena's established viewpoint
@@ -2177,16 +2207,17 @@ public class GameMenu : MonoBehaviour
         Vector3 screenRight = Vector3.Cross(Vector3.up, -camDir).normalized;
 
         float spread = vs ? 2.0f : 2.4f;
-        int shown = vs ? 2 : roster.Length;                 // VS is the pair; select is the roster
         float turn = vs ? 60f : 18f;                        // VS squares them up against each other
 
         // Frame first, pose second: a fighter stood 2.4 units off to the side does not face the
         // camera by facing the stage centre - that error was 31 degrees, a near profile.
         float fov = cam.fieldOfView * Mathf.Deg2Rad;
         float aspect = cam.aspect > 0.1f ? cam.aspect : 16f / 9f;
-        // Arena select pulls right back: the thing being chosen is the ground, not the fighters.
-        float wantHeight = wide ? 17f : vs ? 5.0f : 5.4f;    // fighters are 2.9 units tall
-        float wantWidth = wide ? 34f : spread * (shown - 1) + 3.6f;
+        // Arena select pulls right back: the thing being chosen is the ground, not the fighters -
+        // and it shows ONLY the picked pair now (the user's call, 2026-10-26): once the fighters
+        // are chosen, nobody else stands around.
+        float wantHeight = wide ? 17f : 5.0f;               // fighters are 2.9 units tall
+        float wantWidth = wide ? 34f : spread + 3.6f;
         float distV = (wantHeight * 0.5f) / Mathf.Tan(fov * 0.5f);
         float distH = (wantWidth * 0.5f) / Mathf.Tan(Mathf.Atan(Mathf.Tan(fov * 0.5f) * aspect));
         float dist = Mathf.Max(distV, distH);
@@ -2196,33 +2227,235 @@ public class GameMenu : MonoBehaviour
         cam.transform.position = camPos;
         cam.transform.rotation = Quaternion.LookRotation(look - camPos, Vector3.up);
 
-        // The chosen fighter stands a step forward, which reads as "this one" without a spotlight.
-        if (vs)
+        // The yaw is applied AFTER LookRotation(toCam), so it turns each fighter off
+        // camera-facing - and the SIGN was inverted once. A positive Y rotation carries +Z toward
+        // +X, while screenRight works out to -X when the camera sits on +Z, so "+turn" swung
+        // the screen-LEFT fighter further left and "-turn" swung the right one further right:
+        // both outward, shoulders to the middle, which is the back-to-back look.
+        // Negated, P1 (screen left) turns right and P2 turns left.
+        PlaceStaged(p1Character, mid - screenRight * spread, camPos, -turn);
+        PlaceStaged(p2Character, mid + screenRight * spread, camPos, turn);
+        staged = true;
+    }
+
+    /// <summary>
+    /// The character-select ring (the user's design, 2026-10-26): the whole roster stands in a
+    /// circle around the marks' midpoint, each man facing the centre, and the select camera(s)
+    /// orbit just off that centre, looking outward - so each half of the screen frames exactly
+    /// one fighter, and scrolling sweeps the camera past the others to the next.
+    /// </summary>
+    void StageCircle()
+    {
+        ShowWholeRoster();
+        Vector3 mid = (sideMark[0] + sideMark[1]) * 0.5f;
+        int n = roster.Length;
+        float step = 360f / n;
+        for (int i = 0; i < n; i++)
+            PlaceStaged(i, mid + CircleDir(i * step) * CircleRadius, mid, 0f);   // toCam = the centre
+        staged = true;
+        UpdateSelectCameras(true);
+    }
+
+    float CircleAngleOf(int rosterIndex) => rosterIndex * 360f / Mathf.Max(roster.Length, 1);
+
+    /// <summary>Eases each select camera toward its target fighter and parks it on the inner ring.</summary>
+    void UpdateSelectCameras(bool snap)
+    {
+        var cam = Camera.main;
+        if (cam == null || sideMark.Length < 2) return;
+        Vector3 mid = (sideMark[0] + sideMark[1]) * 0.5f;
+        float ease = snap ? 1f : 1f - Mathf.Exp(-Time.unscaledDeltaTime * 7f);
+        camA1 = Mathf.Lerp(camA1, targA1, ease);
+        camA2 = Mathf.Lerp(camA2, targA2, ease);
+        PlaceSelectCam(cam, mid, camA1, splitSelect && lock1);
+        if (splitSelect && selectCam2 != null && selectCam2.enabled)
+            PlaceSelectCam(selectCam2, mid, camA2, lock2);
+    }
+
+    void PlaceSelectCam(Camera c, Vector3 mid, float angle, bool lockedPush)
+    {
+        Vector3 dir = CircleDir(angle);
+        Vector3 fighterAt = mid + dir * CircleRadius;
+        fighterAt.y = GroundedY(fighterAt, mid.y);
+        // A locked half steps in on its man - the quiet "you are done" beat before the merge.
+        Vector3 pos = mid + dir * (lockedPush ? CircleCamIn + 0.8f : CircleCamIn);
+        pos.y = fighterAt.y + 1.55f;
+        Vector3 look = fighterAt + Vector3.up * 1.45f;
+        c.transform.position = pos;
+        c.transform.rotation = Quaternion.LookRotation(look - pos, Vector3.up);
+    }
+
+    /// <summary>Entering the select screen: split or single camera, angles on the cursors.</summary>
+    void BeginCharSelect()
+    {
+        splitSelect = playerCount >= 2 && flow != Flow.Practice;
+        lock1 = lock2 = false;
+        mergingSelect = false;
+        camA1 = targA1 = CircleAngleOf(splitSelect || !pickingP2 ? p1Character : p2Character);
+        camA2 = targA2 = CircleAngleOf(p2Character);
+        var cam = Camera.main;
+        if (splitSelect)
         {
-            // The yaw is applied AFTER LookRotation(toCam), so it turns each fighter off
-            // camera-facing - and the SIGN was inverted. A positive Y rotation carries +Z toward
-            // +X, while screenRight works out to -X when the camera sits on +Z, so "+turn" swung
-            // the screen-LEFT fighter further left and "-turn" swung the right one further right:
-            // both outward, shoulders to the middle, which is the back-to-back look.
-            // Negated, P1 (screen left) turns right and P2 turns left. At this framing a fighter
-            // facing the camera is already about 25 deg off a pure profile, so 60 deg lands them
-            // ~5 deg short of square on - still a little of each face to camera, which reads
-            // better than two flat profiles.
-            PlaceStaged(p1Character, mid - screenRight * spread, camPos, -turn);
-            PlaceStaged(p2Character, mid + screenRight * spread, camPos, turn);
-        }
-        else
-        {
-            float half = (shown - 1) * 0.5f;                // a line of fighters centred on the marks
-            for (int i = 0; i < shown; i++)
+            EnsureSelectCam2();
+            if (cam != null) cam.rect = new Rect(0f, 0f, 0.5f, 1f);
+            selectCam2.enabled = true;
+            selectCam2.rect = new Rect(0.5f, 0f, 0.5f, 1f);
+            if (splitDivider != null)
             {
-                float slot = (i - half) * spread;
-                bool picked = pickingP2 ? i == p2Character : i == p1Character;
-                float yaw = slot < -0.01f ? turn : slot > 0.01f ? -turn : 0f;
-                PlaceStaged(i, mid + screenRight * slot + camDir * (picked ? 0.2f : -0.1f), camPos, yaw);
+                splitDivider.gameObject.SetActive(true);
+                splitDivider.rectTransform.anchoredPosition = new Vector2(0f, -110f);
             }
         }
-        staged = true;
+        else RestoreSelectCameras();
+        UpdateSelectCameras(true);
+        RefreshCircleCards();
+    }
+
+    void EnsureSelectCam2()
+    {
+        if (selectCam2 != null) return;
+        var main = Camera.main;
+        var go = new GameObject("SelectCam2");
+        selectCam2 = go.AddComponent<Camera>();
+        if (main != null) selectCam2.CopyFrom(main);        // projection, clear flags, culling
+        selectCam2.rect = new Rect(0.5f, 0f, 0.5f, 1f);
+    }
+
+    /// <summary>One full-screen camera again, however the split ended.</summary>
+    void RestoreSelectCameras()
+    {
+        var cam = Camera.main;
+        if (cam != null) cam.rect = new Rect(0f, 0f, 1f, 1f);
+        if (selectCam2 != null) selectCam2.enabled = false;
+        if (splitDivider != null) splitDivider.gameObject.SetActive(false);
+    }
+
+    /// <summary>The select screen's own input + cameras: per-player in split, the old single cursor in 1P.</summary>
+    void UpdateCharSelect()
+    {
+        UpdateSelectCameras(false);
+        if (mergingSelect) return;                          // the merge routine owns the screen
+        var im = InputManager.Instance;
+
+        if (splitSelect)
+        {
+            for (int p = 1; p <= 2; p++)
+            {
+                bool locked = p == 1 ? lock1 : lock2;
+                Vector2 nav = im.MenuNavigateFor(p);        // read every frame: the stick edges latch inside
+                if (!locked && nav.x != 0f)
+                {
+                    CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
+                    MoveCursor(p, nav.x > 0f ? 1 : -1);
+                }
+                if (inputGuard > 0f) continue;
+                if (im.MenuConfirmFor(p)) LockPlayer(p);
+                else if (im.MenuBackFor(p))
+                {
+                    if (locked) UnlockPlayer(p);
+                    else if (!lock1 && !lock2) { Back(); return; }
+                }
+            }
+            // Escape is the whole-screen back: it unwinds the most recent lock first.
+            if (inputGuard <= 0f && Input.GetKeyDown(KeyCode.Escape))
+            {
+                if (lock2) UnlockPlayer(2);
+                else if (lock1) UnlockPlayer(1);
+                else Back();
+            }
+            return;
+        }
+
+        Vector2 one = im.MenuNavigate();
+        if (one.x != 0f)
+        {
+            CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
+            MoveCursor(pickingP2 ? 2 : 1, one.x > 0f ? 1 : -1);
+        }
+        if (inputGuard > 0f) return;
+        if (im.MenuConfirm()) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Select); ConfirmCharacter(); }
+        else if (im.MenuBack()) Back();
+    }
+
+    /// <summary>
+    /// Moves one player's cursor around the ring. A pick the other side already holds is walked
+    /// past - the lock in split mode, the standing pick in the 1P flow - and the camera's target
+    /// angle ACCUMULATES by the steps taken, so the sweep follows the direction scrolled and the
+    /// ring loops without ever snapping the long way round.
+    /// </summary>
+    void MoveCursor(int player, int dir)
+    {
+        int n = roster.Length;
+        if (n < 2) return;
+        int cur = player == 1 ? p1Character : p2Character;
+        int avoid = splitSelect
+            ? (player == 1 ? (lock2 ? p2Character : -1) : (lock1 ? p1Character : -1))
+            : (pickingP2 ? p1Character : p2Character);
+        int steps = 0, next = cur;
+        for (int k = 0; k < n; k++)
+        {
+            next = (next + dir + n) % n;
+            steps++;
+            if (next != avoid || n < 3) break;
+        }
+        if (player == 1) p1Character = next; else p2Character = next;
+        if (!splitSelect && p1Character == p2Character) p2Character = (p1Character + 1) % n;
+
+        float delta = dir * steps * (360f / n);
+        if (splitSelect && player == 2) targA2 += delta;
+        else targA1 += delta;
+        RefreshCircleCards();
+    }
+
+    void LockPlayer(int p)
+    {
+        if (p == 1 ? lock1 : lock2) return;
+        bool otherLocked = p == 1 ? lock2 : lock1;
+        int mine = p == 1 ? p1Character : p2Character;
+        int theirs = p == 1 ? p2Character : p1Character;
+        if (otherLocked && mine == theirs)                   // taken: one rig per character
+        {
+            CrucibleAudio.Ui(CrucibleAudio.UiSound.Back);
+            return;
+        }
+        if (p == 1) lock1 = true; else lock2 = true;
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Select);
+        // Both hovering the same man and this one locked first: bump the other cursor off him.
+        if (!otherLocked && mine == theirs) MoveCursor(p == 1 ? 2 : 1, 1);
+        RefreshCircleCards();
+        if (lock1 && lock2) StartCoroutine(MergeSelectRoutine());
+    }
+
+    void UnlockPlayer(int p)
+    {
+        if (p == 1) lock1 = false; else lock2 = false;
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Back);
+        RefreshCircleCards();
+    }
+
+    /// <summary>
+    /// Both players locked: hold a beat on the two picks, slide the seam away so the halves
+    /// become one view, then on to the arena - where only the chosen pair stands.
+    /// </summary>
+    IEnumerator MergeSelectRoutine()
+    {
+        mergingSelect = true;
+        yield return new WaitForSecondsRealtime(0.55f);
+        var cam = Camera.main;
+        const float dur = 0.45f;
+        for (float k = 0f; k < 1f; k += Time.unscaledDeltaTime / dur)
+        {
+            float e = MenuArt.EaseOut(Mathf.Clamp01(k));
+            if (cam != null) cam.rect = new Rect(0f, 0f, Mathf.Lerp(0.5f, 1f, e), 1f);
+            if (selectCam2 != null) selectCam2.rect = new Rect(Mathf.Lerp(0.5f, 1f, e), 0f, Mathf.Lerp(0.5f, 0f, e), 1f);
+            if (splitDivider != null) splitDivider.rectTransform.anchoredPosition = new Vector2(Mathf.Lerp(0f, 980f, e), -110f);
+            yield return null;
+            if (screen != Screen.CharSelect) { mergingSelect = false; yield break; }   // left mid-merge
+        }
+        mergingSelect = false;
+        if (screen != Screen.CharSelect || !lock1 || !lock2) { RestoreSelectCameras(); yield break; }
+        ApplySides(p1Character, p2Character);
+        GoWiped(Screen.ArenaSelect);                         // Show() restores the single camera
     }
 
     void PlaceStaged(int index, Vector3 pos, Vector3 camPos, float yaw)
@@ -2243,6 +2476,7 @@ public class GameMenu : MonoBehaviour
     void Unstage()
     {
         staged = false;
+        RestoreSelectCameras();
         var cam = Camera.main;
         var fightCam = cam != null ? cam.GetComponent<FightCamera>() : null;
         if (fightCam != null) fightCam.enabled = true;

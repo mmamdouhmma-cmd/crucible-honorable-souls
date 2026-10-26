@@ -30,9 +30,9 @@ MonoBehaviour:
   hitstunFrames: 48
   hyperArmor: 0
   hitboxRange: 3.5
-  hitboxOffset: {x: 0, y: 1, z: 0}
+  hitboxOffset: {x: 0, y: 0.5, z: 0}
   hitboxSize: {x: 1.8, y: 1, z: 1}
-  aimMode: 0
+  aimMode: 1
   aimMaxAngle: -1
   aimRollDegrees: 0
   lungeStopDistance: 0.9
