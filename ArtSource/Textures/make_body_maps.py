@@ -22,6 +22,7 @@ Writes into each Assets/_project/Characters/<dir>/Model/<Name>_Body.fbm/:
 then run Crucible's material build (CrucibleCharacterSetup.BuildMaterial) on each body.
 
     python make_body_maps.py [Name ...]     (no names = all six)
+    python make_body_maps.py --weapons      (every weapon that has no maps yet)
 """
 import os
 import shutil
@@ -51,10 +52,12 @@ def fbm(name):
     return os.path.join(CHARS, DIRS[name], "Model", f"{name}_Body.fbm")
 
 
-def mask_for(rgb):
+def mask_for(rgb, has_skin=True):
     hsv = rgb_to_hsv(rgb)
     h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
-    w_skin = skin(hsv)
+    # A weapon has no skin, and its warm wood, leather wrap and bronze sit right in the skin
+    # band - left on, they would come out with the flesh glaze.
+    w_skin = skin(hsv) if has_skin else np.zeros_like(h)
     rest = 1 - w_skin
     w_steel = smooth(0.20, 0.10, s) * smooth(0.30, 0.45, v) * rest
     w_gold = hue_near(h, 43, 9, 15) * smooth(0.40, 0.55, s) * smooth(0.40, 0.55, v) * rest * (1 - w_steel)
@@ -113,6 +116,39 @@ def build(name):
           f"{' + derived normal' if made_normal else ' (kept its real normal)'}")
 
 
+def build_weapons():
+    """Every Characters/*/Weapons/<W>.fbm that has a basecolor but NO mask gets a derived mask
+    (no skin class) and, if it has none, a derived normal. A weapon that already carries maps -
+    Bjorn's axe and Miyamoto's katana came with real ones - is left alone."""
+    for name, d in DIRS.items():
+        wdir = os.path.join(CHARS, d, "Weapons")
+        if not os.path.isdir(wdir):
+            continue
+        for f in sorted(os.listdir(wdir)):
+            if not f.endswith(".fbm"):
+                continue
+            folder = os.path.join(wdir, f)
+            base = f[:-4]
+            src = next((os.path.join(folder, base + "_basecolor" + e) for e in (".jpg", ".png", ".jpeg")
+                        if os.path.exists(os.path.join(folder, base + "_basecolor" + e))), None)
+            mask_path = os.path.join(folder, base + "_mask.png")
+            if src is None or os.path.exists(mask_path):
+                print(f"{base}: {'kept its real maps' if src else 'no basecolor'}")
+                continue
+            img = Image.open(src).convert("RGB")
+            if img.width > SIZE:
+                img = img.resize((SIZE, SIZE), Image.LANCZOS)
+            m = mask_for(np.asarray(img).astype(np.float32) / 255.0, has_skin=False)
+            Image.fromarray((m * 255 + 0.5).astype(np.uint8), "RGBA").save(mask_path)
+            normal_path = os.path.join(folder, base + "_normal.png")
+            if not os.path.exists(normal_path):
+                normal_for(img).save(normal_path)
+            print(f"{base}: mask metal {m[..., 0].mean():.3f} smooth {m[..., 3].mean():.3f} + derived normal")
+
+
 if __name__ == "__main__":
-    for n in (sys.argv[1:] or DIRS.keys()):
-        build(n)
+    if "--weapons" in sys.argv:
+        build_weapons()
+    else:
+        for n in (sys.argv[1:] or DIRS.keys()):
+            build(n)

@@ -1448,6 +1448,12 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   and `<name>_normal.png` (high-passed luminance; Bjorn keeps his real one) into each
   `<Name>_Body.fbm`, and `CrucibleCharacterSetup.BuildMaterial` picks them up. Bjorn's
   download mask is backed up in `ArtSource/Characters/_backup_20261026/body_masks/`.
+  The WEAPONS got the same (`make_body_maps.py --weapons`, skin class off - warm wood and bronze
+  sit in the skin band): every weapon `.fbm` without a mask gets derived maps; Bjorn's axe and
+  Miyamoto's katana have REAL ones and are skipped. Weapon maps are committed (the Weapons
+  folders are tracked). The user's re-exports from Tripo had no PBR maps either: these are
+  SMART MESHES, and only HD models carry PBR. Real maps would mean baking an HD version of the
+  SAME generation onto the smart mesh's UVs - do not regenerate, that is a new mesh and UVs.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `PlayProbe`, `BladeTrace`

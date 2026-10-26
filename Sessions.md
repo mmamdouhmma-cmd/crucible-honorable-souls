@@ -4219,3 +4219,8 @@ Two more calls the same evening:
   six body materials through `BuildMaterial`.
 - Found Miyamoto/Genghis AttackData frame edits in the working tree that were not made in this
   session (likely Inspector edits flushed by a SaveAssets) - left untouched.
+- Weapons glazed too (`make_body_maps.py --weapons`): seven weapons got derived maps, Bjorn's axe
+  and Miyamoto's katana kept their real ones. The user's 14 Tripo re-exports (bodies + weapons)
+  carried basecolor only - smart meshes; 10 matched the game byte-for-byte, 4 matched nothing
+  (Bjorn axe, Miyamoto katana, Buwaka round shield, a Salaadin knight variant). Kept the
+  generated maps on the user's call.
