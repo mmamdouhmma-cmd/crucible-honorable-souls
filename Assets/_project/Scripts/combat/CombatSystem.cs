@@ -228,6 +228,7 @@ public class CombatSystem : MonoBehaviour
                 hitstunTimer = 0f;
                 comboStun = false;
                 guardStun = false;
+                parriedStun = false;
                 if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: hitstun OVER");
                 // A guard broken by stamina buys a recovery AFTER the stun (the user's call,
                 // 2026-10-26): walk or dodge only - no strikes, no guard, no parry.
@@ -794,6 +795,13 @@ public class CombatSystem : MonoBehaviour
     /// <summary>True while this fighter is stunned by a hit he BLOCKED: the guard holds.</summary>
     public bool GuardStun => inHitstun && guardStun;
 
+    // The current stun came from having a strike PARRIED (the user's call, 2026-10-27): it outlasts
+    // the parrier's counter window, and the only thing it allows is a parry of the counter.
+    private bool parriedStun;
+
+    /// <summary>True while this fighter is stunned by a parry: no attack, dash, walk or plain block.</summary>
+    public bool ParriedStun => inHitstun && parriedStun;
+
     /// <summary>Bumped on every stun. A dash remembers the serial it started under, so a dash
     /// begun INSIDE a combo stun survives it while any NEW hit still stops a running dash.</summary>
     public int StunSerial { get; private set; }
@@ -804,7 +812,7 @@ public class CombatSystem : MonoBehaviour
     /// Optionally cancels an attack in progress so its hitbox cannot land under the flinch.
     /// <paramref name="dodgeable"/> marks a combo stun: the victim may still dash (and only dash).
     /// </summary>
-    public void ApplyHitstun(int frames, bool dodgeable = false, bool guardHolds = false)
+    public void ApplyHitstun(int frames, bool dodgeable = false, bool guardHolds = false, bool parried = false)
     {
         if (hitInterruptsAttack && isAttacking)
         {
@@ -816,6 +824,7 @@ public class CombatSystem : MonoBehaviour
         inHitstun = true;
         comboStun = dodgeable;
         guardStun = guardHolds;
+        parriedStun = parried;
         StunSerial++;
         chainCount = 0; // a flinch breaks the chain; no lockout on top of the hitstun
         comboGapTimer = 999f; // and breaks the pressure: the comeback swing pays no combo surcharge
@@ -947,6 +956,7 @@ public class CombatSystem : MonoBehaviour
         hitstunTimer = 0f;
         comboStun = false;
         guardStun = false;
+        parriedStun = false;
         guardBreakPending = false;
         guardBreakTimer = 0f;
         evadedExtraRecovery = 0f;

@@ -1266,6 +1266,39 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   parry table (all four rows) + `BalanceConfig.PARRY_WINDOW`; the mechanics were already there.
   Play-verified: window gates exact (open f2, expired f15, refused f23, re-open f55), raise 9 f
   before a heavy = parry, holding block from the swing's first frame = plain chip block.
+- **A parried attacker can do ONE thing: parry the counter** (the user's call, 2026-10-27 - a
+  parried Miyamoto recovered after the flat 0.5 s stun and swung again inside the parrier's 0.8-1.2 s
+  counter window). `Fighter.ParryStunFrames` = max(`parryStunDuration`, the PARRIER's
+  `parryCounterWindow` + `BalanceConfig.PARRY_STUN_PAST_COUNTER` 0.2), so the stun always outlasts
+  the counter window. The stun is flagged `CombatSystem.ParriedStun`: attack, dash, walk and plain
+  block all refused; a guard raise opens the ordinary 0.2 s parry window (the guard shows only while
+  it is open), so a mistimed raise eats the counter. Play-verified Genghis parrying Miyamoto: stun
+  1.40 s vs counter 1.20 s, dash/walk/attack refused, raise = 0.2 s parry window then guard down.
+- **Nobody walks up an obstacle any more** (the user's call, 2026-10-27: ledges, rocks and walls
+  were climbable, worst in the corners). `Fighter.BlockObstacles` runs after every move, before
+  `ClampToArena`: a capsule from `BalanceConfig.OBSTACLE_STEP_HEIGHT` (0.6, knee height - the
+  desert's 0.4 floor border still walks) to `OBSTACLE_PROBE_TOP` (2.0) is swept along the frame's
+  move AND tested for overlap at the end of it; either one refuses the whole move (a dash or
+  knockback into it ends there). Fighters and triggers are ignored. Three things that did NOT work:
+  `Physics.ComputePenetration` returns nothing against the arenas' concave MeshColliders (enabled
+  probe or not); a cast that STARTS inside a surface reports no hit; and SLIDING along the face -
+  on the desert's curved wall the slide carried 0.007/frame outward until the probe was inside,
+  after which he walked through. Hence: no slide, plus the end-overlap test. Verified: desert
+  ledges stop at r 16.8 / 14.8 / 15.2 against walls at 17.4 / 15.3 / 15.6, forest edge 12.7 vs 13.4.
+- **The Desert Arena has a RING-OUT** (the user's call, 2026-10-27): the one opening between the
+  wall end and the statue, `ArenaBounds.ringOutGaps` = (-17.0, 9.4) -> (-12.1, 11.8), depth 1.8
+  past the line (the floor lip; the ground drops behind it). Crossing it by ANY means - walking
+  included, the user's choice - is a loss: `Fighter.CheckRingOut` zeroes health and calls
+  `NotifyDeath`, the menu's ordinary `CheckKO` ends the match ("Ring out / <name> wins"), and
+  `FallOut` drops the body through the gap (colliders off, kinematic; `ResetForMatch` restores
+  both). Practice with infinite health puts both back on the marks instead. Play-verified: walked
+  out at frame 81, health 0, match over, body at y -4.6 a second later.
+- **Forest Clearing ships now, with a GREEN floor** (2026-10-27). Its floor was a set of magenta UV
+  charts in the 4096 atlas; `ArtSource/Textures/green_forest_floor.py` recolours exactly those
+  (mask = up-facing arena triangles inside the clearing, rasterized in UV space in Unity, saved as
+  `ArtSource/Textures/forestclearing_floor_mask.png`; grown 4 px into pink padding only, so the
+  purple orbs keep their colour). Original texture in `ArtSource/Textures/_backup_20261027/`.
+  Selectable order is now Medieval Fortress, Desert Arena, Forest Clearing.
 - **String follow-ups play FASTER when dialed fast** (the user's call, 2026-10-25): a string
   link's attack clock AND animation run at `currentAttackPace`, lerped from
   `COMBO_FOLLOWUP_MAX_PACE` 1.3 (press already buffered when the cancel opened - the dialed

@@ -249,6 +249,18 @@ public static class BalanceConfig
     public const float MOVEMENT_INTO_SLASH_BONUS = 1.1f;    // +10%
     public const float MOVEMENT_INTO_THRUST_BONUS = 1.15f;  // +15%
     public const float PARRY_STUN_DURATION = 0.5f;   // every stun in the game is 0.5 s (the user, 2026-10-24)
+    // A parried attacker stays stunned this long PAST the parrier's counter window (the user's
+    // call, 2026-10-27): a fast fighter recovering inside the window threw his next strike before
+    // the counter. Fighter.ParryStunFrames takes the larger of this and PARRY_STUN_DURATION.
+    public const float PARRY_STUN_PAST_COUNTER = 0.2f;
+
+    // ==================== ARENA OBSTACLES ====================
+    // A fighter may not walk, dash or be knocked onto anything that rises more than this above his
+    // soles (the user's call, 2026-10-27: they climbed the ledges, rocks and walls, worst in the
+    // corners). World units - about knee height, so the desert's 0.4 floor border still walks.
+    // The probe is a capsule cast from this height up to OBSTACLE_PROBE_TOP in the move direction.
+    public const float OBSTACLE_STEP_HEIGHT = 0.6f;
+    public const float OBSTACLE_PROBE_TOP = 2.0f;
     // Same as the dash counter (user's call, 2026-10-18): a parry is harder to time, but the free
     // 1.0 s stun it buys is already the reward. Serialized per fighter.
     public const float PARRY_COUNTER_DAMAGE_MULTIPLIER = 1.35f;

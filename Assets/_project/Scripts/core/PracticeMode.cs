@@ -43,6 +43,9 @@ public class PracticeMode : MonoBehaviour
         enabled = true;
     }
 
+    /// <summary>Back on the marks (a ring-out in practice resets instead of ending the drill).</summary>
+    public void ResetPositions() => resetPositions?.Invoke();
+
     public void End()
     {
         Running = false;

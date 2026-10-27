@@ -4311,3 +4311,48 @@ Two more calls the same evening:
   strings -> Set the block speed -> scene saved. Win64 app rebuilt (`PrepareScene` -> MCP `build` ->
   `RestoreScene`); the desktop shortcut (`OneDrive\Desktop\Crucible.lnk`) already targets
   `Builds/CrucibleLite-Win64/Crucible.exe`.
+
+### 2026-10-27 — The user's re-seated katana and saber, into the game
+
+- The user re-seated Miyamoto's katana and Genghis's saber in `ArtSource/Characters/HD/{Miyamoto,Genghis}/
+  *_HD_rigged.blend` (22:17 / 22:18). Genghis exported straight from his blend. Miyamoto's game body
+  comes from `spinefix/Miyamoto_HD_rigged.blend` (the unfolded abdomen), so the katana's parent
+  inverse + local transform were copied from the user's blend onto the spinefix rig instead
+  (RightHand rest identical to 1e-7, katana mesh unchanged) - re-exporting the user's own blend
+  would have brought the folded torso back. Project FBX options, overwritten in place; previous
+  bodies in `ArtSource/Characters/_backup_20261027/weapon_reseat/`.
+- `Rebuild Player2` + `Rebuild Player5` via eval, scene saved. Neither blade has a
+  `ShieldWeaponMount` entry, so the FBX placement is what plays. Photographed in a live match:
+  both fighters two-handed on the hilt, blades forward (axis . forward 0.64 / 0.36).
+  `OffHandMiss` reads ~0.19 on both (wrist short of the LeftGrip override at full arm stretch);
+  the photographs look right, so the `OffHandGripOverride` entries were left alone.
+
+### 2026-10-27 — Parried stun outlasts the counter window; parry is the only way out
+
+- The user: a parried Miyamoto threw his next strike before the counter landed. Cause: parry stun
+  was a flat 0.5 s while the counter windows are 0.8-1.2 s, and the stun also locked the guard.
+- `ParryStunFrames` now takes the parrier's counter window + 0.2 s; new `ParriedStun` flavour
+  refuses attack/dash/walk/plain block and lets only a parry window open (see CLAUDE.md).
+- Harness (live match, captureDeltaTime 1/60, both sides AI-input): Genghis parries Miyamoto's
+  light -> stun 1.400 s against a 1.200 s window; dash at k5, walk k8-12, light at k15/k60 all
+  refused, 0 movement; block held k20-50 -> blocking + ParryReady k20-32 only, then down; stun over
+  at k88, after the counter window closed.
+
+### 2026-10-27 — Obstacles block, the desert ring-out, a green Forest Clearing
+
+- The user: fighters walk up arena obstacles (worst in the corners), the forest clearing should be
+  in the game with a green floor, and in the desert whoever falls out loses. Asked what "out"
+  means there (walled bowl, no drop): the user pointed at the one opening on the camera's left,
+  between two walls, and chose "any way, walking too".
+- Height maps of all three arenas (top-down raycast grid) and an angular wall scan found the gap
+  at (-17.0, 9.4)-(-12.1, 11.8): floor at 0.5 to the lip, ramp/void behind. Also found 28 old
+  `Bound_00..27` wall boxes at r 24 under DesertArena (harmless, they sit at the clamp radius).
+- Obstacle block: four iterations. Capsule sweep alone -> crept through the desert's 3.4 wall via
+  slide + start-inside blindness; `ComputePenetration` push-out -> returns false against the
+  concave mesh; end-overlap + slide -> still crept 0.007/frame; end-overlap, no slide -> holds.
+- Harness lessons (all three cost a run): `moveDirection` is SCREEN left/right, so "away" is
+  `facingRight ? -1 : +1` read every frame; a restarted match runs READY-3-2-1 with the fighters
+  frozen while `inMatch` can still read true, so wait for `Fighter.enabled && InputEnabled`; and
+  a fresh play session needs `ApplySides` or your "player 1" input drives somebody else.
+- Forest floor recoloured via a UV-space floor mask (see CLAUDE.md); first pass was lime and
+  streaked two orbs, second pass (grow 4 px, darker) photographed clean. Shipped flag on.

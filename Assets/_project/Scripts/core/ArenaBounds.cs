@@ -35,6 +35,15 @@ public class ArenaBounds : MonoBehaviour
              "fighters' frozen X/Z axes ignore physical colliders.")]
     [SerializeField] private Vector3[] keepOut = new Vector3[0];
 
+    [Tooltip("Ring-out gaps: openings a fighter can FALL out of (x, y = one end, z, w = the other, " +
+             "world XZ). Crossing one by ringOutDepth loses the match, walking out included (the " +
+             "user's call, 2026-10-27). The desert has one, between the wall end and the statue.")]
+    [SerializeField] private Vector4[] ringOutGaps = new Vector4[0];
+
+    [Tooltip("How far past a gap's line (world units) the fighter's centre must be to be out - " +
+             "the floor's lip, where the drop starts.")]
+    [SerializeField] private float ringOutDepth = 2f;
+
     [Tooltip("Log the first time each fighter is pushed back in.")]
     [SerializeField] private bool debugLogs = false;
 
@@ -99,6 +108,50 @@ public class ArenaBounds : MonoBehaviour
         return Instance != null ? Instance.Clamp(p, bodyRadius) : p;
     }
 
+    /// <summary>
+    /// True when <paramref name="p"/> has gone out through a ring-out gap; <paramref name="outward"/>
+    /// is the direction away from the arena through that gap (for the fall).
+    /// </summary>
+    public bool IsRingOut(Vector3 p, out Vector3 outward)
+    {
+        outward = Vector3.zero;
+        for (int i = 0; i < ringOutGaps.Length; i++)
+        {
+            Vector4 g = ringOutGaps[i];
+            Vector2 a = new Vector2(g.x, g.y), b = new Vector2(g.z, g.w);
+            Vector2 along = b - a;
+            float len = along.magnitude;
+            if (len < 0.01f) continue;
+            along /= len;
+            Vector2 normal = new Vector2(-along.y, along.x);
+            Vector2 mid = (a + b) * 0.5f;
+            if (Vector2.Dot(normal, mid - new Vector2(centre.x, centre.z)) < 0f) normal = -normal;
+
+            Vector2 rel = new Vector2(p.x, p.z) - a;
+            float t = Vector2.Dot(rel, along);
+            if (t < 0f || t > len) continue;
+            if (Vector2.Dot(rel, normal) < ringOutDepth) continue;
+
+            outward = new Vector3(normal.x, 0f, normal.y);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>Static form of <see cref="IsRingOut(Vector3, out Vector3)"/> against the active bounds.</summary>
+    public static bool RingOutAt(Vector3 p, out Vector3 outward)
+    {
+        outward = Vector3.zero;
+        return Instance != null && Instance.IsRingOut(p, out outward);
+    }
+
+    /// <summary>Sets the ring-out gaps from code (setup evals).</summary>
+    public void SetRingOutGaps(float depth, params Vector4[] gaps)
+    {
+        ringOutDepth = depth;
+        ringOutGaps = gaps ?? new Vector4[0];
+    }
+
     /// <summary>Called by Fighter so a push-back can be logged once per fighter.</summary>
     public bool DebugLogs => debugLogs;
 
@@ -133,6 +186,8 @@ public class ArenaBounds : MonoBehaviour
                 prev = next;
             }
         }
+        Gizmos.color = new Color(1f, 0.1f, 0.1f, 0.9f);
+        foreach (var g in ringOutGaps) Gizmos.DrawLine(new Vector3(g.x, 0.3f, g.y), new Vector3(g.z, 0.3f, g.w));
         Gizmos.color = new Color(0.3f, 0.9f, 1f, 0.9f);
         if (shape == Shape.Circle)
         {

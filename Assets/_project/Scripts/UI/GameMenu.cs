@@ -652,7 +652,8 @@ public class GameMenu : MonoBehaviour
                 // The ending names the WINNER, not the fallen (the user's call, 2026-10-24).
                 Fighter standing = null;
                 foreach (var w in Everyone()) if (w != f && w.gameObject.activeInHierarchy) standing = w;
-                if (stage != null) stage.Announce((standing != null ? standing.CharacterName : "Nobody") + "\nwins",
+                if (stage != null) stage.Announce((f.RingedOut ? "Ring out\n" : "") +
+                                                  (standing != null ? standing.CharacterName : "Nobody") + "\nwins",
                                                   MenuArt.BloodLit, 2.0f, null, 140);
                 StartCoroutine(ShowMatchOver(f));
                 return;

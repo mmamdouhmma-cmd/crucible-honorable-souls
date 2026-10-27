@@ -279,8 +279,10 @@ public class Fighter : MonoBehaviour
     public bool IsDead => isDead;
     private bool isDead = false;
 
-    /// <summary>Frames of stun an attacker eats when this fighter parries them.</summary>
-    public int ParryStunFrames => Mathf.Max(1, Mathf.RoundToInt(parryStunDuration / BalanceConfig.FRAME_TIME));
+    /// <summary>Frames of stun an attacker eats when this fighter parries them. Always outlasts
+    /// this fighter's counter window, so the parried man cannot swing before the counter.</summary>
+    public int ParryStunFrames => Mathf.Max(1, Mathf.RoundToInt(
+        Mathf.Max(parryStunDuration, parryCounterWindow + BalanceConfig.PARRY_STUN_PAST_COUNTER) / BalanceConfig.FRAME_TIME));
 
     [Header("Recovery")]
     [Tooltip("Stamina regained per second. Set per character.")]
@@ -435,6 +437,8 @@ public class Fighter : MonoBehaviour
             return;
         }
 
+        frameStart = transform.position;   // where this frame's moves began, for the obstacle block
+
         if (dashCounterTimer > 0f)
         {
             dashCounterTimer -= Time.deltaTime;
@@ -465,8 +469,116 @@ public class Fighter : MonoBehaviour
         HandleBlock();
         UpdateBlockLegs();
         HandleCombatInput();
+        BlockObstacles();
         ClampToArena();
+        CheckRingOut();
 
+    }
+
+    private Vector3 frameStart;
+    private readonly RaycastHit[] obstacleHits = new RaycastHit[8];
+
+    /// <summary>True once this fighter has gone out through a ring-out gap (he lost by falling).</summary>
+    public bool RingedOut { get; private set; }
+    private Coroutine ringOutFall;
+
+    /// <summary>
+    /// Stops this frame's movement at any obstacle taller than <see cref="BalanceConfig.OBSTACLE_STEP_HEIGHT"/>
+    /// (the user's call, 2026-10-27: fighters walked up the arena ledges, rocks and walls, worst in
+    /// the corners). The Rigidbody freezes X/Z, so PhysX can only resolve an overlap by lifting the
+    /// man - which is the climbing. Refusing the step before it overlaps is the only cure. A move
+    /// that hits slides along the obstacle's face; whatever is still blocked is dropped, and a dash
+    /// or knockback into it ends there, like at the arena edge.
+    /// </summary>
+    private void BlockObstacles()
+    {
+        Vector3 now = transform.position;
+        Vector3 move = now - frameStart;
+        move.y = 0f;
+        float dist = move.magnitude;
+        if (dist < 1e-5f) return;
+
+        // A cast that STARTS inside a surface reports nothing, so a slide along a curved wall could
+        // creep the probe into it a few millimetres a frame and then walk straight through (measured
+        // on the desert's 3.4-high wall). So the END of every move must also be clear - unless the
+        // frame began inside something, when any move is allowed so he can always get back out.
+        // No sliding along the face: fighters only move toward or away from each other, and on the
+        // desert's curved wall a slide carried 0.007 a frame outward, which was the creep.
+        bool startInside = OverlapsObstacle(frameStart);
+        bool blocked = ObstacleAhead(frameStart, move / dist, dist, out _);
+        if (!blocked && !startInside && OverlapsObstacle(now)) blocked = true;
+        if (!blocked) return;
+
+        transform.position = new Vector3(frameStart.x, now.y, frameStart.z);
+        if (isDashing) dashVelocity = Vector3.zero;
+        knockbackVelocity = Vector3.zero;
+    }
+
+    private readonly Collider[] obstacleOverlaps = new Collider[16];
+
+    /// <summary>True when the step-height-to-chest capsule at <paramref name="p"/> touches anything but a fighter.</summary>
+    private bool OverlapsObstacle(Vector3 p)
+    {
+        float r = Mathf.Max(0.05f, BodyRadius * 0.9f);
+        float h0 = BalanceConfig.OBSTACLE_STEP_HEIGHT + r;
+        float h1 = Mathf.Max(h0, BalanceConfig.OBSTACLE_PROBE_TOP - r);
+        int n = Physics.OverlapCapsuleNonAlloc(p + Vector3.up * h0, p + Vector3.up * h1, r, obstacleOverlaps, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+            if (obstacleOverlaps[i].GetComponentInParent<Fighter>() == null) return true;
+        return false;
+    }
+
+    /// <summary>Capsule cast from step height to chest height along <paramref name="dir"/>; fighters and triggers ignored.</summary>
+    private bool ObstacleAhead(Vector3 from, Vector3 dir, float dist, out Vector3 normal)
+    {
+        normal = Vector3.zero;
+        float r = Mathf.Max(0.05f, BodyRadius * 0.9f);
+        Vector3 bottom = from + Vector3.up * (BalanceConfig.OBSTACLE_STEP_HEIGHT + r);
+        Vector3 top = from + Vector3.up * Mathf.Max(BalanceConfig.OBSTACLE_STEP_HEIGHT + r, BalanceConfig.OBSTACLE_PROBE_TOP - r);
+        int n = Physics.CapsuleCastNonAlloc(bottom, top, r, dir, obstacleHits, dist + 0.02f, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            var hit = obstacleHits[i];
+            if (hit.distance <= 0f && hit.point == Vector3.zero) continue;   // started inside it: let him walk out
+            if (hit.collider.GetComponentInParent<Fighter>() != null) continue;
+            normal = hit.normal;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Through a ring-out gap and over the lip: he loses (the user's call, 2026-10-27 - walking out
+    /// counts too). Health goes to zero so the menu's ordinary K.O. path ends the match, and the
+    /// body falls away through the gap. In practice with infinite health both go back on the marks.
+    /// </summary>
+    private void CheckRingOut()
+    {
+        if (isDead || RingedOut) return;
+        if (!ArenaBounds.RingOutAt(transform.position, out Vector3 outward)) return;
+
+        var practice = PracticeMode.Instance;
+        if (practice != null && practice.Running && practice.infiniteHealth) { practice.ResetPositions(); return; }
+
+        RingedOut = true;
+        Debug.Log($"P{playerNumber}: RING OUT");
+        if (ReplayRecorder.Instance != null) ReplayRecorder.Instance.Mark($"P{playerNumber} ring out");
+        if (stats != null) stats.currentHealth = 0;
+        NotifyDeath();
+        ringOutFall = StartCoroutine(FallOut(outward));
+    }
+
+    private System.Collections.IEnumerator FallOut(Vector3 outward)
+    {
+        foreach (var c in GetComponents<Collider>()) if (!c.isTrigger) c.enabled = false;
+        if (rb != null) rb.isKinematic = true;
+        Vector3 v = outward * 3f;
+        for (float t = 0f; t < 3f; t += Time.deltaTime)
+        {
+            v += Physics.gravity * Time.deltaTime;
+            transform.position += v * Time.deltaTime;
+            yield return null;
+        }
     }
 
     /// <summary>
@@ -525,7 +637,9 @@ public class Fighter : MonoBehaviour
 
         if (!currentInput.defenseButton && !blockRaised) return;
 
-        bool busy = combatSystem != null && (combatSystem.IsAttacking || combatSystem.IsInHitstun || combatSystem.GuardBreakRecovering);
+        // A PARRIED stun leaves exactly one answer open: parrying the counter (the user's call, 2026-10-27).
+        bool stunBars = combatSystem != null && combatSystem.IsInHitstun && !combatSystem.ParriedStun;
+        bool busy = combatSystem != null && (combatSystem.IsAttacking || stunBars || combatSystem.GuardBreakRecovering);
         if (busy || isDashing) return;
 
         if (parryCooldownTimer > 0f)
@@ -552,6 +666,10 @@ public class Fighter : MonoBehaviour
         // A guard broken by stamina stays down through the break's stun AND the recovery after it.
         bool guardBroken = combatSystem != null && combatSystem.GuardBreakRecovering;
         isBlocking = currentInput.blockHeld && !isDashing && !attacking && !stunLocksGuard && !guardBroken && stats.currentStamina > 0;
+        // Stunned by a parry: the guard shows only while a parry window is open - no plain block,
+        // so a mistimed raise eats the counter.
+        if (combatSystem != null && combatSystem.ParriedStun)
+            isBlocking = currentInput.blockHeld && parryActiveTimer > 0f && stats.currentStamina > 0;
 
         if (isBlocking && stats.DrainStamina(Time.deltaTime, blockStaminaDrainPerSecond))
         {
@@ -689,7 +807,7 @@ public class Fighter : MonoBehaviour
     public void NotifyParried(int stunFrames)
     {
         PlayHitAnimation(HitSide.Straight);
-        if (combatSystem != null) combatSystem.ApplyHitstun(stunFrames);
+        if (combatSystem != null) combatSystem.ApplyHitstun(stunFrames, parried: true);
 
         dashCounterTimer = 0f;
         lastDodgeTime = -1f;
@@ -755,6 +873,13 @@ public void ResetForMatch(Vector3 position, Quaternion rotation)
     healFlashTimer = 0f;
     healFlashAmount = 0;
     isDead = false;
+    if (ringOutFall != null) { StopCoroutine(ringOutFall); ringOutFall = null; }
+    if (RingedOut)
+    {
+        RingedOut = false;
+        foreach (var c in GetComponents<Collider>()) if (!c.isTrigger) c.enabled = true;
+        if (rb != null) rb.isKinematic = false;
+    }
     lastDodgeDustTime = -99f;
     lungeStarted = false;
     if (combatSystem != null) combatSystem.ResetForMatch();
