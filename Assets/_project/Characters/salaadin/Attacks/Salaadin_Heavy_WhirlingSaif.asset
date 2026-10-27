@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 10
   staminaCost: 22
   armorPierce: 5
-  startupFrames: 17
+  startupFrames: 25
   activeFrames: 4
-  recoveryFrames: 13
+  recoveryFrames: 26
   animationClip: {fileID: 0}
   animatorTriggerName: HeavyAttack
   attackHeight: 3
@@ -54,6 +54,6 @@ MonoBehaviour:
     followUp: {fileID: 11400000, guid: 3f38675a7eabd504a86fa9b88e8ddb96, type: 2}
     requires: 1
     openerOnly: 0
-  cancelStartFrame: 17
+  cancelStartFrame: 25
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1

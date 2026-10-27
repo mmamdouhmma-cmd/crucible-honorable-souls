@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 7
   staminaCost: 16
   armorPierce: 0
-  startupFrames: 8
+  startupFrames: 16
   activeFrames: 3
-  recoveryFrames: 7
+  recoveryFrames: 14
   animationClip: {fileID: 0}
   animatorTriggerName: LightAttack
   attackHeight: 1
@@ -54,6 +54,6 @@ MonoBehaviour:
     followUp: {fileID: 11400000, guid: 7e5b25337311da34a9766685fa2f635c, type: 2}
     requires: 1
     openerOnly: 0
-  cancelStartFrame: 8
+  cancelStartFrame: 16
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1

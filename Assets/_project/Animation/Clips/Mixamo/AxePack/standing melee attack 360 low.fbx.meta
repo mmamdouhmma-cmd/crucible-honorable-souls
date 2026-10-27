@@ -34,8 +34,8 @@ ModelImporter:
       name: Bjorn_Medium_SpinningSlash
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 11.200001
-      lastFrame: 46.2
+      firstFrame: 13.563638
+      lastFrame: 48.563637
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -63,8 +63,8 @@ ModelImporter:
       name: Bjorn_Special_HewingCharge
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 7.200001
-      lastFrame: 56.2
+      firstFrame: 10.969232
+      lastFrame: 59.96923
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -92,8 +92,8 @@ ModelImporter:
       name: Buwaka_Special_SerpentSweep
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 13.250001
-      lastFrame: 49.25
+      firstFrame: 14.237314
+      lastFrame: 50.237312
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

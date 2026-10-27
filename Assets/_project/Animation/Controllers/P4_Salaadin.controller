@@ -174,7 +174,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Walk_Back
-  m_Speed: 1
+  m_Speed: 1.1258279
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -17639643576323005}
@@ -201,7 +201,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Medium_ShinCut
-  m_Speed: 1.0000001
+  m_Speed: 0.5681817
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4285678766431743475}
@@ -380,7 +380,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Back
-  m_Speed: 1.0256411
+  m_Speed: 0.51282054
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -1568160562201859980}
@@ -617,7 +617,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Light_SaifCut
-  m_Speed: 1.1000003
+  m_Speed: 0.59999996
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 6154231440653099939}
@@ -722,7 +722,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Riposte_Dash
-  m_Speed: 0.6666666
+  m_Speed: 0.3571429
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -8863867264099751728}
@@ -798,7 +798,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Riposte_Parry
-  m_Speed: 1.0666666
+  m_Speed: 0.57142854
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -2551659555219594105}
@@ -1170,7 +1170,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Special_HattinCleave
-  m_Speed: 2.1999998
+  m_Speed: 1.7492067
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1456,7 +1456,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Heavy_WhirlingSaif
-  m_Speed: 1
+  m_Speed: 0.61818177
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}
@@ -1508,7 +1508,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Special_CrescentSlash
-  m_Speed: 2
+  m_Speed: 1.4426229
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1605,7 +1605,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Forward
-  m_Speed: 1.3461539
+  m_Speed: 0.6730769
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1357148640049868881}
@@ -1828,7 +1828,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Walk_Forward
-  m_Speed: 1
+  m_Speed: 1.1494253
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 2898572388029439008}
@@ -1855,7 +1855,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Salaadin_Special_VeiledRush
-  m_Speed: 2
+  m_Speed: 1.4576272
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5648808868077471529}

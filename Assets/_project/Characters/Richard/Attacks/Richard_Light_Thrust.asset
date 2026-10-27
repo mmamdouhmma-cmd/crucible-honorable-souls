@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 8
   staminaCost: 17
   armorPierce: 5
-  startupFrames: 11
+  startupFrames: 22
   activeFrames: 3
-  recoveryFrames: 9
+  recoveryFrames: 18
   animationClip: {fileID: 0}
   animatorTriggerName: LightAttack
   attackHeight: 3

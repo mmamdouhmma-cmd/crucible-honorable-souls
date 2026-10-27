@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 9
   staminaCost: 14
   armorPierce: 0
-  startupFrames: 12
+  startupFrames: 24
   activeFrames: 4
-  recoveryFrames: 14
+  recoveryFrames: 28
   animationClip: {fileID: 0}
   animatorTriggerName: RiposteDash
   attackHeight: 1
@@ -49,6 +49,6 @@ MonoBehaviour:
     followUp: {fileID: 11400000, guid: 450ed3e3ec4029848a251b7588f1fd84, type: 2}
     requires: 0
     openerOnly: 1
-  cancelStartFrame: 12
+  cancelStartFrame: 24
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1

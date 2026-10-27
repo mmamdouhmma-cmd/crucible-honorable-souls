@@ -53,18 +53,18 @@ public static class CrucibleCharacterSetup
         // as "way too big for Miyamoto and Salaadin", so both come down 11%. That DOES invert the
         // intended ranking (Bjorn now stands below Salaadin, 2.71 against 2.80); the brief was the
         // two big men against the two small ones, not the order among them.
-        { "Richard",  3.340f },   // -> stature 2.89  (was 3.753 -> 3.25, -11%)
+        { "Richard",  3.642f },   // ORDER 2026-10-27 (user): 3.268 measured 2.889, x 3.22/2.889
         // 2026-10-26: NEW BODIES on Salaadin's rig (rebody.py) - re-calibrated to the user's call:
         // Miyamoto = Salaadin's height (2.80), Bjorn ~10cm taller (2.95). First rebuild measured
         // 2.494 / 2.119 in play; both scaled by target/measured.
-        { "Bjorn",    3.682f },   // -> stature 2.95  (3.113 x 2.95/2.494)
-        { "Salaadin", 3.857f },   // -> stature 2.80  (his idle crouches hardest, so the box has to be tallest)
-        { "Miyamoto", 3.815f },   // -> stature 2.80  (second pass: 3.732 measured 2.739, x 2.80/2.739)
+        { "Bjorn",    3.638f },   // ORDER 2026-10-27 (user): 3.502 measured 2.946, x 3.06/2.946
+        { "Salaadin", 4.008f },   // ORDER 2026-10-27 (user): 3.633 measured 2.629 (the scene was not at 3.857's size), x 2.90/2.629
+        { "Miyamoto", 3.426f },   // HD body 2026-10-27, spine re-fit (unfolded torso): 3.289 measured 2.688 in play, x 2.80/2.688
         // 2026-10-25 PLACEHOLDERS, to be calibrated in play like the four above (measure stature,
         // crown MINUS sole, in each man's own idle): Genghis reads as a big armoured tank
         // (between Bjorn and Richard), Buwaka a lean mid-sized hunter.
-        { "Genghis",  3.46f },   // calibrated 2026-10-26: 3.20 measured 2.568 in play, x 2.78/2.568
-        { "Buwaka",   3.10f },   // calibrated 2026-10-26: 3.05 measured 2.611 in play, x 2.65/2.611
+        { "Genghis",  3.750f },   // ORDER 2026-10-27 (user): 3.394 measured 2.842, x 3.14/2.842
+        { "Buwaka",   3.491f },   // ORDER 2026-10-27 (user): 3.642 measured 3.109, x 2.98/3.109
     };
 
     static float HeightOf(string charName) =>
@@ -77,13 +77,15 @@ public static class CrucibleCharacterSetup
     /// </summary>
     static readonly System.Collections.Generic.Dictionary<string, float> Stature = new System.Collections.Generic.Dictionary<string, float>
     {
-        { "Richard",  2.89f },
-        { "Bjorn",    2.95f },    // 2026-10-26 new body: Salaadin + ~10cm, the user's call
-        { "Salaadin", 2.80f },
-        { "Miyamoto", 2.80f },    // 2026-10-26 new body: Salaadin's height exactly
+        // Smallest to largest, the user's order (2026-10-27): Miyamoto, Salaadin, Buwaka, Bjorn,
+        // Genghis, Richard - even 0.08 steps from Miyamoto's 2.82.
+        { "Richard",  3.22f },
+        { "Bjorn",    3.06f },    // 2026-10-26 new body: Salaadin + ~10cm, the user's call
+        { "Salaadin", 2.90f },
+        { "Miyamoto", 2.82f },    // 2026-10-26 new body: Salaadin's height exactly
         // 2026-10-25 placeholders; re-measure with StandingHeight.
-        { "Genghis",  2.78f },
-        { "Buwaka",   2.65f },
+        { "Genghis",  3.14f },
+        { "Buwaka",   2.98f },   // the user's size experiment (root 3.3/3.5/3.3), 2026-10-27
     };
 
     static float StandingStature(string charName) =>
@@ -150,11 +152,11 @@ public static class CrucibleCharacterSetup
     static readonly System.Collections.Generic.Dictionary<string, float> GroundOffset = new System.Collections.Generic.Dictionary<string, float>
     {
         // 2026-10-26 new bodies (rebody.py): re-measured in play at the calibrated statures.
-        { "Bjorn", 0.153f / 4f },      // sole read -0.034 at 0.119
-        { "Miyamoto", 0.104f / 3f },   // sole read +0.013 at 0.117
+        { "Bjorn", 0.158f / 4f },      // size order 2026-10-27: sole read -0.005 at 0.153;      // sole read -0.034 at 0.119
+        { "Miyamoto", 0.169f / 2.8f },  // HD body 2026-10-27: sole read -0.072 at 0.0347 (root y-scale 2.8)
         // 2026-10-22c: re-measured after the -11% size change. GroundOffset is a FIXED root-local
         // lift, so shrinking the body left the same lift under shorter legs and he hovered 0.027.
-        { "Richard", 0.119f / 3f },
+        { "Richard", 0.182f / 3f },   // HD body 2026-10-27; size order: sole read -0.013 at 0.169
         // Re-measure this whenever a fighter's RIG or his IDLE CLIP changes - it depends on both.
         // Salaadin's moved twice on 2026-10-21: once when the rig was hand-edited (ankles from 12%
         // to 3.1% of height) and again when his idle went from the crouched hand-keyed guard to the
@@ -169,11 +171,11 @@ public static class CrucibleCharacterSetup
         // again. Measured in play on Salaadin_Idle as the lowest BAKED skinned vertex (a
         // SkinnedMeshRenderer's bounds are a loose box that does not track the pose, so they read
         // this wrong by half a metre): -0.1085 world, which is 0.0362 of root-local at root scale 3.
-        { "Salaadin", 0.109f / 3f },
+        { "Salaadin", 0.0825f / 3f },   // size order 2026-10-27: sole read +0.029 at 0.109 (root y-scale 3.3)
         // 2026-10-25 placeholders for the metarig pair; measure in play as the lowest BAKED
         // skinned vertex whose dominant bone is a foot/toe/ankle, in each man's own idle.
-        { "Genghis",  0.113f / 3f },   // re-measured 2026-10-26 at the calibrated stature: sole -0.013
-        { "Buwaka",   0.110f / 3f },   // re-measured 2026-10-26: sole -0.010
+        { "Genghis",  0.076f / 3.3f },   // size order 2026-10-27: sole read -0.009 at 0.067; // HD body 2026-10-27, root scale 3.3: sole verified in play
+        { "Buwaka",   0.073f / 3.5f }, // HD body 2026-10-27, root y-scale 3.5
     };
 
     /// <summary>
@@ -412,7 +414,7 @@ public static class CrucibleCharacterSetup
     static readonly System.Collections.Generic.Dictionary<string, (float bladeStartFrac, float leftGripFrac)> WeaponSpec =
         new System.Collections.Generic.Dictionary<string, (float, float)>
     {
-        { "Bjorn_Axe",       (0.62f, 0.50f) },   // 0.70 haft, butt at -0.21: head is the top ~38%; left hand 0.22 above the right (0.43/0.70)
+        { "Bjorn_Axe",       (0.62f, 0.586f) },  // 2026-10-27, the user's call: left fist RIGHT ABOVE the right one on the haft (the user's own axe seat in Bjorn_HD_rigged.blend). At 0.50 the left hand rode on the right WRIST; 0.586 = local z 0.0020 puts it on the wood, idle miss 0.0005
         { "Miyamoto_Katana", (0.24f, 0.04f) },   // blade starts past the tsuba; left hand near the kashira (0.023/0.57 up from the butt)
         { "Richard_Sword",   (0.20f, 0.00f) },   // 1.10 long with the grip at 0: the blade starts just past the cross guard
         { "Salaadin_Falchion", (0.24f, 0.00f) }, // 0.50 long, grip at 0: the curve starts just past the hilt
@@ -432,6 +434,14 @@ public static class CrucibleCharacterSetup
         // Bjorn_Axe (0.85) removed 2026-10-26: the user scaled the axe to 0.80 by hand in
         // Bjorn_Studio.blend and apply_studio_weapons.py baked it into the body FBX's node
         // scale - an entry here would stamp 0.85 back over it on every rebuild.
+    };
+
+    /// <summary>Per-shield visual scale, relative to the size the body FBX carries; see the off-hand
+    /// pass in SetupWeapon. Buwaka's shield read too big on the HD body (the user's call, 2026-10-27: minus 18%).</summary>
+    static readonly System.Collections.Generic.Dictionary<string, float> OffHandScale =
+        new System.Collections.Generic.Dictionary<string, float>
+    {
+        { "Buwaka_Shield", 0.82f },
     };
 
     /// <summary>
@@ -455,6 +465,24 @@ public static class CrucibleCharacterSetup
     /// Tuned 2026-10-21 against the live rigs: Richard's hilt sat 0.08 world ABOVE his fist (the hand closed on
     /// air below the grip), and the falchion was rolled edge-up, so every cut led with the spine.
     /// </summary>
+    /// <summary>
+    /// The off hand placed BY HAND in the scene: the LeftGrip socket's local transform under the weapon,
+    /// and TwoHandGrip.rotationWeight (1 = the hand takes the socket's rotation; 0 = it keeps the clip's
+    /// and only its position is solved). On the socket, red (+X) points out of the BACK of the hand and
+    /// green (+Y) along the fingers. Bjorn's was set by the user on 2026-10-27 against the HD body and
+    /// his own axe seat in Bjorn_HD_rigged.blend: the left fist on the haft just above the right one.
+    /// </summary>
+    static readonly System.Collections.Generic.Dictionary<string, (Vector3 localPos, Vector3 localEuler, float rotationWeight)> OffHandGripOverride =
+        new System.Collections.Generic.Dictionary<string, (Vector3, Vector3, float)>
+    {
+        { "Bjorn", (new Vector3(0.0013f, 0.0004f, 0.0024f), new Vector3(40f, 320f, 50f), 1f) },
+        // Set by the user in play on 2026-10-27 against the HD body and his own katana angle in
+        // Miyamoto_HD_rigged.blend (the WeaponSpec default, near the kashira, is out of the arm's reach there).
+        { "Miyamoto", (new Vector3(0.00013f, 0.0006f, 0f), new Vector3(70f, 90f, 180f), 1f) },
+        // Set by the user in play on 2026-10-27 against the HD body.
+        { "Genghis", (new Vector3(0.001f, -0.0002f, -0.00025f), new Vector3(30f, 50f, 40f), 1f) },
+    };
+
     static readonly System.Collections.Generic.Dictionary<string, (Vector3 localPos, Vector3 localEuler)> ShieldWeaponMount =
         new System.Collections.Generic.Dictionary<string, (Vector3, Vector3)>
     {
@@ -603,6 +631,25 @@ public static class CrucibleCharacterSetup
             r.transform.localRotation = Quaternion.Euler(om.localEuler);
             Debug.Log($"{charName}: {r.name} mounted at {om.localPos} / {om.localEuler}");
         }
+        // Off-hand gear SIZE (OffHandScale). Scaled about the mesh's own bounds centre so the shield
+        // shrinks in place and its boss stays on the fist; worked out from the FBX's own node values,
+        // so a second rebuild does not compound it.
+        foreach (var r in inst.GetComponentsInChildren<MeshRenderer>(true))
+        {
+            if (r.transform == weapon.transform) continue;
+            var sKey = OffHandScale.Keys.FirstOrDefault(k => r.name.StartsWith(k));
+            if (sKey == null) continue;
+            var t = r.transform;
+            var src = PrefabUtility.GetCorrespondingObjectFromSource(t) ?? t;
+            var offMesh = r.GetComponent<MeshFilter>();
+            Vector3 c = offMesh != null && offMesh.sharedMesh != null ? offMesh.sharedMesh.bounds.center : Vector3.zero;
+            // the bounds centre in the parent's space, measured on the transform as it now stands
+            Vector3 centreInParent = t.localPosition + t.localRotation * Vector3.Scale(t.localScale, c);
+            Undo.RecordObject(t, "off-hand scale");
+            t.localScale = src.localScale * OffHandScale[sKey];
+            t.localPosition = centreInParent - t.localRotation * Vector3.Scale(t.localScale, c);
+            Debug.Log($"{charName}: {r.name} scaled x{OffHandScale[sKey]} about its centre");
+        }
 
         bool twoHanded = TwoHanded.Contains(charName);
         if (!twoHanded)
@@ -653,6 +700,13 @@ public static class CrucibleCharacterSetup
         socket.localPosition = new Vector3(0f, 0f, gripY);
         var rightHand = rootAnim.GetBoneTransform(HumanBodyBones.RightHand);
         socket.rotation = rightHand != null ? rightHand.rotation : weapon.transform.rotation;
+        // A hand-placed off-hand grip wins over the haft-axis default above (see OffHandGripOverride).
+        bool gripOverride = OffHandGripOverride.TryGetValue(charName, out var og);
+        if (gripOverride)
+        {
+            socket.localPosition = og.localPos;
+            socket.localRotation = Quaternion.Euler(og.localEuler);
+        }
 
         // elbow hint: left of and behind the chest (root-local; root scale ~3-4) so the left arm bends outward
         var hint = player.transform.Find("LeftElbowHint");
@@ -669,6 +723,7 @@ public static class CrucibleCharacterSetup
         var sg = new SerializedObject(grip);
         sg.FindProperty("leftGrip").objectReferenceValue = socket;
         sg.FindProperty("leftElbowHint").objectReferenceValue = hint;
+        if (gripOverride) sg.FindProperty("rotationWeight").floatValue = og.rotationWeight;
         sg.ApplyModifiedProperties();
 
         // weapon aim toward the opponent during strikes

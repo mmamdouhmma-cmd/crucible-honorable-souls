@@ -34,8 +34,8 @@ ModelImporter:
       name: Richard_Heavy_Overhead
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 1
-      lastFrame: 31.8
+      firstFrame: 3.1927545
+      lastFrame: 33.992752
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -63,8 +63,8 @@ ModelImporter:
       name: Richard_Special_DoubleHigh
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 1
-      lastFrame: 31.8
+      firstFrame: 2.3000011
+      lastFrame: 33.1
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -92,8 +92,8 @@ ModelImporter:
       name: Salaadin_Heavy_WhirlingSaif
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 21.5
-      lastFrame: 38.5
+      firstFrame: 22.654545
+      lastFrame: 39.654545
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

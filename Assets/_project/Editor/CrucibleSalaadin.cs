@@ -314,8 +314,10 @@ public static class CrucibleSalaadin
                                             "Salaadin_Heavy_WhirlingSaif");
         SetList(sc.FindProperty("specials"), "Salaadin_Special_VeiledRush", "Salaadin_Special_CrescentSlash",
                                              "Salaadin_Special_HattinCleave");
-        sc.FindProperty("dashRiposte").objectReferenceValue = Attack("Salaadin_Riposte_Dash");
-        sc.FindProperty("parryRiposte").objectReferenceValue = Attack("Salaadin_Riposte_Parry");
+        // No riposte moves (the user's call, 2026-10-27): a counter after a dodge or a parry is an
+        // ordinary normal, special or combo with the counter bonus. The *_Riposte_* assets stay on disk.
+        sc.FindProperty("dashRiposte").objectReferenceValue = null;
+        sc.FindProperty("parryRiposte").objectReferenceValue = null;
         sc.ApplyModifiedProperties();
     }
 

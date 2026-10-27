@@ -1475,6 +1475,24 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   L -> SP+L inside combo pressure is refused by the flow rule (the authored string still links).
 - **`HitVolumeScale` in `CrucibleCharacterSetup`** scales a fighter's blade box (thickness,
   width, and length toward the tip) and sweep radius together: Bjorn 1.15 (sweep 0.23).
+- **Slow-game TEST settings (2026-10-27, the user's call, "we will be testing few things in editor")** -
+  four constants, each revertible by setting it to 1 and re-running `Apply the roster balance` +
+  `Use Mixamo packs` + `Wire combo strings`: `CrucibleBalance.AttackFrameScale` 2 (every move's
+  startup and recovery x2; active, hitstun and parry untouched), `DashTimeScale` 2 (dash duration and
+  i-frames x2, same distance; the run keeps its old pace via the new `Fighter.runSpeed`, written as
+  the table's dash speed), `WalkSpeedScale` 0.5 (walk 1.6-2.4 u/s) plus
+  `BalanceConfig.BACK_WALK_SPEED_MULTIPLIER` 0.85. The table keeps the ORIGINAL numbers.
+  `ComputeTrims` measures a contact window against the table's budget, so a stretched move plays
+  the same clip segment SLOWER (attack states now x0.5-1.3, most were 1.4-3.8). Walk states play
+  at ground speed / `CrucibleMixamoSetup.WalkStride` (each walk's measured ground speed at x1:
+  planted-foot speed with the walk playing in place, 1.0-1.75 u/s forward), clamped 0.8-2.0 - the
+  AxePack2H walk (Bjorn/Miyamoto/Genghis) has a short stride and hits the cap, so those three still
+  slide a little. **Ripostes are gone**: `dashRiposte`/`parryRiposte` are null on all six (and the
+  move-set scripts write null); a counter is any normal/special/combo thrown in the window, with the
+  counter bonus. The `*_Riposte_*` assets and animator states stay, unused.
+- **Size order (the user's, 2026-10-27)**: smallest to largest Miyamoto 2.82, Salaadin 2.90, Buwaka
+  2.98, Bjorn 3.06, Genghis 3.14, Richard 3.22 (even 0.08 steps; `Stature` table). Measured live
+  statures wander +-0.05 with the idle, so judge the order across runs, not one reading.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `PlayProbe`, `BladeTrace`

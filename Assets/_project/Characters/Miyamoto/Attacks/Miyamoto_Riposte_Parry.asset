@@ -16,20 +16,20 @@ MonoBehaviour:
   damage: 8
   staminaCost: 12
   armorPierce: 8
-  startupFrames: 16
+  startupFrames: 32
   activeFrames: 4
-  recoveryFrames: 5
+  recoveryFrames: 10
   animationClip: {fileID: 0}
   animatorTriggerName: RiposteParry
   attackHeight: 0
   attackType: 1
   specialButton: 0
   comesFrom: 2
-  swingFlow: 1
+  swingFlow: 5
   hitSide: 1
   hitstunFrames: 48
   hyperArmor: 0
-  hitboxRange: 3.0
+  hitboxRange: 3
   hitboxOffset: {x: 0, y: 1, z: 0}
   hitboxSize: {x: 1.4, y: 1, z: 1}
   aimMode: 3

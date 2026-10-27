@@ -34,8 +34,8 @@ ModelImporter:
       name: Miyamoto_Light_Thrust
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 20.45
-      lastFrame: 33.95
+      firstFrame: 20.35
+      lastFrame: 33.85
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -63,8 +63,8 @@ ModelImporter:
       name: Miyamoto_Riposte_Dash
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 19.1
-      lastFrame: 37.85
+      firstFrame: 19.132608
+      lastFrame: 37.882607
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -92,8 +92,8 @@ ModelImporter:
       name: Genghis_Light_SteppeCut
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 19.475
-      lastFrame: 35.225
+      firstFrame: 19.417309
+      lastFrame: 35.16731
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -121,8 +121,8 @@ ModelImporter:
       name: Genghis_Special_SteppeStorm
       takeName: mixamo.com
       internalID: -6556537087697243763
-      firstFrame: 13.700001
-      lastFrame: 43.4
+      firstFrame: 13.844001
+      lastFrame: 43.544
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -150,8 +150,8 @@ ModelImporter:
       name: Genghis_Riposte_Dash
       takeName: mixamo.com
       internalID: -7312523220118785054
-      firstFrame: 17.6
-      lastFrame: 39.35
+      firstFrame: 17.627777
+      lastFrame: 39.377777
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

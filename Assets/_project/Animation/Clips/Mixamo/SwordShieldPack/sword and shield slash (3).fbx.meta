@@ -34,8 +34,8 @@ ModelImporter:
       name: Richard_Riposte_Parry
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 17.6
-      lastFrame: 35.6
+      firstFrame: 17.642857
+      lastFrame: 35.642857
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -63,8 +63,8 @@ ModelImporter:
       name: Salaadin_Riposte_Dash
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 21.333334
-      lastFrame: 31.333334
+      firstFrame: 21.357143
+      lastFrame: 31.357143
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

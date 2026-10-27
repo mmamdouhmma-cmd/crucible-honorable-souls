@@ -126,6 +126,17 @@ public class GameMenu : MonoBehaviour
     // fighters, in scene order; index 0 is whoever starts the scene as Player 1
     Fighter[] roster = new Fighter[0];
     Vector3[] sideMark = new Vector3[0];     // spawn marks BY SIDE (0 = P1's side)
+
+    // The two start marks, held HERE rather than read off the fighters. They used to be wherever
+    // the first two roster entries stood at scene load, so moving fighters in the scene to compare
+    // sizes moved the match spawns and the character-select ring with them (2026-10-27). The
+    // defaults are Player1's and Player2's committed spots; the match spreads them to
+    // MATCH_START_GAP about their midpoint, and the ring is centred on that midpoint.
+    [Header("Start marks (independent of where the fighters stand)")]
+    [SerializeField] Vector3 p1Mark = new Vector3(-0.217f, 0.24f, -0.209f);
+    [SerializeField] float p1Yaw = 90f;
+    [SerializeField] Vector3 p2Mark = new Vector3(2.078f, 0.75f, -0.065f);
+    [SerializeField] float p2Yaw = -90f;
     Quaternion[] sideRot = new Quaternion[0];
     float[] ownY = new float[0];             // each fighter keeps its own height; the roots differ
 
@@ -266,6 +277,8 @@ public class GameMenu : MonoBehaviour
             sideRot[i] = roster[i].transform.rotation;
             ownY[i] = roster[i].transform.position.y;
         }
+        if (n > 0) { sideMark[0] = p1Mark; sideRot[0] = Quaternion.Euler(0f, p1Yaw, 0f); }
+        if (n > 1) { sideMark[1] = p2Mark; sideRot[1] = Quaternion.Euler(0f, p2Yaw, 0f); }
 
         LoadSettings();
         BuildCanvas();
@@ -2603,8 +2616,8 @@ public class GameMenu : MonoBehaviour
                              $"{rp.attack.StaminaCost,2} stam   {rp.attack.StartupFrames}/{rp.attack.ActiveFrames}/{rp.attack.RecoveryFrames}{next}";
             }
             yield return "";
-            yield return "   A special costs about 2.5x the stamina of the strike it shares a button with. A dodge or";
-            yield return "   a parry re-points the strike buttons at that fighter's riposte, and gives health back.";
+            yield return "   A special costs about 2.5x the stamina of the strike it shares a button with. Any strike";
+            yield return "   thrown right after a dodge or a parry is a counter: extra damage, and health back.";
             yield break;
         }
 

@@ -287,8 +287,10 @@ public static class CrucibleGenghis
                                             "Genghis_Heavy_KhanCleave");
         SetList(sc.FindProperty("specials"), "Genghis_Special_SteppeStorm", "Genghis_Special_HordeBreaker",
                                              "Genghis_Special_WrathOfTengri");
-        sc.FindProperty("dashRiposte").objectReferenceValue = Attack("Genghis_Riposte_Dash");
-        sc.FindProperty("parryRiposte").objectReferenceValue = Attack("Genghis_Riposte_Parry");
+        // No riposte moves (the user's call, 2026-10-27): a counter after a dodge or a parry is an
+        // ordinary normal, special or combo with the counter bonus. The *_Riposte_* assets stay on disk.
+        sc.FindProperty("dashRiposte").objectReferenceValue = null;
+        sc.FindProperty("parryRiposte").objectReferenceValue = null;
         sc.ApplyModifiedProperties();
     }
 

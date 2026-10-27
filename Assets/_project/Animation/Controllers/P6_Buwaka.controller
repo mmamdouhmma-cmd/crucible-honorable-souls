@@ -52,7 +52,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Ender_SerpentCoil
-  m_Speed: 1.1999998
+  m_Speed: 0.6447762
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -8849451865526322822}
@@ -198,7 +198,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Walk_Back
-  m_Speed: 1
+  m_Speed: 1.1184211
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -17639643576323005}
@@ -225,7 +225,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Medium_SavannaCut
-  m_Speed: 1.1999999
+  m_Speed: 0.6480001
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4285678766431743475}
@@ -280,7 +280,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Right
-  m_Speed: 1.25
+  m_Speed: 0.625
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -1390277010461787777}
@@ -418,7 +418,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Back
-  m_Speed: 0.952381
+  m_Speed: 0.4761905
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -1568160562201859980}
@@ -589,7 +589,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Light_HornCut
-  m_Speed: 1.104762
+  m_Speed: 0.5948718
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 6154231440653099939}
@@ -720,7 +720,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Riposte_Dash
-  m_Speed: 1.1333334
+  m_Speed: 0.60714287
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -8863867264099751728}
@@ -796,7 +796,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Riposte_Parry
-  m_Speed: 1.1333334
+  m_Speed: 0.60714287
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -2551659555219594105}
@@ -1174,7 +1174,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Special_GreatImpale
-  m_Speed: 1.1600001
+  m_Speed: 0.92063504
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1407,7 +1407,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Left
-  m_Speed: 1.1904762
+  m_Speed: 0.5952381
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -3095968933887571194}
@@ -1459,7 +1459,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Heavy_IklwaThrust
-  m_Speed: 1.2444444
+  m_Speed: 0.6588236
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}
@@ -1511,7 +1511,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Special_FallingSpear
-  m_Speed: 1.8000002
+  m_Speed: 1.2093749
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1569,7 +1569,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Forward
-  m_Speed: 1.25
+  m_Speed: 0.625
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1357148640049868881}
@@ -1858,7 +1858,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Walk_Forward
-  m_Speed: 1
+  m_Speed: 1.1494253
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 2898572388029439008}
@@ -1910,7 +1910,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Special_SerpentSweep
-  m_Speed: 1.7999998
+  m_Speed: 1.0746269
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5648808868077471529}

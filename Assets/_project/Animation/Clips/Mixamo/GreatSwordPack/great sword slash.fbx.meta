@@ -34,8 +34,8 @@ ModelImporter:
       name: Bjorn_Heavy_OverheadDoubleAxe
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 3.0499985
-      lastFrame: 37.25
+      firstFrame: 5.2274194
+      lastFrame: 39
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -63,8 +63,8 @@ ModelImporter:
       name: Miyamoto_Medium_SideSlash
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 12.299999
-      lastFrame: 28.499998
+      firstFrame: 12.1875
+      lastFrame: 28.387499
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -92,8 +92,8 @@ ModelImporter:
       name: Genghis_Medium_HordeSlash
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 10.099998
-      lastFrame: 29.699999
+      firstFrame: 9.992307
+      lastFrame: 29.592308
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -121,8 +121,8 @@ ModelImporter:
       name: Genghis_Special_HordeBreaker
       takeName: mixamo.com
       internalID: -6556537087697243763
-      firstFrame: 3.7499986
-      lastFrame: 37.95
+      firstFrame: 3.9051716
+      lastFrame: 38.10517
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

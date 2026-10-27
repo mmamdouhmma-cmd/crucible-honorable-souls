@@ -34,8 +34,8 @@ ModelImporter:
       name: Bjorn_Heavy_SpinOverhead
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 6.2
-      lastFrame: 52.2
+      firstFrame: 11
+      lastFrame: 57
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -92,8 +92,8 @@ ModelImporter:
       name: Genghis_Riposte_Parry
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 23
-      lastFrame: 51.800003
+      firstFrame: 23.089552
+      lastFrame: 51.889553
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

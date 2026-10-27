@@ -296,7 +296,7 @@ public static class CrucibleBalance
         so.FindProperty("maxStamina").intValue = v.stamina;
         so.FindProperty("armor").intValue = v.armor;
         so.FindProperty("damageMultiplier").intValue = v.damageMultiplier;
-        so.FindProperty("movementSpeed").intValue = v.moveSpeed;
+        so.FindProperty("movementSpeed").intValue = Mathf.RoundToInt(v.moveSpeed * WalkSpeedScale);
         so.ApplyModifiedProperties();
         EditorUtility.SetDirty(data);
     }
@@ -310,9 +310,10 @@ public static class CrucibleBalance
         so.FindProperty("damage").intValue = m.damage;
         so.FindProperty("staminaCost").intValue = m.stamina;
         so.FindProperty("armorPierce").intValue = m.pierce;
-        so.FindProperty("startupFrames").intValue = m.startup;
+        bool userSet = UserFrames.TryGetValue(m.asset, out var uf);
+        so.FindProperty("startupFrames").intValue = userSet ? uf.startup : Mathf.RoundToInt(m.startup * FrameScaleFor(m.asset));
         so.FindProperty("activeFrames").intValue = m.active;
-        so.FindProperty("recoveryFrames").intValue = m.recovery;
+        so.FindProperty("recoveryFrames").intValue = userSet ? uf.recovery : Mathf.RoundToInt(m.recovery * FrameScaleFor(m.asset));
         // UNIFORM HITSTUN (the user's call, 2026-10-24): every stun is 0.5 s, overriding the
         // per-move hitstun columns, which stay in the rows for the day this is per-move again.
         so.FindProperty("hitstunFrames").intValue = UniformHitstunFrames;
@@ -489,6 +490,67 @@ public static class CrucibleBalance
     // BalanceConfig.COMBO_WRONG_DODGE_STUN_FRAMES (60).
     const int UniformHitstunFrames = 48;
 
+    // SLOWER, WEIGHTIER FIGHTING (the user's call, 2026-10-27, "for testing a few things in the editor"):
+    // every move's startup and recovery are written at x2 of the numbers in the table above, and every
+    // dash takes x2 as long over the same ground (its i-frames x2 too, so the same SHARE of it evades).
+    // Active frames, hitstun, parry timing and the run are untouched. The table keeps the old numbers,
+    // so setting these back to 1 and re-running Apply + Use Mixamo packs restores the old game exactly.
+    // Use Mixamo packs plays the SAME clip segment over the longer budget, so the swings slow down too -
+    // most of them were running at 1.4-3.8x their capture pace and now sit near it.
+    public const float AttackFrameScale = 2f;
+    public const float DashTimeScale = 2f;
+    // Specials 25% FASTER than that (the user's call, same day): startup and recovery x0.8 on top of
+    // AttackFrameScale, so the move takes 1/1.25 the time and its clip plays 1.25x faster (ComputeTrims
+    // cuts the same segment). Miyamoto's SP+Light (Nukitsuke) is left out, also the user's call.
+    public const float SpecialSpeedUp = 1.25f;
+    static readonly HashSet<string> SpecialSpeedUpExempt = new HashSet<string> { "Miyamoto_Special_Nukitsuke" };
+
+    /// <summary>EXACT startup / recovery the user set by hand in the editor (2026-10-27, after the x2 and
+    /// the special speed-up), written verbatim - no scale applies. They are not multiples of the table's
+    /// numbers, so they live here instead of being folded back into the rows. Delete an entry to hand
+    /// the move back to the table x FrameScaleFor.</summary>
+    public static readonly Dictionary<string, (int startup, int recovery)> UserFrames = new Dictionary<string, (int, int)>
+    {
+        { "Bjorn_Medium_SpinningSlash", (26, 24) },
+        { "Bjorn_Heavy_OverheadDoubleAxe", (27, 30) },
+        { "Bjorn_Heavy_SpinOverhead", (27, 28) },
+        { "Bjorn_Special_HaftStrike", (25, 32) },
+        { "Bjorn_Special_HewingCharge", (25, 35) },
+        { "Bjorn_Special_BloodEagle", (28, 38) },
+        { "Richard_Heavy_Overhead", (30, 34) },
+        { "Richard_Special_DoubleHigh", (27, 27) },
+        { "Salaadin_Medium_ShinCut", (22, 18) },
+        { "Salaadin_Heavy_WhirlingSaif", (25, 26) },
+        { "Salaadin_Special_VeiledRush", (25, 29) },
+        { "Salaadin_Special_CrescentSlash", (26, 30) },
+        { "Salaadin_Special_HattinCleave", (26, 32) },
+        { "Genghis_Special_WrathOfTengri", (25, 30) },
+        { "Buwaka_Special_SerpentSweep", (30, 32) },
+        { "Buwaka_Special_FallingSpear", (30, 29) },
+        { "Buwaka_Special_GreatImpale", (30, 28) },
+    };
+
+    /// <summary>A move's frame budget as the TABLE row has it (startup + active + recovery, no scale), or
+    /// -1 when the move has no row. ComputeTrims cuts the animation window from this, so any stretch,
+    /// speed-up or hand-set frame count plays the same clip segment faster or slower.</summary>
+    public static int TableTotal(string asset)
+    {
+        foreach (var rows in Moves.Values)
+            foreach (var m in rows)
+                if (m.asset == asset) return m.startup + m.active + m.recovery;
+        return -1;
+    }
+
+    /// <summary>The factor a move's TABLE startup and recovery are written at. Also read by
+    /// CrucibleMixamoSetup.ComputeTrims, so the animation window is cut from the table's budget.</summary>
+    public static float FrameScaleFor(string asset) =>
+        AttackFrameScale * (asset.Contains("_Special_") && !SpecialSpeedUpExempt.Contains(asset) ? 1f / SpecialSpeedUp : 1f);
+    // Walk speed x0.5, same order across the roster (same day). At x1 every walk clip covers only
+    // 1.0-1.75 world units/s of ground on these bodies (measured: planted-foot speed, walk in place),
+    // and the old 3.2-4.8 u/s skated them across the arena at 2-4x their legs. Use Mixamo packs fits
+    // each walk's playback to the new ground speed (CrucibleMixamoSetup.WalkStride).
+    public const float WalkSpeedScale = 0.5f;
+
     // His art folder was created lowercase; every other fighter's matches the character name.
     static string Folder(string character) => character == "Salaadin" ? "salaadin" : character;
 
@@ -506,11 +568,13 @@ public static class CrucibleBalance
         so.FindProperty("armor").intValue = v.armor;
         so.FindProperty("staminaRecoveryPerSecond").floatValue = v.regen;
         so.FindProperty("dashDistance").floatValue = v.dashDistance;
-        so.FindProperty("dashDuration").floatValue = v.dashDuration;
+        so.FindProperty("dashDuration").floatValue = v.dashDuration * DashTimeScale;
+        // the run kept its old pace: it used to BE the dash speed, so pin it to the table's dash
+        so.FindProperty("runSpeed").floatValue = v.dashDistance / v.dashDuration;
         so.FindProperty("dashStaminaCost").intValue = v.dashStamina;
         so.FindProperty("blockDamageReduction").intValue = v.blockReduction;
         so.FindProperty("blockStaminaDrainPerSecond").floatValue = v.blockDrain;
-        so.FindProperty("dashIFrameDuration").floatValue = v.dashIFrames;
+        so.FindProperty("dashIFrameDuration").floatValue = v.dashIFrames * DashTimeScale;
         so.FindProperty("parryWindow").floatValue = v.parryWindow;
         so.FindProperty("parryStaminaCost").intValue = v.parryCost;
         so.FindProperty("parryCooldown").floatValue = v.parryCooldown;

@@ -35,6 +35,9 @@ public static class BalanceConfig
     // Walking with the guard up is slower (the user's call, 2026-10-24: -12%). The legs animate on
     // the BlockLegs animator layer while the upper body holds the block pose.
     public const float BLOCK_WALK_SPEED_MULTIPLIER = 0.88f;
+    // Backing up is slower than advancing (2026-10-27, with the walk/animation rebalance): every
+    // walk-back clip covers less ground per cycle than its walk forward.
+    public const float BACK_WALK_SPEED_MULTIPLIER = 0.85f;
     public const float POSTURE_BREAK_DURATION = 0.6f;
     
     // ==================== ATTACK STAMINA COSTS ====================

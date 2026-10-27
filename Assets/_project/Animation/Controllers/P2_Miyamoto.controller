@@ -232,7 +232,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Walk_Back
-  m_Speed: 1
+  m_Speed: 2
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -17639643576323005}
@@ -259,7 +259,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Medium_SideSlash
-  m_Speed: 1.7999998
+  m_Speed: 1.0124999
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4285678766431743475}
@@ -314,7 +314,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Right
-  m_Speed: 2.8787882
+  m_Speed: 1.4393941
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -1390277010461787777}
@@ -460,7 +460,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Back
-  m_Speed: 3.1060603
+  m_Speed: 1.5530301
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -1568160562201859980}
@@ -631,7 +631,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Light_Thrust
-  m_Speed: 1.8
+  m_Speed: 1
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 6154231440653099939}
@@ -761,7 +761,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Riposte_Dash
-  m_Speed: 1.5
+  m_Speed: 0.81521744
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -8863867264099751728}
@@ -837,7 +837,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Riposte_Parry
-  m_Speed: 1.5999999
+  m_Speed: 0.8695652
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -2551659555219594105}
@@ -1215,7 +1215,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Special_Iaijutsu
-  m_Speed: 1.4166667
+  m_Speed: 0.9714287
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1474,7 +1474,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Left
-  m_Speed: 2.80303
+  m_Speed: 1.401515
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -3095968933887571194}
@@ -1501,7 +1501,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Heavy_Overhead
-  m_Speed: 1.0000004
+  m_Speed: 0.5476192
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}
@@ -1553,7 +1553,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Special_NitoCross
-  m_Speed: 2.4
+  m_Speed: 1.62
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1611,7 +1611,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Special_Kuruma
-  m_Speed: 1.1818181
+  m_Speed: 0.78787875
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 5095289648131785075}
@@ -1638,7 +1638,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Forward
-  m_Speed: 1.6666667
+  m_Speed: 0.8333334
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1357148640049868881}
@@ -1883,7 +1883,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Walk_Forward
-  m_Speed: 1
+  m_Speed: 2
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 2898572388029439008}
@@ -1910,7 +1910,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Miyamoto_Special_Nukitsuke
-  m_Speed: 1.25
+  m_Speed: 0.69078946
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5648808868077471529}

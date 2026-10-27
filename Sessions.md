@@ -4245,3 +4245,38 @@ Two more calls the same evening:
   7/8/10 and 10 on all four specials, Richard L/H damage 8/13 and M startup 13, Genghis's Wrath of
   Tengri startup 20). A table-vs-live diff over every field `Apply` writes (FighterData, the scene
   Fighters, every move row) reads "no differences", so `Apply the roster balance` is safe again.
+
+### 2026-10-27 — Miyamoto's grip, Buwaka's latest blend + smaller shield, the slow-game test settings
+
+- Miyamoto's user-tuned LeftGrip saved into `OffHandGripOverride` (pos (0.00013, 0.0006, 0), euler
+  (70, 90, 180), rotationWeight 1). Wrist sits 0.11 short of the goal (arm at full stretch); looks right.
+- Buwaka re-exported from the user's 16:15 `Buwaka_HD_rigged.blend`; shield x0.82 via the new
+  `OffHandScale` table (scaled about its mesh centre, idempotent across rebuilds).
+- Frames x2 / dash x2 / walk x0.5 / back-walk x0.85 / ripostes removed - see the CLAUDE.md bullet.
+  Walk strides measured in place (planted-foot speed, 74-203 stance frames each). A live-match
+  version of the same probe on the desert arena got only 3-24 stance frames per walk - the uneven
+  floor defeats the "lowest foot" test - so it confirmed the ground speeds and nothing about slip.
+
+- **Miyamoto's folded abdomen**: not scale. `hd_rig.py`'s `fit_joints` read the spine off the torso's
+  FRONT profile height by height, and the sword through his sash pushed the 0.59-0.64 readings
+  forward; the fitted spine zig-zagged (Spine1 111 deg off, Spine/Spine1 at 46%/54% length) and
+  `conform` folded the HD mesh to straighten it onto the kept skeleton. `front_line()` now fits one
+  outlier-trimmed line through the profile; re-run conforms the spine at 0.0-0.1 deg / length 1.00.
+  Output in `ArtSource/Characters/HD/Miyamoto/spinefix/` (the user's own blend untouched; the katana
+  placement came through identical) and exported over `Miyamoto_Body.fbx`.
+- Rebuilt Player2 on the fixed body: the unfolded torso made the bind bounds taller, so he came out
+  2.688; StandingHeight 3.289 -> 3.426 puts him at 2.832, soles -0.001 (GroundOffset unchanged).
+- Specials x1.25 faster (`CrucibleBalance.SpecialSpeedUp`, `FrameScaleFor`; Miyamoto's Nukitsuke
+  exempt): startup/recovery 0.8 of the doubled values, animation playback up ~1.2x to match.
+- **Size order (the user's, smallest to largest): Miyamoto, Salaadin, Buwaka, Bjorn, Genghis, Richard**,
+  targets 2.82 / 2.90 / 2.98 / 3.06 / 3.14 / 3.22 (even steps, "keep the range"). StandingHeight +
+  Stature tables updated; Salaadin needed a second pass (the scene was not at his table's size,
+  3.633 gave 2.629 -> 4.008). GroundOffsets re-read for Bjorn, Richard, Genghis, Salaadin; soles
+  -0.005..+0.009. Statures read +-0.05 between runs (idle timing), so the two closest pairs
+  (Buwaka/Bjorn, Bjorn/Genghis) can sit within 0.03 of each other on one reading; the order held
+  on every run.
+- The user hand-tuned 17 moves' frames in the editor (mostly shorter startups, on top of the x2 and the
+  special speed-up). Not multiples of the table, so they live in `CrucibleBalance.UserFrames` (exact
+  startup/recovery, written verbatim). `ComputeTrims` now cuts every window from `TableTotal` (the
+  row's unscaled budget), so a hand-shortened startup plays the same clip segment FASTER rather than
+  cutting the wind-up off: Bjorn's Spin Overhead x1.05 -> x1.53 at 27 f startup.

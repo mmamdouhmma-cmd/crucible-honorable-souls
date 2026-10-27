@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 9
   staminaCost: 16
   armorPierce: 0
-  startupFrames: 12
+  startupFrames: 24
   activeFrames: 4
-  recoveryFrames: 14
+  recoveryFrames: 28
   animationClip: {fileID: 0}
   animatorTriggerName: RiposteDash
   attackHeight: 0

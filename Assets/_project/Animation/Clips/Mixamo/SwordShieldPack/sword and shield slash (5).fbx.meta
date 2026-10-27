@@ -34,8 +34,8 @@ ModelImporter:
       name: Richard_Medium_Slash
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 5.4
-      lastFrame: 27.8
+      firstFrame: 5.338461
+      lastFrame: 27.73846
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -63,8 +63,8 @@ ModelImporter:
       name: Richard_Special_ShieldBash
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 3.399999
-      lastFrame: 30.6
+      firstFrame: 3.266666
+      lastFrame: 30.466667
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -92,8 +92,8 @@ ModelImporter:
       name: Salaadin_Medium_ShinCut
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 20
-      lastFrame: 32.5
+      firstFrame: 20.181818
+      lastFrame: 32.681816
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -121,8 +121,8 @@ ModelImporter:
       name: Buwaka_Medium_SavannaCut
       takeName: mixamo.com
       internalID: -6556537087697243763
-      firstFrame: 8.399999
-      lastFrame: 24.599998
+      firstFrame: 8.327999
+      lastFrame: 24.528
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

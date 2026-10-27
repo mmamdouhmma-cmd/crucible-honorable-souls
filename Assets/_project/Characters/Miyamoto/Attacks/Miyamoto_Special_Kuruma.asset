@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 15
   staminaCost: 41
   armorPierce: 24
-  startupFrames: 10
+  startupFrames: 16
   activeFrames: 4
-  recoveryFrames: 8
+  recoveryFrames: 13
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialKuruma
   attackHeight: 0

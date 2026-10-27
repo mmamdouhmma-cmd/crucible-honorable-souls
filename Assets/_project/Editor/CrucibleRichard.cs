@@ -234,8 +234,10 @@ public static class CrucibleRichard
         var sc = new SerializedObject(combat);
         SetList(sc.FindProperty("attacks"), "Richard_Light_Thrust", "Richard_Medium_Slash", "Richard_Heavy_Overhead");
         SetList(sc.FindProperty("specials"), "Richard_Special_ShieldCharge", "Richard_Special_ShieldBash", "Richard_Special_DoubleHigh");
-        sc.FindProperty("dashRiposte").objectReferenceValue = Attack("Richard_Riposte_Dash");
-        sc.FindProperty("parryRiposte").objectReferenceValue = Attack("Richard_Riposte_Parry");
+        // No riposte moves (the user's call, 2026-10-27): a counter after a dodge or a parry is an
+        // ordinary normal, special or combo with the counter bonus. The *_Riposte_* assets stay on disk.
+        sc.FindProperty("dashRiposte").objectReferenceValue = null;
+        sc.FindProperty("parryRiposte").objectReferenceValue = null;
         sc.ApplyModifiedProperties();
 
         var anim = go.GetComponent<Animator>();

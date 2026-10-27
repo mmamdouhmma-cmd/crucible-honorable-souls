@@ -8,7 +8,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Heavy_OverheadDoubleAxe
-  m_Speed: 1.8000002
+  m_Speed: 1.0571802
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5028021779989187177}
@@ -128,7 +128,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Heavy_SpinOverhead
-  m_Speed: 2
+  m_Speed: 1.5254239
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -2857411683219726402}
@@ -320,7 +320,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Riposte_Dash
-  m_Speed: 1.9999998
+  m_Speed: 1.0714285
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -2457141488261650756}
@@ -394,7 +394,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Light_Slash
-  m_Speed: 1.7999998
+  m_Speed: 0.98999983
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -8019610540952669980}
@@ -641,7 +641,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Right
-  m_Speed: 2.1111112
+  m_Speed: 1.0555556
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -3820680488363845076}
@@ -818,7 +818,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Medium_SpinningSlash
-  m_Speed: 2.0000002
+  m_Speed: 1.2727273
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -880058307156642897}
@@ -964,7 +964,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Walk_Forward
-  m_Speed: 1
+  m_Speed: 1.6239316
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 6035518990712934871}
@@ -1013,7 +1013,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Special_HewingCharge
-  m_Speed: 2
+  m_Speed: 1.5076921
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -3894792010581330227}
@@ -1292,7 +1292,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Back
-  m_Speed: 2.2777777
+  m_Speed: 1.1388888
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -682203960301777304}
@@ -1403,7 +1403,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Left
-  m_Speed: 2.0555553
+  m_Speed: 1.0277777
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -181069246195649405}
@@ -1535,7 +1535,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Walk_Back
-  m_Speed: 1
+  m_Speed: 2
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 731141643290271850}
@@ -1666,7 +1666,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Forward
-  m_Speed: 1.2222222
+  m_Speed: 0.6111111
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -208769763827821102}
@@ -1824,7 +1824,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Special_BloodEagle
-  m_Speed: 2.2000003
+  m_Speed: 1.6422535
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4523066263607778070}
@@ -1851,7 +1851,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Riposte_Parry
-  m_Speed: 1.3000001
+  m_Speed: 0.69642866
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -7925010876262673026}
@@ -1903,7 +1903,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bjorn_Special_HaftStrike
-  m_Speed: 1.6000001
+  m_Speed: 1.1096776
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 8796495972763646983}

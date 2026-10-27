@@ -166,7 +166,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Walk_Back
-  m_Speed: 1
+  m_Speed: 1.0793651
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -17639643576323005}
@@ -193,7 +193,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Medium_Slash
-  m_Speed: 1.5999999
+  m_Speed: 0.8615384
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4285678766431743475}
@@ -270,7 +270,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Right
-  m_Speed: 1.0294118
+  m_Speed: 0.5147059
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -1390277010461787777}
@@ -408,7 +408,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Back
-  m_Speed: 0.78431374
+  m_Speed: 0.39215687
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -1568160562201859980}
@@ -579,7 +579,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Light_Thrust
-  m_Speed: 1.3000001
+  m_Speed: 0.6953489
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 6154231440653099939}
@@ -684,7 +684,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Riposte_Dash
-  m_Speed: 1.0000001
+  m_Speed: 0.53571427
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -8863867264099751728}
@@ -760,7 +760,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Riposte_Parry
-  m_Speed: 1.1999998
+  m_Speed: 0.6428571
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -2551659555219594105}
@@ -1132,7 +1132,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Special_DoubleHigh
-  m_Speed: 1.4
+  m_Speed: 1.0440676
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1365,7 +1365,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Left
-  m_Speed: 0.98039216
+  m_Speed: 0.49019608
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -3095968933887571194}
@@ -1417,7 +1417,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Heavy_Overhead
-  m_Speed: 1.4
+  m_Speed: 0.89296377
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}
@@ -1469,7 +1469,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Special_ShieldBash
-  m_Speed: 1.6
+  m_Speed: 1.0666667
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1527,7 +1527,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Forward
-  m_Speed: 1.0294118
+  m_Speed: 0.5147059
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1357148640049868881}
@@ -1777,7 +1777,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Walk_Forward
-  m_Speed: 1
+  m_Speed: 1.0666667
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 2898572388029439008}
@@ -1804,7 +1804,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Special_ShieldCharge
-  m_Speed: 1.3000001
+  m_Speed: 0.8478261
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5648808868077471529}

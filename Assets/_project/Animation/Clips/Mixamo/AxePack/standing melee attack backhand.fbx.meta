@@ -34,8 +34,8 @@ ModelImporter:
       name: Richard_Special_ShieldCharge
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 21.55
-      lastFrame: 41.05
+      firstFrame: 21.52174
+      lastFrame: 41.02174
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -63,8 +63,8 @@ ModelImporter:
       name: Salaadin_Special_VeiledRush
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 7.4999995
-      lastFrame: 50.5
+      firstFrame: 9.957626
+      lastFrame: 52.957626
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

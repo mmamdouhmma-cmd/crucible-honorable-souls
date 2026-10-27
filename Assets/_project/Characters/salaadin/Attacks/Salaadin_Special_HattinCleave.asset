@@ -18,7 +18,7 @@ MonoBehaviour:
   armorPierce: 10
   startupFrames: 26
   activeFrames: 5
-  recoveryFrames: 20
+  recoveryFrames: 32
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialHeavy
   attackHeight: 3

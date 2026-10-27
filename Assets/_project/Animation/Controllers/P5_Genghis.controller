@@ -171,7 +171,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Walk_Back
-  m_Speed: 1
+  m_Speed: 2
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -17639643576323005}
@@ -224,7 +224,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Medium_HordeSlash
-  m_Speed: 1.4
+  m_Speed: 0.75384617
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4285678766431743475}
@@ -279,7 +279,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Right
-  m_Speed: 2.1111112
+  m_Speed: 1.0555556
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -1390277010461787777}
@@ -403,7 +403,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Back
-  m_Speed: 2.2777774
+  m_Speed: 1.1388887
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -1568160562201859980}
@@ -574,7 +574,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Light_SteppeCut
-  m_Speed: 1.4999996
+  m_Speed: 0.8076923
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 6154231440653099939}
@@ -704,7 +704,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Riposte_Dash
-  m_Speed: 1.4999999
+  m_Speed: 0.80555564
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -8863867264099751728}
@@ -780,7 +780,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Riposte_Parry
-  m_Speed: 1.6000001
+  m_Speed: 0.8597016
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -2551659555219594105}
@@ -1339,7 +1339,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Left
-  m_Speed: 2.0555553
+  m_Speed: 1.0277777
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -3095968933887571194}
@@ -1366,7 +1366,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Heavy_KhanCleave
-  m_Speed: 1.0000002
+  m_Speed: 0.5316454
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}
@@ -1418,7 +1418,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Special_HordeBreaker
-  m_Speed: 1.8
+  m_Speed: 1.1756839
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1476,7 +1476,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Special_WrathOfTengri
-  m_Speed: 1.5999999
+  m_Speed: 1.1733334
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 5095289648131785075}
@@ -1503,7 +1503,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dash_Forward
-  m_Speed: 1.2222222
+  m_Speed: 0.6111111
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1357148640049868881}
@@ -1787,7 +1787,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Walk_Forward
-  m_Speed: 1
+  m_Speed: 1.7647059
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 2898572388029439008}
@@ -1814,7 +1814,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Special_SteppeStorm
-  m_Speed: 1.8
+  m_Speed: 1.1880001
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5648808868077471529}

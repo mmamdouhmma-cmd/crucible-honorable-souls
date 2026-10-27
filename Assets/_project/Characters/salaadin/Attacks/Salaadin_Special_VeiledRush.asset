@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 13
   staminaCost: 35
   armorPierce: 5
-  startupFrames: 20
+  startupFrames: 25
   activeFrames: 5
-  recoveryFrames: 18
+  recoveryFrames: 29
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialLight
   attackHeight: 1
@@ -49,6 +49,6 @@ MonoBehaviour:
     followUp: {fileID: 11400000, guid: bddc427dc5e1faf4fa3980d21826cb4f, type: 2}
     requires: 0
     openerOnly: 0
-  cancelStartFrame: 20
+  cancelStartFrame: 25
   cancelEndFrame: -1
   dodgedRecoveryFrames: -1

@@ -305,7 +305,13 @@ public static class CrucibleMixamoSetup
             float contact = ContactFrame(m.state);
             if (!float.IsNaN(contact))
             {
-                len = Mathf.Max(ContactSpeedFor(m.state) * total * 0.5f, 6f);   // source frames: speed x total/60 s x 30 fps
+                // source frames: speed x total/60 s x 30 fps - measured against the TABLE's budget, so a
+                // CrucibleBalance.AttackFrameScale stretch plays the same segment slower instead of
+                // showing more of the clip at the old pace
+                int tableTotal = CrucibleBalance.TableTotal(m.state);
+                float fs = CrucibleBalance.FrameScaleFor(m.state);
+                float authoredTotal = tableTotal > 0 ? tableTotal : s / fs + a + r / fs;
+                len = Mathf.Max(ContactSpeedFor(m.state) * authoredTotal * 0.5f, 6f);
                 start = contact - hitFrac * len;
             }
             if (start < first) start = first;
@@ -315,6 +321,23 @@ public static class CrucibleMixamoSetup
             Debug.Log($"{m.state}: clip {m.clip} frames {first}-{last}, peak {peak}, core {cs}-{ce}, contact {(float.IsNaN(contact) ? "-" : contact.ToString("F1"))} -> window {start:F1}-{end:F1} for {total} f (hit at {hitFrac:P0})");
         }
     }
+
+    // How much ground each fighter's walk covers at x1, world units/s (forward, back): the speed his
+    // PLANTED foot travels backward relative to his root while the walk plays in place, measured in play
+    // on 2026-10-27 against the HD bodies. A walk state plays at groundSpeed / stride so the feet stick,
+    // held to WalkAnimSpeedRange; past the cap the feet slide a little rather than the legs blur.
+    // Re-measure after a body's size or a walk clip changes.
+    static readonly Dictionary<string, (float fwd, float back)> WalkStride = new Dictionary<string, (float, float)>
+    {
+        { "Bjorn",    (1.17f, 0.75f) },
+        { "Miyamoto", (1.11f, 0.76f) },
+        { "Richard",  (1.50f, 1.26f) },
+        { "Salaadin", (1.74f, 1.51f) },
+        { "Genghis",  (1.02f, 0.67f) },
+        { "Buwaka",   (1.74f, 1.52f) },
+    };
+    static readonly Vector2 WalkAnimSpeedRange = new Vector2(0.8f, 2.0f);
+    const float BackWalkSpeedMultiplier = 0.85f;   // mirrors BalanceConfig.BACK_WALK_SPEED_MULTIPLIER (the editor asmdef cannot see it)
 
     const float ContactSpeed = 1.8f;   // playback speed used for contact-calibrated windows
     const float RunAnimSpeed = 1.1f;   // Run_Forward playback: +10% over the clip's own pace (the user's call, 2026-10-25)
@@ -567,7 +590,14 @@ public static class CrucibleMixamoSetup
         float dashDuration = 0.25f;
         var playerGo = GameObject.Find(playerName);
         var fighterComp = playerGo != null ? playerGo.GetComponent("Fighter") : null;
-        if (fighterComp != null) { var sf = new SerializedObject(fighterComp); var pd = sf.FindProperty("dashDuration"); if (pd != null) dashDuration = pd.floatValue; }
+        float walkSpeed = 0f;   // world units/s, from the fighter's FighterData
+        if (fighterComp != null)
+        {
+            var sf = new SerializedObject(fighterComp);
+            var pd = sf.FindProperty("dashDuration"); if (pd != null) dashDuration = pd.floatValue;
+            var data = sf.FindProperty("fighterData")?.objectReferenceValue;
+            if (data != null) walkSpeed = new SerializedObject(data).FindProperty("movementSpeed").intValue / 10f;
+        }
         var attacks = AssetDatabase.FindAssets("t:AttackData", new[] { attackDir })
             .Select(g => AssetDatabase.LoadAssetAtPath<ScriptableObject>(AssetDatabase.GUIDToAssetPath(g))).ToList();
         foreach (var m in map)
@@ -594,6 +624,15 @@ public static class CrucibleMixamoSetup
             {
                 cs.state.speed = clip.length / ReactDuration;
                 Debug.Log($"{m.state}: react {clip.length:F2}s fitted to {ReactDuration:F2}s, speed x{cs.state.speed:F2}");
+            }
+            // walks: playback fitted to the ground the fighter actually covers, so the feet stick
+            int walkAt = m.state.IndexOf("_Walk_");
+            if (walkAt > 0 && walkSpeed > 0f && WalkStride.TryGetValue(m.state.Substring(0, walkAt), out var stride))
+            {
+                bool back = m.state.EndsWith("_Back");
+                float ground = back ? walkSpeed * BackWalkSpeedMultiplier : walkSpeed;
+                cs.state.speed = Mathf.Clamp(ground / (back ? stride.back : stride.fwd), WalkAnimSpeedRange.x, WalkAnimSpeedRange.y);
+                Debug.Log($"{m.state}: walk {ground:F2} u/s over a {(back ? stride.back : stride.fwd):F2} u/s stride, speed x{cs.state.speed:F2}");
             }
             if (m.state.StartsWith("Dash_") && clip.length > 0.05f)
             {

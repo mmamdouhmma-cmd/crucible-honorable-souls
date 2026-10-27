@@ -134,6 +134,11 @@ public class Fighter : MonoBehaviour
     [SerializeField] private float dashDistance = 2.5f;
     [SerializeField] private float dashDuration = 0.25f;   // total dash time in seconds
     [SerializeField] private int dashStaminaCost = 25;
+    [Tooltip("Held double-flick run speed, world units per second. 0 = the dash speed " +
+             "(dashDistance / dashDuration), which is what the run was until the dash was slowed " +
+             "(2026-10-27); CrucibleBalance writes the old dash speed here so the run kept its pace.")]
+    [SerializeField] private float runSpeed = 0f;
+    private float RunSpeed => runSpeed > 0f ? runSpeed : dashDistance / Mathf.Max(dashDuration, 0.05f);
 
     [Tooltip("Seconds from the start of a dash during which it can still EVADE (the i-frames). " +
              "Past this the dash's tail is an ordinary target: it no longer dodges, and a forward " +
@@ -1051,6 +1056,7 @@ private void HandleMovement()
     float forwardAmount = facingRight ? currentInput.moveDirection : -currentInput.moveDirection;
     Vector3 forward = transform.forward;
     forward.y = 0f;
+    if (forwardAmount < 0f) moveSpeed *= BalanceConfig.BACK_WALK_SPEED_MULTIPLIER;
     Vector3 desiredMove = forward.normalized * forwardAmount * moveSpeed * Time.deltaTime;
 
     // No walking while flinching from a hit (the get-hit animation would slide along the ground)
@@ -1105,11 +1111,9 @@ private void HandleRun()
             return;
         }
 
-        // The run moves at this fighter's own dash speed, so the dash table is the run table.
-        float runSpeed = dashDistance / Mathf.Max(dashDuration, 0.05f);
         Vector3 forward = transform.forward;
         forward.y = 0f;
-        Vector3 step = forward.normalized * runSpeed * Time.deltaTime;
+        Vector3 step = forward.normalized * RunSpeed * Time.deltaTime;
         if (WouldCollideWithOpponent(step))
         {
             StopRun("reached the opponent");
@@ -1137,7 +1141,7 @@ private void HandleRun()
     // stops again, flapping the Running bool - and the animator - every other frame.
     Vector3 firstStep = transform.forward;
     firstStep.y = 0f;
-    firstStep = firstStep.normalized * (dashDistance / Mathf.Max(dashDuration, 0.05f))
+    firstStep = firstStep.normalized * RunSpeed
                 * Mathf.Max(Time.deltaTime, BalanceConfig.FRAME_TIME);
     if (WouldCollideWithOpponent(firstStep)) return;
 
