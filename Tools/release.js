@@ -27,9 +27,9 @@ try { run("gh", ["release", "view", tag]); console.error(`${tag} is already rele
 const zip = path.join(root, "Builds", `Crucible-${tag}-Win64.zip`);
 if (fs.existsSync(zip)) fs.unlinkSync(zip);
 console.log(`zipping ${buildDir} ...`);
-// Windows' bundled bsdtar writes zips and is far faster than Compress-Archive on ~600 MB. Named by full
-// path: Git Bash's GNU tar comes first on some PATHs and silently writes a TAR under a .zip name.
-run(path.join(process.env.SystemRoot || "C:\\Windows", "System32", "tar.exe"), ["-a", "-c", "-f", zip, "--exclude", "*_BurstDebugInformation_DoNotShip*", "--exclude", "build_result.txt", "-C", buildDir, "."]);
+// .NET's zip writer via PowerShell (make_zip.ps1): Explorer's "Extract all" rejects the "./"-prefixed
+// entries Windows' bsdtar writes, so that zip downloaded fine and would not open.
+run("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path.join(__dirname, "make_zip.ps1"), buildDir, zip, "Crucible"]);
 console.log(`${(fs.statSync(zip).size / 1048576).toFixed(0)} MB -> ${zip}`);
 
 console.log(`creating release ${tag} and uploading (this takes a while) ...`);
