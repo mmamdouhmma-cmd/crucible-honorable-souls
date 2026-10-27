@@ -14,7 +14,10 @@ using UnityEngine;
 ///   guest -> host   I move block L M H dashX dashY        (one per frame; pressed flags fire once)
 ///   host  -> guest  S t | x y z yaw hp st anim time move blocking | ... (one per fighter, ~20 Hz)
 ///                   R  (match (re)started)   P 1|0 (pause)   K (KO shown by the guest's own menu from hp)
-///   guest -> host   P 1|0 (pause request)    R (rematch request)
+///   guest -> host   P 1|0 (pause request)
+///   both ways       X cursor locked (character select)   V vote (K.O. card: 1 rematch, 2 select)
+///   host  -> guest  A arena (arena select)   F (on to the versus card)   G (back to character select)
+///                   E ... (an effect, sound, camera shake or kill shot that just played on the host)
 /// </summary>
 public class NetSession : MonoBehaviour
 {
@@ -48,9 +51,15 @@ public class NetSession : MonoBehaviour
     public JoinError LastJoinError { get; private set; }
     /// <summary>The fighter (roster index) the other player picked in the room, -1 until they say.</summary>
     public int PeerCharacter { get; private set; } = -1;
+    /// <summary>Character select: whether the other player has locked the fighter under their cursor.</summary>
+    public bool PeerLocked { get; private set; }
+    /// <summary>K.O. card: the other player's vote - 0 none yet, 1 rematch, 2 character select.</summary>
+    public int PeerVote { get; private set; }
     public event Action OnPeerJoined, OnStartReceived, OnPeerLeft, OnJoined;
+    /// <summary>Guest: the host moved the arena cursor / confirmed it / sent everyone back to the select.</summary>
+    public event Action<int> OnArenaReceived;
+    public event Action OnVersusReceived, OnSelectReceived;
     public event Action<bool> OnPauseReceived;
-    public event Action OnRematchRequested;
     /// <summary>Guest: the pause as the host says it stands - on, paused by (1 host / 2 guest), pauses spent by each.</summary>
     public event Action<bool, int, int, int> OnPauseState;
     /// <summary>Guest: the host's match rules for the coming fight.</summary>
@@ -77,6 +86,7 @@ public class NetSession : MonoBehaviour
     Coroutine locating;
     bool helloSent;
     int myCharacter = -1;
+    bool myLocked;
 
     void Awake()
     {
@@ -186,6 +196,8 @@ public class NetSession : MonoBehaviour
         RoomCode = code ?? "";
         PeerConnected = false;
         PeerCharacter = -1;
+        PeerLocked = false;
+        PeerVote = 0;
         CurrentPhase = Phase.Hosting;
         Status = "Opening the game...";
         Send("HOST " + RoomCode + "\t" + name);
@@ -243,9 +255,33 @@ public class NetSession : MonoBehaviour
 
     public void Leave() => Disconnect();
 
-    /// <summary>Tell the other player which fighter (roster index) I picked; repeated when they arrive.</summary>
-    public void SendCharacter(int index) { myCharacter = index; Send("C " + index); }
-    void SendCharacterEcho() { if (myCharacter >= 0) Send("C " + myCharacter); }
+    /// <summary>Character select: my cursor and lock, sent on every change and repeated when the other player arrives.</summary>
+    public void SendSelect(int index, bool locked)
+    {
+        myCharacter = index;
+        myLocked = locked;
+        Send("X " + index + " " + (locked ? 1 : 0));
+    }
+    void SendCharacterEcho() { if (myCharacter >= 0) Send("X " + myCharacter + " " + (myLocked ? 1 : 0)); }
+
+    /// <summary>Host: the arena cursor, so the guest watches the same ground come up.</summary>
+    public void SendArena(int arena) => Send("A " + arena);
+    /// <summary>Host: the arena is chosen, both go to the versus card.</summary>
+    public void SendVersus() => Send("F");
+    /// <summary>Host: both back to the character select (after the K.O. card's vote, or a back-out).</summary>
+    public void SendSelectAgain() => Send("G");
+    /// <summary>K.O. card: my vote, 0 none, 1 rematch, 2 character select.</summary>
+    public void SendVote(int vote) => Send("V " + vote);
+
+    /// <summary>Between fights: the room is open again and nothing streams. Votes and locks start over.</summary>
+    public void EnterSelectPhase()
+    {
+        if (CurrentPhase == Phase.Playing) CurrentPhase = CurrentRole == Role.Guest ? Phase.Joined : Phase.Hosting;
+        PeerVote = 0;
+        PeerLocked = false;
+        myLocked = false;
+        if (CurrentRole == Role.Host && InputManager.Instance != null) InputManager.Instance.SetAi(2, false);
+    }
 
     // ---------------------------------------------------------------- match hooks (called by GameMenu)
 
@@ -256,6 +292,7 @@ public class NetSession : MonoBehaviour
         if (InputManager.Instance != null) InputManager.Instance.SetAi(2, true);
         Send(string.Format(CultureInfo.InvariantCulture, "R {0} {1} {2} {3:0.##} {4}", p1, p2, arena, speed, regen ? 1 : 0));
         CurrentPhase = Phase.Playing;
+        PeerVote = 0;
         lastPeerHeard = Time.unscaledTime;
     }
 
@@ -279,6 +316,7 @@ public class NetSession : MonoBehaviour
             targetYaw[f.PlayerNumber - 1] = f.transform.eulerAngles.y;
         }
         CurrentPhase = Phase.Playing;
+        PeerVote = 0;
     }
 
     public void GuestLeaveMatch()
@@ -290,7 +328,100 @@ public class NetSession : MonoBehaviour
     }
 
     public void SendPause(bool on) => Send("P " + (on ? 1 : 0));
-    public void SendRematchRequest() => Send("R");
+
+    // ---------------------------------------------------------------- the host's effects, relayed
+    // The guest runs no combat (its CombatSystems are off and it only shows the host's state), so
+    // nothing that fires on a hit - blood, sparks, the parry flash, the dodge burst, the sounds, the
+    // camera shake, the kill shot - ever happened there. Each of those has one choke point (the same
+    // ones the game record hooks), and on the host each choke point also sends an "E" line here.
+
+    /// <summary>True on the host while a fight streams to a guest.</summary>
+    public static bool MuteForward;   // set around effects the guest makes for itself (the kill shot's blood)
+
+    public static bool Forwarding => !MuteForward && Instance != null && Instance.CurrentRole == Role.Host &&
+                                     Instance.CurrentPhase == Phase.Playing && Instance.PeerConnected;
+
+    static string N(float v) => v.ToString("0.###", CultureInfo.InvariantCulture);
+    static string V(Vector3 v) => N(v.x) + " " + N(v.y) + " " + N(v.z);
+    static string C(Color c) => N(c.r) + " " + N(c.g) + " " + N(c.b);
+
+    public static void ForwardFx(ReplayRecorder.Fx kind, Vector3 point, Vector3 dir, float radius, float strength)
+    {
+        if (Forwarding) Instance.Send("E f " + (int)kind + " " + V(point) + " " + V(dir) + " " + N(radius) + " " + N(strength));
+    }
+
+    public static void ForwardBlood(Fighter target, Fighter attacker, Color color)
+    {
+        if (Forwarding && target != null && attacker != null)
+            Instance.Send("E b " + target.PlayerNumber + " " + attacker.PlayerNumber + " " + C(color));
+    }
+
+    public static void ForwardSound(AudioClip clip, float volume, float pitch)
+    {
+        if (Forwarding && clip != null) Instance.Send("E s " + N(volume) + " " + N(pitch) + " " + clip.name);
+    }
+
+    public static void ForwardImpact(int damage, AttackType type, bool blocked)
+    {
+        if (Forwarding) Instance.Send("E i " + damage + " " + (int)type + " " + (blocked ? 1 : 0));
+    }
+
+    public static void ForwardClash()
+    {
+        if (Forwarding) Instance.Send("E c");
+    }
+
+    public static void ForwardKill(Fighter loser, Fighter attacker, Color color)
+    {
+        if (Forwarding && loser != null && attacker != null)
+            Instance.Send("E k " + loser.PlayerNumber + " " + attacker.PlayerNumber + " " + C(color));
+    }
+
+    Fighter ByNumber(int number)
+    {
+        foreach (var f in fighters) if (f != null && f.PlayerNumber == number) return f;
+        return null;
+    }
+
+    /// <summary>Guest: plays an effect line from the host.</summary>
+    void PlayForwarded(string msg)
+    {
+        var p = msg.Split(' ');
+        if (p.Length < 2) return;
+        switch (p[1])
+        {
+            case "f" when p.Length >= 11:
+            {
+                var at = new Vector3(F(p[3]), F(p[4]), F(p[5]));
+                var dir = new Vector3(F(p[6]), F(p[7]), F(p[8]));
+                float radius = F(p[9]), strength = F(p[10]);
+                switch ((ReplayRecorder.Fx)(int)F(p[2]))
+                {
+                    case ReplayRecorder.Fx.Sparks: HitEffects.SpawnSparks(at, dir, radius, strength); break;
+                    case ReplayRecorder.Fx.Parry: HitEffects.SpawnParryFlash(at, dir, radius, strength); break;
+                    case ReplayRecorder.Fx.Dust: HitEffects.SpawnDust(at, radius, strength); break;
+                    case ReplayRecorder.Fx.Dodge: HitEffects.SpawnDodgeBurst(at, radius, strength); break;
+                }
+                break;
+            }
+            case "b" when p.Length >= 7:
+                HitEffects.SpawnBlood(ByNumber((int)F(p[2])), ByNumber((int)F(p[3])), new Color(F(p[4]), F(p[5]), F(p[6])));
+                break;
+            case "s" when p.Length >= 5:
+                // the clip name may hold spaces: everything after the volume and the pitch
+                CrucibleAudio.PlayExact(CrucibleAudio.FindClip(string.Join(" ", p, 4, p.Length - 4)), F(p[2]), F(p[3]));
+                break;
+            case "i" when p.Length >= 5:
+                if (FightCamera.Instance != null) FightCamera.Instance.OnImpact((int)F(p[2]), (AttackType)(int)F(p[3]), p[4] == "1");
+                break;
+            case "c":
+                if (FightCamera.Instance != null) FightCamera.Instance.OnClash();
+                break;
+            case "k" when p.Length >= 7:
+                KillShot.Begin(ByNumber((int)F(p[2])), ByNumber((int)F(p[3])), new Color(F(p[4]), F(p[5]), F(p[6])));
+                break;
+        }
+    }
 
     void Bind()
     {
@@ -416,6 +547,10 @@ public class NetSession : MonoBehaviour
                 p.x, p.y, p.z, f.transform.eulerAngles.y,
                 f.Stats != null ? f.Stats.currentHealth : 0, f.Stats != null ? f.Stats.currentStamina : 0,
                 info.fullPathHash, info.normalizedTime % 1f, a != null ? a.GetFloat("MoveSpeed") : 0f, f.IsBlocking ? 1 : 0));
+            // the HUD's flashes and status line (PARRY!, CLASH, the heal float, COUNTER READY)
+            sb.Append(string.Format(CultureInfo.InvariantCulture, " {0:0.##} {1:0.##} {2:0.##} {3} {4:0.##} {5:0.##}",
+                f.ParryFlashTimeLeft, f.ClashFlashTimeLeft, f.HealFlashTimeLeft, f.HealFlashAmount,
+                f.ParryCounterTimeLeft, f.DashCounterTimeLeft));
         }
         return sb.ToString();
     }
@@ -431,11 +566,13 @@ public class NetSession : MonoBehaviour
             Status = "Waiting for a player...";
             return;
         }
-        if (msg == "PEER_JOINED") { PeerConnected = true; lastPeerHeard = Time.unscaledTime; Status = "Player joined"; SendCharacterEcho(); OnPeerJoined?.Invoke(); return; }
+        if (msg == "PEER_JOINED") { PeerConnected = true; PeerLocked = false; PeerVote = 0; lastPeerHeard = Time.unscaledTime; Status = "Player joined"; SendCharacterEcho(); OnPeerJoined?.Invoke(); return; }
         if (msg == "PEER_LEFT")
         {
             PeerConnected = false;
             PeerCharacter = -1;
+            PeerLocked = false;     // a new player must not inherit the last one's lock or vote
+            PeerVote = 0;
             Status = "The other player left";
             if (CurrentRole == Role.Guest) { CurrentRole = Role.None; CurrentPhase = Phase.Lobby; }
             else if (CurrentRole == Role.Host) CurrentPhase = Phase.Hosting;   // the room stays open for the next player
@@ -457,6 +594,8 @@ public class NetSession : MonoBehaviour
         {
             CurrentPhase = Phase.Joined;
             PeerConnected = true;
+            PeerLocked = false;
+            PeerVote = 0;
             lastPeerHeard = Time.unscaledTime;
             Status = "Joined. Waiting for the host to start...";
             SendCharacterEcho();
@@ -475,6 +614,14 @@ public class NetSession : MonoBehaviour
         lastPeerHeard = Time.unscaledTime;
         if (msg == "H") return;
         if (msg.StartsWith("C ")) { if (int.TryParse(msg.Substring(2).Trim(), out int c)) PeerCharacter = c; return; }
+        if (msg.StartsWith("X "))
+        {
+            var x = msg.Split(' ');
+            if (x.Length > 1 && int.TryParse(x[1], out int c)) PeerCharacter = c;
+            PeerLocked = x.Length > 2 && x[2] == "1";
+            return;
+        }
+        if (msg.StartsWith("V ")) { PeerVote = (int)F(msg.Substring(2).Trim()); return; }
         if (msg.StartsWith("O "))
         {
             var o = msg.Split(' ');
@@ -505,7 +652,6 @@ public class NetSession : MonoBehaviour
                 }
             }
             else if (msg.StartsWith("P ")) OnPauseReceived?.Invoke(msg.EndsWith("1"));
-            else if (msg == "R") OnRematchRequested?.Invoke();
         }
         else
         {
@@ -537,6 +683,8 @@ public class NetSession : MonoBehaviour
                         }
                         a.SetFloat("MoveSpeed", F(p[8]));
                     }
+                    if (p.Length >= 16)
+                        f.ApplyNetHud(F(p[10]), F(p[11]), F(p[12]), (int)F(p[13]), F(p[14]), F(p[15]), p[9] == "1");
                 }
             }
             else if (msg == "R" || msg.StartsWith("R "))
@@ -548,6 +696,10 @@ public class NetSession : MonoBehaviour
                 if (p.Length > 5) { RulesSpeed = F(p[4]); RulesRegen = p[5] == "1"; }
                 OnStartReceived?.Invoke();
             }
+            else if (msg.StartsWith("E ")) { if (CurrentPhase == Phase.Playing) PlayForwarded(msg); }
+            else if (msg.StartsWith("A ")) OnArenaReceived?.Invoke((int)F(msg.Substring(2).Trim()));
+            else if (msg == "F") OnVersusReceived?.Invoke();
+            else if (msg == "G") { EnterSelectPhase(); OnSelectReceived?.Invoke(); }
             else if (msg.StartsWith("P "))
             {
                 var p = msg.Split(' ');

@@ -4373,3 +4373,30 @@ Two more calls the same evening:
   offline Settings too - verified 65 -> 65 over 5 s with it off while a dodge heal still gave +5.
   `online.js` had its cloudflared path written with single backslashes (JS ate them), so it only
   ever worked with cloudflared on PATH; fixed, plus a `stop` command and an ONLINE banner.
+
+### 2026-10-28 — Online: shared character select, K.O. votes, guest effects
+
+The user's three online fixes. (1) The host no longer picks a fighter on a room page: "Open the game"
+and a successful join both land on the split character ring, each player scrolling his own half
+while the other half follows the network (`X`), then a host-steered arena select (`A`, `F`).
+(2) The K.O. card's Rematch / Change fighters are votes visible to both (`V`); the host resolves
+(both rematch = rematch, otherwise both to select via `G`); leaving closes the session for both -
+before, the guest's "character select" fell into an offline AI match. (3) The guest had no blood,
+effects, sounds or HUD flashes because only the host runs combat; the host now forwards them (`E`)
+and the state frame carries the HUD timers.
+
+Verified with the relay on localhost and `peer2.js` as the scripted other side, both roles:
+select sync + locks + merge, arena mirroring and the guest's arena input ignored, Vs -> fight,
+votes (both rematch, mixed -> select), quitting from the K.O. card, a peer leaving the select (host
+room stays open, tags read WAITING FOR A PLAYER), host Back closing the room, forwarded blood/
+parry/dodge particles + sound + shake on the guest, HUD timers through a hand-built `S` frame.
+Gotcha: `PeerLocked`/`PeerVote` must reset on PEER_JOINED/PEER_LEFT/JOINED, or the next player
+inherits the last one's lock.
+
+### 2026-10-28 — Dodge cancels attack recovery
+
+The user: "there is like a time out after throwing an attack, I can't dodge after any attack". The dash
+was refused for the WHOLE attack and the press was dropped, and the test-game x2 recovery plus the
+whiff penalty made a missed heavy ~1.5 s of no dodge. Chosen fix (of four offered): a dash cancels the
+recovery once the hit window has closed, and the skipped recovery becomes an attack lockout.
+Verified in play on Bjorn's whiffed heavy.

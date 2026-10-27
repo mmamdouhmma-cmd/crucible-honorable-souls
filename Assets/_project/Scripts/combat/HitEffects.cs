@@ -18,6 +18,7 @@ public static class HitEffects
         if (target == null || attacker == null) return;
         // The game record replays this call against the re-posed fighters (no-op unless recording).
         ReplayRecorder.NoteBlood(target, attacker, color);
+        NetSession.ForwardBlood(target, attacker, color);   // and an online guest sees it too
 
         float r = Mathf.Max(target.BodyRadius, 0.2f);
         Vector3 toAttacker = Flat(attacker.transform.position - target.transform.position, -target.transform.forward);
@@ -89,6 +90,7 @@ public static class HitEffects
     public static void SpawnSparks(Vector3 point, Vector3 direction, float bodyRadius, float strength = 1f)
     {
         ReplayRecorder.NoteFx(ReplayRecorder.Fx.Sparks, point, direction, bodyRadius, strength);
+        NetSession.ForwardFx(ReplayRecorder.Fx.Sparks, point, direction, bodyRadius, strength);
         SparksCore(point, direction, bodyRadius, strength);
     }
 
@@ -122,6 +124,7 @@ public static class HitEffects
     public static void SpawnParryFlash(Vector3 point, Vector3 direction, float bodyRadius, float strength)
     {
         ReplayRecorder.NoteFx(ReplayRecorder.Fx.Parry, point, direction, bodyRadius, strength);
+        NetSession.ForwardFx(ReplayRecorder.Fx.Parry, point, direction, bodyRadius, strength);
         float s = Mathf.Max(0.1f, strength);
         float scale = Mathf.Sqrt(s);
         SparksCore(point, direction, bodyRadius, s);
@@ -180,6 +183,7 @@ public static class HitEffects
     public static void SpawnDust(Vector3 point, float bodyRadius, float strength = 1f)
     {
         ReplayRecorder.NoteFx(ReplayRecorder.Fx.Dust, point, Vector3.up, bodyRadius, strength);
+        NetSession.ForwardFx(ReplayRecorder.Fx.Dust, point, Vector3.up, bodyRadius, strength);
         float s = Mathf.Max(0.1f, strength);
         float scale = Mathf.Sqrt(s);
         float r = Mathf.Max(bodyRadius, 0.2f);
@@ -205,6 +209,7 @@ public static class HitEffects
     public static void SpawnDodgeBurst(Vector3 point, float bodyRadius, float strength = 1f)
     {
         ReplayRecorder.NoteFx(ReplayRecorder.Fx.Dodge, point, Vector3.up, bodyRadius, strength);
+        NetSession.ForwardFx(ReplayRecorder.Fx.Dodge, point, Vector3.up, bodyRadius, strength);
         float s = Mathf.Max(0.1f, strength);
         float scale = Mathf.Sqrt(s);
         float r = Mathf.Max(bodyRadius, 0.2f);

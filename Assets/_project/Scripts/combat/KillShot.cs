@@ -40,12 +40,15 @@ public static class KillShot
     {
         if (dark) return;   // a double K.O. gets one presentation
         EnsureRunner();
+        NetSession.ForwardKill(loser, attacker, bloodColor);   // the online guest runs its own, blood and all
 
         // The blow itself bleeds, blocked or not - a killing hit through a guard still kills.
         if (loser != null && attacker != null)
         {
+            NetSession.MuteForward = true;
             HitEffects.SpawnBlood(loser, attacker, bloodColor);
             HitEffects.SpawnBlood(loser, attacker, bloodColor);
+            NetSession.MuteForward = false;
         }
 
         dark = true;

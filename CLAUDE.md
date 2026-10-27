@@ -957,6 +957,16 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   grep it to verify a build), and `VfxMaterials` falls back to `Sprites/Default` with a LogError
   instead of throwing. **For any works-in-Editor-not-in-app report, read the player log first**:
   `%USERPROFILE%\AppData\LocalLow\DefaultCompany\CRUCIBLE test\Player.log` (+ `Player-prev.log`).
+- **A dash DODGE-CANCELS an attack's recovery** (the user's call, 2026-10-28 - "I can't dodge after
+  any attack"; with the x2 test frames plus the whiff penalty a missed heavy locked the dash for
+  ~1.5 s and the press was dropped). Once the swing's hit window has closed
+  (`CombatSystem.CanDodgeCancel`: armed and disarmed), `HandleDash` calls `DodgeCancel`, which ends
+  the attack through the normal `FinishAttack` path (special/string/repeat lockouts still apply) and
+  serves the skipped recovery - whiff and dodged-swing extensions included - as `attackLockoutTimer`:
+  you can get away, you cannot swing sooner. The attack states have no Dash transition, so the
+  cancel `CrossFadeInFixedTime`s straight to `Dash_Forward/Back/Left/Right` (all six controllers).
+  Play-verified on Bjorn's whiffed heavy: cancel open f36, dash f41, Dash_Back by f44, a light at
+  f70 refused.
 - **Hitstun stops an in-progress dash** (2026-10-24, the user's call after a parried special
   whiffed): `HandleDash` ends the dash the frame `IsInHitstun` goes up - before that the dash
   carried a STUNNED fighter 1.96 world units (play-measured), which is what let a parried player
@@ -1552,6 +1562,23 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   BADCODE`, `PEER_JOINED/PEER_LEFT`); peer messages `C` pick, `R p1 p2 arena speed regen` start,
   `O speed regen` rules, `P` pause, `H` heartbeat, `I` guest input, `S` host state (first field =
   host `Time.timeScale`, which the guest copies).
+  - **Both players wait on the SPLIT CHARACTER RING, like local 2P** (2026-10-28, the user's call):
+    "Open the game" (host setup now also holds the speed and regen rows) and a successful join go
+    straight to `CharSelect` with `netRole` set - host = left half, guest = right. Each side drives
+    its own half with `MenuNavigate/Confirm/Back` and sends `X cursor locked`; the other half follows
+    `PeerCharacter`/`PeerLocked` (`GameMenu.UpdateOnlineSelect`). Both locked -> merge -> arena select,
+    which ONLY the host steers (`A arena`; the guest's input is ignored), then `F` -> both to Vs, and
+    the host's `StartMatch` sends `R`. The old `OnlineHost`/`OnlineGuest` room screens are unused.
+    Back on the select leaves the room; a peer leaving the select keeps the host's room open.
+  - **The K.O. card is a VOTE** (`V 1` rematch / `V 2` change fighters), each player's choice shown
+    on both cards; the host settles it once both are in: both rematch -> rematch, anything else ->
+    `G` and both back to the ring. "Leave the session" closes it for both. `matchSerial` drops a
+    K.O. card still on its 1.9 s delay when the host has already moved everyone on.
+  - **The guest runs no combat, so the host FORWARDS the presentation** (`E` lines from the same
+    choke points `ReplayRecorder` hooks: HitEffects spawns, `CrucibleAudio.Shot` minus UI sets,
+    `FightCamera.OnImpact/OnClash`, `KillShot.Begin`), and the `S` frame carries six HUD fields per
+    fighter (parry/clash/heal flash, heal amount, both counter windows) applied by
+    `Fighter.ApplyNetHud`. `NetSession.MuteForward` wraps effects the guest makes for itself.
   - **Host rules**: game speed 50-200% and "Health regen per second" on/off, set in the room, shown
     read-only to the guest. `Fighter.PassiveRegenOn` (static) gates ONLY the passive hp/s - the
     dodge/parry/counter heals always stay on (the user's call, 2026-10-28). Offline the same toggle

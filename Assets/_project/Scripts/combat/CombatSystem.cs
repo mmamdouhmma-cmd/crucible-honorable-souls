@@ -386,12 +386,20 @@ public class CombatSystem : MonoBehaviour
             }
         }
 
-        if (currentAttackTime >= total)
+        if (currentAttackTime >= total) FinishAttack();
+    }
+
+    /// <summary>
+    /// Ends the current attack the way running out its recovery does: the special, string and
+    /// repeat lockouts all apply. Shared by the natural end and the dodge cancel.
+    /// </summary>
+    private void FinishAttack(string reason = "ENDED")
+    {
         {
             int endedDepth = stringDepth;   // EndAttack clears it, and the lockout below needs it
             bool endedSpecial = currentAttack.IsSpecial;
             AttackData ended = currentAttack;   // the repeat bar below names the move itself
-            EndAttack();
+            EndAttack(reason);
 
             // A special is the most expensive thing a fighter can throw, so it costs a beat after it
             // as well as the stamina: that is what makes a whiffed one punishable instead of simply
@@ -767,6 +775,30 @@ public class CombatSystem : MonoBehaviour
 
     /// <summary>True if this fighter is mid-attack (any phase).</summary>
     public bool IsAttacking => isAttacking;
+
+    /// <summary>
+    /// The swing's hit window has closed (it armed and has since disarmed), so a dash may cut the
+    /// recovery short - see <see cref="DodgeCancel"/>.
+    /// </summary>
+    public bool CanDodgeCancel => isAttacking && currentAttack != null && hitboxStarted && !hitboxActive && !inHitstun;
+
+    /// <summary>
+    /// Dodge cancel (the user's call, 2026-10-28): a dash out of an attack's RECOVERY ends the attack
+    /// at once, but the recovery it skipped - the whiff and dodged-swing extensions included - is
+    /// served as an attack lockout. The fighter can get away; he cannot swing any sooner.
+    /// </summary>
+    public void DodgeCancel()
+    {
+        if (!CanDodgeCancel) return;
+        float pace = currentAttackPace * (currentAttackWeakened ? BalanceConfig.WEAKENED_ATTACK_PACE_MULTIPLIER : 1f);
+        float total = currentAttack.GetTotalDuration() + evadedExtraRecovery + whiffExtraRecovery;
+        float rest = Mathf.Max(0f, (total - currentAttackTime) / Mathf.Max(0.01f, pace));
+        hasBufferedInput = false;
+        bufferTimer = 0f;
+        FinishAttack("DODGE-CANCELLED");
+        attackLockoutTimer = Mathf.Max(attackLockoutTimer, rest);
+        if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: dodge cancel - attacks locked {rest:0.00}s (the recovery left)");
+    }
 
     /// <summary>True while this fighter is locked in a get-hit flinch and cannot act.</summary>
     public bool IsInHitstun => inHitstun;

@@ -168,6 +168,7 @@ public class FightCamera : MonoBehaviour
     /// </summary>
     public void OnImpact(int damage, AttackType type, bool blocked)
     {
+        NetSession.ForwardImpact(damage, type, blocked);   // the online guest's camera shakes with it
         // Only an unblocked heavy (or special) moves the camera. Punch-in and slow motion are
         // available (punchIn / slowMo toggles) but off: the fight reads cleaner without them.
         if (blocked || (type != AttackType.Heavy && type != AttackType.Special)) return;
@@ -186,6 +187,7 @@ public class FightCamera : MonoBehaviour
     /// <summary>Called when two attacks clash. Off by default (clashShake).</summary>
     public void OnClash()
     {
+        NetSession.ForwardClash();
         if (!clashShake) return;
         Shake(shakePerTenDamage * 2f, shakeDuration * 1.3f);
     }

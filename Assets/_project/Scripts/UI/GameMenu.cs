@@ -296,6 +296,8 @@ public class GameMenu : MonoBehaviour
         {
             Net.OnStartReceived += () =>
             {
+                matchSerial++;                  // a K.O. card still on its way belongs to the last fight
+                onlineVote = 0;
                 netRole = NetSession.Role.Guest;
                 vsAi = false;
                 flow = Flow.Online;
@@ -339,26 +341,52 @@ public class GameMenu : MonoBehaviour
                     ResumeLocal();
                 }
             };
-            Net.OnPeerJoined += () => Net.SendRules(onlineSpeed, onlineRegen);
-            Net.OnRematchRequested += () => { if (netRole == NetSession.Role.Host && !inMatch) StartMatch(); };
+            Net.OnPeerJoined += () =>
+            {
+                Net.SendRules(onlineSpeed, onlineRegen);
+                Notice("");
+                if (screen == Screen.CharSelect) RefreshCircleCards();
+            };
+            // Guest: the host runs the arena select and the versus card; this side follows.
+            Net.OnArenaReceived += a =>
+            {
+                arenaChoice = a;
+                if (screen == Screen.ArenaSelect) ShowHostsArena();
+            };
+            Net.OnVersusReceived += () =>
+            {
+                if (netRole != NetSession.Role.Guest) return;
+                ShowHostsArena();
+                vsAi = false;
+                GoWiped(Screen.Vs);
+            };
+            Net.OnSelectReceived += () => { if (netRole == NetSession.Role.Guest) EnterOnlineSelect(NetSession.Role.Guest); };
             Net.OnPeerLeft += () =>
             {
-                if (netRole != NetSession.Role.None)
+                if (netRole == NetSession.Role.None) return;
+                bool serverDown = Net.CurrentPhase == NetSession.Phase.Failed;
+                bool lostContact = Net.Status.StartsWith("Lost contact");
+                bool selecting = !inMatch && (screen == Screen.CharSelect || screen == Screen.ArenaSelect || screen == Screen.Vs);
+                // A host between fights keeps the room open: back to the select, waiting for the next player.
+                if (selecting && netRole == NetSession.Role.Host && Net.CurrentRole == NetSession.Role.Host && !serverDown)
                 {
-                    bool serverDown = Net.CurrentPhase == NetSession.Phase.Failed;
-                    bool lostContact = Net.Status.StartsWith("Lost contact");
-                    netRole = NetSession.Role.None;          // so EndMatchToMenu keeps the connection
-                    Net.GuestLeaveMatch();
-                    pausedBy = 0;
-                    EndMatchToMenu();
-                    if (!serverDown) Net.LeaveRoom();
-                    Notice(serverDown ? "" : lostContact ? "lost contact with your opponent - the fight is yours"
-                                                         : "your opponent left - the fight is yours", 10f);
-                    Show(Screen.Online);
+                    Notice(lostContact ? "lost contact with your opponent - waiting for a new player"
+                                       : "your opponent left - waiting for a new player", 10f);
+                    if (screen == Screen.CharSelect) { if (lock2) UnlockPlayer(2); RefreshCircleCards(); }
+                    else EnterOnlineSelect(NetSession.Role.Host);
                     return;
                 }
-                if (screen == Screen.OnlineGuest) { Notice("the host closed the game", 10f); Net.BrowseRooms(); BackTo(Screen.OnlineJoin); }
-                else if (screen == Screen.OnlineHost) Notice("your opponent left - the game is still open");
+                bool fighting = inMatch || screen == Screen.None || screen == Screen.Pause;
+                netRole = NetSession.Role.None;          // so EndMatchToMenu keeps the connection
+                Net.GuestLeaveMatch();
+                pausedBy = 0;
+                EndMatchToMenu();
+                if (!serverDown) Net.LeaveRoom();
+                Notice(serverDown ? ""
+                       : fighting ? (lostContact ? "lost contact with your opponent - the fight is yours" : "your opponent left - the fight is yours")
+                       : selecting && !lostContact ? "the host closed the game"
+                       : lostContact ? "lost contact with your opponent" : "your opponent left the session", 10f);
+                Show(Screen.Online);
             };
         }
 
@@ -379,6 +407,7 @@ public class GameMenu : MonoBehaviour
         float dt = Time.unscaledDeltaTime;
         screenAge += dt;
         if (netRole == NetSession.Role.Host && pausedBy != 0 && PauseSecondsLeft <= 0f) HostResume();
+        if (netRole != NetSession.Role.None && screen == Screen.MatchOver && (stage == null || !stage.Wiping)) UpdateOnlineVotes();
         if (inputGuard > 0f) inputGuard -= dt;
 
         AnimateRows(dt);
@@ -568,7 +597,9 @@ public class GameMenu : MonoBehaviour
 
     public void StartMatch()
     {
-        if (netRole == NetSession.Role.Guest) { Net?.SendRematchRequest(); return; }
+        if (netRole == NetSession.Role.Guest) return;   // online, the host starts every fight ("R")
+        matchSerial++;
+        onlineVote = 0;
 
         if (ArenaDirectory.Instance != null) ArenaDirectory.Instance.Select(arenaChoice);
         PlaceFighters();
@@ -754,15 +785,16 @@ public class GameMenu : MonoBehaviour
                 if (stage != null) stage.Announce((f.RingedOut ? "Ring out\n" : "") +
                                                   (standing != null ? standing.CharacterName : "Nobody") + "\nwins",
                                                   MenuArt.BloodLit, 2.0f, null, 140);
-                StartCoroutine(ShowMatchOver(f));
+                StartCoroutine(ShowMatchOver(f, matchSerial));
                 return;
             }
         }
     }
 
-    IEnumerator ShowMatchOver(Fighter loser)
+    IEnumerator ShowMatchOver(Fighter loser, int serial)
     {
         yield return new WaitForSecondsRealtime(1.9f);
+        if (serial != matchSerial) yield break;   // online, the host already moved both players on
         // Stop here, not at the K.O. itself: the death and the kill shot belong in the record.
         if (ReplayRecorder.Instance != null) ReplayRecorder.Instance.StopRecording();
         Fighter winner = null;
@@ -983,7 +1015,7 @@ public class GameMenu : MonoBehaviour
                                     upd.Current == GameUpdater.State.Installing || upd.Current == GameUpdater.State.Failed))
                     items.Add(new Item { label = "Update", value = () => UpdateRowValue(upd), confirm = () => { upd.Install(); Rebuild(); } });
                 items.Add(new Item { label = "Battle Now", value = () => "1 or 2 players on this device", confirm = () => { flow = Flow.Local; GoWiped(Screen.LocalSetup); } });
-                items.Add(new Item { label = "Online", value = () => "host or join a game", confirm = () => { flow = Flow.Online; InputManager.Instance?.ClearPlayerDevices(); onlineCharacter = p1Character; Net?.ConnectToServer(); Show(Screen.Online); } });
+                items.Add(new Item { label = "Online", value = () => "host or join a game", confirm = () => { flow = Flow.Online; InputManager.Instance?.ClearPlayerDevices(); Net?.ConnectToServer(); Show(Screen.Online); } });
                 items.Add(new Item { label = "Practice", value = () => "a dummy that obeys your rules", confirm = () => { flow = Flow.Practice; playerCount = 1; InputManager.Instance?.ClearPlayerDevices(); GoWiped(Screen.CharSelect); } });
                 items.Add(new Item { label = "Move List", confirm = () => Show(Screen.Moves) });
                 items.Add(new Item { label = "Records", value = () => "watch and export saved fights", confirm = () => Show(Screen.Records) });
@@ -1084,43 +1116,19 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Game name", value = () => FieldValue(hostNameField), field = hostNameField,
                                      adjust = d => { hostNamePreset = (hostNamePreset + d + HostNamePresets().Length) % HostNamePresets().Length; hostName = HostNamePresets()[hostNamePreset]; Rebuild(); } });
                 items.Add(new Item { label = "Code", value = () => FieldValue(hostCodeField), field = hostCodeField });
+                items.Add(new Item { label = "Game speed", value = () => "< " + Mathf.RoundToInt(onlineSpeed * 100f) + "% >", adjust = d => StepOnlineSpeed(d), confirm = () => StepOnlineSpeed(1) });
+                items.Add(new Item { label = "Health regen per second", value = () => "< " + OnOff(onlineRegen) + " >", adjust = d => ToggleOnlineRegen(), confirm = ToggleOnlineRegen });
                 items.Add(new Item { label = "", header = true });
-                items.Add(new Item { label = "Open the game", confirm = () =>
+                items.Add(new Item { label = "Open the game", value = () => "wait for a player on the fighter select", confirm = () =>
                 {
                     if (hostCode.Length != 0 && hostCode.Length != 6) { onlineNotice = "the code needs all 6 digits (or none)"; onlineNoticeUntil = Time.unscaledTime + 4f; Rebuild(); return; }
                     if (string.IsNullOrWhiteSpace(hostName)) hostName = HostNamePresets()[0];
                     Net.Host(hostName.Trim(), hostCode);
-                    Net.SendCharacter(onlineCharacter);
-                    Show(Screen.OnlineHost);
+                    EnterOnlineSelect(NetSession.Role.Host);
                 } });
                 items.Add(new Item { label = "Back", confirm = Back });
                 footerText.text = (fieldEdit != null ? "Type, then Enter    " : "Confirm on a field to type    ") + NavHint();
                 break;
-
-            case Screen.OnlineHost:
-            {
-                bool peer = Net != null && Net.PeerConnected;
-                SetTitle(Net != null ? Net.RoomName : "Hosting",
-                         OnlineNotice((hostCode.Length == 6 ? "code " + hostCode + " - " : "open game - ") + (peer ? "your opponent is here" : "waiting for a player...")));
-                items.Add(new Item { label = "Your fighter", value = () => "< " + CharacterLabel(onlineCharacter) + " >", adjust = d => StepOnlineCharacter(d), confirm = () => StepOnlineCharacter(1) });
-                items.Add(new Item { label = "Opponent", value = () => !peer ? "-" : Net.PeerCharacter >= 0 ? CharacterLabel(Net.PeerCharacter) : "choosing...", header = true, quiet = true });
-                items.Add(new Item { label = "Arena", value = () => "< " + ArenaLabel(arenaChoice) + " >", adjust = d => StepOnlineArena(d), confirm = () => StepOnlineArena(1) });
-                items.Add(new Item { label = "Game speed", value = () => "< " + Mathf.RoundToInt(onlineSpeed * 100f) + "% >", adjust = d => StepOnlineSpeed(d), confirm = () => StepOnlineSpeed(1) });
-                items.Add(new Item { label = "Health regen per second", value = () => "< " + OnOff(onlineRegen) + " >", adjust = d => ToggleOnlineRegen(), confirm = ToggleOnlineRegen });
-                items.Add(new Item { label = "", header = true });
-                items.Add(new Item { label = peer ? "Start the fight" : "Waiting for a player...", confirm = () =>
-                {
-                    if (Net == null || !Net.PeerConnected) return;
-                    int p2 = Net.PeerCharacter >= 0 ? Net.PeerCharacter : (onlineCharacter + 1) % Mathf.Max(1, roster.Length);
-                    ApplySides(onlineCharacter, p2);
-                    vsAi = false; playerCount = 2; flow = Flow.Online;
-                    netRole = NetSession.Role.Host;
-                    StartMatch();
-                } });
-                items.Add(new Item { label = "Close the game", confirm = Back });
-                footerText.text = "Left / Right to change    " + NavHint();
-                break;
-            }
 
             case Screen.OnlineJoin:
                 SetTitle("Join a Game", OnlineNotice(Net != null && Net.Rooms.Count > 0 ? "pick a game" : "no open games yet - waiting for a host"));
@@ -1132,7 +1140,7 @@ public class GameMenu : MonoBehaviour
                         items.Add(new Item { label = room.name, value = () => room.locked ? "needs a code" : "open", confirm = () =>
                         {
                             if (room.locked) { joinRoom = room; joinCode = ""; Show(Screen.OnlineCode); BeginFieldEdit(joinCodeField); }
-                            else { joinRoom = room; Net.SendCharacter(onlineCharacter); Net.Join(room, ""); }
+                            else { joinRoom = room; Net.Join(room, ""); }
                         } });
                     }
                 }
@@ -1147,18 +1155,6 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Join", confirm = TryJoinWithCode });
                 items.Add(new Item { label = "Back", confirm = Back });
                 footerText.text = (fieldEdit != null ? "Type the digits, then Enter    " : "") + NavHint();
-                break;
-
-            case Screen.OnlineGuest:
-                SetTitle(Net != null ? Net.RoomName : "Joined", OnlineNotice("waiting for the host to start the fight"));
-                items.Add(new Item { label = "Your fighter", value = () => "< " + CharacterLabel(onlineCharacter) + " >", adjust = d => StepOnlineCharacter(d), confirm = () => StepOnlineCharacter(1) });
-                items.Add(new Item { label = "Host's fighter", value = () => Net != null && Net.PeerCharacter >= 0 ? CharacterLabel(Net.PeerCharacter) : "choosing...", header = true, quiet = true });
-                items.Add(new Item { label = "Arena", value = () => "the host picks", header = true, quiet = true });
-                items.Add(new Item { label = "Game speed", value = () => Net != null ? Mathf.RoundToInt(Net.RulesSpeed * 100f) + "%" : "-", header = true, quiet = true });
-                items.Add(new Item { label = "Health regen per second", value = () => Net != null ? OnOff(Net.RulesRegen) : "-", header = true, quiet = true });
-                items.Add(new Item { label = "", header = true });
-                items.Add(new Item { label = "Leave the game", confirm = Back });
-                footerText.text = "Left / Right to change    " + NavHint();
                 break;
 
             // ------------------------------------------------------------ pause
@@ -1181,7 +1177,7 @@ public class GameMenu : MonoBehaviour
 
             // ------------------------------------------------------------ KO
             case Screen.MatchOver:
-                SetTitle(winnerNumber > 0 ? (vsAi ? (winnerNumber == 1 ? "You Win" : "You Lose") : $"Player {winnerNumber} Wins") : "Draw",
+                SetTitle(winnerNumber > 0 ? (vsAi || netRole != NetSession.Role.None ? (winnerNumber == MySide ? "You Win" : "You Lose") : $"Player {winnerNumber} Wins") : "Draw",
                          winnerNumber > 0 ? winnerName + " is left standing" : "");
                 if (confirmAsk != null)
                 {
@@ -1198,6 +1194,7 @@ public class GameMenu : MonoBehaviour
                     footerText.text = NavHint();
                     break;
                 }
+                if (netRole != NetSession.Role.None) { BuildOnlineMatchOver(); break; }
                 items.Add(new Item { label = "Rematch", confirm = () =>
                     AskMatchOver("Fight the same pair again?", () => { if (stage != null) stage.Wipe(StartMatch); else StartMatch(); }) });
                 items.Add(new Item { label = "Change fighters", confirm = () =>
@@ -1422,6 +1419,12 @@ public class GameMenu : MonoBehaviour
                 break;
 
             // ------------------------------------------------------------ the custom views
+            case Screen.CharSelect when OnlineSelect:
+                SetTitle("Choose Your Fighters", OnlineSelectSubtitle());
+                BuildCharSelect();
+                footerText.text = "Left / Right to choose    Cross / Enter to lock in    Circle / Esc to unlock, or to leave the game";
+                break;
+
             case Screen.CharSelect:
                 SetTitle(playerCount >= 2 && flow != Flow.Practice ? "Choose Your Fighters" : "Choose Your Fighter",
                          playerCount >= 2 && flow != Flow.Practice
@@ -1437,9 +1440,10 @@ public class GameMenu : MonoBehaviour
                 break;
 
             case Screen.ArenaSelect:
-                SetTitle("Choose Your Ground", "");
+                SetTitle("Choose Your Ground", netRole == NetSession.Role.Guest ? "the host chooses the ground" : "");
                 BuildArenaSelect();
-                footerText.text = "Left / Right to choose    Enter / Cross to fight    Esc to go back";
+                footerText.text = netRole == NetSession.Role.Guest ? "waiting for the host"
+                    : "Left / Right to choose    Enter / Cross to fight    Esc to go back";
                 break;
         }
     }
@@ -1657,6 +1661,7 @@ public class GameMenu : MonoBehaviour
         var dir = ArenaDirectory.Instance;
         int count = dir != null ? dir.Selectable.Count : 0;
         arenaChoice = count > 0 ? Mathf.Clamp(arenaChoice, 0, count - 1) : 0;
+        if (netRole == NetSession.Role.Guest) { ShowHostsArena(); return; }
         RefreshArena();
     }
 
@@ -1695,6 +1700,7 @@ public class GameMenu : MonoBehaviour
         if (flow == Flow.Practice) { GoWiped(Screen.PracticeRules); return; }
         if (playerCount == 1) { GoWiped(Screen.Difficulty); return; }
         vsAi = false;
+        if (netRole == NetSession.Role.Host) { Net?.SendArena(arenaChoice); Net?.SendVersus(); }
         GoWiped(Screen.Vs);
     }
 
@@ -1738,7 +1744,14 @@ public class GameMenu : MonoBehaviour
 
     void Adjust(int dir)
     {
-        if (screen == Screen.ArenaSelect) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate); MoveArena(dir); return; }
+        if (screen == Screen.ArenaSelect)
+        {
+            if (netRole == NetSession.Role.Guest) return;
+            CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
+            MoveArena(dir);
+            if (netRole == NetSession.Role.Host) Net?.SendArena(arenaChoice);
+            return;
+        }
         if (selected < 0 || selected >= items.Count) return;
         if (items[selected].adjust != null) CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
         items[selected].adjust?.Invoke(dir);
@@ -1777,7 +1790,6 @@ public class GameMenu : MonoBehaviour
     string hostCode = "";
     string joinCode = "";
     NetSession.RoomInfo joinRoom;
-    int onlineCharacter;
     string onlineNotice = "";
     float onlineNoticeUntil;
 
@@ -1840,29 +1852,10 @@ public class GameMenu : MonoBehaviour
         return dir.NameOf(Mathf.Clamp(i, 0, dir.Selectable.Count - 1));
     }
 
-    void StepOnlineCharacter(int d)
-    {
-        if (roster.Length == 0) return;
-        onlineCharacter = (onlineCharacter + d + roster.Length) % roster.Length;
-        Net?.SendCharacter(onlineCharacter);
-        CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
-        Rebuild();
-    }
-
-    void StepOnlineArena(int d)
-    {
-        var dir = ArenaDirectory.Instance;
-        int n = dir != null ? dir.Selectable.Count : 0;
-        if (n == 0) return;
-        arenaChoice = (arenaChoice + d + n) % n;
-        CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
-        Rebuild();
-    }
-
     void StepOnlineSpeed(int d)
     {
         onlineSpeed = Mathf.Clamp(Mathf.Round((onlineSpeed + d * 0.1f) * 10f) / 10f, 0.5f, MaxGameSpeed);
-        Net?.SendRules(onlineSpeed, onlineRegen);
+        if (Net != null && Net.PeerConnected) Net.SendRules(onlineSpeed, onlineRegen);
         CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
         Rebuild();
     }
@@ -1870,16 +1863,197 @@ public class GameMenu : MonoBehaviour
     void ToggleOnlineRegen()
     {
         onlineRegen = !onlineRegen;
-        Net?.SendRules(onlineSpeed, onlineRegen);
+        if (Net != null && Net.PeerConnected) Net.SendRules(onlineSpeed, onlineRegen);
         CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
         Rebuild();
+    }
+
+    // ---------------------------------------------------------------- online: select, arena, K.O. votes
+
+    int matchSerial;      // bumps at every fight start, so a late K.O. card from the last one is dropped
+    int onlineVote;       // my K.O. card vote: 0 none, 1 rematch, 2 character select
+
+    /// <summary>The character select is the online one (my half here, the other player's over the network).</summary>
+    bool OnlineSelect => flow == Flow.Online && netRole != NetSession.Role.None;
+
+    /// <summary>
+    /// Into the online character select - the split ring local 2P uses, both players looping it at
+    /// once. The host waits here for someone to join; the guest arrives here on joining, and both come
+    /// back here from the K.O. card.
+    /// </summary>
+    void EnterOnlineSelect(NetSession.Role role)
+    {
+        bool fromFight = netRole != NetSession.Role.None && Net != null && Net.CurrentPhase == NetSession.Phase.Playing;
+        netRole = role;
+        flow = Flow.Online;
+        vsAi = false;
+        playerCount = 2;
+        inMatch = false;
+        onlineVote = 0;
+        matchSerial++;
+        if (countIn != null) { StopCoroutine(countIn); countIn = null; }
+        if (stage != null) stage.ClearBeat();
+        if (ReplayRecorder.Instance != null) ReplayRecorder.Instance.StopRecording();
+        SetAi(false, AiController.Rules.Full);
+        if (role == NetSession.Role.Guest || fromFight) Net?.GuestLeaveMatch();
+        Net?.EnterSelectPhase();
+        if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
+        if (TouchControls.Instance != null) TouchControls.Instance.Hide();
+        Time.timeScale = GameSpeed();
+        GoWiped(Screen.CharSelect);
+    }
+
+    /// <summary>Per frame on the online select: my half from my input, the other half from the network.</summary>
+    void UpdateOnlineSelect(InputManager im)
+    {
+        if (Net == null || Net.CurrentPhase == NetSession.Phase.Failed)
+        {
+            netRole = NetSession.Role.None;
+            history.RemoveAll(IsOnlineScreen);
+            Show(Screen.Online, push: false);       // the connect screen offers the retry
+            return;
+        }
+        int me = MySide, them = 3 - me;
+        bool bothLocked = lock1 && lock2;
+
+        // The other player's half.
+        bool peer = Net.PeerConnected;
+        if (peer && Net.PeerCharacter >= 0 && !(them == 1 ? lock1 : lock2)) StepSideCursorTo(them, Net.PeerCharacter);
+        bool theirLock = peer && Net.PeerLocked;
+        if (!bothLocked && theirLock != (them == 1 ? lock1 : lock2))
+        {
+            if (theirLock) LockPlayer(them); else UnlockPlayer(them);
+        }
+
+        // Mine.
+        bool mine = me == 1 ? lock1 : lock2;
+        Vector2 nav = im.MenuNavigate();
+        if (!mine && nav.x != 0f)
+        {
+            CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
+            MoveCursor(me, nav.x > 0f ? 1 : -1);
+            Net.SendSelect(me == 1 ? p1Character : p2Character, false);
+        }
+        if (Time.unscaledTime >= nextOnlineRefresh)
+        {
+            nextOnlineRefresh = Time.unscaledTime + 0.25f;
+            subtitle.text = OnlineSelectSubtitle();
+        }
+        if (inputGuard > 0f || bothLocked) return;   // once both are in, the merge owns the screen
+        if (im.MenuConfirm())
+        {
+            if (!mine) { LockPlayer(me); Net.SendSelect(me == 1 ? p1Character : p2Character, true); }
+        }
+        else if (im.MenuBack())
+        {
+            if (mine) { UnlockPlayer(me); Net.SendSelect(me == 1 ? p1Character : p2Character, false); }
+            else Back();
+        }
+    }
+
+    /// <summary>Walks one side's cursor to a roster index the short way round, so its camera sweeps there.</summary>
+    void StepSideCursorTo(int side, int target)
+    {
+        int n = roster.Length;
+        if (n < 2 || target < 0 || target >= n) return;
+        int cur = side == 1 ? p1Character : p2Character;
+        int diff = ((target - cur) % n + n) % n;
+        if (diff > n / 2) diff -= n;
+        for (int i = 0; i < Mathf.Abs(diff); i++) MoveCursor(side, Math.Sign(diff));
+    }
+
+    /// <summary>Puts one side's cursor (and its camera) straight on a fighter - entering the screen.</summary>
+    void SetSideCursor(int side, int index)
+    {
+        if (index < 0 || index >= roster.Length) return;
+        if (side == 1) { p1Character = index; camA1 = targA1 = CircleAngleOf(index); }
+        else { p2Character = index; camA2 = targA2 = CircleAngleOf(index); }
+    }
+
+    string SideTag(int side)
+    {
+        if (!OnlineSelect) return "PLAYER " + side;
+        if (side == MySide) return "YOU";
+        return Net != null && Net.PeerConnected ? "OPPONENT" : "WAITING FOR A PLAYER";
+    }
+
+    string OnlineSelectSubtitle()
+    {
+        if (onlineNotice.Length > 0 && Time.unscaledTime < onlineNoticeUntil) return onlineNotice;
+        string room = Net != null && Net.RoomName.Length > 0 ? Net.RoomName : "online";
+        if (Net == null || !Net.PeerConnected)
+            return room + " - " + (hostCode.Length == 6 && netRole == NetSession.Role.Host ? "code " + hostCode + " - " : "") + "waiting for a player to join";
+        float speed = netRole == NetSession.Role.Guest ? Net.RulesSpeed : onlineSpeed;
+        bool regen = netRole == NetSession.Role.Guest ? Net.RulesRegen : onlineRegen;
+        return room + " - game speed " + Mathf.RoundToInt(speed * 100f) + "%, health regen " + OnOff(regen).ToLowerInvariant();
+    }
+
+    /// <summary>Guest: puts up the arena the host has on screen.</summary>
+    void ShowHostsArena()
+    {
+        var d = ArenaDirectory.Instance;
+        int count = d != null ? d.Selectable.Count : 0;
+        if (count == 0) return;
+        arenaChoice = Mathf.Clamp(arenaChoice, 0, count - 1);
+        d.Select(arenaChoice, remember: false);
+        if (screen == Screen.ArenaSelect) { StageFighters(false, true); RefreshArena(); }
+    }
+
+    /// <summary>The K.O. card online: Rematch and Change fighters are votes both players see.</summary>
+    void BuildOnlineMatchOver()
+    {
+        int theirs = Net != null ? Net.PeerVote : 0;
+        subtitle.text = onlineVote == 0 && theirs == 0 ? "rematch only if you both choose it"
+                      : onlineVote == 0 ? "your opponent chose " + VoteName(theirs) + " - your call"
+                      : theirs == 0 ? "waiting for your opponent"
+                      : "";
+        items.Add(new Item { label = "Rematch", value = () => VoteMarks(1), confirm = () => CastVote(1) });
+        items.Add(new Item { label = "Change fighters", value = () => VoteMarks(2), confirm = () => CastVote(2) });
+        if (ReplayRecorder.Instance != null && ReplayRecorder.Instance.HasRecording)
+            items.Add(new Item { label = "Watch the game record", value = () => "kept in Records - watch, trim and export",
+                                 confirm = () => Show(Screen.Replay) });
+        items.Add(new Item { label = "Leave the session", value = () => "your opponent goes back to the lobby", confirm = () =>
+            AskMatchOver("Leave the session?", () => { if (stage != null) stage.Wipe(EndMatchToMenu); else EndMatchToMenu(); }) });
+        footerText.text = NavHint();
+    }
+
+    static string VoteName(int v) => v == 1 ? "a rematch" : "to change fighters";
+
+    string VoteMarks(int v)
+    {
+        bool mine = onlineVote == v, theirs = Net != null && Net.PeerVote == v;
+        return mine && theirs ? "you  +  opponent" : mine ? "your choice" : theirs ? "opponent's choice" : "";
+    }
+
+    void CastVote(int v)
+    {
+        onlineVote = v;
+        Net?.SendVote(v);
+        Rebuild();
+    }
+
+    /// <summary>
+    /// Online K.O. card, per frame: keeps both players' choices on screen, and on the host settles them
+    /// once both are in - rematch only if both asked for it, otherwise everyone to the character select.
+    /// </summary>
+    void UpdateOnlineVotes()
+    {
+        if (Time.unscaledTime >= nextOnlineRefresh && confirmAsk == null)
+        {
+            nextOnlineRefresh = Time.unscaledTime + 0.25f;
+            Rebuild();
+        }
+        if (netRole != NetSession.Role.Host || Net == null || onlineVote == 0 || Net.PeerVote == 0) return;
+        bool rematch = onlineVote == 1 && Net.PeerVote == 1;
+        onlineVote = 0;
+        if (rematch) { if (stage != null) stage.Wipe(StartMatch); else StartMatch(); }
+        else { Net.SendSelectAgain(); EnterOnlineSelect(NetSession.Role.Host); }
     }
 
     void TryJoinWithCode()
     {
         fieldEdit = null;
         if (joinCode.Length != 6) { Notice("the code has 6 digits"); Rebuild(); return; }
-        Net?.SendCharacter(onlineCharacter);
         Net?.Join(joinRoom, joinCode);
         Rebuild();
     }
@@ -1904,6 +2078,18 @@ public class GameMenu : MonoBehaviour
             case Screen.OnlineJoin: Net?.LeaveRoom(); BackTo(Screen.Online); return true;
             case Screen.OnlineCode: Net?.BrowseRooms(); BackTo(Screen.OnlineJoin); return true;
             case Screen.OnlineGuest: Net?.LeaveRoom(); Net?.BrowseRooms(); BackTo(Screen.OnlineJoin); return true;
+            case Screen.CharSelect when netRole != NetSession.Role.None:
+                // Leaving the select leaves the room: the host back to the setup, the guest to the list.
+                Net?.LeaveRoom();
+                bool wasHost = netRole == NetSession.Role.Host;
+                netRole = NetSession.Role.None;
+                if (wasHost) BackTo(Screen.OnlineHostSetup);
+                else { Net?.BrowseRooms(); BackTo(Screen.OnlineJoin); }
+                return true;
+            case Screen.ArenaSelect when netRole != NetSession.Role.None:
+                // Only the host steers the arena select; backing out takes both players back to the fighters.
+                if (netRole == NetSession.Role.Host) { Net?.SendSelectAgain(); EnterOnlineSelect(NetSession.Role.Host); }
+                return true;
         }
         return false;
     }
@@ -1920,7 +2106,7 @@ public class GameMenu : MonoBehaviour
         // The server went away: every online screen falls back to the connect screen, which offers a retry.
         if (screen != Screen.Online && phase == NetSession.Phase.Failed) { history.RemoveAll(IsOnlineScreen); Show(Screen.Online, push: false); return; }
         if (screen == Screen.OnlineJoin || screen == Screen.OnlineCode)
-            if (phase == NetSession.Phase.Joined) { Notice(""); Show(Screen.OnlineGuest); return; }
+            if (phase == NetSession.Phase.Joined) { Notice(""); EnterOnlineSelect(NetSession.Role.Guest); return; }
         if (Time.unscaledTime >= nextOnlineRefresh)
         {
             nextOnlineRefresh = Time.unscaledTime + 0.25f;
@@ -2024,7 +2210,13 @@ public class GameMenu : MonoBehaviour
 
     void Confirm()
     {
-        if (screen == Screen.ArenaSelect) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Select); ConfirmArena(); return; }
+        if (screen == Screen.ArenaSelect)
+        {
+            if (netRole == NetSession.Role.Guest) return;
+            CrucibleAudio.Ui(CrucibleAudio.UiSound.Select);
+            ConfirmArena();
+            return;
+        }
         if (selected < 0 || selected >= items.Count) return;
         if (items[selected].field != null && items[selected].confirm == null) { BeginFieldEdit(items[selected].field); return; }
         if (items[selected].confirm != null) CrucibleAudio.Ui(CrucibleAudio.UiSound.Select);
@@ -2606,10 +2798,10 @@ public class GameMenu : MonoBehaviour
 
         if (splitSelect)
         {
-            FixPlate(cards[0], p1Character, lock1 ? "PLAYER 1  READY" : "PLAYER 1", MenuArt.P1,
+            FixPlate(cards[0], p1Character, SideTag(1) + (lock1 ? "  READY" : ""), MenuArt.P1,
                      new Vector2(-480f, -385f), lock1);
             if (cards.Length > 1)
-                FixPlate(cards[1], p2Character, lock2 ? "PLAYER 2  READY" : "PLAYER 2", MenuArt.P2,
+                FixPlate(cards[1], p2Character, SideTag(2) + (lock2 ? "  READY" : ""), MenuArt.P2,
                          new Vector2(480f, -385f), lock2);
         }
         else
@@ -2849,6 +3041,12 @@ public class GameMenu : MonoBehaviour
             }
         }
         else RestoreSelectCameras();
+        if (OnlineSelect && Net != null)
+        {
+            // The other half starts where the other player's cursor already is; mine goes out at once.
+            if (Net.PeerCharacter >= 0) SetSideCursor(3 - MySide, Net.PeerCharacter);
+            Net.SendSelect(MySide == 1 ? p1Character : p2Character, false);
+        }
         UpdateSelectCameras(true);
         RefreshCircleCards();
     }
@@ -2879,6 +3077,7 @@ public class GameMenu : MonoBehaviour
         if (mergingSelect) return;                          // the merge routine owns the screen
         var im = InputManager.Instance;
 
+        if (OnlineSelect) { UpdateOnlineSelect(im); return; }
         if (splitSelect)
         {
             for (int p = 1; p <= 2; p++)
@@ -2978,6 +3177,7 @@ public class GameMenu : MonoBehaviour
         mergingSelect = false;
         if (screen != Screen.CharSelect || !lock1 || !lock2) { RestoreSelectCameras(); yield break; }
         ApplySides(p1Character, p2Character);
+        if (OnlineSelect && netRole == NetSession.Role.Host) Net?.SendArena(arenaChoice);
         GoWiped(Screen.ArenaSelect);                         // Show() restores the single camera
     }
 

@@ -356,5 +356,11 @@ public class CrucibleAudio : MonoBehaviour
         // The game record keeps the sound exactly as played (final volume and jittered pitch),
         // so the replay and the video export can reproduce it. No-ops unless recording.
         ReplayRecorder.NoteSound(clip, s.volume, s.pitch);
+        // An online guest hears the fight's sounds from here too; menu clicks stay on this machine.
+        if (!IsUiSet(set)) NetSession.ForwardSound(clip, s.volume, s.pitch);
     }
+
+    bool IsUiSet(AudioClip[] set) =>
+        set == uiNavigate || set == uiSelect || set == uiBack || set == uiWipe ||
+        set == uiBoot || set == uiCountBeat || set == uiCountFight;
 }

@@ -322,6 +322,22 @@ public class Fighter : MonoBehaviour
     /// <summary>Health points given by the most recent defensive recovery.</summary>
     public int HealFlashAmount => healFlashAmount;
 
+    /// <summary>
+    /// Online guest: the HUD timers as the host's copy of this fighter has them. The guest runs no
+    /// combat, so without this its bars never showed PARRY!, CLASH, the heal float or COUNTER READY.
+    /// </summary>
+    public void ApplyNetHud(float parryFlash, float clashFlash, float healFlash, int healAmount,
+                            float parryCounter, float dashCounter, bool blocking)
+    {
+        parryFlashTimer = parryFlash;
+        clashFlashTimer = clashFlash;
+        healFlashTimer = healFlash;
+        healFlashAmount = healAmount;
+        parryCounterTimer = parryCounter;
+        dashCounterTimer = dashCounter;
+        isBlocking = blocking;
+    }
+
     [Tooltip("Seconds after taking a hit (blocked or not) before health regeneration starts again.")]
     [SerializeField] private float healthRegenDelay = BalanceConfig.DEFAULT_HEALTH_REGEN_DELAY;
     private float healthRegenDelayTimer = 0f;
@@ -1308,6 +1324,8 @@ private void StopRun(string reason)
 /// applies stamina cost, locks the fighter into a dash state, and moves
 /// the transform by dashVelocity each frame until the dash duration expires.
 /// </summary>
+static readonly string[] DashStateNames = { "Dash_Forward", "Dash_Back", "Dash_Left", "Dash_Right" };
+
 private void HandleDash()
 {
     // If currently dashing, advance the dash
@@ -1360,7 +1378,9 @@ private void HandleDash()
     // exception is a COMBO stun (a clean, combo-able hit): the victim cannot block or walk,
     // but a timed dash is still allowed - that is the whole escape the combo rule leaves open.
     if (currentInput.dashDirection == Vector2.zero) return;
-    if (combatSystem != null && (combatSystem.IsAttacking ||
+    // An attack's recovery can be dodge-cancelled once its hit window has closed (CombatSystem.DodgeCancel).
+    bool cancelRecovery = combatSystem != null && combatSystem.IsAttacking && combatSystem.CanDodgeCancel;
+    if (combatSystem != null && ((combatSystem.IsAttacking && !cancelRecovery) ||
                                  (combatSystem.IsInHitstun && !combatSystem.ComboStun))) return;
 
     // Check stamina
@@ -1371,6 +1391,7 @@ private void HandleDash()
     }
 
     // START THE DASH
+    if (cancelRecovery) combatSystem.DodgeCancel();
     Stats.UseStamina(dashStaminaCost);
     isDashing = true;
     dashTimer = 0f;
@@ -1401,7 +1422,13 @@ private void HandleDash()
             ? (dashRightAmount > 0f ? 3 : 2)
             : (dashForwardAmount >= 0f ? 0 : 1);
         animator.SetInteger(ANIM_DASH_DIR, dir);
-        animator.SetTrigger(ANIM_DASH);
+        if (cancelRecovery)
+        {
+            // The attack states have no Dash transition, so a recovery cancel cuts to the dash state itself.
+            animator.ResetTrigger(ANIM_DASH);
+            animator.CrossFadeInFixedTime(DashStateNames[dir], 0.05f, 0);
+        }
+        else animator.SetTrigger(ANIM_DASH);
     }
 
     if (dustEffects) HitEffects.SpawnDust(FeetPosition(), BodyRadius, 1f);
