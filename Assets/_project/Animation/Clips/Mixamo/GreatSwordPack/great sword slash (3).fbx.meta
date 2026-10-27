@@ -92,8 +92,8 @@ ModelImporter:
       name: Genghis_Light_SteppeCut
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 19.417309
-      lastFrame: 35.16731
+      firstFrame: 19.530148
+      lastFrame: 35.280148
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -121,8 +121,8 @@ ModelImporter:
       name: Genghis_Special_SteppeStorm
       takeName: mixamo.com
       internalID: -6556537087697243763
-      firstFrame: 13.844001
-      lastFrame: 43.544
+      firstFrame: 13.59535
+      lastFrame: 43.29535
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -150,8 +150,8 @@ ModelImporter:
       name: Genghis_Riposte_Dash
       takeName: mixamo.com
       internalID: -7312523220118785054
-      firstFrame: 17.627777
-      lastFrame: 39.377777
+      firstFrame: 17.697826
+      lastFrame: 39.447826
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

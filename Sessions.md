@@ -4283,3 +4283,31 @@ Two more calls the same evening:
 - Committed `2d0485f` (pushed to `salaadin`, the user's three edited Studio/salahtest blends left
   out). Win64 app rebuilt at 19:34 via `PrepareScene` -> MCP `build` -> `RestoreScene`: Succeeded,
   0 errors, `Builds/CrucibleLite-Win64/Crucible.exe` (Assembly-CSharp.dll and level0 fresh).
+
+### 2026-10-27 — Faster test settings, a quicker guard and counter, 200% game speed, mirror skins re-made
+
+- The user, after testing the slow game: walk and dash +20%, Bjorn's attacks +5%, Richard's and
+  Genghis's +18.5%, the block +20%, the first counter after a parry or dodge +25%, Settings game
+  speed up to 200%, and "the mirror alternative appearances have weird texture and colors".
+- Walk `WalkSpeedScale` 0.5 -> 0.6; dash `DashTimeScale` 2 -> 2/1.2 (Bjorn 0.60 -> 0.50 s over the
+  same ground, i-frames 0.28 -> 0.23). The run was left at its pace (it is already 2x the dash).
+- Per-fighter attack speed: `CrucibleBalance.CharacterSpeedUp` divides startup and recovery
+  (hand-set `UserFrames` too); active frames untouched, like the special speed-up. Read back from
+  the controllers against HEAD: Bjorn's attack states +3-5%, Richard/Genghis +16-18% (rounding to
+  whole frames), every dash state +20%, walks +20% except where the 2.0 cap binds
+  (Bjorn/Miyamoto/Genghis forward walks), Miyamoto's attacks unchanged.
+- Block: the guard is up the frame the button is, so "the block" is the animator - raise 0.12 ->
+  0.10 s, lower 0.15 -> 0.125, impact blends /1.2, Block_Impact x1.2, on all six controllers via
+  the new `Crucible > Animation > Set the block speed` (idempotent). Block STUN (48 f) not touched.
+- Counter: `BeginAttack` multiplies the pace by `COUNTER_ATTACK_PACE_MULTIPLIER` 1.25 when the
+  swing consumes a parry or dash counter. Play-verified: a light in a forced parry window starts
+  at pace 1.25. Game speed: `GameMenu.MaxGameSpeed` 2, `GameSpeed()` returns 2.0 at the top.
+- Mirror skins: the textures were the 10-26 recolours of the OLD bodies' atlases, and five bodies
+  got HD basecolors with new UVs on 10-27 - that was the scrambled look. Regenerated from the
+  current basecolors; Buwaka's bead mask was also catching his dark red-brown HD skin (4.2% of
+  texels went blue speckle) and is now true-red only (0.4%), his pelt mask widened. Photographed
+  Richard and Buwaka mirrors in play: textures land on the body correctly.
+- Pipeline run via eval: Apply the roster balance -> SaveAssets -> Use Mixamo packs -> Wire combo
+  strings -> Set the block speed -> scene saved. Win64 app rebuilt (`PrepareScene` -> MCP `build` ->
+  `RestoreScene`); the desktop shortcut (`OneDrive\Desktop\Crucible.lnk`) already targets
+  `Builds/CrucibleLite-Win64/Crucible.exe`.

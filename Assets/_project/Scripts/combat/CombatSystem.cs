@@ -560,6 +560,12 @@ public class CombatSystem : MonoBehaviour
         {
             Debug.Log($"P{fighter.PlayerNumber}: PARRY COUNTER - {attack.AttackName} will deal x{fighter.ParryCounterDamageMultiplier} damage");
         }
+        // The punish comes out fast: x1.25 on top of whatever pace the swing already had.
+        if (currentAttackIsDashCounter || currentAttackIsParryCounter)
+        {
+            currentAttackPace *= BalanceConfig.COUNTER_ATTACK_PACE_MULTIPLIER;
+            if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: counter swing at x{currentAttackPace:0.00} pace");
+        }
 
         // Judged ONCE, at the moment the swing starts and before the cost comes off the bar,
         // and held for the whole swing: recovering past the line mid-swing does not speed it up.

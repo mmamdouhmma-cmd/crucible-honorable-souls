@@ -63,8 +63,8 @@ ModelImporter:
       name: Genghis_Heavy_KhanCleave
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 54.170887
-      lastFrame: 75.17088
+      firstFrame: 54.24627
+      lastFrame: 75.24627
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -92,8 +92,8 @@ ModelImporter:
       name: Genghis_Special_WrathOfTengri
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 48.866665
-      lastFrame: 84.066666
+      firstFrame: 48.78039
+      lastFrame: 83.98039
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

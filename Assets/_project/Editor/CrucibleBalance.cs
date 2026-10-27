@@ -311,9 +311,10 @@ public static class CrucibleBalance
         so.FindProperty("staminaCost").intValue = m.stamina;
         so.FindProperty("armorPierce").intValue = m.pierce;
         bool userSet = UserFrames.TryGetValue(m.asset, out var uf);
-        so.FindProperty("startupFrames").intValue = userSet ? uf.startup : Mathf.RoundToInt(m.startup * FrameScaleFor(m.asset));
+        float charSpeed = CharacterSpeedUpFor(m.asset);
+        so.FindProperty("startupFrames").intValue = userSet ? Mathf.RoundToInt(uf.startup / charSpeed) : Mathf.RoundToInt(m.startup * FrameScaleFor(m.asset));
         so.FindProperty("activeFrames").intValue = m.active;
-        so.FindProperty("recoveryFrames").intValue = userSet ? uf.recovery : Mathf.RoundToInt(m.recovery * FrameScaleFor(m.asset));
+        so.FindProperty("recoveryFrames").intValue = userSet ? Mathf.RoundToInt(uf.recovery / charSpeed) : Mathf.RoundToInt(m.recovery * FrameScaleFor(m.asset));
         // UNIFORM HITSTUN (the user's call, 2026-10-24): every stun is 0.5 s, overriding the
         // per-move hitstun columns, which stay in the rows for the day this is per-move again.
         so.FindProperty("hitstunFrames").intValue = UniformHitstunFrames;
@@ -498,7 +499,9 @@ public static class CrucibleBalance
     // Use Mixamo packs plays the SAME clip segment over the longer budget, so the swings slow down too -
     // most of them were running at 1.4-3.8x their capture pace and now sit near it.
     public const float AttackFrameScale = 2f;
-    public const float DashTimeScale = 2f;
+    // Dashes 20% FASTER than that (the user's call, 2026-10-27, after testing the x2): same ground in
+    // 2/1.2 the old doubled time, i-frames shrinking with it so the same share of the dash evades.
+    public const float DashTimeScale = 2f / 1.2f;
     // Specials 25% FASTER than that (the user's call, same day): startup and recovery x0.8 on top of
     // AttackFrameScale, so the move takes 1/1.25 the time and its clip plays 1.25x faster (ComputeTrims
     // cuts the same segment). Miyamoto's SP+Light (Nukitsuke) is left out, also the user's call.
@@ -544,12 +547,30 @@ public static class CrucibleBalance
     /// <summary>The factor a move's TABLE startup and recovery are written at. Also read by
     /// CrucibleMixamoSetup.ComputeTrims, so the animation window is cut from the table's budget.</summary>
     public static float FrameScaleFor(string asset) =>
-        AttackFrameScale * (asset.Contains("_Special_") && !SpecialSpeedUpExempt.Contains(asset) ? 1f / SpecialSpeedUp : 1f);
+        AttackFrameScale * (asset.Contains("_Special_") && !SpecialSpeedUpExempt.Contains(asset) ? 1f / SpecialSpeedUp : 1f)
+        / CharacterSpeedUpFor(asset);
+
+    /// <summary>Per-fighter attack speed on top of everything above (the user's call, 2026-10-27):
+    /// every move of that fighter - normals, specials, enders, and the hand-set UserFrames too - has
+    /// its startup and recovery divided by the factor, and its clip plays that much faster (ComputeTrims
+    /// cuts the same segment).</summary>
+    public static readonly Dictionary<string, float> CharacterSpeedUp = new Dictionary<string, float>
+    {
+        { "Bjorn",   1.05f },
+        { "Richard", 1.185f },
+        { "Genghis", 1.185f },
+    };
+    static float CharacterSpeedUpFor(string asset)
+    {
+        int cut = asset.IndexOf('_');
+        return cut > 0 && CharacterSpeedUp.TryGetValue(asset.Substring(0, cut), out float f) ? f : 1f;
+    }
     // Walk speed x0.5, same order across the roster (same day). At x1 every walk clip covers only
     // 1.0-1.75 world units/s of ground on these bodies (measured: planted-foot speed, walk in place),
     // and the old 3.2-4.8 u/s skated them across the arena at 2-4x their legs. Use Mixamo packs fits
     // each walk's playback to the new ground speed (CrucibleMixamoSetup.WalkStride).
-    public const float WalkSpeedScale = 0.5f;
+    // Raised 20% to x0.6 after testing (the user's call, 2026-10-27).
+    public const float WalkSpeedScale = 0.6f;
 
     // His art folder was created lowercase; every other fighter's matches the character name.
     static string Folder(string character) => character == "Salaadin" ? "salaadin" : character;

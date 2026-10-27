@@ -34,8 +34,8 @@ ModelImporter:
       name: Richard_Medium_Slash
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 5.338461
-      lastFrame: 27.73846
+      firstFrame: 5.4533324
+      lastFrame: 27.853333
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -63,8 +63,8 @@ ModelImporter:
       name: Richard_Special_ShieldBash
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 3.266666
-      lastFrame: 30.466667
+      firstFrame: 3.4909086
+      lastFrame: 30.69091
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

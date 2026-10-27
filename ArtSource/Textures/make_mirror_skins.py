@@ -159,11 +159,15 @@ def bjorn(hsv):
 def buwaka(hsv):
     h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
     notskin = 1 - skin(hsv)
-    red = hue_near(h, 356, 14, 24) * smooth(0.55, 0.68, s) * notskin
+    # The beads are TRUE red and lit. His HD skin is a dark, saturated red-brown (hue 10-20,
+    # v ~0.23) that the skin gate (lit skin only) misses, and a wider red band speckled his whole
+    # body blue - measured 2026-10-27: 4.2% of texels, nearly all of them skin.
+    red = hue_near(h, 358, 8, 14) * smooth(0.58, 0.70, s) * smooth(0.28, 0.38, v) * notskin
     hsv = recolour(hsv, red, hue=215, sat=lambda s: s * 0.9, val=lambda v: v * 1.05)
     h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
-    # The leopard's gold ground: yellower and brighter than his hide or his skin.
-    pelt = hue_near(h, 36, 7, 13) * smooth(0.45, 0.58, s) * smooth(0.42, 0.55, v)
+    # The leopard's gold ground: yellower than his hide or his skin. Widened for the HD texture,
+    # whose pelt is less saturated than the old one's.
+    pelt = hue_near(h, 36, 6, 12) * smooth(0.38, 0.50, s) * smooth(0.34, 0.46, v) * notskin
     return recolour(hsv, pelt, sat=lambda s: s * 0.30, val=lambda v: v * 0.22)
 
 

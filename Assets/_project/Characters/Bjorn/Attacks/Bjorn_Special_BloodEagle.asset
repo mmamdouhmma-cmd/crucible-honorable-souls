@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 18
   staminaCost: 53
   armorPierce: 10
-  startupFrames: 28
+  startupFrames: 27
   activeFrames: 5
-  recoveryFrames: 38
+  recoveryFrames: 36
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialHeavy
   attackHeight: 0

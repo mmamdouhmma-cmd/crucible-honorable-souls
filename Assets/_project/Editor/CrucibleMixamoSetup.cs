@@ -607,7 +607,7 @@ public static class CrucibleMixamoSetup
             var clip = LoadClip($"{PackDir(m.pack)}/{m.clip}.fbx", m.state);
             if (clip == null) { Debug.LogError($"{m.clip}: clip {m.state} failed to import"); continue; }
             cs.state.motion = clip;
-            cs.state.speed = 1f;
+            cs.state.speed = m.state == "Block_Impact" ? CrucibleBlockSpeed.BlockSpeedUp : 1f;
             // The parry catch is a 1.3 s performance: fit it to ParryDuration, then let the
             // ParrySpeed parameter (Fighter.parryAnimSpeed, default 2) multiply that on top, so the
             // speed is editable from the component without touching the controller.

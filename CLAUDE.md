@@ -1439,6 +1439,11 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   uses `Everyone()`, and `P1Fighter`/`P2Fighter` resolve who is fighting. Replacing a twin
   deactivates it BEFORE `Destroy` - Destroy lands at end of frame and `RefreshOpponent` would
   otherwise pick the dying Player 2. Salaadin's and Buwaka's mirrors are the subtlest reads.
+  **A body's new basecolor means re-running `make_mirror_skins.py`**: the P2 texture is a
+  recolour of the body's OWN atlas, so after the 2026-10-27 HD bodies (new UVs) five twins wore
+  an old-layout texture - the "weird texture and colours". Regenerate after any body swap, and
+  re-check the masks against the new texture (Buwaka's bead mask had to narrow to true red:
+  his HD skin is a dark saturated red-brown the lit-skin gate misses).
 - **Every body wears the old Tripo GLAZE (2026-10-26, the user's call)**: the look the old
   Bjorn/Miyamoto FBX had was a CONTRAST, measured off their masks - skin smoothness 0.62-0.65,
   steel metal 0.86 / smooth 0.72, cloth and leather ~0.15 - with Smoothness 0.75 and a normal
@@ -1490,6 +1495,16 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   slide a little. **Ripostes are gone**: `dashRiposte`/`parryRiposte` are null on all six (and the
   move-set scripts write null); a counter is any normal/special/combo thrown in the window, with the
   counter bonus. The `*_Riposte_*` assets and animator states stay, unused.
+- **The test settings were tuned up after testing (2026-10-27, the user's calls)**: walk and dash
+  +20% (`WalkSpeedScale` 0.6, `DashTimeScale` 2/1.2 - i-frames shrink with it; the run is
+  unchanged), per-fighter attack speed `CrucibleBalance.CharacterSpeedUp` (Bjorn 1.05, Richard
+  and Genghis 1.185 - divides startup and recovery, the `UserFrames` too, so clips play that much
+  faster), the guard +20% (`Crucible > Animation > Set the block speed`, `CrucibleBlockSpeed`:
+  raise/lower/impact blends and Block_Impact x1.2, written from base numbers so it never
+  compounds), the FIRST swing in a parry or dodge counter window at x1.25 pace
+  (`BalanceConfig.COUNTER_ATTACK_PACE_MULTIPLIER`, clock and animation together), and the
+  Settings game speed now runs 50-200% (`GameMenu.MaxGameSpeed`). Walk states for
+  Bjorn/Miyamoto/Genghis now sit on the 2.0 anim cap, so their feet slide a little more.
 - **Size order (the user's, 2026-10-27)**: smallest to largest Miyamoto 2.82, Salaadin 2.90, Buwaka
   2.98, Bjorn 3.06, Genghis 3.14, Richard 3.22 (even 0.08 steps; `Stature` table). Measured live
   statures wander +-0.05 with the idle, so judge the order across runs, not one reading.

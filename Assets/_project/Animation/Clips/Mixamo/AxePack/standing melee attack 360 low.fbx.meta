@@ -34,8 +34,8 @@ ModelImporter:
       name: Bjorn_Medium_SpinningSlash
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 13.563638
-      lastFrame: 48.563637
+      firstFrame: 13.539624
+      lastFrame: 48.539623
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -63,8 +63,8 @@ ModelImporter:
       name: Bjorn_Special_HewingCharge
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 10.969232
-      lastFrame: 59.96923
+      firstFrame: 10.756452
+      lastFrame: 59.75645
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

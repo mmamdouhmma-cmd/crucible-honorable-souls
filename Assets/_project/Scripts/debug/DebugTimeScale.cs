@@ -8,7 +8,7 @@ using UnityEngine;
 public class DebugTimeScale : MonoBehaviour
 {
     [Tooltip("Game speed. 0.85 = 15% slower than real time.")]
-    [Range(0.1f, 1f)] public float timeScale = 0.85f;
+    [Range(0.1f, 2f)] public float timeScale = 0.85f;
 
     private void OnEnable() { Apply(); }
     private void OnValidate() { if (Application.isPlaying && enabled) Apply(); }

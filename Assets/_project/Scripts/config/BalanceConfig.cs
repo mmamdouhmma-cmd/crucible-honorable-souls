@@ -242,6 +242,9 @@ public static class BalanceConfig
     // ==================== DAMAGE MODIFIERS ====================
     public const int DEFAULT_BLOCK_DAMAGE_REDUCTION = 50;   // percent; each Fighter can override it in the Inspector
     public const float DASH_COUNTER_DAMAGE_MULTIPLIER = 1.35f; // +35% on the attack after a clean dodge
+    // The FIRST attack thrown in a parry or dodge counter window plays 25% faster - attack clock and
+    // animation together (the user's call, 2026-10-27). Only that one swing: the window is consumed.
+    public const float COUNTER_ATTACK_PACE_MULTIPLIER = 1.25f;
     public const float DASH_INTO_ATTACK_DAMAGE_MULTIPLIER = 1.25f; // +25% taken when dashing into a strike
     public const float MOVEMENT_INTO_SLASH_BONUS = 1.1f;    // +10%
     public const float MOVEMENT_INTO_THRUST_BONUS = 1.15f;  // +15%

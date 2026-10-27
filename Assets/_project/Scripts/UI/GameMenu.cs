@@ -710,7 +710,8 @@ public class GameMenu : MonoBehaviour
         PlayerPrefs.Save();
     }
 
-    float GameSpeed() => Mathf.Clamp(settings.gameSpeed, 0.5f, 1f);
+    float GameSpeed() => Mathf.Clamp(settings.gameSpeed, 0.5f, MaxGameSpeed);
+    const float MaxGameSpeed = 2f;   // Settings slider tops out at 200% (the user's call, 2026-10-27)
 
     void ApplySettings()
     {
@@ -1139,7 +1140,7 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Voices", value = () => Mathf.RoundToInt(settings.voiceVolume * 100) + "%",
                     adjust = d => { settings.voiceVolume = Mathf.Clamp01(settings.voiceVolume + d * 0.1f); ApplySettings(); SaveSettings(); } });
                 items.Add(new Item { label = "Game speed", value = () => Mathf.RoundToInt(settings.gameSpeed * 100) + "%",
-                    adjust = d => { settings.gameSpeed = Mathf.Clamp(settings.gameSpeed + d * 0.05f, 0.5f, 1f); ApplySettings(); SaveSettings(); } });
+                    adjust = d => { settings.gameSpeed = Mathf.Clamp(settings.gameSpeed + d * 0.05f, 0.5f, MaxGameSpeed); ApplySettings(); SaveSettings(); } });
                 items.Add(new Item { label = "Blood", value = () => OnOff(settings.blood),
                     adjust = d => { settings.blood = !settings.blood; ApplySettings(); SaveSettings(); },
                     confirm = () => { settings.blood = !settings.blood; ApplySettings(); SaveSettings(); Rebuild(); } });

@@ -34,8 +34,8 @@ ModelImporter:
       name: Richard_Special_ShieldCharge
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 21.52174
-      lastFrame: 41.02174
+      firstFrame: 21.5
+      lastFrame: 41
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

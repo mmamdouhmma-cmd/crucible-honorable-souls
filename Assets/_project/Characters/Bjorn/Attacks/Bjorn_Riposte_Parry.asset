@@ -16,9 +16,9 @@ MonoBehaviour:
   damage: 8
   staminaCost: 16
   armorPierce: 0
-  startupFrames: 24
+  startupFrames: 23
   activeFrames: 4
-  recoveryFrames: 28
+  recoveryFrames: 27
   animationClip: {fileID: 0}
   animatorTriggerName: RiposteParry
   attackHeight: 0

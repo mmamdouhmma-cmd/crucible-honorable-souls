@@ -19,5 +19,5 @@ MonoBehaviour:
   armor: 17
   damageMultiplier: 85
   attackSpeed: 100
-  movementSpeed: 20
+  movementSpeed: 25
   dashDistance: 30

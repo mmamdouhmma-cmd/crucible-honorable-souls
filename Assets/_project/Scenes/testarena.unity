@@ -541,10 +541,10 @@ MonoBehaviour:
   combatSystem: {fileID: 126681665}
   characterName: Bjorn
   dashDistance: 2.2
-  dashDuration: 0.6
+  dashDuration: 0.5
   dashStaminaCost: 18
   runSpeed: 7.333333
-  dashIFrameDuration: 0.28
+  dashIFrameDuration: 0.23333333
   blockDamageReduction: 68
   blockStaminaDrainPerSecond: 0
   parryWindow: 0.2
@@ -4732,10 +4732,10 @@ MonoBehaviour:
   combatSystem: {fileID: 1219318493}
   characterName: Richard
   dashDistance: 2
-  dashDuration: 0.68
+  dashDuration: 0.56666666
   dashStaminaCost: 16
   runSpeed: 5.882353
-  dashIFrameDuration: 0.24
+  dashIFrameDuration: 0.19999999
   blockDamageReduction: 85
   blockStaminaDrainPerSecond: 0
   parryWindow: 0.2
@@ -5345,10 +5345,10 @@ MonoBehaviour:
   combatSystem: {fileID: 1308324014}
   characterName: Buwaka
   dashDistance: 2.3
-  dashDuration: 0.56
+  dashDuration: 0.46666667
   dashStaminaCost: 14
   runSpeed: 8.214286
-  dashIFrameDuration: 0.3
+  dashIFrameDuration: 0.25
   blockDamageReduction: 68
   blockStaminaDrainPerSecond: 0
   parryWindow: 0.2
@@ -6229,10 +6229,10 @@ MonoBehaviour:
   combatSystem: {fileID: 1390979200}
   characterName: Genghis
   dashDistance: 2.1
-  dashDuration: 0.6
+  dashDuration: 0.5
   dashStaminaCost: 16
   runSpeed: 6.9999995
-  dashIFrameDuration: 0.26
+  dashIFrameDuration: 0.21666665
   blockDamageReduction: 62
   blockStaminaDrainPerSecond: 0
   parryWindow: 0.2
@@ -7649,10 +7649,10 @@ MonoBehaviour:
   combatSystem: {fileID: 1826393541}
   characterName: Salaadin
   dashDistance: 2.3
-  dashDuration: 0.52
+  dashDuration: 0.4333333
   dashStaminaCost: 15
   runSpeed: 8.846154
-  dashIFrameDuration: 0.32
+  dashIFrameDuration: 0.26666665
   blockDamageReduction: 75
   blockStaminaDrainPerSecond: 0
   parryWindow: 0.2
@@ -8258,10 +8258,10 @@ MonoBehaviour:
   combatSystem: {fileID: 1967802157}
   characterName: Miyamoto
   dashDistance: 2.6
-  dashDuration: 0.44
+  dashDuration: 0.36666664
   dashStaminaCost: 12
   runSpeed: 11.818181
-  dashIFrameDuration: 0.36
+  dashIFrameDuration: 0.3
   blockDamageReduction: 60
   blockStaminaDrainPerSecond: 0
   parryWindow: 0.2

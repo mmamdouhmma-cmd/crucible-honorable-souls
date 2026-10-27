@@ -34,8 +34,8 @@ ModelImporter:
       name: Bjorn_Riposte_Dash
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 14.67143
-      lastFrame: 44.67143
+      firstFrame: 14.711112
+      lastFrame: 44.711113
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -63,8 +63,8 @@ ModelImporter:
       name: Bjorn_Special_HaftStrike
       takeName: mixamo.com
       internalID: 4061839508520268033
-      firstFrame: 13.341935
-      lastFrame: 47.741936
+      firstFrame: 13.149153
+      lastFrame: 47.549156
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
