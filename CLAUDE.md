@@ -1541,6 +1541,37 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
 - **Size order (the user's, 2026-10-27)**: smallest to largest Miyamoto 2.82, Salaadin 2.90, Buwaka
   2.98, Bjorn 3.06, Genghis 3.14, Richard 3.22 (even 0.08 steps; `Stature` table). Measured live
   statures wander +-0.05 with the idle, so judge the order across runs, not one reading.
+- **Online is a LOBBY on a relay this laptop runs (2026-10-28)**, not a link. `Server/start-online.cmd`
+  starts `relay.js` + a Cloudflare quick tunnel and `online.js` writes the tunnel's
+  `wss://.../ws` into the public gist `crucible-server.json` (created by `gh` on the FIRST run - the
+  user's own run, gist creation from here is refused). The game finds it via
+  `api.github.com/users/mmamdouhmma-cmd/gists` -> the file's revision-pinned `raw_url`, then falls
+  back to `ws://localhost:8080/ws`. Server down -> "Can't Reach the Server" / Try again / Main menu.
+  Host = name + optional 6-digit code; Join = live room list ("needs a code" / "open"). Relay protocol
+  is tab-separated (`HOST code\tname`, `LIST` -> `ROOMS`, `JOIN id\tcode` -> `JOINED/NOROOM/FULL/
+  BADCODE`, `PEER_JOINED/PEER_LEFT`); peer messages `C` pick, `R p1 p2 arena speed regen` start,
+  `O speed regen` rules, `P` pause, `H` heartbeat, `I` guest input, `S` host state (first field =
+  host `Time.timeScale`, which the guest copies).
+  - **Host rules**: game speed 50-200% and "Health regen per second" on/off, set in the room, shown
+    read-only to the guest. `Fighter.PassiveRegenOn` (static) gates ONLY the passive hp/s - the
+    dodge/parry/counter heals always stay on (the user's call, 2026-10-28). Offline the same toggle
+    is in Settings (`SettingsData.healthRegen`, saved, applied by `ApplySettings`, hidden online).
+  - **Pauses**: 2 per player per fight, 30 s each, host-authoritative (`HostPause/HostResume`, the
+    guest only requests); only the pauser resumes early, the host's clock auto-resumes at 30 s.
+  - **Disconnects**: `H` every 1 s; nothing heard for `NetSession.PeerTimeout` (8 s, a CONST - it
+    was a serialized field and the scene silently kept 6) = gone. Peer left/lost mid-fight -> back to
+    the Online lobby, "the fight is yours". Relay dies -> the failure page, Try again reconnects.
+  - **`GameMenu.SetAi(false)` re-asserts `SetAi(2,true)` for an online host** - the count-in's
+    deactivate at FIGHT was wiping the guest's input slot, so the guest could never move.
+  - All verified 2026-10-28 with `peer2.js` (scratchpad, a scripted opponent) on both roles, plus one
+    run through a real trycloudflare tunnel.
+- **Updates**: `GameUpdater` (Windows player only) compares `Application.version` with the latest
+  GitHub release tag `v<ver>` on `mmamdouhmma-cmd/crucible-honorable-souls`, downloads `*-Win64.zip`
+  and hands off to a batch file that waits for the game to exit, copies over the install and
+  relaunches. Release = bump Player Settings > Version, `Crucible > Build > Windows app`,
+  `Tools/release.cmd` (Windows tar.exe for the zip - Git Bash's tar writes a TAR). The server window
+  says SERVER IS ONLINE when published; stop it by typing `stop` + Enter, Ctrl+C, or closing it. The first public
+  build has to be downloaded by hand; 0.1.0 builds have no updater.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `PlayProbe`, `BladeTrace`

@@ -14,6 +14,38 @@ public static class CrucibleBuild
     const string BuildScene = "Assets/_project/Scenes/_build_temp.unity";
     const string OutDir = "Builds/WebGL";
 
+    const string WinDir = "Builds/CrucibleLite-Win64";
+
+    /// <summary>
+    /// The Windows app that friends download (Tools/release.cmd zips and publishes this folder). Bump
+    /// Player Settings > Version FIRST: the game updates itself when a release tag is newer than its own
+    /// <c>Application.version</c>, so a release built at the old number never reaches anyone.
+    /// </summary>
+    [MenuItem("Crucible/Build/Windows app")]
+    public static void BuildWindows()
+    {
+        Directory.CreateDirectory(WinDir);
+        string scene = PrepareScene();
+        BuildReport report;
+        try
+        {
+            report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            {
+                scenes = new[] { scene },
+                locationPathName = Path.Combine(WinDir, "Crucible.exe"),
+                target = BuildTarget.StandaloneWindows64,
+                options = BuildOptions.None,
+            });
+        }
+        finally
+        {
+            RestoreScene();
+        }
+        var s = report.summary;
+        Debug.Log($"Windows build v{PlayerSettings.bundleVersion} {s.result}: {s.totalSize / (1024 * 1024)} MB, {s.totalErrors} errors -> {Path.GetFullPath(WinDir)}");
+        File.WriteAllText(Path.Combine(WinDir, "build_result.txt"), $"{s.result} v{PlayerSettings.bundleVersion} {s.totalSize} {s.totalErrors} {s.totalTime}");
+    }
+
     [MenuItem("Crucible/Build/WebGL (test build)")]
     public static void BuildWebGL()
     {

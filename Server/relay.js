@@ -1,13 +1,16 @@
 // CRUCIBLE test relay + static host.
 //   node Server/relay.js [--port 8080] [--dir Builds/WebGL]
 // Serves the WebGL build over HTTP and relays WebSocket messages between the two players of a room
-// (browsers cannot open LAN sockets to each other, so both phones talk through this PC).
-// Protocol (text frames):
-//   client -> server:  "HOST <name>"   create a room, you are the host
-//                      "LIST"          list open rooms  -> "ROOMS name1,name2"
-//                      "JOIN <name>"   join a room as the guest -> "JOINED" (or "FULL"/"NOROOM")
-//                      anything else   relayed verbatim to the other player of your room
-//   server -> client:  "HOSTED <name>", "PEER_JOINED", "PEER_LEFT", "ROOMS ...", "JOINED", "ERR ..."
+// (players cannot open sockets to each other, so both talk through this PC). Fields are TAB-separated.
+// Protocol (text frames; <TAB> = a tab character, <NL> = a newline):
+//   client -> server:  HELLO                    -> WELCOME 2 (proves this is the relay, not an error page)
+//                      HOST <code><TAB><name>   create a room; code = "" or 6 digits -> HOSTED <id><TAB><name>
+//                      HOST <name>              legacy (no tab): open room, no code
+//                      LIST                     -> ROOMS, then per open room <NL><id><TAB><locked 0|1><TAB><name>
+//                      JOIN <id><TAB><code>     -> JOINED | NOROOM | FULL | BADCODE
+//                      LEAVE                    leave your room (back to the lobby, socket stays open)
+//                      anything else            relayed verbatim to the other player of your room
+//   server -> client:  PEER_JOINED, PEER_LEFT, ERR ...
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -41,50 +44,66 @@ const server = http.createServer((req, res) => {
   });
 });
 
-const rooms = new Map(); // name -> { host, guest }
+const rooms = new Map(); // id -> { id, name, code, host, guest }
+let nextId = 1;
 const wss = new WebSocketServer({ server, path: "/ws" });
 
 function send(ws, msg) { if (ws && ws.readyState === 1) ws.send(msg); }
-function roomList() { return "ROOMS " + [...rooms.entries()].filter(([, r]) => r.host && !r.guest).map(([n]) => n).join(","); }
+const clean = (t, n) => String(t || "").replace(/[\t\r\n]/g, " ").trim().slice(0, n);
+function roomList() {
+  let out = "ROOMS";
+  for (const r of rooms.values()) if (r.host && !r.guest) out += `\n${r.id}\t${r.code ? 1 : 0}\t${r.name}`;
+  return out;
+}
+
+function leaveRoom(ws) {
+  const r = ws.room ? rooms.get(ws.room) : null;
+  if (r) {
+    if (ws.role === "host") { send(r.guest, "PEER_LEFT"); if (r.guest) { r.guest.room = null; r.guest.role = null; } rooms.delete(ws.room); }
+    else if (r.guest === ws) { r.guest = null; send(r.host, "PEER_LEFT"); }
+    console.log("room", ws.room, ws.role, "left");
+  }
+  ws.room = null; ws.role = null;
+}
 
 wss.on("connection", (ws, req) => {
   ws.room = null; ws.role = null;
-  console.log("connect", req.socket.remoteAddress);
+  console.log("connect", req.headers["cf-connecting-ip"] || req.socket.remoteAddress);
   ws.on("message", (data) => {
     const msg = data.toString();
+    if (msg === "HELLO") { send(ws, "WELCOME 2"); return; }
     if (msg.startsWith("HOST ")) {
-      const name = msg.slice(5).trim().slice(0, 24) || "room";
-      let n = name, k = 2;
-      while (rooms.has(n)) n = name + " " + k++;
-      rooms.set(n, { host: ws, guest: null });
-      ws.room = n; ws.role = "host";
-      send(ws, "HOSTED " + n);
-      console.log("room", n, "hosted");
+      const body = msg.slice(5);
+      const tab = body.indexOf("\t");
+      let code = tab >= 0 ? body.slice(0, tab).trim() : "";
+      const name = clean(tab >= 0 ? body.slice(tab + 1) : body, 24) || "Crucible duel";
+      if (code && !/^\d{6}$/.test(code)) return send(ws, "ERR the code must be 6 digits");
+      const id = String(nextId++);
+      rooms.set(id, { id, name, code, host: ws, guest: null });
+      ws.room = id; ws.role = "host";
+      send(ws, `HOSTED ${id}\t${name}`);
+      console.log(`room ${id} "${name}" hosted${code ? " (code)" : ""}`);
       return;
     }
     if (msg === "LIST") { send(ws, roomList()); return; }
+    if (msg === "LEAVE") { leaveRoom(ws); return; }
     if (msg.startsWith("JOIN ")) {
-      const n = msg.slice(5).trim();
-      const r = rooms.get(n);
+      const [id, code = ""] = msg.slice(5).split("\t");
+      const r = rooms.get(id.trim());
       if (!r) return send(ws, "NOROOM");
       if (r.guest) return send(ws, "FULL");
-      r.guest = ws; ws.room = n; ws.role = "guest";
+      if (r.code && code.trim() !== r.code) { console.log(`room ${r.id} wrong code`); return send(ws, "BADCODE"); }
+      r.guest = ws; ws.room = r.id; ws.role = "guest";
       send(ws, "JOINED");
       send(r.host, "PEER_JOINED");
-      console.log("room", n, "joined");
+      console.log(`room ${r.id} joined`);
       return;
     }
     const r = ws.room ? rooms.get(ws.room) : null;
     if (!r) return;
     send(ws.role === "host" ? r.guest : r.host, msg);
   });
-  ws.on("close", () => {
-    const r = ws.room ? rooms.get(ws.room) : null;
-    if (!r) return;
-    if (ws.role === "host") { send(r.guest, "PEER_LEFT"); rooms.delete(ws.room); }
-    else { r.guest = null; send(r.host, "PEER_LEFT"); }
-    console.log("room", ws.room, ws.role, "left");
-  });
+  ws.on("close", () => leaveRoom(ws));
 });
 
 server.listen(PORT, "0.0.0.0", () => {

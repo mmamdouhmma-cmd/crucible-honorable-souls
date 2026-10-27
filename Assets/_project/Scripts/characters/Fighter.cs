@@ -288,6 +288,12 @@ public class Fighter : MonoBehaviour
     [Tooltip("Stamina regained per second. Set per character.")]
     [SerializeField] private float staminaRecoveryPerSecond = BalanceConfig.STAMINA_RECOVERY_PER_SECOND;
 
+    /// <summary>
+    /// Match rule: false switches off the PASSIVE health regeneration (hp per second). The heals for a
+    /// dodge, parry or counter hit are not affected. Set from Settings offline, by the host online.
+    /// </summary>
+    public static bool PassiveRegenOn = true;
+
     [Tooltip("Health regained per second while alive. Keep it small; 0 turns regeneration off. Set per character.")]
     [SerializeField] private float healthRegenPerSecond = BalanceConfig.DEFAULT_HEALTH_REGEN_PER_SECOND;
 
@@ -1657,7 +1663,7 @@ private bool WouldCollideWithOpponent(Vector3 desiredMove)
         {
             healthRegenDelayTimer -= Time.deltaTime;
         }
-        else
+        else if (PassiveRegenOn)
         {
             stats.RegenerateHealth(Time.deltaTime, healthRegenPerSecond);
         }

@@ -4356,3 +4356,20 @@ Two more calls the same evening:
   a fresh play session needs `ApplySides` or your "player 1" input drives somebody else.
 - Forest floor recoloured via a UV-space floor mask (see CLAUDE.md); first pass was lime and
   streaked two orbs, second pass (grow 4 px, darker) photographed clean. Shipped flag on.
+
+### 2026-10-28 — Online lobby, pauses, host rules, disconnects, updater
+- Online moved off links: laptop relay + Cloudflare quick tunnel, address published to a gist the
+  game reads; host/join lobby with names and optional 6-digit codes. Details in CLAUDE.md.
+- Pause allowance (2 x 30 s each), host toggles for game speed and health regen, heartbeat
+  disconnect detection. Scenario-tested with a scripted opponent in BOTH roles: rules sync (130%,
+  regen off -> 0 hp regained in 5 s), pause counts / refusals / 30 s auto-resume, guest cannot end
+  the host's pause, silent peer timed out at 8 s, killed peer, host vanishing mid-fight and in the
+  waiting room, relay killed mid-fight -> failure page -> Try again, wrong/right codes, and a fight
+  over a real trycloudflare tunnel.
+- Bugs found by the tests: guest input wiped at FIGHT (SetAi), the serialized peerTimeout kept
+  the scene's 6 s (now a const), and the join list showed a closed room for a moment (cleared on
+  browse).
+- Later: the regen toggle now covers ONLY the passive hp/s (dodge/parry heals stay), and it is in
+  offline Settings too - verified 65 -> 65 over 5 s with it off while a dodge heal still gave +5.
+  `online.js` had its cloudflared path written with single backslashes (JS ate them), so it only
+  ever worked with cloudflared on PATH; fixed, plus a `stop` command and an ONLINE banner.

@@ -35,6 +35,7 @@ public class GameMenu : MonoBehaviour
         Replay,
         PickDevices,    // 2-player: who holds what (appended - keep the order)
         Records,        // the saved-fights library on the main menu (appended - keep the order)
+        OnlineHostSetup, OnlineCode, OnlineGuest,   // online lobby (appended - keep the order)
     }
 
     /// <summary>Which path through the select screens we are on.</summary>
@@ -49,6 +50,7 @@ public class GameMenu : MonoBehaviour
         public float voiceVolume = 1f;
         public float gameSpeed = 0.85f;
         public bool blood = true;
+        public bool healthRegen = true;   // passive hp per second; dodge/parry heals are separate
         public int padPlayer = 2;
         public int touchButtons = 0;   // 0 auto (touch devices only), 1 always on, 2 off
     }
@@ -62,6 +64,7 @@ public class GameMenu : MonoBehaviour
         public Action<int> adjust;      // left (-1) / right (+1)
         public bool header;             // not selectable
         public bool quiet;              // header drawn small and dim (body copy)
+        public FieldSpec field;         // optional: Confirm types into this row
     }
 
     class Row
@@ -281,17 +284,28 @@ public class GameMenu : MonoBehaviour
         if (n > 1) { sideMark[1] = p2Mark; sideRot[1] = Quaternion.Euler(0f, p2Yaw, 0f); }
 
         LoadSettings();
+        BuildOnlineFields();
+        hostName = HostNamePresets()[0];
         BuildCanvas();
     }
 
     void Start()
     {
+        if (GameUpdater.Instance == null) gameObject.AddComponent<GameUpdater>();
         if (Net != null)
         {
             Net.OnStartReceived += () =>
             {
                 netRole = NetSession.Role.Guest;
                 vsAi = false;
+                flow = Flow.Online;
+                onlineSpeed = Net.RulesSpeed;
+                onlineRegen = Net.RulesRegen;
+                Fighter.PassiveRegenOn = onlineRegen;
+                ResetOnlineMatchState();
+                SyncSpeed();
+                if (Net.StartP1 >= 0 && Net.StartP2 >= 0) ApplySides(Net.StartP1, Net.StartP2);
+                if (Net.StartArena >= 0 && ArenaDirectory.Instance != null) { arenaChoice = Net.StartArena; ArenaDirectory.Instance.Select(arenaChoice); }
                 PlaceFighters();
                 inMatch = true;
                 FreezeFighters(false);
@@ -304,11 +318,48 @@ public class GameMenu : MonoBehaviour
             };
             Net.OnPauseReceived += on =>
             {
-                if (netRole == NetSession.Role.Host) { if (on) Pause(); else Resume(); }
-                else { if (on) PauseLocal(); else ResumeLocal(); }
+                if (netRole != NetSession.Role.Host) return;
+                if (on) HostPause(2);
+                else if (pausedBy == 2) HostResume();
             };
+            Net.OnPauseState += (on, by, used1, used2) =>
+            {
+                if (netRole != NetSession.Role.Guest) return;
+                onlinePauses[1] = used1;
+                onlinePauses[2] = used2;
+                if (on)
+                {
+                    pausedBy = by;
+                    pauseStartedAt = Time.unscaledTime;
+                    if (screen != Screen.Pause) PauseLocal();
+                }
+                else if (pausedBy != 0)
+                {
+                    pausedBy = 0;
+                    ResumeLocal();
+                }
+            };
+            Net.OnPeerJoined += () => Net.SendRules(onlineSpeed, onlineRegen);
             Net.OnRematchRequested += () => { if (netRole == NetSession.Role.Host && !inMatch) StartMatch(); };
-            Net.OnPeerLeft += () => { if (netRole != NetSession.Role.None) { Net.Leave(); netRole = NetSession.Role.None; EndMatchToMenu(); subtitle.text = "The other player left"; } };
+            Net.OnPeerLeft += () =>
+            {
+                if (netRole != NetSession.Role.None)
+                {
+                    bool serverDown = Net.CurrentPhase == NetSession.Phase.Failed;
+                    bool lostContact = Net.Status.StartsWith("Lost contact");
+                    netRole = NetSession.Role.None;          // so EndMatchToMenu keeps the connection
+                    Net.GuestLeaveMatch();
+                    pausedBy = 0;
+                    EndMatchToMenu();
+                    if (!serverDown) Net.LeaveRoom();
+                    Notice(serverDown ? "" : lostContact ? "lost contact with your opponent - the fight is yours"
+                                                         : "your opponent left - the fight is yours", 10f);
+                    Show(Screen.Online);
+                    return;
+                }
+                if (screen == Screen.OnlineGuest) { Notice("the host closed the game", 10f); Net.BrowseRooms(); BackTo(Screen.OnlineJoin); }
+                else if (screen == Screen.OnlineHost) Notice("your opponent left - the game is still open");
+            };
         }
 
         ApplySettings();
@@ -327,6 +378,7 @@ public class GameMenu : MonoBehaviour
 
         float dt = Time.unscaledDeltaTime;
         screenAge += dt;
+        if (netRole == NetSession.Role.Host && pausedBy != 0 && PauseSecondsLeft <= 0f) HostResume();
         if (inputGuard > 0f) inputGuard -= dt;
 
         AnimateRows(dt);
@@ -350,10 +402,21 @@ public class GameMenu : MonoBehaviour
         if (screen == Screen.CharSelect) { UpdateCharSelect(); return; }   // the circle runs its own input + cameras
         if (screen == Screen.Replay && UpdateReplay()) return;   // exporting: input lands nowhere
 
-        if ((screen == Screen.OnlineHost || screen == Screen.OnlineJoin) && Time.unscaledTime >= nextOnlineRefresh)
+        if (screen == Screen.Pause && pausedBy != 0 && Time.unscaledTime >= nextOnlineRefresh)
         {
-            nextOnlineRefresh = Time.unscaledTime + 1f;
+            nextOnlineRefresh = Time.unscaledTime + 0.25f;   // the pause countdown
             Rebuild();
+        }
+        if (screen == Screen.Main && GameUpdater.Instance != null && Time.unscaledTime >= nextOnlineRefresh &&
+            (GameUpdater.Instance.Current == GameUpdater.State.Checking || GameUpdater.Instance.Current == GameUpdater.State.Downloading))
+        {
+            nextOnlineRefresh = Time.unscaledTime + 0.25f;   // the update row appears / counts up live
+            Rebuild();
+        }
+        if (IsOnlineScreen(screen))
+        {
+            UpdateOnline();
+            if (fieldEdit != null) { UpdateFieldEdit(im); return; }
         }
 
         Vector2 nav = im.MenuNavigate();
@@ -497,8 +560,10 @@ public class GameMenu : MonoBehaviour
     {
         var ai = AiController.Instance != null ? AiController.Instance : GetComponent<AiController>();
         if (ai == null && on) ai = gameObject.AddComponent<AiController>();
-        if (ai == null) return;
-        if (on) ai.Activate(aiDifficulty, 2, rules); else ai.Deactivate();
+        if (ai != null) { if (on) ai.Activate(aiDifficulty, 2, rules); else ai.Deactivate(); }
+        // Deactivate clears Player 2's override slot, and an online host feeds the guest's input
+        // through that same slot - the count-in's switch-off at FIGHT left the guest unable to move.
+        if (!on && netRole == NetSession.Role.Host && InputManager.Instance != null) InputManager.Instance.SetAi(2, true);
     }
 
     public void StartMatch()
@@ -518,7 +583,10 @@ public class GameMenu : MonoBehaviour
         }
         else practice.End();
 
-        if (netRole == NetSession.Role.Host) Net?.HostStartMatch();
+        if (netRole == NetSession.Role.Host) Net?.HostStartMatch(p1Character, p2Character, arenaChoice, onlineSpeed, onlineRegen);
+        Fighter.PassiveRegenOn = netRole == NetSession.Role.None ? settings.healthRegen : onlineRegen;
+        ResetOnlineMatchState();
+        SyncSpeed();
         if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(playerCount >= 2 && !vsAi && netRole == NetSession.Role.None ? 2 : 1);
 
         // Held still, over the arena, until the count reaches FIGHT. inMatch stays false so a
@@ -536,15 +604,43 @@ public class GameMenu : MonoBehaviour
 
     public void Pause()
     {
+        if (netRole == NetSession.Role.None) { PauseLocal(); return; }
+        // Online: each player has OnlinePauseLimit pauses a fight, OnlinePauseSeconds each. The host
+        // keeps the count and the clock; the guest only asks.
+        if (onlinePauses[MySide] >= OnlinePauseLimit)
+        {
+            if (stage != null) stage.Announce("No pauses left", new Color(0.92f, 0.78f, 0.55f), 1.2f, $"each player gets {OnlinePauseLimit} a fight", 90);
+            CrucibleAudio.Ui(CrucibleAudio.UiSound.Back);
+            return;
+        }
         if (netRole == NetSession.Role.Guest) { Net?.SendPause(true); return; }
-        if (netRole == NetSession.Role.Host) Net?.SendPause(true);
-        PauseLocal();
+        HostPause(1);
     }
 
     public void Resume()
     {
+        if (netRole == NetSession.Role.None) { ResumeLocal(); return; }
+        if (pausedBy != MySide) return;            // only the one who paused resumes early; otherwise the clock does
         if (netRole == NetSession.Role.Guest) { Net?.SendPause(false); return; }
-        if (netRole == NetSession.Role.Host) Net?.SendPause(false);
+        HostResume();
+    }
+
+    /// <summary>Host: start a pause for side <paramref name="by"/> (1 host, 2 guest) if it has one left.</summary>
+    void HostPause(int by)
+    {
+        if (pausedBy != 0 || screen == Screen.MatchOver || onlinePauses[by] >= OnlinePauseLimit) return;
+        onlinePauses[by]++;
+        pausedBy = by;
+        pauseStartedAt = Time.unscaledTime;
+        Net?.SendPauseState(true, by, onlinePauses[1], onlinePauses[2]);
+        PauseLocal();
+    }
+
+    void HostResume()
+    {
+        if (pausedBy == 0) return;
+        pausedBy = 0;
+        Net?.SendPauseState(false, 0, onlinePauses[1], onlinePauses[2]);
         ResumeLocal();
     }
 
@@ -577,6 +673,9 @@ public class GameMenu : MonoBehaviour
         SetAi(false, AiController.Rules.Full);
         if (PracticeMode.Instance != null) PracticeMode.Instance.End();
         if (netRole != NetSession.Role.None) { Net?.GuestLeaveMatch(); Net?.Leave(); netRole = NetSession.Role.None; }
+        Fighter.PassiveRegenOn = settings.healthRegen;
+        pausedBy = 0;
+        SyncSpeed();
         if (TouchControls.Instance != null) TouchControls.Instance.Hide();
         Time.timeScale = GameSpeed();
         // Bench everyone the select screens may have woken (ShowWholeRoster): left active, the
@@ -711,7 +810,7 @@ public class GameMenu : MonoBehaviour
         PlayerPrefs.Save();
     }
 
-    float GameSpeed() => Mathf.Clamp(settings.gameSpeed, 0.5f, MaxGameSpeed);
+    float GameSpeed() => Mathf.Clamp(netRole != NetSession.Role.None ? onlineSpeed : settings.gameSpeed, 0.5f, MaxGameSpeed);
     const float MaxGameSpeed = 2f;   // Settings slider tops out at 200% (the user's call, 2026-10-27)
 
     void ApplySettings()
@@ -719,6 +818,7 @@ public class GameMenu : MonoBehaviour
         AudioListener.volume = Mathf.Clamp01(settings.volume);
         CrucibleAudio.SetVolumes(settings.musicVolume, settings.effectsVolume, settings.voiceVolume);
         TouchControls.SetMode(settings.touchButtons);
+        if (netRole == NetSession.Role.None) Fighter.PassiveRegenOn = settings.healthRegen;
         var dts = GetComponent<DebugTimeScale>();
         if (dts != null) { dts.timeScale = GameSpeed(); dts.enabled = true; }
         if (screen == Screen.None || !inMatch) Time.timeScale = GameSpeed();
@@ -779,6 +879,7 @@ public class GameMenu : MonoBehaviour
             && s != Screen.Replay && s != Screen.Records && !rebuilding && !inMatch)
             ApplySides(p1Character, p2Character);
         if (s != Screen.MatchOver) { confirmAsk = null; confirmYes = null; }
+        if (!rebuilding && s != screen) fieldEdit = null;
         // The kill-shot darkness holds through the K.O. screen (the corpse under a black sky IS
         // the shot); any real menu screen brings the arena lights back for the select views.
         if (s != Screen.None && s != Screen.Pause && s != Screen.MatchOver) KillShot.RestoreLights();
@@ -877,8 +978,12 @@ public class GameMenu : MonoBehaviour
             // ------------------------------------------------------------ main
             case Screen.Main:
                 SetTitle("Crucible", "Honourable Souls");
+                var upd = GameUpdater.Instance;
+                if (upd != null && (upd.Current == GameUpdater.State.Available || upd.Current == GameUpdater.State.Downloading ||
+                                    upd.Current == GameUpdater.State.Installing || upd.Current == GameUpdater.State.Failed))
+                    items.Add(new Item { label = "Update", value = () => UpdateRowValue(upd), confirm = () => { upd.Install(); Rebuild(); } });
                 items.Add(new Item { label = "Battle Now", value = () => "1 or 2 players on this device", confirm = () => { flow = Flow.Local; GoWiped(Screen.LocalSetup); } });
-                items.Add(new Item { label = "Online", value = () => "play over the link", confirm = () => { flow = Flow.Online; InputManager.Instance?.ClearPlayerDevices(); Show(Screen.Online); } });
+                items.Add(new Item { label = "Online", value = () => "host or join a game", confirm = () => { flow = Flow.Online; InputManager.Instance?.ClearPlayerDevices(); onlineCharacter = p1Character; Net?.ConnectToServer(); Show(Screen.Online); } });
                 items.Add(new Item { label = "Practice", value = () => "a dummy that obeys your rules", confirm = () => { flow = Flow.Practice; playerCount = 1; InputManager.Instance?.ClearPlayerDevices(); GoWiped(Screen.CharSelect); } });
                 items.Add(new Item { label = "Move List", confirm = () => Show(Screen.Moves) });
                 items.Add(new Item { label = "Records", value = () => "watch and export saved fights", confirm = () => Show(Screen.Records) });
@@ -946,50 +1051,131 @@ public class GameMenu : MonoBehaviour
                 break;
 
             // ------------------------------------------------------------ online
+            // Online goes through the laptop's server (Server/online.js). Entering the area connects;
+            // a failure offers Try again / Main menu. Connected: host (name + optional 6-digit code)
+            // or join (the list of open games, with the code asked for when the host set one).
             case Screen.Online:
-                SetTitle("Online", "both players open " + NetSession.LanHint());
-                items.Add(new Item { label = "Host a game", value = () => "you fight as Player 1", confirm = () =>
+            {
+                var phase = Net != null ? Net.CurrentPhase : NetSession.Phase.Failed;
+                if (phase == NetSession.Phase.Failed || phase == NetSession.Phase.Idle)
                 {
-                    if (Net == null) return;
-                    Net.Host(Environment.MachineName.Length > 0 ? Environment.MachineName : "room");
+                    SetTitle("Can't Reach the Server", Net != null && Net.Status.Length > 0 ? Net.Status : "the server may be switched off");
+                    items.Add(new Item { label = "Try again", confirm = () => { Net?.ConnectToServer(); Rebuild(); } });
+                    items.Add(new Item { label = "Main menu", confirm = Back });
+                }
+                else if (phase == NetSession.Phase.Connecting)
+                {
+                    SetTitle("Online", "connecting to the server" + new string('.', 1 + (int)(Time.unscaledTime * 2f) % 3));
+                    items.Add(new Item { label = "Cancel", confirm = Back });
+                }
+                else
+                {
+                    SetTitle("Online", OnlineNotice("connected to the server"));
+                    items.Add(new Item { label = "Host a game", value = () => "name it, lock it with a code", confirm = () => Show(Screen.OnlineHostSetup) });
+                    items.Add(new Item { label = "Join a game", value = () => "pick from the open games", confirm = () => { Net.BrowseRooms(); Show(Screen.OnlineJoin); } });
+                    items.Add(new Item { label = "Main menu", confirm = Back });
+                }
+                footerText.text = NavHint();
+                break;
+            }
+
+            case Screen.OnlineHostSetup:
+                SetTitle("Host a Game", OnlineNotice("the code is optional - leave it empty for an open game"));
+                items.Add(new Item { label = "Game name", value = () => FieldValue(hostNameField), field = hostNameField,
+                                     adjust = d => { hostNamePreset = (hostNamePreset + d + HostNamePresets().Length) % HostNamePresets().Length; hostName = HostNamePresets()[hostNamePreset]; Rebuild(); } });
+                items.Add(new Item { label = "Code", value = () => FieldValue(hostCodeField), field = hostCodeField });
+                items.Add(new Item { label = "", header = true });
+                items.Add(new Item { label = "Open the game", confirm = () =>
+                {
+                    if (hostCode.Length != 0 && hostCode.Length != 6) { onlineNotice = "the code needs all 6 digits (or none)"; onlineNoticeUntil = Time.unscaledTime + 4f; Rebuild(); return; }
+                    if (string.IsNullOrWhiteSpace(hostName)) hostName = HostNamePresets()[0];
+                    Net.Host(hostName.Trim(), hostCode);
+                    Net.SendCharacter(onlineCharacter);
                     Show(Screen.OnlineHost);
                 } });
-                items.Add(new Item { label = "Join a game", value = () => "you fight as Player 2", confirm = () => { if (Net == null) return; Net.BrowseRooms(); Show(Screen.OnlineJoin); } });
+                items.Add(new Item { label = "Back", confirm = Back });
+                footerText.text = (fieldEdit != null ? "Type, then Enter    " : "Confirm on a field to type    ") + NavHint();
+                break;
+
+            case Screen.OnlineHost:
+            {
+                bool peer = Net != null && Net.PeerConnected;
+                SetTitle(Net != null ? Net.RoomName : "Hosting",
+                         OnlineNotice((hostCode.Length == 6 ? "code " + hostCode + " - " : "open game - ") + (peer ? "your opponent is here" : "waiting for a player...")));
+                items.Add(new Item { label = "Your fighter", value = () => "< " + CharacterLabel(onlineCharacter) + " >", adjust = d => StepOnlineCharacter(d), confirm = () => StepOnlineCharacter(1) });
+                items.Add(new Item { label = "Opponent", value = () => !peer ? "-" : Net.PeerCharacter >= 0 ? CharacterLabel(Net.PeerCharacter) : "choosing...", header = true, quiet = true });
+                items.Add(new Item { label = "Arena", value = () => "< " + ArenaLabel(arenaChoice) + " >", adjust = d => StepOnlineArena(d), confirm = () => StepOnlineArena(1) });
+                items.Add(new Item { label = "Game speed", value = () => "< " + Mathf.RoundToInt(onlineSpeed * 100f) + "% >", adjust = d => StepOnlineSpeed(d), confirm = () => StepOnlineSpeed(1) });
+                items.Add(new Item { label = "Health regen per second", value = () => "< " + OnOff(onlineRegen) + " >", adjust = d => ToggleOnlineRegen(), confirm = ToggleOnlineRegen });
+                items.Add(new Item { label = "", header = true });
+                items.Add(new Item { label = peer ? "Start the fight" : "Waiting for a player...", confirm = () =>
+                {
+                    if (Net == null || !Net.PeerConnected) return;
+                    int p2 = Net.PeerCharacter >= 0 ? Net.PeerCharacter : (onlineCharacter + 1) % Mathf.Max(1, roster.Length);
+                    ApplySides(onlineCharacter, p2);
+                    vsAi = false; playerCount = 2; flow = Flow.Online;
+                    netRole = NetSession.Role.Host;
+                    StartMatch();
+                } });
+                items.Add(new Item { label = "Close the game", confirm = Back });
+                footerText.text = "Left / Right to change    " + NavHint();
+                break;
+            }
+
+            case Screen.OnlineJoin:
+                SetTitle("Join a Game", OnlineNotice(Net != null && Net.Rooms.Count > 0 ? "pick a game" : "no open games yet - waiting for a host"));
+                if (Net != null)
+                {
+                    foreach (var r in Net.Rooms)
+                    {
+                        var room = r;
+                        items.Add(new Item { label = room.name, value = () => room.locked ? "needs a code" : "open", confirm = () =>
+                        {
+                            if (room.locked) { joinRoom = room; joinCode = ""; Show(Screen.OnlineCode); BeginFieldEdit(joinCodeField); }
+                            else { joinRoom = room; Net.SendCharacter(onlineCharacter); Net.Join(room, ""); }
+                        } });
+                    }
+                }
+                items.Add(new Item { label = "", header = true });
                 items.Add(new Item { label = "Back", confirm = Back });
                 footerText.text = NavHint();
                 break;
 
-            case Screen.OnlineHost:
-                SetTitle("Hosting", Net != null ? Net.Status : "");
-                items.Add(new Item { label = Net != null && Net.PeerConnected ? "Start the fight" : "Waiting for a player...",
-                                     confirm = () => { if (Net != null && Net.PeerConnected) { vsAi = false; playerCount = 2; netRole = NetSession.Role.Host; StartMatch(); } } });
-                items.Add(new Item { label = "Cancel", confirm = () => { Net?.Leave(); netRole = NetSession.Role.None; Show(Screen.Online, push: false); } });
-                footerText.text = NavHint();
+            case Screen.OnlineCode:
+                SetTitle(joinRoom.name ?? "Join", OnlineNotice("this game is locked - enter its 6-digit code"));
+                items.Add(new Item { label = "Code", value = () => FieldValue(joinCodeField), field = joinCodeField });
+                items.Add(new Item { label = "Join", confirm = TryJoinWithCode });
+                items.Add(new Item { label = "Back", confirm = Back });
+                footerText.text = (fieldEdit != null ? "Type the digits, then Enter    " : "") + NavHint();
                 break;
 
-            case Screen.OnlineJoin:
-                SetTitle("Join a Game", Net != null ? Net.Status : "");
-                if (Net != null)
-                {
-                    if (Net.Rooms.Count == 0) items.Add(new Item { label = "(no open games yet - the host must press Host a game)", header = true, quiet = true });
-                    foreach (var r in Net.Rooms) { string room = r; items.Add(new Item { label = "Join " + room, confirm = () => Net.Join(room) }); }
-                }
-                items.Add(new Item { label = "Back", confirm = () => { Net?.Leave(); netRole = NetSession.Role.None; Show(Screen.Online, push: false); } });
-                footerText.text = NavHint();
+            case Screen.OnlineGuest:
+                SetTitle(Net != null ? Net.RoomName : "Joined", OnlineNotice("waiting for the host to start the fight"));
+                items.Add(new Item { label = "Your fighter", value = () => "< " + CharacterLabel(onlineCharacter) + " >", adjust = d => StepOnlineCharacter(d), confirm = () => StepOnlineCharacter(1) });
+                items.Add(new Item { label = "Host's fighter", value = () => Net != null && Net.PeerCharacter >= 0 ? CharacterLabel(Net.PeerCharacter) : "choosing...", header = true, quiet = true });
+                items.Add(new Item { label = "Arena", value = () => "the host picks", header = true, quiet = true });
+                items.Add(new Item { label = "Game speed", value = () => Net != null ? Mathf.RoundToInt(Net.RulesSpeed * 100f) + "%" : "-", header = true, quiet = true });
+                items.Add(new Item { label = "Health regen per second", value = () => Net != null ? OnOff(Net.RulesRegen) : "-", header = true, quiet = true });
+                items.Add(new Item { label = "", header = true });
+                items.Add(new Item { label = "Leave the game", confirm = Back });
+                footerText.text = "Left / Right to change    " + NavHint();
                 break;
 
             // ------------------------------------------------------------ pause
             case Screen.Pause:
                 SetTitle("Paused", PauseSubtitle());
-                items.Add(new Item { label = "Resume", confirm = Resume });
+                if (netRole == NetSession.Role.None) items.Add(new Item { label = "Resume", confirm = Resume });
+                else if (pausedBy == MySide) items.Add(new Item { label = "Resume", value = () => Mathf.CeilToInt(PauseSecondsLeft) + " s left", confirm = Resume });
+                else items.Add(new Item { label = "Your opponent paused", value = () => "back in " + Mathf.CeilToInt(PauseSecondsLeft) + " s", header = true });
                 items.Add(new Item { label = "Move List", value = () => "strikes, specials and strings", confirm = () => Show(Screen.Moves) });
                 items.Add(new Item { label = "How to Fight", confirm = () => Show(Screen.Help) });
                 items.Add(new Item { label = "Controls", confirm = () => Show(Screen.Controls) });
                 items.Add(new Item { label = "Settings", confirm = () => Show(Screen.Settings) });
                 if (flow == Flow.Practice)
                     items.Add(new Item { label = "Practice rules", confirm = () => Show(Screen.PracticeRules) });
-                items.Add(new Item { label = "Restart the fight", confirm = () => { if (stage != null) stage.Wipe(StartMatch); else StartMatch(); } });
-                items.Add(new Item { label = "Main Menu", confirm = () => { if (stage != null) stage.Wipe(EndMatchToMenu); else EndMatchToMenu(); } });
+                if (netRole == NetSession.Role.None)
+                    items.Add(new Item { label = "Restart the fight", confirm = () => { if (stage != null) stage.Wipe(StartMatch); else StartMatch(); } });
+                items.Add(new Item { label = netRole == NetSession.Role.None ? "Main Menu" : "Leave the match", confirm = () => { if (stage != null) stage.Wipe(EndMatchToMenu); else EndMatchToMenu(); } });
                 footerText.text = "Options / Esc resumes    " + NavHint();
                 break;
 
@@ -1142,6 +1328,10 @@ public class GameMenu : MonoBehaviour
                     adjust = d => { settings.voiceVolume = Mathf.Clamp01(settings.voiceVolume + d * 0.1f); ApplySettings(); SaveSettings(); } });
                 items.Add(new Item { label = "Game speed", value = () => Mathf.RoundToInt(settings.gameSpeed * 100) + "%",
                     adjust = d => { settings.gameSpeed = Mathf.Clamp(settings.gameSpeed + d * 0.05f, 0.5f, MaxGameSpeed); ApplySettings(); SaveSettings(); } });
+                if (netRole == NetSession.Role.None)
+                    items.Add(new Item { label = "Health regen per second", value = () => OnOff(settings.healthRegen),
+                        adjust = d => { settings.healthRegen = !settings.healthRegen; ApplySettings(); SaveSettings(); },
+                        confirm = () => { settings.healthRegen = !settings.healthRegen; ApplySettings(); SaveSettings(); Rebuild(); } });
                 items.Add(new Item { label = "Blood", value = () => OnOff(settings.blood),
                     adjust = d => { settings.blood = !settings.blood; ApplySettings(); SaveSettings(); },
                     confirm = () => { settings.blood = !settings.blood; ApplySettings(); SaveSettings(); Rebuild(); } });
@@ -1265,7 +1455,8 @@ public class GameMenu : MonoBehaviour
     string PauseSubtitle()
     {
         if (flow == Flow.Practice) return "practice - nothing here can kill you";
-        if (netRole != NetSession.Role.None) return "online";
+        if (netRole != NetSession.Role.None)
+            return $"online - pauses left: you {OnlinePauseLimit - onlinePauses[MySide]}, opponent {OnlinePauseLimit - onlinePauses[3 - MySide]}";
         if (vsAi) return $"versus the computer ({aiDifficulty})";
         return "two players";
     }
@@ -1554,10 +1745,288 @@ public class GameMenu : MonoBehaviour
         Refresh();
     }
 
+    static string UpdateRowValue(GameUpdater u)
+    {
+        switch (u.Current)
+        {
+            case GameUpdater.State.Downloading: return $"downloading v{u.LatestVersion}... {Mathf.RoundToInt(u.Progress * 100f)}%";
+            case GameUpdater.State.Installing: return "installing - the game will restart";
+            case GameUpdater.State.Failed: return "failed - press to try again";
+            default: return $"v{u.LatestVersion} is out (you have v{Application.version}) - press to update";
+        }
+    }
+
+    // ================================================================ online lobby helpers
+
+    /// <summary>A text or digit field on a menu row, edited in place (Confirm starts, Enter / Confirm ends).</summary>
+    class FieldSpec
+    {
+        public Func<string> get;
+        public Action<string> set;
+        public bool digits;          // 0-9 only; the pad's Up / Down spin the digit at the cursor
+        public int max;
+        public string empty;         // shown when the field is empty and not being edited
+        public Action commit;        // optional, run when editing ends with Enter / Confirm
+    }
+
+    FieldSpec fieldEdit;             // the field being typed into, or null
+    int fieldCursor;                 // digits: the slot the pad edits
+
+    string hostName = "";
+    int hostNamePreset;
+    string hostCode = "";
+    string joinCode = "";
+    NetSession.RoomInfo joinRoom;
+    int onlineCharacter;
+    string onlineNotice = "";
+    float onlineNoticeUntil;
+
+    FieldSpec hostNameField, hostCodeField, joinCodeField;
+
+    // Online match rules (the host sets them in the room) and the pause allowance.
+    float onlineSpeed = 1f;
+    bool onlineRegen = true;
+    const int OnlinePauseLimit = 2;          // per player, per fight
+    const float OnlinePauseSeconds = 30f;    // longest a pause may last before the fight resumes by itself
+    readonly int[] onlinePauses = new int[3];   // [1] host, [2] guest: pauses spent this fight
+    int pausedBy;                            // 0 = not paused, 1 = host, 2 = guest
+    float pauseStartedAt;
+
+    int MySide => netRole == NetSession.Role.Guest ? 2 : 1;
+    float PauseSecondsLeft => Mathf.Max(0f, OnlinePauseSeconds - (Time.unscaledTime - pauseStartedAt));
+
+    /// <summary>DebugTimeScale re-applies its own number whenever the clock sits near 1, so it must hold the same speed.</summary>
+    void SyncSpeed()
+    {
+        var dts = GetComponent<DebugTimeScale>();
+        if (dts != null) dts.timeScale = GameSpeed();
+    }
+
+    void ResetOnlineMatchState()
+    {
+        onlinePauses[1] = onlinePauses[2] = 0;
+        pausedBy = 0;
+    }
+
+    void BuildOnlineFields()
+    {
+        hostNameField = new FieldSpec { get = () => hostName, set = v => hostName = v, max = 24, empty = "(name your game)" };
+        hostCodeField = new FieldSpec { get = () => hostCode, set = v => hostCode = v, digits = true, max = 6, empty = "none - anyone can join" };
+        joinCodeField = new FieldSpec { get = () => joinCode, set = v => joinCode = v, digits = true, max = 6, empty = "------", commit = TryJoinWithCode };
+    }
+
+    string[] HostNamePresets()
+    {
+        string who = Environment.UserName;
+        if (string.IsNullOrEmpty(who)) who = "Crucible";
+        return new[] { who + "'s duel", "Honour match", "Steel and blood", "Grudge match", "Training bout" };
+    }
+
+    string OnlineNotice(string fallback)
+    {
+        if (onlineNotice.Length > 0 && Time.unscaledTime < onlineNoticeUntil) return onlineNotice;
+        string status = Net != null ? Net.Status : "";
+        return status == "Wrong code" || status == "That game is full" || status == "That game is gone" ? status.ToLowerInvariant() : fallback;
+    }
+
+    void Notice(string text, float seconds = 4f) { onlineNotice = text; onlineNoticeUntil = Time.unscaledTime + seconds; }
+
+    string CharacterLabel(int i) => roster.Length == 0 ? "-" : roster[Mathf.Clamp(i, 0, roster.Length - 1)].CharacterName;
+
+    string ArenaLabel(int i)
+    {
+        var dir = ArenaDirectory.Instance;
+        if (dir == null || dir.Selectable.Count == 0) return "-";
+        return dir.NameOf(Mathf.Clamp(i, 0, dir.Selectable.Count - 1));
+    }
+
+    void StepOnlineCharacter(int d)
+    {
+        if (roster.Length == 0) return;
+        onlineCharacter = (onlineCharacter + d + roster.Length) % roster.Length;
+        Net?.SendCharacter(onlineCharacter);
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
+        Rebuild();
+    }
+
+    void StepOnlineArena(int d)
+    {
+        var dir = ArenaDirectory.Instance;
+        int n = dir != null ? dir.Selectable.Count : 0;
+        if (n == 0) return;
+        arenaChoice = (arenaChoice + d + n) % n;
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
+        Rebuild();
+    }
+
+    void StepOnlineSpeed(int d)
+    {
+        onlineSpeed = Mathf.Clamp(Mathf.Round((onlineSpeed + d * 0.1f) * 10f) / 10f, 0.5f, MaxGameSpeed);
+        Net?.SendRules(onlineSpeed, onlineRegen);
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
+        Rebuild();
+    }
+
+    void ToggleOnlineRegen()
+    {
+        onlineRegen = !onlineRegen;
+        Net?.SendRules(onlineSpeed, onlineRegen);
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
+        Rebuild();
+    }
+
+    void TryJoinWithCode()
+    {
+        fieldEdit = null;
+        if (joinCode.Length != 6) { Notice("the code has 6 digits"); Rebuild(); return; }
+        Net?.SendCharacter(onlineCharacter);
+        Net?.Join(joinRoom, joinCode);
+        Rebuild();
+    }
+
+    /// <summary>Back out of the online area to <paramref name="s"/>, dropping the screens stacked above it.</summary>
+    void BackTo(Screen s)
+    {
+        while (history.Count > 0 && history[history.Count - 1] != s) history.RemoveAt(history.Count - 1);
+        if (history.Count > 0) history.RemoveAt(history.Count - 1);
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Back);
+        Show(s, push: false);
+    }
+
+    /// <summary>The online screens' Back: each one leaves the room or the server as well as the screen.</summary>
+    bool OnlineBack()
+    {
+        switch (screen)
+        {
+            case Screen.Online: Net?.Disconnect(); BackTo(Screen.Main); return true;
+            case Screen.OnlineHostSetup: BackTo(Screen.Online); return true;
+            case Screen.OnlineHost: Net?.LeaveRoom(); BackTo(Screen.OnlineHostSetup); return true;
+            case Screen.OnlineJoin: Net?.LeaveRoom(); BackTo(Screen.Online); return true;
+            case Screen.OnlineCode: Net?.BrowseRooms(); BackTo(Screen.OnlineJoin); return true;
+            case Screen.OnlineGuest: Net?.LeaveRoom(); Net?.BrowseRooms(); BackTo(Screen.OnlineJoin); return true;
+        }
+        return false;
+    }
+
+    static bool IsOnlineScreen(Screen s) =>
+        s == Screen.Online || s == Screen.OnlineHost || s == Screen.OnlineJoin ||
+        s == Screen.OnlineHostSetup || s == Screen.OnlineCode || s == Screen.OnlineGuest;
+
+    /// <summary>Per frame on the online screens: follow the connection, and refresh the live rows.</summary>
+    void UpdateOnline()
+    {
+        if (Net == null) return;
+        var phase = Net.CurrentPhase;
+        // The server went away: every online screen falls back to the connect screen, which offers a retry.
+        if (screen != Screen.Online && phase == NetSession.Phase.Failed) { history.RemoveAll(IsOnlineScreen); Show(Screen.Online, push: false); return; }
+        if (screen == Screen.OnlineJoin || screen == Screen.OnlineCode)
+            if (phase == NetSession.Phase.Joined) { Notice(""); Show(Screen.OnlineGuest); return; }
+        if (Time.unscaledTime >= nextOnlineRefresh)
+        {
+            nextOnlineRefresh = Time.unscaledTime + 0.25f;
+            Rebuild();
+        }
+    }
+
+    string FieldValue(FieldSpec f)
+    {
+        string t = f.get() ?? "";
+        bool editing = fieldEdit == f;
+        if (!f.digits)
+        {
+            if (editing) return t + ((int)(Time.unscaledTime * 2f) % 2 == 0 ? "_" : " ");
+            return t.Length > 0 ? t : f.empty;
+        }
+        if (!editing && t.Length == 0) return f.empty;
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < f.max; i++)
+        {
+            char c = i < t.Length ? t[i] : '-';
+            if (editing && i == fieldCursor) sb.Append('[').Append(c).Append(']');
+            else sb.Append(' ').Append(c).Append(' ');
+        }
+        return sb.ToString();
+    }
+
+    void BeginFieldEdit(FieldSpec f)
+    {
+        fieldEdit = f;
+        fieldCursor = Mathf.Min((f.get() ?? "").Length, f.max - 1);
+        inputGuard = 0.15f;
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Select);
+        Rebuild();
+    }
+
+    void EndFieldEdit(bool commit)
+    {
+        var f = fieldEdit;
+        fieldEdit = null;
+        CrucibleAudio.Ui(commit ? CrucibleAudio.UiSound.Select : CrucibleAudio.UiSound.Back);
+        if (commit && f != null && f.commit != null) f.commit();
+        else Rebuild();
+    }
+
+    /// <summary>
+    /// Typing into the active field. The keyboard types (Backspace deletes, Enter / Escape end); a pad
+    /// edits digits with Up / Down at the cursor and Left / Right to move, Cross ends, Circle cancels the
+    /// edit. A name field on a pad uses Left / Right on the row instead (preset names), so it needs no keys.
+    /// </summary>
+    void UpdateFieldEdit(InputManager im)
+    {
+        var f = fieldEdit;
+        string t = f.get() ?? "";
+        foreach (char c in Input.inputString)
+        {
+            if (c == '\b') { if (t.Length > 0) t = t.Substring(0, t.Length - 1); fieldCursor = Mathf.Min(t.Length, f.max - 1); }
+            else if (c == '\n' || c == '\r') { f.set(t); EndFieldEdit(true); return; }
+            else if (f.digits ? (c >= '0' && c <= '9') : (!char.IsControl(c) && c != '\t'))
+            {
+                if (t.Length < f.max) t += c;
+                fieldCursor = Mathf.Min(t.Length, f.max - 1);
+            }
+        }
+        f.set(t);
+        if (Input.GetKeyDown(KeyCode.Escape)) { EndFieldEdit(false); return; }
+        foreach (var g in UnityEngine.InputSystem.Gamepad.all)
+        {
+            if (g.buttonSouth.wasPressedThisFrame) { EndFieldEdit(true); return; }
+            if (g.buttonEast.wasPressedThisFrame) { EndFieldEdit(false); return; }
+        }
+        if (!f.digits) return;
+
+        // Pad / arrow editing of the digit under the cursor.
+        Vector2 nav = Vector2.zero;
+        foreach (var g in UnityEngine.InputSystem.Gamepad.all)
+        {
+            if (g.dpad.up.wasPressedThisFrame) nav.y += 1f;
+            if (g.dpad.down.wasPressedThisFrame) nav.y -= 1f;
+            if (g.dpad.left.wasPressedThisFrame) nav.x -= 1f;
+            if (g.dpad.right.wasPressedThisFrame) nav.x += 1f;
+        }
+        if (Input.GetKeyDown(KeyCode.UpArrow)) nav.y += 1f;
+        if (Input.GetKeyDown(KeyCode.DownArrow)) nav.y -= 1f;
+        if (Input.GetKeyDown(KeyCode.LeftArrow)) nav.x -= 1f;
+        if (Input.GetKeyDown(KeyCode.RightArrow)) nav.x += 1f;
+        if (nav == Vector2.zero) return;
+
+        var chars = new System.Text.StringBuilder(t);
+        while (chars.Length <= fieldCursor) chars.Append('0');
+        if (nav.y != 0f)
+        {
+            int d = chars[fieldCursor] - '0';
+            d = (d + (nav.y > 0f ? 1 : 9)) % 10;
+            chars[fieldCursor] = (char)('0' + d);
+        }
+        if (nav.x != 0f) fieldCursor = Mathf.Clamp(fieldCursor + (nav.x > 0f ? 1 : -1), 0, f.max - 1);
+        f.set(chars.ToString());
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
+    }
+
     void Confirm()
     {
         if (screen == Screen.ArenaSelect) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Select); ConfirmArena(); return; }
         if (selected < 0 || selected >= items.Count) return;
+        if (items[selected].field != null && items[selected].confirm == null) { BeginFieldEdit(items[selected].field); return; }
         if (items[selected].confirm != null) CrucibleAudio.Ui(CrucibleAudio.UiSound.Select);
         items[selected].confirm?.Invoke();
     }
@@ -1572,6 +2041,8 @@ public class GameMenu : MonoBehaviour
             RefreshCircleCards();
             return;
         }
+
+        if (OnlineBack()) return;
 
         switch (screen)
         {
