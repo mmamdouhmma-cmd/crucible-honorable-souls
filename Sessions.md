@@ -4280,3 +4280,6 @@ Two more calls the same evening:
   startup/recovery, written verbatim). `ComputeTrims` now cuts every window from `TableTotal` (the
   row's unscaled budget), so a hand-shortened startup plays the same clip segment FASTER rather than
   cutting the wind-up off: Bjorn's Spin Overhead x1.05 -> x1.53 at 27 f startup.
+- Committed `2d0485f` (pushed to `salaadin`, the user's three edited Studio/salahtest blends left
+  out). Win64 app rebuilt at 19:34 via `PrepareScene` -> MCP `build` -> `RestoreScene`: Succeeded,
+  0 errors, `Builds/CrucibleLite-Win64/Crucible.exe` (Assembly-CSharp.dll and level0 fresh).
