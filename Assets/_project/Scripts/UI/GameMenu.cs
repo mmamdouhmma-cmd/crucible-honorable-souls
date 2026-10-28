@@ -2544,7 +2544,7 @@ public class GameMenu : MonoBehaviour
         // Measured off the art: the wordmark occupies x 138-1796, y 390-750 of the 1920x1080
         // plate, so the crop (plus a small margin) is 4.42:1 and the rect has to match it.
         titleLogo.uvRect = new Rect(0.055f, 0.292f, 0.895f, 0.360f);
-        MenuArt.Box(titleLogo.rectTransform, new Vector2(0.5f, 1f), new Vector2(860f, 195f), new Vector2(0f, -116f));
+        MenuArt.Box(titleLogo.rectTransform, new Vector2(0.5f, 1f), new Vector2(1032f, 234f), new Vector2(0f, -198f));
 
         title = MenuArt.Shadowed(header, "Title", "", 58, TextAnchor.MiddleCenter, MenuArt.BronzeLit, FontStyle.Bold);
         MenuArt.Place(title.rectTransform, 0f, 1f, 1f, 1f, new Vector2(40, -118), new Vector2(-40, -40));
