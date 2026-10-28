@@ -1127,7 +1127,8 @@ public class GameMenu : MonoBehaviour
                     EnterOnlineSelect(NetSession.Role.Host);
                 } });
                 items.Add(new Item { label = "Back", confirm = Back });
-                footerText.text = (fieldEdit != null ? "Type, then Enter    " : "Confirm on a field to type    ") + NavHint();
+                footerText.text = (fieldEdit == hostNameField ? "Type, or pad: Up/Down letter  Left/Right move  Square delete  Triangle clear  Cross done    "
+                                   : fieldEdit != null ? "Type, then Enter    " : "Confirm on a field to type    ") + NavHint();
                 break;
 
             case Screen.OnlineJoin:
@@ -2120,8 +2121,10 @@ public class GameMenu : MonoBehaviour
         bool editing = fieldEdit == f;
         if (!f.digits)
         {
-            if (editing) return t + ((int)(Time.unscaledTime * 2f) % 2 == 0 ? "_" : " ");
-            return t.Length > 0 ? t : f.empty;
+            if (!editing) return t.Length > 0 ? t : f.empty;
+            // the cursor in brackets, so a pad can see which letter Up / Down will change
+            int c = Mathf.Clamp(fieldCursor, 0, t.Length);
+            return t.Substring(0, c) + "[" + (c < t.Length ? t[c] : '_') + "]" + (c < t.Length ? t.Substring(c + 1) : "");
         }
         if (!editing && t.Length == 0) return f.empty;
         var sb = new System.Text.StringBuilder();
@@ -2154,8 +2157,9 @@ public class GameMenu : MonoBehaviour
 
     /// <summary>
     /// Typing into the active field. The keyboard types (Backspace deletes, Enter / Escape end); a pad
-    /// edits digits with Up / Down at the cursor and Left / Right to move, Cross ends, Circle cancels the
-    /// edit. A name field on a pad uses Left / Right on the row instead (preset names), so it needs no keys.
+    /// edits the character at the cursor with Up / Down and moves with Left / Right, Cross ends, Circle
+    /// cancels the edit. On a text field the pad also has Square (delete) and Triangle (clear), so a game
+    /// can be given any name without a keyboard; Left / Right on the row still steps the preset names.
     /// </summary>
     void UpdateFieldEdit(InputManager im)
     {
@@ -2178,7 +2182,7 @@ public class GameMenu : MonoBehaviour
             if (g.buttonSouth.wasPressedThisFrame) { EndFieldEdit(true); return; }
             if (g.buttonEast.wasPressedThisFrame) { EndFieldEdit(false); return; }
         }
-        if (!f.digits) return;
+        if (!f.digits) { UpdateTextPadEdit(f, t); return; }
 
         // Pad / arrow editing of the digit under the cursor.
         Vector2 nav = Vector2.zero;
@@ -2204,6 +2208,48 @@ public class GameMenu : MonoBehaviour
             chars[fieldCursor] = (char)('0' + d);
         }
         if (nav.x != 0f) fieldCursor = Mathf.Clamp(fieldCursor + (nav.x > 0f ? 1 : -1), 0, f.max - 1);
+        f.set(chars.ToString());
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
+    }
+
+    /// <summary>What Up / Down spin through on a text field. Space first, so a new slot starts blank.</summary>
+    const string PadLetters = " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'-!?.";
+
+    /// <summary>
+    /// A pad typing a name: Up / Down change the letter at the cursor (the slot just past the end adds
+    /// one), Left / Right move, Square deletes the letter at the cursor, Triangle clears the field. The
+    /// cursor may sit one past the end, never past <c>max - 1</c>.
+    /// </summary>
+    void UpdateTextPadEdit(FieldSpec f, string t)
+    {
+        int ny = 0, nx = 0;
+        bool del = false, clear = false;
+        foreach (var g in UnityEngine.InputSystem.Gamepad.all)
+        {
+            if (g.dpad.up.wasPressedThisFrame) ny++;
+            if (g.dpad.down.wasPressedThisFrame) ny--;
+            if (g.dpad.left.wasPressedThisFrame) nx--;
+            if (g.dpad.right.wasPressedThisFrame) nx++;
+            if (g.buttonWest.wasPressedThisFrame) del = true;
+            if (g.buttonNorth.wasPressedThisFrame) clear = true;
+        }
+        if (ny == 0 && nx == 0 && !del && !clear) return;
+
+        var chars = new System.Text.StringBuilder(t);
+        fieldCursor = Mathf.Clamp(fieldCursor, 0, Mathf.Min(chars.Length, f.max - 1));
+        if (clear) { chars.Clear(); fieldCursor = 0; }
+        else if (del)
+        {
+            if (fieldCursor < chars.Length) chars.Remove(fieldCursor, 1);
+            else if (chars.Length > 0) { chars.Remove(chars.Length - 1, 1); fieldCursor = chars.Length; }
+        }
+        if (ny != 0)
+        {
+            if (fieldCursor >= chars.Length) chars.Append(' ');
+            int i = Mathf.Max(0, PadLetters.IndexOf(chars[fieldCursor]));
+            chars[fieldCursor] = PadLetters[(i + (ny > 0 ? 1 : PadLetters.Length - 1)) % PadLetters.Length];
+        }
+        if (nx != 0) fieldCursor = Mathf.Clamp(fieldCursor + (nx > 0 ? 1 : -1), 0, Mathf.Min(chars.Length, f.max - 1));
         f.set(chars.ToString());
         CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
     }
