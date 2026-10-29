@@ -4549,3 +4549,5 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 - Fortress re-lit to GOLDEN HOUR on the user's ask (same day): sun (30, 68), colour (1, 0.80, 0.57) 1.95, sky regenerated
   with a gold horizon/glow and gold-lit clouds, warm haze, equator/ground ambient warmed, White Balance -6 -> -2. 30 deg
   is the floor: the west wall's shadow already crosses part of the floor there.
+- **v0.3.1 released** (same day): Win64 build 870 MB, 0 errors, 3m15s; zip 474 MB on the GitHub release; commit
+  2f36f9f on `salaadin`. The desktop shortcut already targets `Builds/CrucibleLite-Win64/Crucible.exe` - no change.
