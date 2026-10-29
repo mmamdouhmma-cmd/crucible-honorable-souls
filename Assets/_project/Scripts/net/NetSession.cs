@@ -16,6 +16,7 @@ using UnityEngine;
 ///                   R  (match (re)started)   P 1|0 (pause)   K (KO shown by the guest's own menu from hp)
 ///   guest -> host   P 1|0 (pause request)
 ///   both ways       X cursor locked (character select)   V vote (K.O. card: 1 rematch, 2 select)
+///   both ways       W version (on joining; a different or missing one sends both back to the lobby)
 ///   host  -> guest  A arena (arena select)   F (on to the versus card)   G (back to character select)
 ///                   E ... (an effect, sound, camera shake or kill shot that just played on the host)
 /// </summary>
@@ -56,6 +57,13 @@ public class NetSession : MonoBehaviour
     /// <summary>K.O. card: the other player's vote - 0 none yet, 1 rematch, 2 character select.</summary>
     public int PeerVote { get; private set; }
     public event Action OnPeerJoined, OnStartReceived, OnPeerLeft, OnJoined;
+    /// <summary>The other player runs another version of the game; the room has already been left. Arg = their version, "" if too old to say.</summary>
+    public event Action<string> OnVersionMismatch;
+    /// <summary>Seconds a newly met player has to say their version. Builds before 0.3.0 never do, and
+    /// their arena list is shorter, so an arena index from one side would mean a different arena on the other.</summary>
+    const float VersionWait = 4f;
+    string peerVersion;
+    float peerMetAt = -1f;
     /// <summary>Guest: the host moved the arena cursor / confirmed it / sent everyone back to the select.</summary>
     public event Action<int> OnArenaReceived;
     public event Action OnVersusReceived, OnSelectReceived;
@@ -263,6 +271,20 @@ public class NetSession : MonoBehaviour
         Send("X " + index + " " + (locked ? 1 : 0));
     }
     void SendCharacterEcho() { if (myCharacter >= 0) Send("X " + myCharacter + " " + (myLocked ? 1 : 0)); }
+
+    void MeetPeer() { peerVersion = null; peerMetAt = Time.unscaledTime; Send("W " + Application.version); }
+
+    void VersionMismatch(string theirs)
+    {
+        Debug.Log($"Online: the other player runs {(theirs == "" ? "an older version" : "v" + theirs)}, this is v{Application.version} - leaving the room");
+        peerMetAt = -1f;
+        PeerConnected = false;
+        PeerCharacter = -1;
+        PeerLocked = false;
+        PeerVote = 0;
+        LeaveRoom();
+        OnVersionMismatch?.Invoke(theirs);
+    }
 
     /// <summary>Host: the arena cursor, so the guest watches the same ground come up.</summary>
     public void SendArena(int arena) => Send("A " + arena);
@@ -476,6 +498,11 @@ public class NetSession : MonoBehaviour
         // Heartbeat. A player whose network dies does not close the socket - the relay only notices
         // minutes later - so each side says "H" every second and gives up on a peer it has not heard
         // from for PeerTimeout seconds (covers the pause too, when no input or state is flowing).
+        if (PeerConnected && peerVersion == null && peerMetAt >= 0f && Time.unscaledTime - peerMetAt > VersionWait)
+        {
+            VersionMismatch("");
+            return;
+        }
         if (PeerConnected)
         {
             if (Time.unscaledTime >= nextHeartbeat) { nextHeartbeat = Time.unscaledTime + 1f; Send("H"); }
@@ -566,7 +593,7 @@ public class NetSession : MonoBehaviour
             Status = "Waiting for a player...";
             return;
         }
-        if (msg == "PEER_JOINED") { PeerConnected = true; PeerLocked = false; PeerVote = 0; lastPeerHeard = Time.unscaledTime; Status = "Player joined"; SendCharacterEcho(); OnPeerJoined?.Invoke(); return; }
+        if (msg == "PEER_JOINED") { PeerConnected = true; PeerLocked = false; PeerVote = 0; lastPeerHeard = Time.unscaledTime; Status = "Player joined"; SendCharacterEcho(); MeetPeer(); OnPeerJoined?.Invoke(); return; }
         if (msg == "PEER_LEFT")
         {
             PeerConnected = false;
@@ -599,6 +626,7 @@ public class NetSession : MonoBehaviour
             lastPeerHeard = Time.unscaledTime;
             Status = "Joined. Waiting for the host to start...";
             SendCharacterEcho();
+            MeetPeer();
             OnJoined?.Invoke();
             return;
         }
@@ -613,6 +641,12 @@ public class NetSession : MonoBehaviour
         // Everything below comes from the OTHER PLAYER (the relay's own replies are handled above).
         lastPeerHeard = Time.unscaledTime;
         if (msg == "H") return;
+        if (msg.StartsWith("W "))
+        {
+            peerVersion = msg.Substring(2).Trim();
+            if (peerVersion != Application.version) VersionMismatch(peerVersion);
+            return;
+        }
         if (msg.StartsWith("C ")) { if (int.TryParse(msg.Substring(2).Trim(), out int c)) PeerCharacter = c; return; }
         if (msg.StartsWith("X "))
         {

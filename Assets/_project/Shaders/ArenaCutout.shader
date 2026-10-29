@@ -83,6 +83,11 @@ Shader "Crucible/ArenaCutout"
             float CutFactor(float3 p, float4 cut)
             {
                 if (cut.w <= 0.001) return 1.0;
+                // The hole's round end reaches down past the fighter's feet; without this the floor
+                // around him dissolved too and showed a pale disc of sky under the arena. The end
+                // sits at chest height, so 1.0 below it is about knee height: the ground and a
+                // wall's foot stay, everything that can hide a body opens.
+                if (p.y < cut.y - 1.0) return 1.0;
                 float3 a = _WorldSpaceCameraPos;
                 float3 ab = cut.xyz - a;
                 float t = saturate(dot(p - a, ab) / max(dot(ab, ab), 1e-4));

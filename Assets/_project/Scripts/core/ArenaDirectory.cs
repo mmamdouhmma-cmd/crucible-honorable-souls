@@ -34,7 +34,12 @@ public class ArenaDirectory : MonoBehaviour
         [Tooltip("Ship this arena in player builds. Off = cut from the build AND not selectable.")]
         public bool shipped = true;
 
+        [Tooltip("Optional root several arenas stand in (one village, two fight spaces). It is on while " +
+                 "any arena naming it is chosen, and the build keeps it with them.")]
+        public string sharedRoot = "";
+
         [NonSerialized] public GameObject root;
+        [NonSerialized] public GameObject shared;
     }
 
     public static ArenaDirectory Instance { get; private set; }
@@ -73,9 +78,12 @@ public class ArenaDirectory : MonoBehaviour
         foreach (var entry in arenas)
         {
             entry.root = null;
+            entry.shared = null;
             foreach (var go in roots)
             {
-                if (string.Equals(go.name, entry.rootName, StringComparison.OrdinalIgnoreCase)) { entry.root = go; break; }
+                if (entry.root == null && string.Equals(go.name, entry.rootName, StringComparison.OrdinalIgnoreCase)) entry.root = go;
+                if (entry.shared == null && !string.IsNullOrEmpty(entry.sharedRoot) &&
+                    string.Equals(go.name, entry.sharedRoot, StringComparison.OrdinalIgnoreCase)) entry.shared = go;
             }
         }
     }
@@ -130,12 +138,15 @@ public class ArenaDirectory : MonoBehaviour
         index = Mathf.Clamp(index, 0, list.Count - 1);
         var chosen = list[index];
 
+        // Off first, then on: a shared root's OnDisable (ArenaAtmosphere) must hand the scene's
+        // lighting back before anything that is switching on looks at it.
         foreach (var e in arenas)
         {
-            if (e.root == null) continue;
-            bool on = ReferenceEquals(e, chosen);
-            if (e.root.activeSelf != on) e.root.SetActive(on);
+            if (e.root != null && !ReferenceEquals(e, chosen) && e.root.activeSelf) e.root.SetActive(false);
+            if (e.shared != null && e.shared != chosen.shared && e.shared.activeSelf) e.shared.SetActive(false);
         }
+        if (chosen.shared != null && !chosen.shared.activeSelf) chosen.shared.SetActive(true);
+        if (chosen.root != null && !chosen.root.activeSelf) chosen.root.SetActive(true);
 
         // The old flat test plane sits at the origin under every arena; it would z-fight the floor.
         if (!string.IsNullOrEmpty(testGroundName))

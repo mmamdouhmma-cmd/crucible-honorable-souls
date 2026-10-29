@@ -163,7 +163,11 @@ public static class CrucibleBuild
                 var rootName = entry.FindPropertyRelative("rootName");
                 var shipped = entry.FindPropertyRelative("shipped");
                 if (rootName != null && shipped != null && shipped.boolValue && !string.IsNullOrEmpty(rootName.stringValue))
+                {
                     keep.Add(rootName.stringValue);
+                    var shared = entry.FindPropertyRelative("sharedRoot");
+                    if (shared != null && !string.IsNullOrEmpty(shared.stringValue)) keep.Add(shared.stringValue);
+                }
             }
             break;
         }

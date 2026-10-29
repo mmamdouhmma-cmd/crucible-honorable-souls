@@ -114,3 +114,7 @@ Assets/_project/Scenes/_build_temp.unity.meta
 /Assets/_project/Resources/MirrorSkins.meta
 ArtSource/Textures/_preview/
 ArtSource/Textures/__pycache__/
+
+# Musashi Chapter One: the Tripo source zips (~270 MB). The prepped LOD meshes in
+# Assets/_project/Environment/Musashi_Ch01/ are rebuilt from them by ArtSource/Blender/prep_env_lod.py.
+ArtSource/Environment/Musashi_Ch01/source/

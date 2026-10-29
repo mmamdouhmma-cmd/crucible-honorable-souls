@@ -1605,6 +1605,31 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   and `InputHold` are debug-only components still in the scene (`DebugTimeScale` is wanted —
   the Settings speed slider drives it).
 
+- **Dojo Courtyard and Village Plaza SHIP in the game (v0.3.0)**: in testarena as `Musashi_Dojo` /
+  `Musashi_Plaza` (arena indices 3 and 4) sharing the root `Musashi_Village`
+  (`ArenaDirectory.Entry.sharedRoot`), whose `ArenaAtmosphere` brings the village's own sky, light,
+  fog and grade and gives testarena's back on the way out. They are put there by
+  `Crucible > Story > Musashi Chapter One > Add the two arenas to the game (testarena)` - re-run it
+  after rebuilding the story scene. New arenas are APPENDED: the online protocol sends arena indices.
+  Online peers exchange `W <version>` and refuse a different (or silent, pre-0.3.0) version.
+- **The Musashi Chapter One arena is a PLAYABLE TEST SCENE** (`Scenes/Story/Musashi_Chapter01_Arena.unity`):
+  Bjorn, Miyamoto and Salaadin, opening on One Player / Two Players (`GameMenu.openOnBattleSetup`), with
+  two arenas in its ArenaDirectory, `Musashi_Dojo` and `Musashi_Plaza`. These are fight-space ROOTS:
+  ArenaBounds plus marks plus camera home, all sharing one `Environment`. Regenerate with
+  `Crucible > Story > Musashi Chapter One > Build the arena scene` (it rebuilds only Environment /
+  Lighting / Cameras / the two fight roots and keeps the game), then `Bake the sky lighting`.
+  `Add the game` moves the runtime in from testarena without saving testarena. The game objects in
+  this scene are COPIES: a change made to them in testarena does not reach it.
+  - ArenaBounds can carry `scenery` (the meshes WallCutout sees through and occludes with: the
+    non-trigger MeshColliders under it), `markP1/P2` and `cameraHome`. All are optional; empty = the
+    old one-mesh behaviour.
+  - Environment meshes go through `ArtSource/Blender/prep_env_lod.py` (`_LODn` / `_COL` / `_SHD`).
+    A hero mesh over ~500k triangles needs a `_SHD` shadow proxy, and distant repeated scenery should
+    render one cheap LOD rather than sit in a LODGroup (a big mesh stays on a high LOD for hundreds of
+    units).
+  - Do not level a fight zone with `plateau` on these Tripo terrains: it stretched a bank into a
+    smear. Raycast grounding copes with the plaza's +-0.7.
+
 ## Testing the game from the CLI (hard-won, still true)
 
 - **Set `Time.timeScale` directly, AFTER `GameMenu.StartMatch`.** `DebugTimeScale` only applies

@@ -136,6 +136,9 @@ public class GameMenu : MonoBehaviour
     // defaults are Player1's and Player2's committed spots; the match spreads them to
     // MATCH_START_GAP about their midpoint, and the ring is centred on that midpoint.
     [Header("Start marks (independent of where the fighters stand)")]
+    [Tooltip("Open on Battle Now's One Player / Two Players choice instead of the boot logo and " +
+             "main menu - for a test scene (the Musashi arena). Everything after it is the normal flow.")]
+    [SerializeField] bool openOnBattleSetup = false;
     [SerializeField] Vector3 p1Mark = new Vector3(-0.217f, 0.24f, -0.209f);
     [SerializeField] float p1Yaw = 90f;
     [SerializeField] Vector3 p2Mark = new Vector3(2.078f, 0.75f, -0.065f);
@@ -361,6 +364,22 @@ public class GameMenu : MonoBehaviour
                 GoWiped(Screen.Vs);
             };
             Net.OnSelectReceived += () => { if (netRole == NetSession.Role.Guest) EnterOnlineSelect(NetSession.Role.Guest); };
+            // Different versions have different arena lists (and maybe moves): never let them meet.
+            Net.OnVersionMismatch += theirs =>
+            {
+                // The session has already left the room; a guest still on the room list has no screen to leave.
+                if (netRole != NetSession.Role.None)
+                {
+                    netRole = NetSession.Role.None;
+                    Net.GuestLeaveMatch();
+                    pausedBy = 0;
+                    EndMatchToMenu();
+                }
+                Notice(theirs == "" || !System.Version.TryParse(theirs, out var tv) || !System.Version.TryParse(Application.version, out var mv) || tv < mv
+                    ? "the other player has an older version - they need to update the game"
+                    : "the other player has a newer version - update the game from the main menu", 12f);
+                Show(Screen.Online);
+            };
             Net.OnPeerLeft += () =>
             {
                 if (netRole == NetSession.Role.None) return;
@@ -394,7 +413,8 @@ public class GameMenu : MonoBehaviour
         if (ArenaDirectory.Instance != null) arenaChoice = ArenaDirectory.Instance.LoadSaved();
         FreezeFighters(true);
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
-        Show(Screen.Boot);
+        if (openOnBattleSetup) { flow = Flow.Local; Show(Screen.LocalSetup); }
+        else Show(Screen.Boot);
     }
 
     void Update()
@@ -504,8 +524,7 @@ public class GameMenu : MonoBehaviour
     /// </summary>
     void SpawnFor(Fighter f, out Vector3 pos, out Quaternion rot)
     {
-        Vector3 markA = sideMark.Length > 0 ? sideMark[0] : Vector3.zero;
-        Vector3 markB = sideMark.Length > 1 ? sideMark[1] : Vector3.zero;
+        MarkPair(out Vector3 markA, out Vector3 markB);
         Vector3 mid = (markA + markB) * 0.5f;
         Vector3 axis = markB - markA;
         axis.y = 0f;
@@ -524,6 +543,20 @@ public class GameMenu : MonoBehaviour
         // offset, and averaging them is what left both fighters floating once before.
         pos = new Vector3(mark.x, GroundedY(mark, OwnY(f)), mark.z);
         rot = sideRot[side];
+        if (side <= 1 && ArenaBounds.Instance != null && ArenaBounds.Instance.HasMarks)
+            rot = Quaternion.LookRotation(side == 0 ? axis : -axis, Vector3.up);   // face each other
+    }
+
+    /// <summary>
+    /// The two sides' marks: the active arena's own when it carries them (an environment with
+    /// several fight spaces), else the scene-wide marks.
+    /// </summary>
+    void MarkPair(out Vector3 a, out Vector3 b)
+    {
+        var arena = ArenaBounds.Instance;
+        if (arena != null && arena.HasMarks) { a = arena.MarkP1; b = arena.MarkP2; return; }
+        a = sideMark.Length > 0 ? sideMark[0] : Vector3.zero;
+        b = sideMark.Length > 1 ? sideMark[1] : Vector3.zero;
     }
 
     /// <summary>Everyone back in the scene: the select screens scroll through the whole roster.</summary>
@@ -2979,7 +3012,7 @@ public class GameMenu : MonoBehaviour
 
         if (!vs && !wide) { StageCircle(); return; }        // character select: the ring
 
-        Vector3 mid = (sideMark[0] + sideMark[1]) * 0.5f;
+        MarkPair(out Vector3 ma, out Vector3 mb); Vector3 mid = (ma + mb) * 0.5f;
         Vector3 camDir = cam.transform.position - mid;      // keep the arena's established viewpoint
         camDir.y = 0f;
         if (camDir.sqrMagnitude < 0.01f) camDir = Vector3.back;
@@ -3027,7 +3060,7 @@ public class GameMenu : MonoBehaviour
     void StageCircle()
     {
         ShowWholeRoster();
-        Vector3 mid = (sideMark[0] + sideMark[1]) * 0.5f;
+        MarkPair(out Vector3 ma, out Vector3 mb); Vector3 mid = (ma + mb) * 0.5f;
         int n = roster.Length;
         float step = 360f / n;
         for (int i = 0; i < n; i++)
@@ -3043,7 +3076,7 @@ public class GameMenu : MonoBehaviour
     {
         var cam = Camera.main;
         if (cam == null || sideMark.Length < 2) return;
-        Vector3 mid = (sideMark[0] + sideMark[1]) * 0.5f;
+        MarkPair(out Vector3 ma, out Vector3 mb); Vector3 mid = (ma + mb) * 0.5f;
         float ease = snap ? 1f : 1f - Mathf.Exp(-Time.unscaledDeltaTime * 7f);
         camA1 = Mathf.Lerp(camA1, targA1, ease);
         camA2 = Mathf.Lerp(camA2, targA2, ease);

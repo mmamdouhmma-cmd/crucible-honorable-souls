@@ -131,7 +131,11 @@ public class FightCamera : MonoBehaviour
     {
         FindPair();
         if (player1 == null || player2 == null) return;
-        transform.SetPositionAndRotation(homePosition, homeRotation);   // frame from the authored view, not from wherever a menu left it
+        // An arena with its own camera home (a set-dressed environment holding several fight
+        // spaces) frames from that; otherwise from the camera's authored scene view.
+        Transform arenaHome = ArenaBounds.Instance != null ? ArenaBounds.Instance.CameraHome : null;
+        if (arenaHome != null) transform.SetPositionAndRotation(arenaHome.position, arenaHome.rotation);
+        else transform.SetPositionAndRotation(homePosition, homeRotation);   // frame from the authored view, not from wherever a menu left it
         CaptureFraming();
     }
 

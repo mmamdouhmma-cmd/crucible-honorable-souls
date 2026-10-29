@@ -44,6 +44,29 @@ public class ArenaBounds : MonoBehaviour
              "the floor's lip, where the drop starts.")]
     [SerializeField] private float ringOutDepth = 2f;
 
+    [Header("Set-dressed arenas (several fight spaces in one environment)")]
+    [Tooltip("The meshes this arena's walls are made of, when they are not under the arena root " +
+             "(the Musashi village: one environment, two fight spaces). WallCutout sees through " +
+             "these. Empty = this object's own root, which is right for a one-mesh Tripo arena.")]
+    [SerializeField] private Transform scenery;
+    [Tooltip("Optional spawn marks for Player 1 and Player 2. When both are set they replace the " +
+             "menu's scene-wide marks while this arena is active (the pair is still spread to " +
+             "MATCH_START_GAP about their midpoint, along their line).")]
+    [SerializeField] private Transform markP1;
+    [SerializeField] private Transform markP2;
+    [Tooltip("Optional: where the fight camera frames this arena from (its authored view, like the " +
+             "Main Camera's scene transform in a one-arena scene). Empty = the camera's own.")]
+    [SerializeField] private Transform cameraHome;
+
+    /// <summary>The meshes that make up this arena (see <see cref="scenery"/>).</summary>
+    public Transform Scenery => scenery != null ? scenery : transform.root;
+    /// <summary>True when this arena carries its own pair of spawn marks.</summary>
+    public bool HasMarks => markP1 != null && markP2 != null;
+    public Vector3 MarkP1 => markP1 != null ? markP1.position : centre;
+    public Vector3 MarkP2 => markP2 != null ? markP2.position : centre;
+    /// <summary>This arena's camera view, or null to keep the camera's own.</summary>
+    public Transform CameraHome => cameraHome;
+
     [Tooltip("Log the first time each fighter is pushed back in.")]
     [SerializeField] private bool debugLogs = false;
 
