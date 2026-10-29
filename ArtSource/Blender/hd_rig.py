@@ -60,7 +60,7 @@ from mathutils.bvhtree import BVHTree
 argv = sys.argv[sys.argv.index("--") + 1:]
 NAME, HD_FBX, TEMPLATE_FBX, CURRENT_FBX, OUT_DIR = argv[:5]
 opts = {"--hands": "grip", "--markers-run": "1", "--tris": "60000", "--shield-blend": "", "--renders": "",
-        "--keep-rig": "0", "--curl": ""}
+        "--keep-rig": "0", "--curl": "", "--arm-top": "0", "--arm-axis": "bands", "--arm-mirror": "0"}
 i = 5
 while i < len(argv):
     opts[argv[i]] = argv[i + 1]; i += 2
@@ -415,9 +415,33 @@ def arm_axis(V, sgn, H):
     tipx = x[up].max()
     a = V[up & (x > 0.55 * tipx) & (x < 0.66 * tipx)]
     b = V[up & (x > 0.78 * tipx) & (x < 0.88 * tipx)]
+    if opts["--arm-top"] == "1":
+        # --arm-top 1 (Kojiro, 2026-10-29): kimono sleeves hang from the arm to the waist, so the
+        # band median sits in the cloth. The cloth drapes OVER the arm, so keep each band's top slab.
+        a = a[a[:, 2] > a[:, 2].max() - 0.06 * H]
+        b = b[b[:, 2] > b[:, 2].max() - 0.06 * H]
     ca, cb = np.median(a, axis=0), np.median(b, axis=0)
     u = (cb - ca) / np.linalg.norm(cb - ca)
     tip = V[up][np.argmax(x[up])]
+    if opts["--arm-axis"] == "section":
+        # --arm-axis section (Sensei, 2026-10-29): a band median caught the robe ridge over his right
+        # shoulder, 1.2% H high, and the line from the band nearest the shoulder magnified it to 3.3% H.
+        # Use only slices that are ARM alone (short vertical extent: no hanging sleeve, no robe panel)
+        # and fit the line through their centres: height from the slice's bounding box, depth from its
+        # MEDIAN (the box's depth takes in the sleeve hanging behind, which put the shoulder 2% H out the back).
+        cen = []
+        for xs in np.arange(0.55 * tipx, 0.88 * tipx, 0.01 * H):
+            sl = V[up & (np.abs(x - xs) < 0.004 * H)]
+            if len(sl) > 20 and np.ptp(sl[:, 2]) < 0.10 * H:
+                cen.append(np.array([np.median(sl[:, 0]), np.median(sl[:, 1]), (sl[:, 2].min() + sl[:, 2].max()) / 2]))
+        if len(cen) >= 4:
+            C = np.array(cen)
+            c0 = C.mean(0)
+            d = np.linalg.svd(C - c0)[2][0]
+            d = d if d[0] * sgn > 0 else -d
+            REPORT.setdefault("arm_axis_sections", {})["L" if sgn > 0 else "R"] = len(cen)
+            return Vector(c0), Vector(d), Vector(tip)
+        log(f"arm-axis section: only {len(cen)} clean slices on side {sgn}, keeping the band medians")
     return Vector(ca), Vector(u), Vector(tip)
 
 
@@ -513,8 +537,18 @@ def fit_joints(T, dv, mesh):
             J[pel] = [J[MX + "Hips"][0].copy(), J[MX + "Hips"][0] + (T[pel]["tail"] - T[pel]["head"]) * k]
 
     # ---- arms: on the arm's own axis; wrist and elbow centred on their cross-sections -----------
+    axes = {s: arm_axis(V, s, H) for _, s in SIDES}
+    if opts["--arm-mirror"] == "1":
+        # --arm-mirror 1 (Sensei, 2026-10-29): the sculpt's arms mirror to ~0.5% H but his sleeves do not,
+        # and one side's fit came out 2% H further back. Average each side with the other's mirror image.
+        mir = lambda p: Vector((-p.x, p.y, p.z))
+        avg = {}
+        for _, s in SIDES:
+            (ca, u, tip), (cb, w, tb) = axes[s], axes[-s]
+            avg[s] = ((ca + mir(cb)) / 2, ((u + mir(w)) / 2).normalized(), tip)
+        axes = avg
     for side, s in SIDES:
-        ca, u, tip = arm_axis(V, s, H)
+        ca, u, tip = axes[s]
         sh_t = T[MX + side + "Arm"]["head"]
         shoulder = line_point_at_x(ca, u, sh_t.x * k)
         # hand length (wrist -> middle tip) as the template's fraction of shoulder -> middle tip

@@ -65,6 +65,10 @@ public static class CrucibleCharacterSetup
         // (between Bjorn and Richard), Buwaka a lean mid-sized hunter.
         { "Genghis",  3.750f },   // ORDER 2026-10-27 (user): 3.394 measured 2.842, x 3.14/2.842
         { "Buwaka",   3.491f },   // ORDER 2026-10-27 (user): 3.642 measured 3.109, x 2.98/3.109
+        // Story Chapter One cast (2026-10-29), on Salaadin's rig like the roster; first guesses at
+        // Miyamoto's bounds-to-stature ratio (3.426 / 2.82), to be calibrated in play the same way.
+        { "Ch1_Musashi", 3.212f },   // 3.426 measured 3.008 in play (Miyamoto_Idle), x 2.82/3.008
+        { "Ch1_Partner", 3.323f },   // 3.524 -> 3.387 (3.017 at idle frame 0) -> measured 2.956 over Miyamoto_Idle, x 2.90/2.956
     };
 
     static float HeightOf(string charName) =>
@@ -86,6 +90,10 @@ public static class CrucibleCharacterSetup
         // 2026-10-25 placeholders; re-measure with StandingHeight.
         { "Genghis",  3.14f },
         { "Buwaka",   2.98f },   // the user's size experiment (root 3.3/3.5/3.3), 2026-10-27
+        // Story cast, PROPOSAL (Design/Story_Ch1_Characters.md): young Musashi = the roster
+        // Miyamoto's size, his partner a step taller. The user has not confirmed these.
+        { "Ch1_Musashi", 2.82f },
+        { "Ch1_Partner", 2.90f },
     };
 
     static float StandingStature(string charName) =>
@@ -154,6 +162,8 @@ public static class CrucibleCharacterSetup
         // 2026-10-26 new bodies (rebody.py): re-measured in play at the calibrated statures.
         { "Bjorn", 0.158f / 4f },      // size order 2026-10-27: sole read -0.005 at 0.153;      // sole read -0.034 at 0.119
         { "Miyamoto", 0.169f / 2.8f },  // HD body 2026-10-27: sole read -0.072 at 0.0347 (root y-scale 2.8)
+        { "Ch1_Musashi", 0.162f / 2.8f },   // story cast 2026-10-29: sole read -0.159 at 0 in Miyamoto_Idle (Miyamoto reads +0.003)
+        { "Ch1_Partner", 0.170f / 2.8f },   // story cast 2026-10-29: sole read +0.007 at 0.173 (Miyamoto_Idle), less 2% for the last shrink
         // 2026-10-22c: re-measured after the -11% size change. GroundOffset is a FIXED root-local
         // lift, so shrinking the body left the same lift under shorter legs and he hovered 0.027.
         { "Richard", 0.182f / 3f },   // HD body 2026-10-27; size order: sole read -0.013 at 0.169
@@ -187,7 +197,7 @@ public static class CrucibleCharacterSetup
         "Assets/_project/Characters/" + (charName == "Salaadin" ? "salaadin" : charName);
 
     /// <summary>Fighters whose off hand holds the haft. Richard's holds a shield, so he has no grip IK.</summary>
-    static readonly string[] TwoHanded = { "Bjorn", "Miyamoto", "Genghis" };
+    static readonly string[] TwoHanded = { "Bjorn", "Miyamoto", "Genghis", "Ch1_Musashi", "Ch1_Partner" };
 
     [MenuItem("Crucible/Characters/Rebuild Player1 (Bjorn new body)")]
     public static void RebuildP1() => Rebuild("Player1", "Bjorn");
@@ -206,6 +216,22 @@ public static class CrucibleCharacterSetup
 
     [MenuItem("Crucible/Characters/Rebuild Player6 (Buwaka body)")]
     public static void RebuildP6() => Rebuild("Player6", "Buwaka");
+
+    // Story Chapter One copycats (2026-10-29): Musashi and his partner take Miyamoto's controller,
+    // move set and data, so the test rebuilds PLAYER2 (Miyamoto's slot) with the story body. Only in
+    // a story test scene - never in testarena, whose Player2 is the roster Miyamoto.
+    [MenuItem("Crucible/Story/Chapter One/Rebuild Player2 as Musashi (test scene only)")]
+    public static void RebuildStoryMusashi() => RebuildStory("Ch1_Musashi");
+
+    [MenuItem("Crucible/Story/Chapter One/Rebuild Player2 as the Partner (test scene only)")]
+    public static void RebuildStoryPartner() => RebuildStory("Ch1_Partner");
+
+    public static void RebuildStory(string charName)
+    {
+        var scene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
+        if (!scene.path.Contains("/Story/")) { Debug.LogError($"{charName}: open a story test scene first (active is {scene.path})"); return; }
+        Rebuild("Player2", charName);
+    }
 
     [MenuItem("Crucible/Characters/Report fighters")]
     public static void Report()
@@ -423,6 +449,9 @@ public static class CrucibleCharacterSetup
         // shaft (mesh bands: maxR 0.0010 at z 0.0006-0.0028 against the shaft's 0.0002), so strikes
         // with the flat of the leaf armed nothing - part of "only lands very close" (2026-10-26).
         { "Buwaka_Spear",    (0.50f, 0.00f) },   // 1.10 long, mid-haft grip: the whole leaf head (top ~50%) is the hitting part
+        // Story cast: the wooden sword with a round tsuba (swap_blade.py), held like the katana.
+        { "Ch1_Musashi_Bokken", (0.24f, 0.04f) },
+        { "Ch1_Partner_Bokken", (0.24f, 0.04f) },
     };
 
     /// <summary>Per-weapon visual scale, applied to the weapon node (mesh + blade box shrink
@@ -481,6 +510,9 @@ public static class CrucibleCharacterSetup
         { "Miyamoto", (new Vector3(0.00013f, 0.0006f, 0f), new Vector3(70f, 90f, 180f), 1f) },
         // Set by the user in play on 2026-10-27 against the HD body.
         { "Genghis", (new Vector3(0.001f, -0.0002f, -0.00025f), new Vector3(30f, 50f, 40f), 1f) },
+        // Story cast: the bokken is mounted to the katana's pose, so Miyamoto's socket carries over.
+        { "Ch1_Musashi", (new Vector3(0.00013f, 0.0006f, 0f), new Vector3(70f, 90f, 180f), 1f) },
+        { "Ch1_Partner", (new Vector3(0.00013f, 0.0006f, 0f), new Vector3(70f, 90f, 180f), 1f) },
     };
 
     static readonly System.Collections.Generic.Dictionary<string, (Vector3 localPos, Vector3 localEuler)> ShieldWeaponMount =
@@ -553,6 +585,13 @@ public static class CrucibleCharacterSetup
         // shield was Salaadin's source model where Buwaka has his own Weapons/Buwaka_Shield.fbx).
         // The FBX-authored placement is the source of truth for those three - an entry here would
         // stamp over the user's hand fix on every rebuild.
+        // Story cast (2026-10-29): the bokken came off hd_rig.py in the Tripo sculpt's own hold, which
+        // under Miyamoto's clips hangs the blade straight DOWN beside the leg (tip-from-hand y -0.99 in
+        // the idle, against the katana's +0.04). Solved in play: Miyamoto_Idle frame 0, the bokken given
+        // the katana's exact world pose relative to the root (both blades run along local +z and lean the
+        // same way off it, so the frames agree), offset from the hand scaled by the stature ratio.
+        { "Ch1_Musashi_Bokken", (new Vector3(-0.000848f, 0.000005f, -0.000008f), new Vector3(315.53f, 61.98f, 60.35f)) },
+        { "Ch1_Partner_Bokken", (new Vector3(-0.000826f, -0.000076f, -0.000126f), new Vector3(312.37f, 48.27f, 68.24f)) },   // same solve
     };
 
     static void SetupWeapon(GameObject player, GameObject inst, string charName, Animator rootAnim)

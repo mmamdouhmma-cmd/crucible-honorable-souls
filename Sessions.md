@@ -4551,3 +4551,34 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
   is the floor: the west wall's shadow already crosses part of the floor there.
 - **v0.3.1 released** (same day): Win64 build 870 MB, 0 errors, 3m15s; zip 474 MB on the GitHub release; commit
   2f36f9f on `salaadin`. The desktop shortcut already targets `Builds/CrucibleLite-Win64/Crucible.exe` - no change.
+
+### 2026-10-29 — Story cast: animation plan + rig audit (paused)
+- The user's plan: Musashi + Partner copy the roster Miyamoto's animations (copycats); Sensei and Kojiro get
+  their own; Sensei next, Kojiro postponed. Recorded in `Design/Story_Ch1_Characters.md`.
+- Rig audit started on the user's full audit brief: new `ArtSource/Blender/audit_rig.py`; findings and the
+  resume point are in the brief's "Rig audit" section. Sensei re-fitted with `--arm-top 1` (backup kept).
+
+### 2026-10-29 (late) — Story cast rig audit resumed: scabbard weights, Sensei's arm
+- Scabbard fused into the body at the left hip was skinned to the LEFT THIGH on Musashi / Partner / Sensei;
+  a 35 deg step tipped the hilt toward the chest. New `ArtSource/Blender/fix_scabbard_weights.py` finds the
+  tube by shape (axis fit + inlier refit) and binds it rigidly to Hips: scabbard travel 12-15% H -> 0.
+  The remaining seam stretch is buried in the obi; a wider blend band does not remove it (fused geometry).
+- The Sensei's "low left arm" was really a HIGH RIGHT arm: the band median caught his shoulder robe ridge and
+  the line extrapolation tripled it. `hd_rig.py --arm-axis section --arm-mirror 1` (opt-in, other characters
+  unchanged); 0 bones outside the mesh now. Details + backups in `Design/Story_Ch1_Characters.md`.
+- Unity phase not started: no Editor was open.
+
+### 2026-10-29 (night) — Story cast in Unity: Musashi + Partner play-verified
+- Test scenes `Scenes/Story/Ch1_Test_Musashi.unity` / `Ch1_Test_Partner.unity` (copies of testarena, Player2
+  rebuilt by the new story-only menu items). testarena and the combat code untouched.
+- Avatars: slot table identical to Miyamoto's (52 mapped). WeaponSpec 0.24 matches the bokken's tsuba (0.225-0.25).
+- **Gotcha: the bokken hung straight down beside the leg in every state** - hd_rig.py seats a weapon in the Tripo
+  sculpt's own hold, and that hold is not the katana's. Solved in play by giving the bokken the katana's world pose
+  relative to the root at Miyamoto_Idle frame 0, read back as a `ShieldWeaponMount` local entry. Check a re-seated
+  weapon's tip direction against the roster fighter whose clips it borrows, per state, before anything else.
+- Harness (scratchpad pattern): live match vs Richard, Fighter + CombatSystem off, `anim.Play` each layer-0 state,
+  `captureDeltaTime` 1/60, per frame BakeMesh soles (foot-weighted) / crown / TwoHandGrip.OffHandMiss / tip-from-hand,
+  CSV + mid-state screenshots. Run Miyamoto through it in testarena first as the baseline.
+- Calibrated: StandingHeight Musashi 3.212 / Partner 3.323, GroundOffset 0.162/2.8 / 0.170/2.8 -> idle stature
+  2.820 / 2.901, soles +0.003 / +0.008. Off-hand miss 10-50% above Miyamoto's in the big swings - watch in play.
+- Visual-fidelity audit (read-only) started at the user's request; report in the conversation, nothing changed.
