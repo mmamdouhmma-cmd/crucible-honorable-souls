@@ -149,13 +149,9 @@ public static class BalanceConfig
     public const float WEAKENED_ATTACK_PACE_MULTIPLIER = 0.85f; // attack clock AND animator run at this rate
 
     // ==================== UNEVEN GROUND ====================
-    // Arena floors are neither flat nor level (the test arena's runs -0.065 to -0.267 under the
-    // marks, and the shipped arenas slope), and the swept blade is physical: an opponent standing
-    // downhill can be passed clean over, and one standing uphill slips under the box. When the two
-    // fighters' roots differ in height by more than this (world units; statures are ~2.6-2.9), the
-    // authored front box - which ignores height on purpose - judges the active window instead,
-    // exactly as it already does for kicks and slow frames. On level ground nothing changes.
-    public const float UNEVEN_GROUND_HEIGHT_GAP = 0.2f;
+    // There is no height-gap constant any more (2026-10-30): slope is handled by ATTACK HEIGHT.
+    // Overhead, Low and Uppercut strikes are judged on horizontal reach (CombatSystem.IsRangeJudged);
+    // Mid and High cuts stay physical, so a slash that passes over a fighter's head is a miss.
 
     // ==================== WHIFF ====================
     // An attack whose active window closes without touching anyone (not hit, not blocked, not

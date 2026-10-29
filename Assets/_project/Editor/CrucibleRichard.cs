@@ -30,7 +30,7 @@ public static class CrucibleRichard
     const string P3Ctrl = "Assets/_project/Animation/Controllers/P3_Richard.controller";
 
     // AttackHeight / AttackType / AttackOrigin / HitSide / AimMode, as the enum order serializes them
-    const int High = 0, Mid = 1, Low = 2, Overhead = 3;
+    const int High = 0, Mid = 1, Low = 2, Overhead = 3, Uppercut = 4;
     const int Light = 0, Medium = 1, Heavy = 2, Special = 3;
     const int FromOverhead = 0, FromLeft = 1, FromRight = 2, FromThrust = 3;
     const int HitStraight = 0, HitLeft = 1, HitRight = 2;
@@ -64,7 +64,7 @@ public static class CrucibleRichard
                    lunge = -1f, weapon = true },
 
         new Move { asset = "Richard_Medium_Slash", name = "Cross Slash", trigger = "MediumAttack",
-                   height = Mid, type = Medium, comesFrom = FromRight, hitSide = HitLeft, aim = AimFull,
+                   height = Low,   // the user's call 2026-10-30: lands on horizontal reach type = Medium, comesFrom = FromRight, hitSide = HitLeft, aim = AimFull,
                    range = 2.9f, size = new Vector3(1.3f, 1.1f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
@@ -89,7 +89,7 @@ public static class CrucibleRichard
         // desired direction to the horizon first. FromLeft/HitRight because it returns from his
         // off side. The ASSET name is kept for the scene's GUID.
         new Move { asset = "Richard_Special_ShieldCharge", name = "Lionheart Reversal", trigger = "SpecialLight",
-                   height = Mid, type = Special, specialButton = Light, comesFrom = FromLeft, hitSide = HitRight,
+                   height = Uppercut, type = Special, specialButton = Light, comesFrom = FromRight, hitSide = HitLeft,   // the rising sword (user, 2026-10-30); measured 2026-10-29: the sword sweeps his right -> left
                    aim = AimLevel, range = 3.2f, size = new Vector3(1.4f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.0f, weapon = true },
 

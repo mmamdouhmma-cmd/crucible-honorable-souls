@@ -4,7 +4,7 @@ rem Bump the version and build (Crucible > Build > Windows app) before running t
 rem NOTES below are this version's notes; Enter at the prompt keeps them, typing replaces them.
 rem Keep them free of the characters cmd treats specially: ampersand, pipe, angle brackets, quotes.
 cd /d "%~dp0.."
-set "NOTES=v0.4.0 - Sharper visuals and a new fighter to test. Visuals: sharper shadows (4096 over 45 m, 4 cascades), 4x MSAA anti-aliasing, stronger ambient occlusion, a softer ACES grade on every arena (no chromatic aberration, lighter film grain), live reflections captured per arena, and 4K fighter and weapon textures. New fighter, in testing: the Sensei, an old master with a wooden bokken - one-handed strikes, a two-handed overhead, low health. He is a planned DLC character and may change."
+set "NOTES=v0.4.1 - Free-form combos and fairer hits on slopes. Combos: no more fixed strings - any attack, a special included, cancels into the next one as long as the two swings flow (never the same swing twice, except two overheads or two thrusts in a row; a spin follows an overhead only on the same diagonal), up to three hits. Combo-only finishers stay. The Move List strings page is gone. Hits: overheads, low cuts and uppercuts now land whenever the target is in reach, even on uneven ground; mid and high slashes still have to physically connect. Several strikes now dodge and react from the side their animation actually swings from."
 echo.
 echo Notes for this release:
 echo %NOTES%

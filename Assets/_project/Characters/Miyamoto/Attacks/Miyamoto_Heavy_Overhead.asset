@@ -21,7 +21,7 @@ MonoBehaviour:
   recoveryFrames: 18
   animationClip: {fileID: -203655887218126122, guid: c2d1513b8b91eb14f92136653bc88ee4, type: 3}
   animatorTriggerName: HeavyAttack
-  attackHeight: 1
+  attackHeight: 3
   attackType: 2
   specialButton: 0
   comesFrom: 0

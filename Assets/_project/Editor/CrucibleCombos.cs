@@ -1,5 +1,11 @@
 // The combo tables.
 //
+// NO FIXED STRINGS since 2026-10-29 (the user's call): CombatSystem cancels any swing into any
+// press that FLOWS from it (CombatSystem.Flows), so most rows below are ignored at runtime. Only
+// a DEDICATED link still counts - one whose follow-up the button cannot throw raw (Bjorn's
+// Light -> SpinOverhead, Miyamoto's -> Iaijutsu, Buwaka's FallingSpear -> SerpentCoil) - and it
+// must pass the flow rule too. Keep those rows; the rest are history.
+//
 // Crucible > Combat > Wire combo strings writes every AttackData's comboLinks from the tables
 // below, so the strings live in one reviewable place instead of being hand-edited into YAML with
 // raw GUIDs. Re-runnable: it REPLACES each listed attack's links, so editing a row here and

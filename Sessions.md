@@ -4638,3 +4638,38 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 - Version 0.4.0, Windows app built (0 errors, 1.37 GB), the built exe starts clean and initialises the Sensei.
   `Tools/release.cmd` now carries this version's notes as the default (Enter keeps them). NOT published - running
   release.cmd is the user's step. Online peers on 0.3.x will be refused by the version check, as designed.
+
+### 2026-10-29 — No fixed combos; strike directions measured
+
+- Combos are free-form now (see the CLAUDE.md bullet): any attack cancels into any press that flows,
+  special openers included; only combo-only animations keep an authored link. Two straights in a row
+  are allowed. Move List strings page removed; help text updated.
+- Measured every move's blade path in play (weapon hand + tip in the attacker's own frame, out of
+  reach, `Time.captureDeltaTime = 1/60`; harness `dirframes.cs` + `front.py` in the session scratchpad).
+  The authored active window is only 2-5 frames and WeaponAim pins the tip there, so read the HAND over
+  active-8 .. active+3; peak tip speed lands on blend/follow-through frames and is useless.
+  The pelvis-yaw column read either ~0 or exactly +-360 and is not trusted.
+- Fixed (both hand and tip agree): Bjorn Light hitSide back to Left (the user's test edit), Salaadin
+  ShinCut -> from his LEFT, Richard ShieldCharge + Salaadin VeiledRush -> from his RIGHT, Miyamoto
+  Kuruma comesFrom Thrust -> AttackerRight/Left; flows Iaijutsu -> Thrust, Richard DoubleHigh ->
+  Overhead, ShieldBash -> CutLeft. Tables (CrucibleRichard/Salaadin/Balance) and assets both written;
+  `Apply` was NOT run.
+- Play-verified 8 strings, incl. Bjorn L->H = SpinOverhead, BloodEagle -> Light, Richard H -> SP+H,
+  Buwaka L -> H (thrust, thrust), L -> SP+L refused (CutLeft twice).
+
+### 2026-10-30 — Slope handled by attack height
+
+- The user saw Bjorn's Blood Eagle and Hewing Charge whiff from slightly uphill (dy +0.30, gap 0.9-1.35).
+  Blood Eagle's axe head came down behind Salaadin; the old uneven-ground fallback only looked at the
+  authored 5 active frames, when the tip had not yet come forward, so its tip-reach clamp refused it.
+- New rule (CLAUDE.md bullet): Overhead / Low / Uppercut heights are range-judged over the whole armed
+  window (overhead also needs the tip at or below the crown); Mid / High stay physical. Heights
+  relabelled per the user and the 2026-10-29 tip-height measurement.
+- Verified: 240 swings on the arena ramp near (55, -5) / (55, -1.5), four approach sides, gaps 1.4/2.4,
+  dy -0.45..+0.46 - all landed, ~210 of them by the physical sweep. The user's exact case (lunge
+  1.60 -> 1.35, dy +0.35) lands Blood Eagle by the sweep 5/5. Hewing Charge (still High) landed 5/5 but
+  only via the SLOW-FRAME stand-in (the CLI editor runs at ~10-20 fps), so its physical result at real
+  60 fps is unverified and probably the whiff the user saw.
+- Bjorn's Hewing Charge -> Overhead too (the user's call), so it lands on range like Blood Eagle.
+- The remaining spin/flow relabels (Bjorn's two spins, the SP+Light reversals as SpinLeft, Serpent Sweep/Coil, Hattin, Kuruma) were offered and DECLINED by the user - labels stay as they are.
+- Buwaka Heavy (Iklwa Thrust) startup 36 -> 30 (the user's edit in the Editor), copied into CrucibleBalance.UserFrames. Version 0.4.1.

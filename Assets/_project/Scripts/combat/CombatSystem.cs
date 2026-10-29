@@ -120,7 +120,6 @@ public class CombatSystem : MonoBehaviour
     public AttackData ParryRiposte => parryRiposte;
 
     private int stringDepth;           // links taken without returning to neutral (0 = a fresh swing)
-    private bool stringUsedSpecial;    // a string carries at most ONE special, and it ends there
     private bool stringArmored;        // the opener landed CLEAN, so the rest of the string powers through hits
 
     // Dialed strings play faster (the user's call, 2026-10-25): a follow-up's attack clock AND
@@ -325,20 +324,22 @@ public class CombatSystem : MonoBehaviour
         // KICK, because hits are otherwise judged by sweeping the blade and a carried blade never
         // catches one. A SLOW FRAME: when a rendered frame is longer than SLOW_FRAME_SECONDS the
         // sweep can skip a whole thrust, so the box stands in, exactly as the pre-weapon-box
-        // system did (never used at 60 fps). And UNEVEN GROUND: the arena floors slope, and a
-        // physical blade passes clean over an opponent standing downhill - when the two roots
-        // differ in height the front box, which ignores height on purpose, judges the window.
+        // system did (never used at 60 fps). And a RANGE-JUDGED height (the user's call,
+        // 2026-10-30): an OVERHEAD, a LOW or an UPPERCUT lands whenever the target is inside the
+        // blade's horizontal reach, whatever the few units of arena slope between them - an
+        // overhead also has to have come down to his crown, so it cannot land while still raised.
+        // Mid and High cuts stay purely physical: a slash that passes over his head is a miss.
+        // (This replaced the old "uneven ground" fallback, which judged every move by the box.)
         bool bodyAttack = currentAttack != null && !currentAttack.HitsWithWeapon;
         bool slowFrame = Time.unscaledDeltaTime > BalanceConfig.SLOW_FRAME_SECONDS;
+        bool rangeJudged = currentAttack != null && IsRangeJudged(currentAttack.AttackHeight);
         if (hitboxActive && hitDetector != null && hitDetector.FollowWeapon && !hitDetector.HasHit && !swingEvaded &&
-            IsInActivePhase())
+            (IsInActivePhase() || rangeJudged))
         {
             Fighter opp = fighter != null ? fighter.Opponent : null;
-            bool unevenGround = opp != null &&
-                Mathf.Abs(opp.transform.position.y - fighter.transform.position.y) > BalanceConfig.UNEVEN_GROUND_HEIGHT_GAP;
             // A weapon move's stand-in box is clamped to where the blade tip has actually BEEN this
             // swing: the authored ranges run 3.2-4.0 while the tightened blade path reaches ~2.6-3.0,
-            // and without the clamp a slow frame or a slope handed every heavy a metre of free reach
+            // and without the clamp a slow frame handed every heavy a metre of free reach
             // (measured: four heavies landing at gap 4.2 with the blade 0.7-2.0 from the body).
             // Kicks keep the pure authored box - there is no blade to clamp against.
             bool bladeCanReach = true;
@@ -346,15 +347,17 @@ public class CombatSystem : MonoBehaviour
             {
                 Vector3 g = opp.transform.position - fighter.transform.position; g.y = 0f;
                 bladeCanReach = g.magnitude <= hitDetector.MaxTipRadius + opp.BodyRadius + 0.2f;
+                if (bladeCanReach && rangeJudged && currentAttack.AttackHeight == AttackHeight.Overhead)
+                    bladeCanReach = hitDetector.TipPosition.y <= CrownY(opp);
             }
-            if ((bodyAttack || slowFrame || unevenGround) && bladeCanReach &&
+            if ((bodyAttack || slowFrame || rangeJudged) && bladeCanReach &&
                 opp != null && !opp.IsDashing && IsWithinReach(currentAttack, opp.transform.position, opp.BodyRadius))
             {
                 if (debugLogs)
                 {
                     string why = bodyAttack ? "body attack"
                         : slowFrame ? $"slow frame ({Time.unscaledDeltaTime * 1000f:0} ms)"
-                        : $"uneven ground (dy {opp.transform.position.y - fighter.transform.position.y:0.00})";
+                        : $"{currentAttack.AttackHeight} strike in range (dy {opp.transform.position.y - fighter.transform.position.y:0.00})";
                     Debug.Log($"P{fighter.PlayerNumber}: {why} - front box judged {currentAttack.AttackName}");
                 }
                 hitDetector.ForceHit(opp);
@@ -441,16 +444,24 @@ public class CombatSystem : MonoBehaviour
     /// hitbox will be raised by <see cref="Update"/>.
     /// </summary>
     /// <summary>
-    /// Fires the buffered button as a string follow-up if the current attack links it and the
+    /// Fires the buffered button as a string follow-up if it flows from the current attack and the
     /// playhead is inside the cancel window. Returns true when a follow-up started, in which case
     /// the caller must not touch the old attack's state again this frame.
     /// </summary>
     private bool TryCancelIntoFollowUp()
     {
-        if (currentAttack == null || !currentAttack.HasComboLinks) return false;
+        if (currentAttack == null) return false;
 
+        // NO FIXED STRINGS (the user's call, 2026-10-29): any press continues any attack - a
+        // special opener included - as long as the two swings FLOW (see Flows). The only authored
+        // links left are the DEDICATED ones: a follow-up with its own animation that the button
+        // cannot throw raw (Bjorn's light -> 360 overhead, Miyamoto's Iaijutsu, Buwaka's Serpent
+        // Coil). They obey the flow rule like everything else.
+        AttackData next = null;
         var link = currentAttack.FindLink(bufferedInput, bufferedSpecial, stringDepth);
-        if (link == null) return false;
+        if (link != null && IsDedicatedLink(link) && LinkAllowed(link)) next = link.followUp;
+        if (next == null) next = ResolvePress(bufferedInput, bufferedSpecial);
+        if (next == null) return false;
 
         int frame = Mathf.FloorToInt(currentAttackTime / BalanceConfig.FRAME_TIME);
         if (frame < currentAttack.CancelStartFrame || frame > currentAttack.CancelEndFrame) return false;
@@ -464,34 +475,19 @@ public class CombatSystem : MonoBehaviour
         float activeEnd = (currentAttack.StartupFrames + currentAttack.ActiveFrames) * BalanceConfig.FRAME_TIME;
         if (currentAttackTime < activeEnd && !attackTouched && !swingEvaded) return false;
 
-        bool allowed;
-        switch (link.requires)
+        // Final refusals drop the press rather than hold it: it can never come out from this
+        // swing, and a held buffer would re-test (and re-log) it on every frame of the window.
+        string refusal = null;
+        if (!Flows(currentAttack.SwingFlow, next.SwingFlow))
+            refusal = $"{next.AttackName} ({next.SwingFlow}) does not flow from a {currentAttack.SwingFlow}";
+        else if (bannedAttackTimer > 0f && next == bannedAttack)
+            refusal = $"{next.AttackName} is barred {bannedAttackTimer:0.00}s more (thrown {BalanceConfig.SAME_ATTACK_CHAIN_LIMIT}x in a row)";
+        if (refusal != null)
         {
-            case CancelRequirement.HitOnly:    allowed = attackHitClean; break;
-            case CancelRequirement.HitOrBlock: allowed = attackTouched;  break;
-            default:                           allowed = true;           break;
-        }
-        if (!allowed) return false;
-
-        // At most one special per string, which is what the authored shapes say: normal -> special,
-        // normal -> normal -> special, special -> normal. Without this a special that opens a string
-        // reaches a normal whose own special link fires, so one input chain could spend two specials
-        // (~86 stamina) for three big hits.
-        if (stringUsedSpecial && link.followUp.IsSpecial)
-        {
-            // FindLink prefers the modifier branch, so the same button may still have a plain one
-            // that is perfectly legal here; only give up when it does not.
-            var plain = currentAttack.FindLink(bufferedInput, false, stringDepth);
-            if (plain == null || plain.followUp == null || plain.followUp.IsSpecial)
-            {
-                // Drop the press rather than hold it: it can never come out, and a held buffer
-                // would re-test (and re-log) it on every frame of the cancel window.
-                if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: no {link.followUp.AttackName} - a string carries only one special");
-                hasBufferedInput = false;
-                bufferTimer = 0f;
-                return false;
-            }
-            link = plain;
+            if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: no follow-up - {refusal}");
+            hasBufferedInput = false;
+            bufferTimer = 0f;
+            return false;
         }
 
         if (stringDepth + 1 >= BalanceConfig.MAX_STRING_LENGTH)
@@ -504,7 +500,7 @@ public class CombatSystem : MonoBehaviour
         }
 
         if (fighter == null || fighter.Stats == null) return false;
-        if (!fighter.Stats.HasStamina(EffectiveStaminaCost(link.followUp, inCombo: true))) return false;
+        if (!fighter.Stats.HasStamina(EffectiveStaminaCost(next, inCombo: true))) return false;
 
         string from = currentAttack.AttackName;
         int window0 = currentAttack.CancelStartFrame, window1 = currentAttack.CancelEndFrame;
@@ -521,17 +517,81 @@ public class CombatSystem : MonoBehaviour
                                 Mathf.Clamp01(delay / BalanceConfig.COMBO_FOLLOWUP_RESPONSE_WINDOW));
 
         EndAttack("CANCELLED into the string");
-        BeginAttack(link.followUp, depth, pace);
+        BeginAttack(next, depth, pace);
         hasBufferedInput = false;
         bufferTimer = 0f;
 
         if (debugLogs)
         {
-            Debug.Log($"P{fighter.PlayerNumber}: {from} -> {link.followUp.AttackName} " +
+            Debug.Log($"P{fighter.PlayerNumber}: {from} -> {next.AttackName} " +
                       $"(cancelled on frame {frame}, window {window0}-{window1}, hit {depth + 1} of the string, " +
                       $"pace x{pace:0.00} - fired {delay:0.00}s after the cancel opened)");
         }
         return true;
+    }
+
+    /// <summary>
+    /// Heights whose geometry does not care about a little arena slope: an overhead comes down
+    /// through whoever stands under it, a low cut sweeps the legs, an uppercut rises through the
+    /// body. These land on horizontal reach; Mid and High stay physical (see Update).
+    /// </summary>
+    public static bool IsRangeJudged(AttackHeight height) =>
+        height == AttackHeight.Overhead || height == AttackHeight.Low || height == AttackHeight.Uppercut;
+
+    /// <summary>The top of a fighter's body capsule (fitted sole-to-crown), in world space.</summary>
+    private static float CrownY(Fighter f)
+    {
+        var cap = f.GetComponent<CapsuleCollider>();
+        return cap != null ? cap.bounds.max.y : f.transform.position.y + 3f;
+    }
+
+    /// <summary>
+    /// The free-form flow rule, shared by string cancels and raw quick-succession swings: the next
+    /// swing may be anything EXCEPT the same geometry again - a right cut cannot follow a right cut.
+    /// Two STRAIGHTS in a row are the exception (overhead -> overhead, thrust -> thrust; the user's
+    /// call, 2026-10-29). And an overhead flows into a spin only on its own diagonal: a cut that
+    /// came down from the right carries into a right spin; the opposite spin, or any spin after a
+    /// dead-vertical overhead, is a re-chamber.
+    /// </summary>
+    public static bool Flows(SwingFlow last, SwingFlow next)
+    {
+        if (next == last) return next == SwingFlow.Overhead || next == SwingFlow.Thrust;
+        bool nextIsSpin = next == SwingFlow.SpinLeft || next == SwingFlow.SpinRight;
+        bool lastIsOverhead = last == SwingFlow.Overhead || last == SwingFlow.OverheadLeft || last == SwingFlow.OverheadRight;
+        if (nextIsSpin && lastIsOverhead)
+            return (last == SwingFlow.OverheadLeft && next == SwingFlow.SpinLeft) ||
+                   (last == SwingFlow.OverheadRight && next == SwingFlow.SpinRight);
+        return true;
+    }
+
+    /// <summary>
+    /// The move a press throws from neutral: the special on that button when the modifier is held,
+    /// falling back to the normal when this fighter has no such special.
+    /// </summary>
+    private AttackData ResolvePress(AttackType attackType, bool special)
+    {
+        var found = FindAttack(attackType, special);
+        if (found == null && special) found = FindAttack(attackType, false);
+        return found;
+    }
+
+    /// <summary>
+    /// An authored link survives only when its follow-up is a move the button could NOT throw raw -
+    /// a combo-only animation. Every other link is the generic cancel already.
+    /// </summary>
+    private bool IsDedicatedLink(ComboLink link)
+    {
+        return link.followUp != ResolvePress(link.input, link.withSpecialModifier);
+    }
+
+    private bool LinkAllowed(ComboLink link)
+    {
+        switch (link.requires)
+        {
+            case CancelRequirement.HitOnly:    return attackHitClean;
+            case CancelRequirement.HitOrBlock: return attackTouched;
+            default:                           return true;
+        }
     }
 
     /// <summary>
@@ -556,8 +616,6 @@ public class CombatSystem : MonoBehaviour
         attackTouched = false;
         attackHitClean = false;
         stringDepth = depth;
-        // A fresh swing starts the count over; a link inherits what the string has already spent.
-        stringUsedSpecial = (depth > 0 && stringUsedSpecial) || attack.IsSpecial;
         stringArmored = depth > 0 && stringArmored;
         currentAttackIsDashCounter = fighter.ConsumeDashCounter();
         if (currentAttackIsDashCounter)
@@ -634,11 +692,11 @@ public class CombatSystem : MonoBehaviour
         hasBufferedInput = true;
         float hold = BalanceConfig.INPUT_BUFFER_FRAMES * BalanceConfig.FRAME_TIME;
 
-        // Dial-a-combo: when the button genuinely continues this string, hold it until the cancel
-        // window has passed rather than for the flat buffer. Otherwise a player who taps the
-        // follow-up straight after the opener - which is how everyone plays strings - would have it
-        // expire a frame or two before the window even opens.
-        if (currentAttack != null && currentAttack.FindLink(attackType, special, stringDepth) != null)
+        // Dial-a-combo: any press can continue the swing now, so hold it until the cancel window
+        // has passed rather than for the flat buffer. Otherwise a player who taps the follow-up
+        // straight after the opener - which is how everyone plays strings - would have it expire a
+        // frame or two before the window even opens.
+        if (currentAttack != null && stringDepth + 1 < BalanceConfig.MAX_STRING_LENGTH)
         {
             float windowEnd = (currentAttack.CancelEndFrame + 1) * BalanceConfig.FRAME_TIME;
             hold = Mathf.Max(hold, windowEnd - currentAttackTime);
@@ -679,16 +737,7 @@ public class CombatSystem : MonoBehaviour
         else if (fighter.DashCounterOpen && dashRiposte != null) found = dashRiposte;
         if (found != null) Debug.Log($"P{pn}: RIPOSTE - {found.AttackName} instead of the {attackType}");
     }
-    if (found == null) found = FindAttack(attackType, special);
-
-    // The modifier is held, but this fighter has no special on that button: fall through to the
-    // normal rather than eating the press. A player holding the modifier should still be able to
-    // fight, and it keeps every character playable before all three specials are authored.
-    if (found == null && special)
-    {
-        found = FindAttack(attackType, false);
-        if (found != null) Debug.Log($"P{pn}: no special on {attackType} - throwing the normal instead");
-    }
+    if (found == null) found = ResolvePress(attackType, special);
     if (found == null)
     {
         int n = special ? (specials == null ? -1 : specials.Length) : (attacks == null ? -1 : attacks.Length);
@@ -704,11 +753,10 @@ public class CombatSystem : MonoBehaviour
         return false;
     }
 
-    // Free-form combo rules (the user's call, 2026-10-24). The authored strings cancel in through
-    // TryCancelIntoFollowUp and are exempt; these gate only RAW quick-succession swings:
+    // Free-form combo rules (the user's call, 2026-10-24) for RAW quick-succession swings; a
+    // cancel out of a swing's recovery goes through TryCancelIntoFollowUp and the same Flows rule:
     //  - the sequence caps at FREEFORM_COMBO_CAP swings, then the fighter must pause;
-    //  - each swing must FLOW - anything except the same geometry twice in a row (a right cut can
-    //    be followed by a left cut, a spin, a thrust or an overhead, never by another right cut).
+    //  - each swing must FLOW from the last (see Flows).
     if (comboGapTimer < BalanceConfig.COMBO_PRESSURE_GAP && comboPressureCount > 0)
     {
         if (comboPressureCount >= BalanceConfig.FREEFORM_COMBO_CAP)
@@ -717,28 +765,10 @@ public class CombatSystem : MonoBehaviour
                       $"pause {BalanceConfig.COMBO_PRESSURE_GAP - comboGapTimer:0.00}s more");
             return false;
         }
-        if (found.SwingFlow == lastSwingFlow)
+        if (!Flows(lastSwingFlow, found.SwingFlow))
         {
-            Debug.Log($"P{pn}: BLOCKED - {found.AttackName} is another {found.SwingFlow} swing; " +
-                      "the same geometry cannot flow twice in a row (mix the sides)");
+            Debug.Log($"P{pn}: BLOCKED - {found.AttackName} ({found.SwingFlow}) does not flow from a {lastSwingFlow}");
             return false;
-        }
-        // An overhead flows into a spin only on its own diagonal (the user's call, 2026-10-24):
-        // a cut that came down diagonally from the right carries straight into a right spin; the
-        // opposite spin - or any spin after a dead-vertical overhead - is a re-chamber, refused.
-        bool nextIsSpin = found.SwingFlow == SwingFlow.SpinLeft || found.SwingFlow == SwingFlow.SpinRight;
-        bool lastIsOverhead = lastSwingFlow == SwingFlow.Overhead ||
-                              lastSwingFlow == SwingFlow.OverheadLeft || lastSwingFlow == SwingFlow.OverheadRight;
-        if (nextIsSpin && lastIsOverhead)
-        {
-            bool sameDiagonal = (lastSwingFlow == SwingFlow.OverheadLeft && found.SwingFlow == SwingFlow.SpinLeft) ||
-                                (lastSwingFlow == SwingFlow.OverheadRight && found.SwingFlow == SwingFlow.SpinRight);
-            if (!sameDiagonal)
-            {
-                Debug.Log($"P{pn}: BLOCKED - {found.AttackName} ({found.SwingFlow}) cannot follow a " +
-                          $"{lastSwingFlow}; a spin only flows from an overhead on its own diagonal");
-                return false;
-            }
         }
     }
 
@@ -1281,7 +1311,7 @@ public class CombatSystem : MonoBehaviour
                 stunFrames = BalanceConfig.COMBO_WRONG_DODGE_STUN_FRAMES;
                 if (debugLogs) Debug.Log($"P{target.PlayerNumber}: dodged INTO the follow-up - {stunFrames} f stun");
             }
-            bool canStringOn = currentAttack.ComboLinks != null && currentAttack.ComboLinks.Length > 0;
+            bool canStringOn = stringDepth + 1 < BalanceConfig.MAX_STRING_LENGTH;   // every swing can, below the cap
             if (blocked)
             {
                 // A blocked hit stuns, but the guard stays UP through it (the user's call,

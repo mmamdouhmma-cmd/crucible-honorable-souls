@@ -389,9 +389,9 @@ public static class CrucibleBalance
         { "Miyamoto_Light_Thrust",        SwingFlow.Thrust },
         { "Miyamoto_Medium_SideSlash",    SwingFlow.CutLeft },
         { "Miyamoto_Heavy_Overhead",      SwingFlow.Overhead },
-        { "Miyamoto_Special_Iaijutsu",    SwingFlow.CutRight },   // the draw cut sweeps out right
+        { "Miyamoto_Special_Iaijutsu",    SwingFlow.Thrust },     // the double thrust (measured 2026-10-29: no lateral sweep)
         { "Miyamoto_Special_Kuruma",      SwingFlow.SpinRight },  // 100 deg pelvis wheel
-        { "Miyamoto_Special_NitoCross",   SwingFlow.SpinLeft },   // 356 deg pelvis
+        { "Miyamoto_Special_NitoCross",   SwingFlow.SpinRight },  // 356 deg pelvis, turning to his RIGHT - lands from his left (the user, 2026-10-29)
         { "Miyamoto_Special_Nukitsuke",   SwingFlow.CutLeft },
         { "Miyamoto_Riposte_Dash",        SwingFlow.CutRight },
         { "Miyamoto_Riposte_Parry",       SwingFlow.SpinRight },  // the spinning cut
@@ -400,8 +400,8 @@ public static class CrucibleBalance
         { "Richard_Light_Thrust",         SwingFlow.Overhead },
         { "Richard_Medium_Slash",         SwingFlow.CutLeft },
         { "Richard_Heavy_Overhead",       SwingFlow.Overhead },
-        { "Richard_Special_DoubleHigh",   SwingFlow.CutRight },   // the paired high cuts
-        { "Richard_Special_ShieldBash",   SwingFlow.Thrust },     // a forward shove
+        { "Richard_Special_DoubleHigh",   SwingFlow.Overhead },   // plays his Heavy's `slash` - measured 2026-10-29 as the same overhead
+        { "Richard_Special_ShieldBash",   SwingFlow.CutLeft },    // plays his Medium's cut - measured 2026-10-29 right -> left
         { "Richard_Special_ShieldCharge", SwingFlow.Thrust },     // the running slam
         { "Richard_Riposte_Dash",         SwingFlow.CutLeft },
         { "Richard_Riposte_Parry",        SwingFlow.CutLeft },    // the sword counter
@@ -409,7 +409,7 @@ public static class CrucibleBalance
         // Salaadin: the combo fighter gets alternating sides on his normals, a whirling heavy.
         { "Salaadin_Light_SaifCut",       SwingFlow.CutLeft },    // the flat sweep
         { "Salaadin_Medium_ShinCut",      SwingFlow.CutRight },   // the low forehand
-        { "Salaadin_Heavy_WhirlingSaif",  SwingFlow.SpinRight },
+        { "Salaadin_Heavy_WhirlingSaif",  SwingFlow.CutRight },   // plays `slash` now: a cut from his left, no turn (2026-10-29)
         { "Salaadin_Special_CrescentSlash", SwingFlow.CutRight },
         // Diagonal: `sword and shield attack` sweeps 86 deg of yaw coming down from his right,
         // so the cleave flows straight into his right-hand spin (the Whirling Saif) - the one
@@ -442,7 +442,7 @@ public static class CrucibleBalance
         { "Buwaka_Riposte_Parry",         SwingFlow.Thrust },     // the spear
         // The Sensei: each move takes the flow of the move whose animation it borrows.
         { "Sensei_Light_FallingBranch",     SwingFlow.Overhead },   // Richard's Heavy
-        { "Sensei_Medium_TempleBell",       SwingFlow.SpinRight },  // Salaadin's Heavy (his row's label)
+        { "Sensei_Medium_TempleBell",       SwingFlow.CutRight },   // Salaadin's Heavy - a cut from his left
         { "Sensei_Heavy_MountainSplitter",  SwingFlow.Overhead },   // Bjorn's Heavy
         { "Sensei_Special_RisingHeaven",    SwingFlow.Overhead },   // Genghis's SP+Heavy
         { "Sensei_Special_CircleOfWillow",  SwingFlow.CutRight },   // Salaadin's SP+Medium
@@ -573,6 +573,7 @@ public static class CrucibleBalance
         { "Buwaka_Special_SerpentSweep", (30, 32) },
         { "Buwaka_Special_FallingSpear", (30, 29) },
         { "Buwaka_Special_GreatImpale", (30, 28) },
+        { "Buwaka_Heavy_IklwaThrust", (30, 28) },   // the user, 2026-10-30: startup 36 -> 30
     };
 
     /// <summary>A move's frame budget as the TABLE row has it (startup + active + recovery, no scale), or

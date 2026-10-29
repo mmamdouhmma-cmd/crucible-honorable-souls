@@ -1416,7 +1416,7 @@ public class GameMenu : MonoBehaviour
             {
                 visibleRows = 22; rowHeight = 33f; rowFont = 21;
                 if (!movesShowPadInit) { movesShowPadInit = true; movesShowPad = Gamepad.all.Count > 0; }
-                int pages = Mathf.Max(1, MovesRoster().Count * 2);
+                int pages = Mathf.Max(1, MovesRoster().Count);
                 movesPage = ((movesPage % pages) + pages) % pages;
                 SetTitle("Move List", "read from the live attack data, so this list cannot go stale");
                 if (pages > 1)
@@ -1427,8 +1427,8 @@ public class GameMenu : MonoBehaviour
                         // Rebuild, not Refresh: the page's lines are baked into `items` when the
                         // screen is built, so only a rebuild actually changes what is on it. This
                         // is the bug that made the page label flip while the moves stayed put.
-                        adjust = d => { int n = Mathf.Max(1, MovesRoster().Count * 2); movesPage = (movesPage + (d > 0 ? 1 : n - 1)) % n; Rebuild(); },
-                        confirm = () => { int n = Mathf.Max(1, MovesRoster().Count * 2); movesPage = (movesPage + 1) % n; Rebuild(); },
+                        adjust = d => { int n = Mathf.Max(1, MovesRoster().Count); movesPage = (movesPage + (d > 0 ? 1 : n - 1)) % n; Rebuild(); },
+                        confirm = () => { int n = Mathf.Max(1, MovesRoster().Count); movesPage = (movesPage + 1) % n; Rebuild(); },
                     });
                 items.Add(new Item
                 {
@@ -3332,77 +3332,33 @@ public class GameMenu : MonoBehaviour
     {
         var r = MovesRoster();
         if (r.Count == 0) return "-";
-        var entry = r[Mathf.Clamp(page / 2, 0, r.Count - 1)];
-        return entry.name + (page % 2 == 0 ? "  -  moves" : "  -  strings");
+        return r[Mathf.Clamp(page, 0, r.Count - 1)].name;
     }
 
     /// <summary>
-    /// One page of the move list, walked from the live <see cref="AttackData"/> every time the
-    /// screen is built. Only the LONGEST form of each string is listed - a two-hit that can be
-    /// extended is shown as the three-hit, since stopping early is always allowed. Mirrors the two
-    /// engine rules a walk has to know about: a link marked openerOnly is offered only from the
-    /// string's first move, and a string carries at most one special.
+    /// One fighter's page of the move list, read from the live <see cref="AttackData"/> every time
+    /// the screen is built. There are no fixed strings to list any more (2026-10-29): any strike
+    /// cancels into any other that flows from it.
     /// </summary>
     IEnumerable<string> MoveLines(int page)
     {
         var r = MovesRoster();
         if (r.Count == 0) { yield return "No fighters in the scene."; yield break; }
-        var entry = r[Mathf.Clamp(page / 2, 0, r.Count - 1)];
+        var entry = r[Mathf.Clamp(page, 0, r.Count - 1)];
         var b = InputManager.Instance != null ? InputManager.Instance.Bindings : ControlBindings.Defaults();
         var keys = b.Player(entry.player);
 
-        if (page % 2 == 0)
-        {
-            yield return $"{entry.name.ToUpperInvariant()}   (Player {entry.player})      damage / stamina / startup-active-recovery";
-            yield return "";
-            foreach (var attack in Library(entry.combat))
-                yield return $"   {Press(keys, attack, movesShowPad),-16} {attack.AttackName,-23} {attack.Damage,2} dmg   " +
-                             $"{attack.StaminaCost,2} stam   {attack.StartupFrames}/{attack.ActiveFrames}/{attack.RecoveryFrames}";
-            foreach (var rp in Ripostes(entry.combat))
-            {
-                string next = "";
-                var link = rp.attack.ComboLinks != null && rp.attack.ComboLinks.Length > 0 ? rp.attack.ComboLinks[0] : null;
-                if (link != null && link.followUp != null)
-                    next = "   > " + PressLabel(keys, link.input, link.withSpecialModifier, movesShowPad) + "  " + link.followUp.AttackName;
-                yield return $"   {"[" + rp.label + "]",-16} {rp.attack.AttackName,-23} {rp.attack.Damage,2} dmg   " +
-                             $"{rp.attack.StaminaCost,2} stam   {rp.attack.StartupFrames}/{rp.attack.ActiveFrames}/{rp.attack.RecoveryFrames}{next}";
-            }
-            yield return "";
-            yield return "   A special costs about 2.5x the stamina of the strike it shares a button with. Any strike";
-            yield return "   thrown right after a dodge or a parry is a counter: extra damage, and health back.";
-            yield break;
-        }
-
-        var strings = new List<(string buttons, string names)>();
-        foreach (var opener in Library(entry.combat))
-            WalkMoves(opener, keys, Press(keys, opener, movesShowPad), opener.AttackName, 0, opener.IsSpecial, strings);
-        yield return $"{entry.name.ToUpperInvariant()}   (Player {entry.player})      {strings.Count} strings";
+        yield return $"{entry.name.ToUpperInvariant()}   (Player {entry.player})      damage / stamina / startup-active-recovery";
         yield return "";
-        foreach (var line in strings)
-            yield return $"   {line.buttons,-32} {line.names}";
+        foreach (var attack in Library(entry.combat))
+            yield return $"   {Press(keys, attack, movesShowPad),-16} {attack.AttackName,-23} {attack.Damage,2} dmg   " +
+                         $"{attack.StaminaCost,2} stam   {attack.StartupFrames}/{attack.ActiveFrames}/{attack.RecoveryFrames}";
+        foreach (var rp in Ripostes(entry.combat))
+            yield return $"   {"[" + rp.label + "]",-16} {rp.attack.AttackName,-23} {rp.attack.Damage,2} dmg   " +
+                         $"{rp.attack.StaminaCost,2} stam   {rp.attack.StartupFrames}/{rp.attack.ActiveFrames}/{rp.attack.RecoveryFrames}";
         yield return "";
-        yield return "   Press the next button before the move finishes; stopping early is always allowed.";
-    }
-
-    void WalkMoves(AttackData attack, ControlBindings.PlayerBindings keys, string buttons, string names,
-                   int depth, bool usedSpecial, List<(string, string)> into)
-    {
-        bool extended = false;
-        if (attack != null && attack.ComboLinks != null && depth + 2 <= BalanceConfig.MAX_STRING_LENGTH)
-        {
-            foreach (var link in attack.ComboLinks)
-            {
-                if (link == null || link.followUp == null) continue;
-                if (link.openerOnly && depth > 0) continue;
-                if (usedSpecial && link.followUp.IsSpecial) continue;
-                extended = true;
-                WalkMoves(link.followUp, keys,
-                          buttons + " > " + PressLabel(keys, link.input, link.withSpecialModifier, movesShowPad),
-                          names + " > " + link.followUp.AttackName,
-                          depth + 1, usedSpecial || link.followUp.IsSpecial, into);
-            }
-        }
-        if (!extended && depth > 0) into.Add((buttons, names));
+        yield return "   A special costs about 2.5x the stamina of the strike it shares a button with. Any strike";
+        yield return "   thrown right after a dodge or a parry is a counter: extra damage, and health back.";
     }
 
     static IEnumerable<(string label, AttackData attack)> Ripostes(CombatSystem combat)
@@ -3446,8 +3402,9 @@ public class GameMenu : MonoBehaviour
         yield return "SPECIAL  Hold the Special modifier and press a strike for that character's special version of it:";
         yield return "         three per fighter. They hit harder, cost about two and a half times the stamina, and";
         yield return "         leave a beat afterwards in which you cannot attack. On a phone, tap SP then the strike.";
-        yield return "STRINGS  Press the next button before the current move finishes to cancel into it. The Move List";
-        yield return "         shows every string each fighter has.";
+        yield return "STRINGS  Press the next button before the current move finishes to cancel into it - up to three";
+        yield return "         hits. Any strike flows into any other except the same swing twice (two overheads or two";
+        yield return "         thrusts are fine), and a spin follows an overhead only on the same diagonal.";
         yield return "HEALTH   You get a little health back for a dodge, a parry, and for landing the counter they earn.";
         yield return "         Go a few seconds without being hit and you start slowly regenerating.";
         yield return "KO       Empty your opponent's health bar.";

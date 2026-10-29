@@ -873,6 +873,17 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   moves' 1.35. It is the `sword and shield attack` clip ("overhead+leap") and it predates the
   2026-10-23 speed change - but it now plays at x2.2, so the hop is faster. Not touched; the user
   has not called it out, and the pack has nothing else that size.
+- **NO FIXED STRINGS (2026-10-29, the user's call).** `CombatSystem.TryCancelIntoFollowUp` cancels a
+  swing's recovery into ANY press (special openers included) that passes `CombatSystem.Flows(last,
+  next)` - the one flow rule, shared with raw pressure swings in `TryAttack`: never the same geometry
+  twice EXCEPT two straights (Overhead->Overhead, Thrust->Thrust), and an overhead flows into a spin only
+  on its own diagonal. Still in force: 3-hit `MAX_STRING_LENGTH`, stamina, the 1.5 repeat bar (now also
+  checked on a cancel), the cancel window and the no-cancel-before-the-hit-resolves guard. GONE: the
+  one-special-per-string rule and every authored link EXCEPT the dedicated ones - a link whose follow-up
+  the button cannot throw raw (`IsDedicatedLink`: Bjorn Light->Heavy = SpinOverhead, Miyamoto ->SP+Heavy
+  = Iaijutsu, Buwaka FallingSpear->Light = SerpentCoil), which keep their own `requires` AND must flow.
+  The Move List's strings page is removed. `SwingFlow` is now gameplay-critical: changing a move's flow
+  changes what can follow it.
 - **Free-form combos live under COMBO PRESSURE now** (the user's calls, 2026-10-24). A swing that
   starts within `COMBO_PRESSURE_GAP` (1.0 s) of the previous swing ending — raw spam and string
   links alike — is "in pressure", and three rules ride on it, all in `CombatSystem`
@@ -907,12 +918,19 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   pollute each other's count; gated in `TryAttack`, so string links are untouched and the AI obeys
   it too. `ATTACK_CHAIN_LOCKOUT` is gone. Play-verified: M, M, third M blocked, Light free, M back
   after 1.5 s - and the same with a 1.2 s step-back gap between the two Ms.
-- **Uneven arena ground cannot eat a strike any more** (2026-10-23): when the two fighters' roots
-  differ in height by more than `UNEVEN_GROUND_HEIGHT_GAP` (0.2 world units), the authored front
-  box judges the active window - the third case beside kicks and slow frames in
-  `CombatSystem.Update` - because the physical blade sweep passes clean over an opponent standing
-  downhill on a sloped floor. On level ground nothing changes. Play-verified at dy 0.55 and 1.2
-  with a kinematic raised defender: the hit lands (13 dmg + hitstun) where the user saw whiffs.
+- **Slope is handled by ATTACK HEIGHT (2026-10-30, the user's call; REPLACED the 2026-10-23
+  "uneven ground" fallback and `UNEVEN_GROUND_HEIGHT_GAP`).** `AttackData.attackHeight` was unused
+  until now and is gameplay data: `CombatSystem.IsRangeJudged` makes **Overhead, Low and Uppercut**
+  strikes land on HORIZONTAL reach (authored front box + the tip's forward reach this swing, judged over
+  the whole padded armed window, whatever the slope); an Overhead must also have brought the tip down
+  to the target's crown (`HitDetector.TipPosition.y <= capsule top`). **Mid and High stay physical** -
+  a slash that passes over a lower opponent's head is a valid miss. The case that started it: Bjorn
+  0.3 uphill at 0.9-1.35, Blood Eagle (then labelled High) came down BEHIND Salaadin - only the blade
+  head is swept, so a target inside the arc was never touched. Heights relabelled the same day: Bjorn
+  OverheadDoubleAxe / BloodEagle / SpinOverhead / HewingCharge, Miyamoto Heavy, Sensei MountainSplitter / FinalLesson
+  -> Overhead; Richard Medium, Salaadin CrescentSlash (user's calls) and Salaadin Heavy (measured tip
+  0.75-1.34), Sensei TempleBell / CircleOfWillow -> Low; Richard SP+Light -> Uppercut. A future
+  high/low guard split (L2 modifier) is planned on top of this field.
 - **Parry and dodge each have an unmissable effect and their own sound** (the user's call,
   2026-10-23: both were invisible and the dodge clip was literally a pitched-down swish).
   `SpawnParryFlash` = the gold sparks + a blue-white core pop + a flat cyan shockwave ring;
@@ -1359,7 +1377,7 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   stature** (`CapsuleRadiusFrac`, 0.33-0.38 world - honest torso half-widths are 0.31-0.52, and
   vertex maxima lie under cloth: Genghis's cape reads 1.20); `ATTACK_LUNGE_STOP` 1.7 -> **1.35**
   (1.7 was calibrated against the old collider fat; real blades pass 0.2-0.5 clear from there).
-  The front-box fallback (kicks / slow frames / uneven ground) is CLAMPED by
+  The front-box fallback (kicks / slow frames / range-judged heights) is CLAMPED by
   `HitDetector.MaxTipRadius` - the tip's FORWARD-PROJECTED reach this swing actually achieved
   (radial is wrong: a backswing carries Richard's tip 2.7 sideways and authorizes far hits).
   Under the CLI editor every frame is "slow", so every pre-clamp CLI hit test was box theatre.

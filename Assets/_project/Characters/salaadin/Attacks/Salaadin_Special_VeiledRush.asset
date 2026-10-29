@@ -24,9 +24,9 @@ MonoBehaviour:
   attackHeight: 1
   attackType: 3
   specialButton: 0
-  comesFrom: 1
+  comesFrom: 2
   swingFlow: 1
-  hitSide: 2
+  hitSide: 1
   hitstunFrames: 48
   hyperArmor: 0
   hitboxRange: 3.2

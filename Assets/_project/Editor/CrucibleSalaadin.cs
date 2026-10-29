@@ -75,7 +75,7 @@ public static class CrucibleSalaadin
         // MEDIUM: the low cut across the shins (Custom/Salaadin_ShinCut). Low, so a dash over it
         // beats it, and the box sits down at knee height where the blade actually travels.
         new Move { asset = "Salaadin_Medium_ShinCut", name = "Shin Cut", trigger = "MediumAttack",
-                   height = Low, type = Medium, comesFrom = FromRight, hitSide = HitLeft, aim = AimFull,
+                   height = Low, type = Medium, comesFrom = FromLeft, hitSide = HitRight, aim = AimFull,   // measured 2026-10-29: travels his left -> right
                    range = 2.8f, size = new Vector3(1.3f, 1.0f, 1f), offset = new Vector3(0f, 0.6f, 0f),
                    lunge = -1f, weapon = true },
 
@@ -87,7 +87,7 @@ public static class CrucibleSalaadin
         // to protect - he should face the man he is chopping. The asset NAME is deliberately
         // unchanged: the scene holds these by GUID and a rename needs "Salaadin > 4 Rewire".
         new Move { asset = "Salaadin_Heavy_WhirlingSaif", name = "Falling Saif", trigger = "HeavyAttack",
-                   height = Overhead, type = Heavy, comesFrom = FromOverhead, hitSide = HitStraight, aim = AimFull,
+                   height = Low, type = Heavy, comesFrom = FromLeft, hitSide = HitRight, aim = AimFull,   // measured 2026-10-29/30: a rising cut from his left, tip 0.75-1.34 high, no spin
                    range = 3.1f, size = new Vector3(1.2f, 1.6f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
@@ -105,13 +105,13 @@ public static class CrucibleSalaadin
         // old rush distance would have slid him across the floor with his boots still. The ASSET
         // name is kept - the scene holds it by GUID - but the displayed name follows the move.
         new Move { asset = "Salaadin_Special_VeiledRush", name = "Veiled Reversal", trigger = "SpecialLight",
-                   height = Mid, type = Special, specialButton = Light, comesFrom = FromLeft, hitSide = HitRight,
+                   height = Mid, type = Special, specialButton = Light, comesFrom = FromRight, hitSide = HitLeft,   // measured 2026-10-29: right -> left
                    aim = AimLevel, range = 3.2f, size = new Vector3(1.4f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.2f, weapon = true },
 
         // SP + Medium: the flat, wide swing. Widest box on him, because the cut is horizontal.
         new Move { asset = "Salaadin_Special_CrescentSlash", name = "Crescent Slash", trigger = "SpecialMedium",
-                   height = Mid, type = Special, specialButton = Medium, comesFrom = FromLeft, hitSide = HitRight,
+                   height = Low,   // the user's call 2026-10-30 type = Special, specialButton = Medium, comesFrom = FromLeft, hitSide = HitRight,
                    aim = AimFull, range = 3.0f, size = new Vector3(1.5f, 0.9f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.2f, weapon = true },
 

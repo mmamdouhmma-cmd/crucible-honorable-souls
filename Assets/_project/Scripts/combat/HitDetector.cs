@@ -49,6 +49,8 @@ public class HitDetector : MonoBehaviour
     /// excursion authorize a forward hit the blade never made.
     /// </summary>
     public float MaxTipRadius => maxTipRadius;
+    /// <summary>The blade tip as of this frame's sweep (world space).</summary>
+    public Vector3 TipPosition => lastTip;
 
     private void Awake()
     {

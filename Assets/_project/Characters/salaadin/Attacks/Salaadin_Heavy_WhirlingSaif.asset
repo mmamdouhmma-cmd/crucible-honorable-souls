@@ -21,12 +21,12 @@ MonoBehaviour:
   recoveryFrames: 26
   animationClip: {fileID: 0}
   animatorTriggerName: HeavyAttack
-  attackHeight: 3
+  attackHeight: 2
   attackType: 2
   specialButton: 0
-  comesFrom: 0
-  swingFlow: 5
-  hitSide: 0
+  comesFrom: 1
+  swingFlow: 3
+  hitSide: 2
   hitstunFrames: 48
   hyperArmor: 0
   hitboxRange: 3.1

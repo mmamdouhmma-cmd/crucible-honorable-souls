@@ -21,7 +21,7 @@ MonoBehaviour:
   recoveryFrames: 27
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialHeavy
-  attackHeight: 0
+  attackHeight: 3
   attackType: 3
   specialButton: 2
   comesFrom: 0
