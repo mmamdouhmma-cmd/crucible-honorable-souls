@@ -9,7 +9,8 @@
 //   Block      = Bjorn's guard; idle / walk / dash / react / death = Miyamoto's.
 // Numbers sit between Miyamoto's and Salaadin's, health under both (CrucibleBalance).
 //
-// He lives ONLY in Scenes/Story/Ch1_Test_Sensei.unity, on Player2. Order on a fresh clone:
+// He stands in the game as Player7 (testarena; the user, 2026-10-29: he will be a DLC, in the
+// roster for testing) and in Scenes/Story/Ch1_Test_Sensei.unity on Player2. Order on a fresh clone:
 //   Crucible > Characters > Sensei > 1 Create move set     (AttackData + sensei_data)
 //   Crucible > Characters > Sensei > 2 Build controller    (P7_Sensei from P2_Miyamoto)
 //   Crucible > Animation  > Use Mixamo packs               (in testarena - it wires every fighter)
@@ -18,6 +19,8 @@
 //   Crucible > Story > Chapter One > Rebuild Player2 as the Sensei
 //   Crucible > Characters > Sensei > 3 Wire Player2 (test scene)
 //   Crucible > Combat > Apply the roster balance           (writes his vitals in his scene only)
+//   open testarena, then
+//   Crucible > Characters > Sensei > 4 Add to the game (testarena)   (Player7: clone, body, moves, vitals)
 //
 // Each move copies the HIT GEOMETRY of the move whose animation it plays (height, comesFrom,
 // hitSide, aim, box, range, lunge): a box that does not match the swing on screen reads unfair.
@@ -150,10 +153,45 @@ public static class CrucibleSensei
         if (scene.name != TestScene) { Debug.LogError($"Sensei: open Scenes/Story/{TestScene}.unity first (active is {scene.name})"); return; }
         var go = GameObject.Find("Player2");
         if (go == null) { Debug.LogError("Player2 not found"); return; }
+        if (!WireCombat(go)) return;
+        CrucibleBalance.Apply();   // his vitals onto Player2 (this scene only) + sensei_data
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
+        Debug.Log("Player2 is the Sensei: P7_Sensei controller, his six moves, his vitals. Save the scene.");
+    }
 
+    [MenuItem("Crucible/Characters/Sensei/4 Add to the game (testarena)")]
+    public static void AddToGame()
+    {
+        var scene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
+        if (scene.name != "testarena") { Debug.LogError($"Sensei: open testarena first (active is {scene.name})"); return; }
+        var p2 = GameObject.Find("Player2");
+        if (p2 == null) { Debug.LogError("Player2 (Miyamoto) not found"); return; }
+        var existing = GameObject.Find("Player7");
+        if (existing != null) Undo.DestroyObjectImmediate(existing);
+
+        // Miyamoto is the template: the same two-handed rig setup, TwoHandGrip and WeaponAim.
+        var go = Object.Instantiate(p2);
+        go.name = "Player7";
+        Undo.RegisterCreatedObjectUndo(go, "add the Sensei");
+        // a bench spot beside the others; the select screens and PlaceFighters move him from here
+        go.transform.position = p2.transform.position + new Vector3(0f, 0f, 11f);
+        go.transform.rotation = p2.transform.rotation;
+        var sf = new SerializedObject(go.GetComponent(Type("Fighter")));
+        sf.FindProperty("playerNumber").intValue = 7;   // the roster sorts by this: he joins at the END
+        sf.ApplyModifiedProperties();
+
+        CrucibleCharacterSetup.RebuildP7();
+        if (!WireCombat(go)) return;
+        CrucibleBalance.Apply();
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
+        Debug.Log("Player7 is the Sensei in testarena. Run 'Use Mixamo packs' (walk/dash fit to his numbers), then save the scene.");
+    }
+
+    static bool WireCombat(GameObject go)
+    {
         var anim = go.GetComponent<Animator>();
         var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(P7Ctrl);
-        if (ctrl == null) { Debug.LogError($"{P7Ctrl} missing; run '2 Build controller'"); return; }
+        if (ctrl == null) { Debug.LogError($"{P7Ctrl} missing; run '2 Build controller'"); return false; }
         anim.runtimeAnimatorController = ctrl;
 
         var sf = new SerializedObject(go.GetComponent(Type("Fighter")));
@@ -167,10 +205,7 @@ public static class CrucibleSensei
         sc.FindProperty("dashRiposte").objectReferenceValue = null;
         sc.FindProperty("parryRiposte").objectReferenceValue = null;
         sc.ApplyModifiedProperties();
-
-        CrucibleBalance.Apply();   // his vitals onto Player2 (this scene only) + sensei_data
-        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
-        Debug.Log("Player2 is the Sensei: P7_Sensei controller, his six moves, his vitals. Save the scene.");
+        return true;
     }
 
     static void SetList(SerializedProperty arr, params string[] names)

@@ -45,9 +45,9 @@ public static class CrucibleBalance
         public float dashIFrames;
         public float parryWindow, parryCooldown, parryStun, parryCounterWindow, parryCounterDamage;
         public int parryCost;
-        // A story fighter lives on Player2 of ONE test scene; its vitals are written to the scene
-        // only there, and the roster fighter on the same player name is skipped there.
-        public string onlyScene;
+        // A story fighter's own test scene, where he stands on Player2 instead of his roster slot;
+        // the roster fighter on Player2 is skipped there.
+        public string storyScene;
     }
 
     public const string SenseiDataPath = "Assets/_project/Data/Fighters/sensei_data.asset";
@@ -152,8 +152,9 @@ public static class CrucibleBalance
         // The story SENSEI (Chapter One; the user's brief, 2026-10-29): "somewhere between Miyamoto
         // and Salaadin" on speed, damage, armour and block, "but lower health than both" - 75,
         // under Miyamoto's 80. Every number below sits between those two rows.
-        new Vitals { character = "Ch1_Sensei", player = "Player2", fighterName = "Sensei", archetype = "Master",
-                     dataPath = SenseiDataPath, onlyScene = "Ch1_Test_Sensei",
+        // In the game as Player7 for testing (the user, 2026-10-29: he will be a DLC).
+        new Vitals { character = "Ch1_Sensei", player = "Player7", fighterName = "Sensei", archetype = "Master",
+                     dataPath = SenseiDataPath, storyScene = "Ch1_Test_Sensei",
                      health = 75, stamina = 108, armor = 15, damageMultiplier = 88, moveSpeed = 44,
                      regen = 20f, dashDistance = 2.45f, dashDuration = 0.24f, dashStamina = 13,
                      blockReduction = 68, blockDrain = 0f,
@@ -619,12 +620,13 @@ public static class CrucibleBalance
     static void WriteScene(Vitals v)
     {
         string scene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene().name;
-        if (v.onlyScene != null && v.onlyScene != scene) return;
-        if (v.onlyScene == null && System.Array.Exists(Fighters, o => o.onlyScene == scene && o.player == v.player)) return;
-        var go = GameObject.Find(v.player);
-        if (go == null) { Debug.LogWarning($"balance: {v.player} not in the open scene"); return; }
+        string player = v.player;
+        if (v.storyScene == scene) player = "Player2";
+        else if (System.Array.Exists(Fighters, o => o.storyScene == scene && v.player == "Player2")) return;
+        var go = GameObject.Find(player);
+        if (go == null) { Debug.LogWarning($"balance: {player} not in the open scene"); return; }
         var fighter = go.GetComponent(System.Type.GetType("Fighter, Assembly-CSharp"));
-        if (fighter == null) { Debug.LogWarning($"balance: {v.player} has no Fighter"); return; }
+        if (fighter == null) { Debug.LogWarning($"balance: {player} has no Fighter"); return; }
         var so = new SerializedObject(fighter);
         so.FindProperty("fighterData").objectReferenceValue =
             AssetDatabase.LoadAssetAtPath<ScriptableObject>(v.dataPath);

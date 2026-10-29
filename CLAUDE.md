@@ -1681,11 +1681,14 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `set_autotick` is on**, and a domain reload turns a non-persisted autotick off again.
 
 - **The story SENSEI is a seventh fighter (2026-10-29)**: `Editor/CrucibleSensei.cs`, controller `P7_Sensei`,
-  `sensei_data`, attacks under `Characters/Ch1_Sensei/Attacks/`, living ONLY on Player2 of
-  `Scenes/Story/Ch1_Test_Sensei.unity`. Every strike is borrowed from the roster (the user's picks; table in
+  `sensei_data`, attacks under `Characters/Ch1_Sensei/Attacks/`. He is IN THE GAME as **Player7** in testarena
+  (v0.4.0; the user: a planned DLC, in the roster for testing) - appended LAST, since the roster sorts by
+  `playerNumber` and online sends roster indices - and on Player2 of `Scenes/Story/Ch1_Test_Sensei.unity`.
+  `Crucible > Characters > Sensei > 4 Add to the game` rebuilds Player7; `Rebuild Player7 (Sensei body)` exists.
+  Musashi and the Partner are NOT in the roster (the user's call). Every strike is borrowed from the roster (the user's picks; table in
   `Design/Story_Ch1_Characters.md`) and copies the source move's contact AND hit geometry. Two mechanisms came with him:
   `TwoHandGrip.onlyInStates` (off hand on the hilt only in listed states; empty = always) and
-  `CrucibleBalance.Vitals.onlyScene` (a story fighter's vitals reach the scene only in its own test scene).
+  `CrucibleBalance.Vitals.storyScene` (in that scene the fighter is written to Player2, and the roster's Player2 is skipped).
   `CrucibleMixamoSetup.Wire` resolves each controller's fighter by the controller itself, not by `Player<N>`.
   **Keep every clip map in the one `ImportAll` call** - leaving a map out rewrites the shared pack importers
   without that fighter's takes.

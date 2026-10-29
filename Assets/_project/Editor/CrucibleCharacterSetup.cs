@@ -229,6 +229,9 @@ public static class CrucibleCharacterSetup
     [MenuItem("Crucible/Characters/Rebuild Player6 (Buwaka body)")]
     public static void RebuildP6() => Rebuild("Player6", "Buwaka");
 
+    [MenuItem("Crucible/Characters/Rebuild Player7 (Sensei body)")]
+    public static void RebuildP7() => Rebuild("Player7", "Ch1_Sensei");
+
     // Story Chapter One copycats (2026-10-29): Musashi and his partner take Miyamoto's controller,
     // move set and data, so the test rebuilds PLAYER2 (Miyamoto's slot) with the story body. Only in
     // a story test scene - never in testarena, whose Player2 is the roster Miyamoto.
@@ -251,7 +254,7 @@ public static class CrucibleCharacterSetup
     [MenuItem("Crucible/Characters/Report fighters")]
     public static void Report()
     {
-        foreach (var n in new[] { "Player1", "Player2", "Player3", "Player4", "Player5", "Player6" })
+        foreach (var n in new[] { "Player1", "Player2", "Player3", "Player4", "Player5", "Player6", "Player7" })
         {
             var go = GameObject.Find(n);
             if (go == null) { Debug.Log($"{n}: not in scene"); continue; }

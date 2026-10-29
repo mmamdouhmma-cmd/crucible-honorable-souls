@@ -4628,3 +4628,13 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
   with the current body's rig. Reverted; it will recur on every run until those files are deleted.
 - Gotcha: an eval that opened a scene and then ran a long rebuild returned HTTP 400 and did NEITHER; the next
   `editor_play` then ran in the old scene. Open the scene in one eval, rebuild in the next.
+
+### 2026-10-29 (night, last) — v0.4.0: the Sensei joins the roster, release prepared
+
+- The Sensei is Player7 in testarena (`CrucibleSensei.AddToGame`: clone of Player2, playerNumber 7, body rebuilt,
+  his moves and vitals). The user: he will be a DLC, in the roster for testing; ONLY he joins, not Musashi or the Partner.
+  Play-verified in the game scene: roster of 7, his ring card (75 / 108 / 15%), all six moves land on Bjorn.
+- `CrucibleBalance`: `onlyScene` became `storyScene` - his row writes Player7 normally and Player2 in his test scene.
+- Version 0.4.0, Windows app built (0 errors, 1.37 GB), the built exe starts clean and initialises the Sensei.
+  `Tools/release.cmd` now carries this version's notes as the default (Enter keeps them). NOT published - running
+  release.cmd is the user's step. Online peers on 0.3.x will be refused by the version check, as designed.
