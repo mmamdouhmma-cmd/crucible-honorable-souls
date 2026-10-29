@@ -1295,7 +1295,7 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   on the desert's curved wall the slide carried 0.007/frame outward until the probe was inside,
   after which he walked through. Hence: no slide, plus the end-overlap test. Verified: desert
   ledges stop at r 16.8 / 14.8 / 15.2 against walls at 17.4 / 15.3 / 15.6, forest edge 12.7 vs 13.4.
-- **The Desert Arena has a RING-OUT** (the user's call, 2026-10-27): the one opening between the
+- **[REMOVED 2026-10-29 - nobody can fall out of the desert now; `ringOutGaps` is empty and a `RingOutSeal` BoxCollider under DesertArena closes the opening, written by `Crucible > Arena > Desert > Seal the ring-out` and by the surroundings build. The ring-out code in ArenaBounds/Fighter stays, unused.]** The Desert Arena HAD a RING-OUT (the user's call, 2026-10-27): the one opening between the
   wall end and the statue, `ArenaBounds.ringOutGaps` = (-17.0, 9.4) -> (-12.1, 11.8), depth 1.8
   past the line (the floor lip; the ground drops behind it). Crossing it by ANY means - walking
   included, the user's choice - is a loss: `Fighter.CheckRingOut` zeroes health and calls
@@ -1605,6 +1605,30 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   and `InputHold` are debug-only components still in the scene (`DebugTimeScale` is wanted —
   the Settings speed slider drives it).
 
+- **The Desert Arena has a world round it (2026-10-29)**: `Crucible > Arena > Desert > Build the
+  surroundings` (`Editor/CrucibleDesertUpgrade.cs`, idempotent, same seeds every run) generates
+  everything into `Environment/DesertSurroundings/` and the root `DesertArena_Surroundings`, which is
+  the Desert entry's `sharedRoot` and carries an `ArenaAtmosphere` (low SW sun, Desert_Sky, haze
+  80-900, `Desert_Look` = CrucibleLook cloned a touch cooler). Three landscape rings (one sand sheet
+  r12-330 conformed under the arena by raycast, terraced sandstone ridges r225-530, mountains
+  r450-860), each sinking under the next, sand/sandstone split by slope into two submeshes; rocks and
+  shrubs merged into one mesh each. The arena mesh, bounds, marks and ring-out are untouched.
+  **Two palms stand INSIDE** (`DesertArena/Palms_Inside`, at (18.2,-4.9) and (-14,-8.9)): trunk
+  MeshColliders (so WallCutout sees through them) PLUS `keepOut` circles r 0.55 on ArenaBounds,
+  wider than the trunk so the keep-out slides a fighter round it before `BlockObstacles` (which
+  refuses moves outright) ever touches the collider - that is what stops the AI walking into one and
+  sticking. Moving a palm means editing `InsidePalms` and re-running; the build replaces its own
+  keep-outs and leaves the others. Pre-upgrade scene: `ArtSource/SceneBackups/`.
+- **The Medieval Fortress has its own sky and light (2026-10-29)**: `Crucible > Arena > Fortress > Build the sky and
+  lighting` (`Editor/CrucibleFortressLook.cs`) - lighting/atmosphere ONLY, the arena is untouched. Root
+  `MedievalFortress_Atmosphere` (the Fortress entry's sharedRoot, ArenaAtmosphere): GOLDEN-HOUR sun from the WSW (30 deg - lower and the walls shade the floor),
+  sky fill, Trilight, a generated cloudy panorama + reflection cubemap, light haze, `Fortress_Look` grade. No lightmaps
+  - six arenas share one scene and one bake. Assets in `Environment/FortressLook/`.
+- **The Forest Clearing sits inside a forest now (2026-10-29)**: `Crucible > Arena > Forest > Build the surroundings`
+  (`Editor/CrucibleForestUpgrade.cs`, idempotent, same seeds) -> root `ForestClearing_Surroundings` (sharedRoot +
+  ArenaAtmosphere, golden late afternoon). Floor + a rising canopy sheet close the horizon; trees, boulders, ferns,
+  bushes, logs, mushrooms are merged per group, no colliders, all outside r 32 (the fight circle is 16). The desert
+  script's mesh/texture helpers (`MeshBuilder`, `Rock`, `SaveTex/SaveMesh/Mat(dir)`, `TFbm`) are `internal` and shared.
 - **Dojo Courtyard and Village Plaza SHIP in the game (v0.3.0)**: in testarena as `Musashi_Dojo` /
   `Musashi_Plaza` (arena indices 3 and 4) sharing the root `Musashi_Village`
   (`ArenaDirectory.Entry.sharedRoot`), whose `ArenaAtmosphere` brings the village's own sky, light,

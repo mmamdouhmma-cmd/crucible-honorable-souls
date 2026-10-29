@@ -4484,3 +4484,68 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
   host's `R 0 1 4` put the guest in Village Plaza.
 - AI matches in testarena: Richard vs Genghis in the dojo, Buwaka vs Salaadin on the plaza, grounded.
 - Version 0.3.0, Windows build 795 MB (was 580), 0 errors.
+
+### 2026-10-29 — Desert Arena surroundings: dunes, sandstone, palms, late-afternoon light
+
+- Built procedurally, no downloads, no Tripo: `CrucibleDesertUpgrade.cs` makes the textures (tileable
+  value-noise sand with ripples, banded sandstone strata with varnish streaks, palm bark, a palm
+  palette), the landscape rings, three palm variants, rocks and shrubs. The arena itself is not edited.
+- Palms are opaque geometry (leaflets as double-sided triangles, no alpha clip) on purpose: WallCutout
+  swaps an occluding renderer onto `Crucible/ArenaCutout`, which has no alpha clip, so a cut-out
+  frond card would turn into an opaque quad.
+- First pass washed out (snow-white mountains, saturated blue sky, ripple stripes, a lip where apron
+  met dunes): darker warmer albedo, apron+dunes merged into one sheet, ridges/mountains almost all
+  sandstone (`rockBelow` 0.95 / 1.01 - sand on terrace flats read as white zigzags), sky
+  thickness 1.15, fog end 900.
+- Play-verified: Desert selected -> surroundings on, only the desert sun/fill/volume enabled; Fortress
+  selected -> scene sun, fill, CrucibleSky, fog 70-320 and the Crucible look all back. A fighter
+  walked dead-on into palm 0 slid round it and reached the opponent (gap 6.20 -> 1.62, closest 0.97
+  to the trunk centre, never touching the collider).
+- Cost in the fight view: +52 draw calls, +14 SetPass, ~+0.5M rendered tris on a ~5.6M frame (it
+  was +122 draw calls until rocks/shrubs were merged). Generated assets 27 MB, mostly text-serialized
+  meshes.
+- Gotchas: a long `eval` right after a recompile drops the connection - retry once; an
+  `EditorApplication.delayCall` scheduled from eval never fires while the Editor is unfocused; and an
+  inactive collider answers no raycasts, so the build switches DesertArena on for itself and restores it.
+- The edit-mode scene had another arena switched on during the session (Forest, then Fortress), and it
+  was saved that way; the runtime picks the arena through ArenaDirectory, so it does not matter in play.
+- **Ring-out removed (the user's call, same day): "make sure no one can fall anymore."** Clearing
+  `ringOutGaps` alone was not enough: past the opening the arena floor ends INSIDE the r 24.12 outer
+  bound (nothing past r~22 at 315 deg), so a clamped fighter would just drop. The gap now also has
+  an invisible `RingOutSeal` BoxCollider (7.5 wide, 6 tall, overlapping the wall end and the statue),
+  which `BlockObstacles` stops walks, dashes, runs and knockback at; WallCutout ignores box colliders.
+  Play-verified through the middle and near both ends with walk + back-dash + held run: stopped 0.7
+  inside the line every time, no fall, health untouched.
+
+### 2026-10-29 — Medieval Fortress sky and lighting
+- Brief was lighting/sky/atmosphere ONLY: no geometry, no materials, no new objects. `Editor/CrucibleFortressLook.cs`
+  (`Crucible > Arena > Fortress > Build/Remove the sky and lighting`) builds `MedievalFortress_Atmosphere`, the Fortress
+  entry's sharedRoot: Sun (38, 70) warm 1.85 soft shadows strength 0.85, unshadowed blue Sky Fill 0.32, Trilight ambient
+  with a bright equator for the arcades, a generated 4096x2048 partly-cloudy panorama (`Fortress_Sky.jpg` on
+  Skybox/Panoramic, clouds lit from the sun side), a 128px reflection cubemap rendered from that sky, blue-grey linear fog
+  45-420, and `Fortress_Look` (CrucibleLookURP clone, contrast 13, sat -5, cool lifted shadows, White Balance -6).
+- NO lightmaps on purpose: one scene holds all six arenas and ONE lighting bake, and the 600k-tri Tripo mesh has no
+  lightmap UVs. SSAO (already on PC_Renderer, 0.4) supplies the contact shadow. Cost vs the old lighting: +4 draw calls,
+  +4 shadow casters, SetPass unchanged.
+- The desert script's FindRoot / GameType / SetSharedRoot(arena, shared) / CloneProfile are `internal` now and shared.
+- Backup: `ArtSource/SceneBackups/testarena_preFortressLighting_20261029.unity`.
+
+### 2026-10-29 — Forest Clearing surroundings and golden-hour light
+- `Editor/CrucibleForestUpgrade.cs` (`Crucible > Arena > Forest > Build/Remove the surroundings`) builds
+  `ForestClearing_Surroundings`, the Forest entry's sharedRoot. Arena mesh, bounds and marks untouched; ZERO colliders.
+  Woodland floor r 26-140 (tucked under the arena by raycast), a canopy sheet r 96-420 that rises out of the floor into
+  rolling crowns (this is what closes the horizon), 34 near trees (shadow casters - they dapple the clearing) + 85 far
+  ones in the arena's style (flared trunks, roots, arching branches, jagged leaf pads), moss boulders, ferns, bushes,
+  logs, purple mushrooms and orbs - every group merged into ONE mesh, one shared palette material for all foliage.
+- Light: sun (44, 58) warm 1.9 - the first try at 32 deg put almost the whole clearing in the arena trees' shade -
+  sky fill, Trilight with a bright equator, procedural golden sky, warm haze 30-440, `Forest_Look` (saturation -10:
+  the arena's grass and orbs are saturated already).
+- The user's reference image: OneDrive\Pictures\Screenshots\Screenshot 2026-10-29 151418.png (golden clearing,
+  mossy trunks, purple mushrooms, dappled light).
+- Verified in play: fight camera at the north, south and west edges - forest in every gap, no void, camera max r 15.6
+  vs scenery from r 32. Cost vs before: +30 draws, +12 SetPass, +8 shadow casters, +2.3M rendered tris (shadow
+  cascades included) - the heaviest of the three arena upgrades.
+- Backup: `ArtSource/SceneBackups/testarena_preForestUpgrade_20261029.unity`.
+- Fortress re-lit to GOLDEN HOUR on the user's ask (same day): sun (30, 68), colour (1, 0.80, 0.57) 1.95, sky regenerated
+  with a gold horizon/glow and gold-lit clouds, warm haze, equator/ground ambient warmed, White Balance -6 -> -2. 30 deg
+  is the floor: the west wall's shadow already crosses part of the floor there.
