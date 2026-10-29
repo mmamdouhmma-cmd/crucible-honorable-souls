@@ -73,13 +73,11 @@ public static class CrucibleBuwaka
                    range = 3.4f, size = new Vector3(1.4f, 1.0f, 1f), offset = new Vector3(0f, 0.6f, 0f),
                    lunge = -1f, weapon = true },
 
-        // HEAVY: the THRUST - Richard's authored clip (Clips/Custom/Richard_Thrust.fbx), an orphan
-        // since 2026-10-23. An authored clip imports on Richard's avatar (CopyFromOther) and
-        // retargets onto any humanoid at runtime. The roster's longest normal: a narrow box way
-        // out in front.
-        new Move { asset = "Buwaka_Heavy_IklwaThrust", name = "Iklwa Thrust", trigger = "HeavyAttack",
-                   height = Mid, type = Heavy, comesFrom = FromThrust, hitSide = HitStraight, aim = AimFull,
-                   range = 3.8f, size = new Vector3(0.8f, 1.0f, 1f), offset = new Vector3(0f, 1f, 0f),
+        // HEAVY: Richard's Heavy (the user's call, 2026-10-30) - "sword and shield slash", the
+        // pack's true overhead, with Richard's hit geometry. Was the authored thrust.
+        new Move { asset = "Buwaka_Heavy_IklwaThrust", name = "Iklwa Cleave", trigger = "HeavyAttack",
+                   height = Overhead, type = Heavy, comesFrom = FromOverhead, hitSide = HitStraight, aim = AimYaw,
+                   range = 3.8f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = -1f, weapon = true },
 
         // SP + Light: the LOW SWEEP the brief asks for - AxePack "standing melee attack 360 low"
@@ -89,24 +87,24 @@ public static class CrucibleBuwaka
                    aim = AimLevel, range = 3.3f, size = new Vector3(1.6f, 0.8f, 1f), offset = new Vector3(0f, 0.6f, 0f),
                    lunge = 1.2f, weapon = true },
 
-        // SP + Medium: the TURNING OVERHEAD (the user's combo 2 ender, 2026-10-26) - "sword and
-        // shield attack", the committed overhead with 86 deg of turn (Salaadin's Hattin Cleave
-        // clip). AimYaw: face the man, leave the descent alone.
-        new Move { asset = "Buwaka_Special_FallingSpear", name = "Falling Spear", trigger = "SpecialMedium",
-                   height = Overhead, type = Special, specialButton = Medium, comesFrom = FromOverhead, hitSide = HitStraight,
-                   aim = AimYaw, range = 3.5f, size = new Vector3(1.0f, 1.7f, 1f), offset = new Vector3(0f, 1f, 0f),
+        // SP + Medium: Salaadin's SP+Medium (the user's call, 2026-10-30) - "sword and shield
+        // attack (3)", his Crescent Slash, with its hit geometry. Still the combo 2 / 3 middle hit.
+        new Move { asset = "Buwaka_Special_FallingSpear", name = "Leopard Wheel", trigger = "SpecialMedium",
+                   height = Low, type = Special, specialButton = Medium, comesFrom = FromLeft, hitSide = HitRight,
+                   aim = AimFull, range = 3.5f, size = new Vector3(1.5f, 0.9f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.2f, weapon = true },
 
-        // SP + Heavy: the GREAT IMPALE - the thrust again, heavier and driven in with the roster's
-        // longest lunge. Hyper armour (CrucibleBalance), like every SP+Heavy.
-        new Move { asset = "Buwaka_Special_GreatImpale", name = "Great Impale", trigger = "SpecialHeavy",
-                   height = Mid, type = Special, specialButton = Heavy, comesFrom = FromThrust, hitSide = HitStraight,
-                   aim = AimFull, range = 4.0f, size = new Vector3(0.8f, 1.1f, 1f), offset = new Vector3(0f, 1f, 0f),
+        // SP + Heavy: Bjorn's SPINNING OVERHEAD (the user's call, 2026-10-30) - GreatSwordPack
+        // "great sword high spin attack", the second strike of Bjorn's Light->Heavy string, with
+        // its hit geometry. Hyper armour (CrucibleBalance), like every SP+Heavy.
+        new Move { asset = "Buwaka_Special_GreatImpale", name = "Great Whirlwind", trigger = "SpecialHeavy",
+                   height = Overhead, type = Special, specialButton = Heavy, comesFrom = FromOverhead, hitSide = HitStraight,
+                   aim = AimOff, range = 4.0f, size = new Vector3(0.9f, 1.6f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 2.0f, weapon = true },
 
         // COMBO ENDER (the user's call, 2026-10-26): reachable ONLY as the third hit of
-        // Horn Thrust / Savanna Cut -> Falling Spear -> this. attackType Medium ON PURPOSE: a
-        // string carries at most ONE special (TryCancelIntoFollowUp) and Falling Spear is it, so
+        // Horn Thrust / Savanna Cut -> Leopard Wheel -> this. attackType Medium ON PURPOSE: a
+        // string carries at most ONE special (TryCancelIntoFollowUp) and Leopard Wheel is it, so
         // the authored special->special ender could never fire - this normal-classed showpiece
         // takes its place. It is in NO library (WireCombat leaves it out), so it cannot be thrown
         // raw; its clip is the one barbarian strike nobody used, "combo attack ver. 1" - a wide

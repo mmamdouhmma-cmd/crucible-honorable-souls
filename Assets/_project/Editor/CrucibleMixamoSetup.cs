@@ -286,10 +286,10 @@ public static class CrucibleMixamoSetup
         ("Buwaka_Walk_Back",               "SwordShieldPack", "sword and shield walk (2)",     true),
         ("Buwaka_Light_HornCut",           "Custom",          "Richard_Thrust",                false),  // the quick jab (the user's 2026-10-26 re-point: thrusts, slash and overhead only)
         ("Buwaka_Medium_SavannaCut",       "SwordShieldPack", "sword and shield slash (5)",    false),  // the low cut from the right, shared with Richard's and Salaadin's Mediums
-        ("Buwaka_Heavy_IklwaThrust",       "Custom",          "Richard_Thrust",                false),  // the authored thrust, orphaned since 2026-10-23
+        ("Buwaka_Heavy_IklwaThrust",       "SwordShieldPack", "sword and shield slash",        false),  // Richard's Heavy (the user's call, 2026-10-30): the pack's true overhead, on Richard's contact
         ("Buwaka_Special_SerpentSweep",    "AxePack",         "standing melee attack 360 low", false),  // the low sweep (Bjorn's Hewing Charge clip)
-        ("Buwaka_Special_FallingSpear",    "SwordShieldPack", "sword and shield attack",       false),  // the TURNING overhead (86 deg of yaw; Salaadin's Hattin clip) - the user's combo 2 ender
-        ("Buwaka_Special_GreatImpale",     "Custom",          "Richard_Thrust",                false),  // the thrust again, driven in on the roster's longest lunge
+        ("Buwaka_Special_FallingSpear",    "SwordShieldPack", "sword and shield attack (3)",   false),  // Salaadin's SP+Medium (Crescent Slash), the user's call 2026-10-30, on Salaadin's contact
+        ("Buwaka_Special_GreatImpale",     "GreatSwordPack",  "great sword high spin attack",  false),  // Bjorn's spinning overhead - the 2nd strike of his Light->Heavy string (the user's call, 2026-10-30). A two-handed clip on a shield fighter: the shield arm follows the spear
         ("Buwaka_Ender_SerpentCoil",       "AxePack",         "standing melee combo attack ver. 1", false),  // the COMBO-ONLY ender (the last unused barbarian strike, 233 deg advancing sweep); state is created by 'Wire special and riposte states' via the _Ender_ name
         ("Buwaka_Riposte_Dash",            "Custom",          "Richard_Thrust",                false),  // was "sword and shield attack (4)": a sword cut swings the spear like a sword and the LEAF HEAD (the only hitting part) never came within 0.99 of the target through the armed window. The thrust is his Heavy's clip, play-verified to land, and a spear's natural counter.
         ("Buwaka_Riposte_Parry",           "Custom",          "Richard_Thrust",                false),  // the spear thrust, like his dash riposte; was a boot until 2026-10-27

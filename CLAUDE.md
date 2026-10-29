@@ -144,10 +144,14 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   is Salaadin's source model re-prepped): 100 / 100 / 15 / x0.95 / walk 4.0, block 68, the
   roster's longest reach (ranges 3.3–4.0, GreatImpale lunge 2.0) with `LungeOverride` keeping the
   spear at distance (stops 2.2–2.6). Move table in `Editor/CrucibleBuwaka.cs`; controller copied
-  from P3_Richard; strikes are SwordShieldPack + AxePack + **`Richard_Thrust` retargeted across
-  fighters** (his Heavy and SP+Heavy — an authored CopyFromOther clip retargets onto any humanoid;
-  both states take per-STATE contacts `{15, 1.3}` / `{15, 1.2}` or the thrust's 9-frame core smears
-  to x0.36). Both built by the metarig chain (`fit_metarig.py` Salaadin-shape targets →
+  from P3_Richard; strikes are SwordShieldPack + AxePack + GreatSwordPack + **`Richard_Thrust`
+  retargeted across fighters** (his Light and ripostes — an authored CopyFromOther clip retargets
+  onto any humanoid; each state takes a per-STATE contact or the thrust's 9-frame core smears to
+  x0.36). Since 2026-10-30 (the user's picks) his Heavy "Iklwa Cleave" plays Richard's Heavy clip,
+  SP+Medium "Leopard Wheel" Salaadin's Crescent Slash clip and SP+Heavy "Great Whirlwind" Bjorn's
+  SpinOverhead clip (a 2H clip on a shield fighter), each with its source's contact AND hit
+  geometry; asset names unchanged (`Buwaka_Heavy_IklwaThrust`, `_Special_FallingSpear`,
+  `_Special_GreatImpale`). Both built by the metarig chain (`fit_metarig.py` Salaadin-shape targets →
   `metarig_to_mixamo.py` → `mount_body.py`, weapons bone-parented); bodies/rigs are gitignored
   like the rest. Statures calibrated 2026-10-26: Genghis 2.78, Buwaka 2.65 (StandingHeight
   3.46 / 3.10, GroundOffset 0.113/3 and 0.110/3), soles verified within 0.013 of the arena.
@@ -1441,7 +1445,7 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   special animation for his last attack which is only in that combo"):
   `Buwaka_Ender_SerpentCoil` ("Serpent Coil", trigger `ComboEnder`) is Medium-classed so the
   one-special rule never sees it, lives in NO library so it cannot be thrown raw, and is dialed
-  by a plain Light press off Falling Spear. Its clip is the last unused barbarian strike,
+  by a plain Light press off Leopard Wheel (asset still `Buwaka_Special_FallingSpear`). Its clip is the last unused barbarian strike,
   AxePack `standing melee combo attack ver. 1` (233 deg advancing left sweep; measured
   in-editor: 140 f @30, main swing 47-66, peak 59 - the trims entry was authored from that and
   the contact is `{59.0, 1.2}`). The `_Ender_` name is now a recognized class in

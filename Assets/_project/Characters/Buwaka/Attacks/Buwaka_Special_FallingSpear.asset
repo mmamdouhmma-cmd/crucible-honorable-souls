@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
   m_Name: Buwaka_Special_FallingSpear
   m_EditorClassIdentifier: Assembly-CSharp::AttackData
-  attackName: Falling Spear
+  attackName: Leopard Wheel
   damage: 14
   staminaCost: 40
   armorPierce: 8
@@ -21,18 +21,18 @@ MonoBehaviour:
   recoveryFrames: 29
   animationClip: {fileID: 0}
   animatorTriggerName: SpecialMedium
-  attackHeight: 3
+  attackHeight: 2
   attackType: 3
   specialButton: 1
-  comesFrom: 0
-  swingFlow: 7
-  hitSide: 0
+  comesFrom: 1
+  swingFlow: 3
+  hitSide: 2
   hitstunFrames: 48
   hyperArmor: 0
   hitboxRange: 3.5
   hitboxOffset: {x: 0, y: 1, z: 0}
-  hitboxSize: {x: 1, y: 1.7, z: 1}
-  aimMode: 1
+  hitboxSize: {x: 1.5, y: 0.9, z: 1}
+  aimMode: 0
   aimMaxAngle: -1
   aimRollDegrees: 0
   lungeStopDistance: 2.4

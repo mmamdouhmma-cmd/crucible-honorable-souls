@@ -4674,3 +4674,19 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 - The remaining spin/flow relabels (Bjorn's two spins, the SP+Light reversals as SpinLeft, Serpent Sweep/Coil, Hattin, Kuruma) were offered and DECLINED by the user - labels stay as they are.
 - Buwaka Heavy (Iklwa Thrust) startup 36 -> 30 (the user's edit in the Editor), copied into CrucibleBalance.UserFrames. Version 0.4.1.
 - Released v0.4.1 (Win64, 802 MB zip): https://github.com/mmamdouhmma-cmd/crucible-honorable-souls/releases/tag/v0.4.1
+
+### 2026-10-30 — Buwaka: three moves re-pointed and renamed
+
+- The user's picks: Heavy -> Richard's Heavy clip (`sword and shield slash`), SP+Medium -> Salaadin's
+  Crescent Slash clip (`sword and shield attack (3)`), SP+Heavy -> Bjorn's SpinOverhead clip
+  (`great sword high spin attack`, the 2nd strike of his Light->Heavy string). Each copied the source
+  state's contact and hit geometry + swing flow; Buwaka keeps his range, lunge, damage, hyper armour.
+  Renamed Iklwa Cleave / Leopard Wheel / Great Whirlwind (asset names unchanged). State speeds
+  x0.81 / x1.34 / x1.56. Not yet play-verified.
+- Gotcha: `Use Mixamo packs` run in BATCH MODE with no scene open writes wrong walk/dash speeds on
+  every controller (it reads dashDuration/walk speed off the scene's Fighters). Open testarena first.
+  And FBX clip fileIDs are POSITIONAL in the take list, so adding a take to a shared pack FBX
+  renumbers the others - never `git checkout` one controller back after a re-import; re-run the
+  whole pass instead.
+- Watch in play: the 2H spin drags the shield arm onto the spear; the SP+Heavy still carries the
+  thrust's LungeOverride (2.2, 2.0), where Bjorn's spin uses (0.9, 2.6).

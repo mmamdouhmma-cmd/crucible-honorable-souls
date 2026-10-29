@@ -733,7 +733,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 5923986485492147031, guid: a072b107c38a1054da46d270f79dd078, type: 3}
+  m_Motion: {fileID: 831972226715816293, guid: a072b107c38a1054da46d270f79dd078, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -809,7 +809,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -5387111581525453491, guid: a072b107c38a1054da46d270f79dd078, type: 3}
+  m_Motion: {fileID: 1592891273320650287, guid: a072b107c38a1054da46d270f79dd078, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1174,7 +1174,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Special_GreatImpale
-  m_Speed: 0.92063504
+  m_Speed: 1.5555557
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1187,7 +1187,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 1592891273320650287, guid: a072b107c38a1054da46d270f79dd078, type: 3}
+  m_Motion: {fileID: -6556537087697243763, guid: 12ea7688bda1f62469316359e5551ac8, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1459,7 +1459,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Heavy_IklwaThrust
-  m_Speed: 0.6588236
+  m_Speed: 0.81290317
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}
@@ -1472,7 +1472,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: 831972226715816293, guid: a072b107c38a1054da46d270f79dd078, type: 3}
+  m_Motion: {fileID: -6556537087697243763, guid: f34b975db2a11be478fda794e6d25726, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -1511,7 +1511,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Special_FallingSpear
-  m_Speed: 1.2093749
+  m_Speed: 1.34375
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1524,7 +1524,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 6447c45bfff69e14cba858e5bb51fc11, type: 3}
+  m_Motion: {fileID: 4061839508520268033, guid: 94cebd1d604977c4d8bd9a7a39fdf174, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
