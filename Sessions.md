@@ -4673,3 +4673,4 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 - Bjorn's Hewing Charge -> Overhead too (the user's call), so it lands on range like Blood Eagle.
 - The remaining spin/flow relabels (Bjorn's two spins, the SP+Light reversals as SpinLeft, Serpent Sweep/Coil, Hattin, Kuruma) were offered and DECLINED by the user - labels stay as they are.
 - Buwaka Heavy (Iklwa Thrust) startup 36 -> 30 (the user's edit in the Editor), copied into CrucibleBalance.UserFrames. Version 0.4.1.
+- Released v0.4.1 (Win64, 802 MB zip): https://github.com/mmamdouhmma-cmd/crucible-honorable-souls/releases/tag/v0.4.1
