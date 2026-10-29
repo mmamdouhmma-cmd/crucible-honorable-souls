@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
+  m_Name: Sensei_Special_RisingHeaven
+  m_EditorClassIdentifier: Assembly-CSharp::AttackData
+  attackName: Rising Heaven
+  damage: 13
+  staminaCost: 34
+  armorPierce: 10
+  startupFrames: 24
+  activeFrames: 5
+  recoveryFrames: 26
+  animationClip: {fileID: 0}
+  animatorTriggerName: SpecialLight
+  attackHeight: 3
+  attackType: 3
+  specialButton: 0
+  comesFrom: 0
+  swingFlow: 0
+  hitSide: 0
+  hitstunFrames: 48
+  hyperArmor: 0
+  hitboxRange: 3
+  hitboxOffset: {x: 0, y: 1, z: 0}
+  hitboxSize: {x: 1, y: 1.7, z: 1}
+  aimMode: 1
+  aimMaxAngle: -1
+  aimRollDegrees: 0
+  lungeStopDistance: 1.35
+  lungeMaxDistance: 1.5
+  hitsWithWeapon: 1
+  comboLinks: []
+  cancelStartFrame: -1
+  cancelEndFrame: -1
+  dodgedRecoveryFrames: -1

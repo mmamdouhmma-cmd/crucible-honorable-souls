@@ -69,6 +69,7 @@ public static class CrucibleCharacterSetup
         // Miyamoto's bounds-to-stature ratio (3.426 / 2.82), to be calibrated in play the same way.
         { "Ch1_Musashi", 3.212f },   // 3.426 measured 3.008 in play (Miyamoto_Idle), x 2.82/3.008
         { "Ch1_Partner", 3.323f },   // 3.524 -> 3.387 (3.017 at idle frame 0) -> measured 2.956 over Miyamoto_Idle, x 2.90/2.956
+        { "Ch1_Sensei",  3.383f },   // 3.300 measured 2.790 over Miyamoto_Idle, x 2.86/2.790
     };
 
     static float HeightOf(string charName) =>
@@ -94,6 +95,7 @@ public static class CrucibleCharacterSetup
         // Miyamoto's size, his partner a step taller. The user has not confirmed these.
         { "Ch1_Musashi", 2.82f },
         { "Ch1_Partner", 2.90f },
+        { "Ch1_Sensei",  2.86f },   // between Miyamoto and Salaadin, like his numbers (not the user's call yet)
     };
 
     static float StandingStature(string charName) =>
@@ -164,6 +166,7 @@ public static class CrucibleCharacterSetup
         { "Miyamoto", 0.169f / 2.8f },  // HD body 2026-10-27: sole read -0.072 at 0.0347 (root y-scale 2.8)
         { "Ch1_Musashi", 0.162f / 2.8f },   // story cast 2026-10-29: sole read -0.159 at 0 in Miyamoto_Idle (Miyamoto reads +0.003)
         { "Ch1_Partner", 0.170f / 2.8f },   // story cast 2026-10-29: sole read +0.007 at 0.173 (Miyamoto_Idle), less 2% for the last shrink
+        { "Ch1_Sensei",  0.166f / 2.8f },   // first guess between the other two; calibrate in play
         // 2026-10-22c: re-measured after the -11% size change. GroundOffset is a FIXED root-local
         // lift, so shrinking the body left the same lift under shorter legs and he hovered 0.027.
         { "Richard", 0.182f / 3f },   // HD body 2026-10-27; size order: sole read -0.013 at 0.169
@@ -197,7 +200,16 @@ public static class CrucibleCharacterSetup
         "Assets/_project/Characters/" + (charName == "Salaadin" ? "salaadin" : charName);
 
     /// <summary>Fighters whose off hand holds the haft. Richard's holds a shield, so he has no grip IK.</summary>
-    static readonly string[] TwoHanded = { "Bjorn", "Miyamoto", "Genghis", "Ch1_Musashi", "Ch1_Partner" };
+    static readonly string[] TwoHanded = { "Bjorn", "Miyamoto", "Genghis", "Ch1_Musashi", "Ch1_Partner", "Ch1_Sensei" };
+
+    // A two-hander that fights ONE-handed: the off hand takes the hilt only in these states
+    // (TwoHandGrip.onlyInStates). The Sensei (the user's brief, 2026-10-29) grips with both hands
+    // on his overhead alone - Heavy and SP+Heavy - and in the two-handed stance he moves in.
+    static readonly System.Collections.Generic.Dictionary<string, string[]> GripOnlyInStates = new System.Collections.Generic.Dictionary<string, string[]>
+    {
+        { "Ch1_Sensei", new[] { "Sensei_Idle", "Sensei_Walk_Forward", "Sensei_Walk_Back",
+                                "Sensei_Heavy_MountainSplitter", "Sensei_Special_FinalLesson" } },
+    };
 
     [MenuItem("Crucible/Characters/Rebuild Player1 (Bjorn new body)")]
     public static void RebuildP1() => Rebuild("Player1", "Bjorn");
@@ -225,6 +237,9 @@ public static class CrucibleCharacterSetup
 
     [MenuItem("Crucible/Story/Chapter One/Rebuild Player2 as the Partner (test scene only)")]
     public static void RebuildStoryPartner() => RebuildStory("Ch1_Partner");
+
+    [MenuItem("Crucible/Story/Chapter One/Rebuild Player2 as the Sensei (test scene only)")]
+    public static void RebuildStorySensei() => RebuildStory("Ch1_Sensei");
 
     public static void RebuildStory(string charName)
     {
@@ -452,6 +467,7 @@ public static class CrucibleCharacterSetup
         // Story cast: the wooden sword with a round tsuba (swap_blade.py), held like the katana.
         { "Ch1_Musashi_Bokken", (0.24f, 0.04f) },
         { "Ch1_Partner_Bokken", (0.24f, 0.04f) },
+        { "Ch1_Sensei_Bokken",  (0.24f, 0.04f) },   // no tsuba: the box starts at the stepped collar
     };
 
     /// <summary>Per-weapon visual scale, applied to the weapon node (mesh + blade box shrink
@@ -513,6 +529,7 @@ public static class CrucibleCharacterSetup
         // Story cast: the bokken is mounted to the katana's pose, so Miyamoto's socket carries over.
         { "Ch1_Musashi", (new Vector3(0.00013f, 0.0006f, 0f), new Vector3(70f, 90f, 180f), 1f) },
         { "Ch1_Partner", (new Vector3(0.00013f, 0.0006f, 0f), new Vector3(70f, 90f, 180f), 1f) },
+        { "Ch1_Sensei",  (new Vector3(0.00013f, 0.0006f, 0f), new Vector3(70f, 90f, 180f), 1f) },
     };
 
     static readonly System.Collections.Generic.Dictionary<string, (Vector3 localPos, Vector3 localEuler)> ShieldWeaponMount =
@@ -592,6 +609,11 @@ public static class CrucibleCharacterSetup
         // same way off it, so the frames agree), offset from the hand scaled by the stature ratio.
         { "Ch1_Musashi_Bokken", (new Vector3(-0.000848f, 0.000005f, -0.000008f), new Vector3(315.53f, 61.98f, 60.35f)) },
         { "Ch1_Partner_Bokken", (new Vector3(-0.000826f, -0.000076f, -0.000126f), new Vector3(312.37f, 48.27f, 68.24f)) },   // same solve
+        // The Sensei's hand bone rolls differently from the Partner's, so the same numbers hung his bokken
+        // straight down. Solved in play (2026-10-29): Sensei_Idle frame 0, the bokken given the Partner's
+        // exact pose relative to the root (all three bokkens share the katana's mesh frame), the hand
+        // offset scaled 2.86/2.90.
+        { "Ch1_Sensei_Bokken",  (new Vector3(0.000699f, 0.000420f, 0.000135f), new Vector3(339.92f, 265.18f, 17.10f)) },
     };
 
     static void SetupWeapon(GameObject player, GameObject inst, string charName, Animator rootAnim)
@@ -763,6 +785,10 @@ public static class CrucibleCharacterSetup
         sg.FindProperty("leftGrip").objectReferenceValue = socket;
         sg.FindProperty("leftElbowHint").objectReferenceValue = hint;
         if (gripOverride) sg.FindProperty("rotationWeight").floatValue = og.rotationWeight;
+        var only = sg.FindProperty("onlyInStates");
+        var states = GripOnlyInStates.TryGetValue(charName, out var gs) ? gs : new string[0];
+        only.arraySize = states.Length;
+        for (int i = 0; i < states.Length; i++) only.GetArrayElementAtIndex(i).stringValue = states[i];
         sg.ApplyModifiedProperties();
 
         // weapon aim toward the opponent during strikes
@@ -807,6 +833,43 @@ public static class CrucibleCharacterSetup
         return mat;
     }
 
+    /// <summary>
+    /// Full-resolution, high-quality compression for the WINDOWS build only: the Tripo maps are 4096
+    /// on disk and were reaching the game as 2048 at normal quality. Colour and normal go to 4096. The default (web) settings are
+    /// left alone so the web build stays small. Returns true when the importer changed.
+    /// </summary>
+    internal static bool DesktopTextureQuality(TextureImporter ti)
+    {
+        var want = ti.GetPlatformTextureSettings("Standalone");
+        var fmt = ti.textureType == TextureImporterType.NormalMap ? TextureImporterFormat.BC5 : TextureImporterFormat.BC7;
+        // The mask carries only metal + smoothness (mostly derived by make_body_maps.py): 2048 is plenty.
+        int size = ti.assetPath.ToLowerInvariant().Contains("_mask") ? 2048 : 4096;
+        if (want.overridden && want.maxTextureSize == size && want.format == fmt) return false;
+        want.overridden = true;
+        want.maxTextureSize = size;
+        want.format = fmt;
+        want.compressionQuality = 100;
+        ti.SetPlatformTextureSettings(want);
+        return true;
+    }
+
+    [MenuItem("Crucible/Characters/Desktop texture quality (all fighters and weapons)")]
+    public static void ApplyDesktopTextureQuality()
+    {
+        int changed = 0;
+        foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { "Assets/_project/Characters" }))
+        {
+            string p = AssetDatabase.GUIDToAssetPath(guid);
+            if (!(p.Contains("/Model/") || p.Contains("/Weapons/")) || p.Contains("/_Unrigged/")) continue;
+            if (!p.Contains(".fbm/") || p.Contains("/tripo_convert_")) continue;   // unused Tripo download leftovers
+            var ti = AssetImporter.GetAtPath(p) as TextureImporter;
+            if (ti == null || !DesktopTextureQuality(ti)) continue;
+            ti.SaveAndReimport();
+            changed++;
+        }
+        Debug.Log($"Crucible: desktop texture quality applied to {changed} texture(s) (Standalone 4096 colour + normal, 2048 mask; BC7 / BC5 normals).");
+    }
+
     static Material BuildMaterial(string fbmDir, string baseName, string matPath, bool doubleSided = false)
     {
         Shader lit = Shader.Find("Universal Render Pipeline/Lit");
@@ -829,6 +892,7 @@ public static class CrucibleCharacterSetup
                     setup(ti);
                     if (ti.maxTextureSize > 4096) ti.maxTextureSize = 4096;
                     if (before != (ti.textureType, ti.sRGBTexture, ti.maxTextureSize)) changed = true;
+                    if (DesktopTextureQuality(ti)) changed = true;
                     if (changed) ti.SaveAndReimport();
                 }
                 return AssetDatabase.LoadAssetAtPath<Texture2D>(p);

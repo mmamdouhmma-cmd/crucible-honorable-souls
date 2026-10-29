@@ -241,12 +241,30 @@ public static class CrucibleCombos
         ("Buwaka_Riposte_Parry",         new[] { new Link(L, false, "Buwaka_Light_HornCut", true, Always) }),
     };
 
+    // The story Sensei: Genghis's shape - one chain up the weights, the two-handed SP+Heavy off
+    // the heavy. Placeholder until the user names his strings.
+    static readonly (string attack, Link[] links)[] Sensei =
+    {
+        ("Sensei_Light_FallingBranch", new[]
+        {
+            new Link(M, false, "Sensei_Medium_TempleBell",       true,  Always),
+        }),
+        ("Sensei_Medium_TempleBell", new[]
+        {
+            new Link(H, false, "Sensei_Heavy_MountainSplitter",  true,  Always),
+        }),
+        ("Sensei_Heavy_MountainSplitter", new[]
+        {
+            new Link(H, true,  "Sensei_Special_FinalLesson",     false, HitOrBlock),
+        }),
+    };
+
     [MenuItem("Crucible/Combat/Wire combo strings")]
     public static void Wire()
     {
         var all = LoadAttacks(null);
         int written = 0;
-        foreach (var table in new[] { Bjorn, Miyamoto, Richard, Salaadin, Genghis, Buwaka })
+        foreach (var table in new[] { Bjorn, Miyamoto, Richard, Salaadin, Genghis, Buwaka, Sensei })
             foreach (var (attackName, links) in table)
             {
                 if (!all.TryGetValue(attackName, out var attack)) { Debug.LogError($"no AttackData named {attackName}"); continue; }
@@ -297,7 +315,8 @@ public static class CrucibleCombos
                                            // deadlocks the Editor (see CLAUDE.md)
                                            ("Assets/_project/Characters/salaadin/Attacks", "Salaadin"),
                                            ("Assets/_project/Characters/Genghis/Attacks", "Genghis"),
-                                           ("Assets/_project/Characters/Buwaka/Attacks", "Buwaka") })
+                                           ("Assets/_project/Characters/Buwaka/Attacks", "Buwaka"),
+                                           ("Assets/_project/Characters/Ch1_Sensei/Attacks", "Sensei") })
         {
             var lines = new List<string>();
             foreach (var opener in LoadAttacks(dir).Values.OrderBy(a => a.name))

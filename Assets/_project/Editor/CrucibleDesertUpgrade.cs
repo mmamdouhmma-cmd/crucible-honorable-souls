@@ -341,11 +341,11 @@ public static class CrucibleDesertUpgrade
             {
                 ca.colorFilter.Override(new Color(1.00f, 0.99f, 0.97f));
                 ca.postExposure.Override(0.05f);
-                ca.saturation.Override(-4f);
-                ca.contrast.Override(6f);
+                ca.saturation.Override(0f);   // visual quality pass 2026-10-29
+                ca.contrast.Override(4f);
             }
             if (c is UnityEngine.Rendering.Universal.Bloom b) b.intensity.Override(0.1f);
-            if (c is UnityEngine.Rendering.Universal.FilmGrain g) g.intensity.Override(0.14f);
+            if (c is UnityEngine.Rendering.Universal.FilmGrain g) g.intensity.Override(CrucibleVisualQuality.GrainIntensity);
             if (c is UnityEngine.Rendering.Universal.LiftGammaGain lgg) lgg.gain.Override(new Vector4(1.01f, 1.00f, 0.98f, 0.0f));
         }
         EditorUtility.SetDirty(dst);

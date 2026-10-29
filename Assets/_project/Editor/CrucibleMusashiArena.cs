@@ -416,7 +416,7 @@ public static class CrucibleMusashiArena
         if (profile == null) { profile = ScriptableObject.CreateInstance<VolumeProfile>(); AssetDatabase.CreateAsset(profile, ProfilePath); }
         Get<Tonemapping>(profile).mode.Override(TonemappingMode.ACES);
         var ca = Get<ColorAdjustments>(profile);
-        ca.postExposure.Override(0.25f); ca.contrast.Override(10f); ca.saturation.Override(-8f); ca.colorFilter.Override(new Color(1f, 0.97f, 0.93f));
+        ca.postExposure.Override(0.25f); ca.contrast.Override(6f); ca.saturation.Override(0f); /* visual quality pass 2026-10-29 */ ca.colorFilter.Override(new Color(1f, 0.97f, 0.93f));
         var wb = Get<WhiteBalance>(profile); wb.temperature.Override(6f); wb.tint.Override(0f);
         var bloom = Get<Bloom>(profile); bloom.intensity.Override(0.12f); bloom.threshold.Override(1.05f); bloom.scatter.Override(0.6f);
         var vig = Get<Vignette>(profile); vig.intensity.Override(0.16f); vig.smoothness.Override(0.5f);

@@ -1654,6 +1654,42 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   - Do not level a fight zone with `plateau` on these Tripo terrains: it stretched a bank into a
     smear. Raycast grounding copes with the plaza's +-0.7.
 
+- **The Windows look has its own render settings; the WEB build does not share them (2026-10-29).**
+  `Crucible > Look > Visual quality pass` (`Editor/CrucibleVisualQuality.cs`, idempotent) split the web
+  build onto `Web_RPAsset` / `Web_Renderer` (copies of PC_* as they stood: 120 m / 2048 shadows, no MSAA,
+  SSAO 0.4), assigned to the "Mobile" quality level, which is WebGL's default. PC_RPAsset (Standalone's
+  "PC" level) is now shadows **45 m @ 4096**, 4 cascades, **MSAA 4x** (SMAA kept on the camera), SSAO
+  0.6. Every arena Look profile keeps ACES with grain 0.05, chromatic aberration OFF, saturation 0
+  (Forest -3) and contrast eased (base 5, Desert 4, Fortress 8, Forest 5, Musashi 6); the arena build
+  scripts write the same numbers, so a rebuild keeps them. Anything that reassigns pipeline assets
+  (`CrucibleUrpLook`) must be followed by the pass again.
+- **Fighter and weapon textures carry a STANDALONE override**: 4096 BC7 for colour, 4096 BC5 for normals,
+  2048 BC7 for the masks; the default (web) settings are unchanged (2048, normal quality).
+  `CrucibleCharacterSetup.DesktopTextureQuality` applies it inside `BuildMaterial`, and
+  `Crucible > Characters > Desktop texture quality` sweeps every `*.fbm` under Characters (skipping the
+  unused `tripo_convert_*` folders). The Model folders are gitignored, so a fresh clone runs that menu.
+  No AO maps exist anywhere - the Tripo smart meshes ship none.
+- **Every arena root carries a `ReflectionProbe` + `ArenaReflectionProbe`**: one 256 HDR cube captured
+  ON ENABLE (after ArenaAtmosphere sets the sky), as a synchronous `RenderToCubemap` with all fighter
+  renderers `forceRenderingOff` for that one call, set as the probe's custom texture. Baking is wrong here:
+  six arenas share one scene and their skies only exist while active. The capture point raycasts to the
+  floor under it (+2.5) - arena roots do not sit on their floors.
+- **Measuring frame cost from the CLI**: render `Camera.main` into a 1920x1080 RT N times, each followed by
+  a 1-pixel `AsyncGPUReadback...WaitForCompletion()`, and time it with a Stopwatch - the Editor's own
+  frame rate is meaningless unfocused. On this AMD iGPU a 1080p match frame costs 30-60 ms either way;
+  take the MINIMUM over runs, medians swing +-10 ms. **An unfocused Editor freezes play at frame 1 until
+  `set_autotick` is on**, and a domain reload turns a non-persisted autotick off again.
+
+- **The story SENSEI is a seventh fighter (2026-10-29)**: `Editor/CrucibleSensei.cs`, controller `P7_Sensei`,
+  `sensei_data`, attacks under `Characters/Ch1_Sensei/Attacks/`, living ONLY on Player2 of
+  `Scenes/Story/Ch1_Test_Sensei.unity`. Every strike is borrowed from the roster (the user's picks; table in
+  `Design/Story_Ch1_Characters.md`) and copies the source move's contact AND hit geometry. Two mechanisms came with him:
+  `TwoHandGrip.onlyInStates` (off hand on the hilt only in listed states; empty = always) and
+  `CrucibleBalance.Vitals.onlyScene` (a story fighter's vitals reach the scene only in its own test scene).
+  `CrucibleMixamoSetup.Wire` resolves each controller's fighter by the controller itself, not by `Player<N>`.
+  **Keep every clip map in the one `ImportAll` call** - leaving a map out rewrites the shared pack importers
+  without that fighter's takes.
+
 ## Testing the game from the CLI (hard-won, still true)
 
 - **Set `Time.timeScale` directly, AFTER `GameMenu.StartMatch`.** `DebugTimeScale` only applies

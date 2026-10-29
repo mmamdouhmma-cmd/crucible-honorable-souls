@@ -123,8 +123,8 @@ public static class CrucibleFortressLook
             if (c is ColorAdjustments ca)
             {
                 ca.postExposure.Override(0.0f);
-                ca.contrast.Override(13f);
-                ca.saturation.Override(-5f);
+                ca.contrast.Override(8f);   // visual quality pass 2026-10-29
+                ca.saturation.Override(0f);
                 ca.colorFilter.Override(new Color(1.00f, 0.99f, 0.98f));
             }
             if (c is LiftGammaGain lgg)
@@ -133,7 +133,7 @@ public static class CrucibleFortressLook
                 lgg.gain.Override(new Vector4(1.00f, 1.00f, 0.99f, 0f));
             }
             if (c is Bloom b) b.intensity.Override(0.12f);
-            if (c is FilmGrain g) g.intensity.Override(0.15f);
+            if (c is FilmGrain g) g.intensity.Override(CrucibleVisualQuality.GrainIntensity);
         }
         if (!p.TryGet<WhiteBalance>(out var wb))
         {
@@ -261,7 +261,7 @@ public static class CrucibleFortressLook
             cam.cullingMask = 0;   // the sky alone
             cam.clearFlags = CameraClearFlags.Skybox;
             go.transform.position = new Vector3(0f, 10f, 0f);
-            var cube = new Cubemap(128, TextureFormat.RGBAHalf, true);
+            var cube = new Cubemap(CrucibleVisualQuality.ReflectionResolution, TextureFormat.RGBAHalf, true);
             cam.RenderToCubemap(cube);
             cube.Apply(true);
             AssetDatabase.DeleteAsset(path);

@@ -45,7 +45,13 @@ public static class CrucibleBalance
         public float dashIFrames;
         public float parryWindow, parryCooldown, parryStun, parryCounterWindow, parryCounterDamage;
         public int parryCost;
+        // A story fighter lives on Player2 of ONE test scene; its vitals are written to the scene
+        // only there, and the roster fighter on the same player name is skipped there.
+        public string onlyScene;
     }
+
+    public const string SenseiDataPath = "Assets/_project/Data/Fighters/sensei_data.asset";
+    public static float SenseiDashDuration => 0.24f * DashTimeScale;
 
     static readonly Vitals[] Fighters =
     {
@@ -142,6 +148,18 @@ public static class CrucibleBalance
                      dashIFrames = 0.15f,
                      parryWindow = 0.2f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
                      parryCounterWindow = 0.8f, parryCounterDamage = 1.35f },
+
+        // The story SENSEI (Chapter One; the user's brief, 2026-10-29): "somewhere between Miyamoto
+        // and Salaadin" on speed, damage, armour and block, "but lower health than both" - 75,
+        // under Miyamoto's 80. Every number below sits between those two rows.
+        new Vitals { character = "Ch1_Sensei", player = "Player2", fighterName = "Sensei", archetype = "Master",
+                     dataPath = SenseiDataPath, onlyScene = "Ch1_Test_Sensei",
+                     health = 75, stamina = 108, armor = 15, damageMultiplier = 88, moveSpeed = 44,
+                     regen = 20f, dashDistance = 2.45f, dashDuration = 0.24f, dashStamina = 13,
+                     blockReduction = 68, blockDrain = 0f,
+                     dashIFrames = 0.17f,
+                     parryWindow = 0.2f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
+                     parryCounterWindow = 0.9f, parryCounterDamage = 1.42f },
     };
 
     // ------------------------------------------------------------------ the moves
@@ -262,6 +280,18 @@ public static class CrucibleBalance
             N("Buwaka_Ender_SerpentCoil",             13,  26,  6,     15,  5, 16,  12),
             N("Buwaka_Riposte_Dash",                   9,  14,  2,     12,  4, 14,   9),
             N("Buwaka_Riposte_Parry",                  8,  14,  0,     12,  4, 14,   9),
+        },
+
+        // The Sensei: each slot between Miyamoto's and Salaadin's (their effective frames, after
+        // the x2 and Salaadin's hand-set UserFrames). Asset prefix "Sensei_", folder Ch1_Sensei.
+        ["Ch1_Sensei"] = new[]
+        {                                          // dmg stam pierce  start act rec  hitstun
+            N("Sensei_Light_FallingBranch",            7,  15,  4,      8,  3,  6,   7),
+            N("Sensei_Medium_TempleBell",              8,  17,  6,      9,  4,  8,   8),
+            N("Sensei_Heavy_MountainSplitter",        10,  20, 10,     11,  4, 11,  10),
+            N("Sensei_Special_RisingHeaven",          13,  34, 10,     15,  5, 16,  12),
+            N("Sensei_Special_CircleOfWillow",        14,  38, 12,     15,  5, 15,  13),
+            N("Sensei_Special_FinalLesson",           15,  42, 14,     16,  5, 17,  14),
         },
     };
 
@@ -409,6 +439,13 @@ public static class CrucibleBalance
         { "Buwaka_Ender_SerpentCoil",     SwingFlow.SpinLeft },   // measured: the clip turns left through its main swing
         { "Buwaka_Riposte_Dash",          SwingFlow.CutLeft },
         { "Buwaka_Riposte_Parry",         SwingFlow.Thrust },     // the spear
+        // The Sensei: each move takes the flow of the move whose animation it borrows.
+        { "Sensei_Light_FallingBranch",     SwingFlow.Overhead },   // Richard's Heavy
+        { "Sensei_Medium_TempleBell",       SwingFlow.SpinRight },  // Salaadin's Heavy (his row's label)
+        { "Sensei_Heavy_MountainSplitter",  SwingFlow.Overhead },   // Bjorn's Heavy
+        { "Sensei_Special_RisingHeaven",    SwingFlow.Overhead },   // Genghis's SP+Heavy
+        { "Sensei_Special_CircleOfWillow",  SwingFlow.CutRight },   // Salaadin's SP+Medium
+        { "Sensei_Special_FinalLesson",     SwingFlow.Overhead },
     };
 
     static SwingFlow FlowFor(string asset, int hitSideIndex)
@@ -437,6 +474,7 @@ public static class CrucibleBalance
         "Salaadin_Special_HattinCleave",
         "Genghis_Special_WrathOfTengri",
         "Buwaka_Special_GreatImpale",
+        "Sensei_Special_FinalLesson",
     };
 
     /// <summary>
@@ -484,6 +522,9 @@ public static class CrucibleBalance
         // specials take; the speed cap (18 f startup) allows ~1.37 of it. With the front cut and
         // the 15% bigger axe it lands from 3.4 (the old backhand reached 2.4).
         { "Bjorn_Special_HaftStrike",     (1.35f, 1.5f) },
+        // The Sensei's SP+Heavy steps like everyone's; his SP+Light keeps Genghis's step with the clip.
+        { "Sensei_Special_FinalLesson",   (1.35f, 1.5f) },
+        { "Sensei_Special_RisingHeaven",  (1.35f, 1.5f) },
     };
 
     // Every get-hit stun is 0.8 s (48 frames at 60fps) - the user's call, 2026-10-24, raising the
@@ -577,6 +618,9 @@ public static class CrucibleBalance
 
     static void WriteScene(Vitals v)
     {
+        string scene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene().name;
+        if (v.onlyScene != null && v.onlyScene != scene) return;
+        if (v.onlyScene == null && System.Array.Exists(Fighters, o => o.onlyScene == scene && o.player == v.player)) return;
         var go = GameObject.Find(v.player);
         if (go == null) { Debug.LogWarning($"balance: {v.player} not in the open scene"); return; }
         var fighter = go.GetComponent(System.Type.GetType("Fighter, Assembly-CSharp"));

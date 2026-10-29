@@ -35,13 +35,15 @@ public static class CrucibleUrpLook
         QualitySettings.SetQualityLevel(current, false);
         QualitySettings.vSyncCount = 0;
 
-        // URP asset: HDR, soft 2K shadows over a sensible distance, no MSAA (SMAA on the camera instead).
+        // URP asset: HDR, soft 4K shadows over the fight camera's 45 m, MSAA 4x plus SMAA on the camera
+        // (the 2026-10-29 visual quality pass; re-run Crucible > Look > Visual quality pass after this
+        // menu, which also splits the web build back onto Web_RPAsset).
         SerializedObject so = new SerializedObject(urp);
         Set(so, "m_SupportsHDR", 1);
-        Set(so, "m_MSAA", 1);
-        Set(so, "m_MainLightShadowmapResolution", 2048);
+        Set(so, "m_MSAA", CrucibleVisualQuality.Msaa);
+        Set(so, "m_MainLightShadowmapResolution", CrucibleVisualQuality.ShadowResolution);
         Set(so, "m_ShadowCascadeCount", 4);
-        SetF(so, "m_ShadowDistance", 120f);
+        SetF(so, "m_ShadowDistance", CrucibleVisualQuality.ShadowDistance);
         Set(so, "m_SoftShadowsSupported", 1);
         Set(so, "m_ColorGradingMode", 1);          // HDR grading
         Set(so, "m_ColorGradingLutSize", 32);
@@ -183,8 +185,8 @@ public static class CrucibleUrpLook
         tone.mode.Override(TonemappingMode.ACES);
         ColorAdjustments color = GetOrAdd<ColorAdjustments>(profile);
         color.postExposure.Override(0.15f);
-        color.contrast.Override(8f);
-        color.saturation.Override(-6f);
+        color.contrast.Override(5f);   // visual quality pass 2026-10-29
+        color.saturation.Override(0f);
         color.colorFilter.Override(new Color(1f, 0.98f, 0.95f));
         LiftGammaGain lgg = GetOrAdd<LiftGammaGain>(profile);
         lgg.lift.Override(new Vector4(1.01f, 1f, 0.98f, 0f));
@@ -199,10 +201,11 @@ public static class CrucibleUrpLook
         vig.smoothness.Override(0.5f);
         FilmGrain grain = GetOrAdd<FilmGrain>(profile);
         grain.type.Override(FilmGrainLookup.Medium2);
-        grain.intensity.Override(0.22f);
+        grain.intensity.Override(CrucibleVisualQuality.GrainIntensity);
         grain.response.Override(0.75f);
         ChromaticAberration ca = GetOrAdd<ChromaticAberration>(profile);
-        ca.intensity.Override(0.06f);
+        ca.intensity.Override(0f);   // visual quality pass 2026-10-29: chromatic aberration off
+        ca.active = false;
         EditorUtility.SetDirty(profile);
 
         GameObject volGo = GameObject.Find(VolumeObjectName);

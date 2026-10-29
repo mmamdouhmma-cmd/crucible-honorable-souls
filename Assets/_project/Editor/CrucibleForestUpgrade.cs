@@ -153,13 +153,13 @@ public static class CrucibleForestUpgrade
             if (c is ColorAdjustments ca)
             {
                 ca.postExposure.Override(0.15f);
-                ca.contrast.Override(8f);
-                ca.saturation.Override(-10f);   // the clearing's grass and orbs are saturated already
+                ca.contrast.Override(5f);   // visual quality pass 2026-10-29
+                ca.saturation.Override(-3f);    // the clearing's grass and orbs are saturated already
                 ca.colorFilter.Override(new Color(1.00f, 0.98f, 0.94f));
             }
             if (c is LiftGammaGain lgg) lgg.lift.Override(new Vector4(1.00f, 1.00f, 1.02f, 0.015f));
             if (c is Bloom b) b.intensity.Override(0.12f);
-            if (c is FilmGrain g) g.intensity.Override(0.14f);
+            if (c is FilmGrain g) g.intensity.Override(CrucibleVisualQuality.GrainIntensity);
         }
         EditorUtility.SetDirty(profile);
         vol.sharedProfile = profile;

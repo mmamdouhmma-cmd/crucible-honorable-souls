@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8d01356140501b469c71bc0b9f9655c, type: 3}
+  m_Name: Sensei_Special_CircleOfWillow
+  m_EditorClassIdentifier: Assembly-CSharp::AttackData
+  attackName: Circle of Willow
+  damage: 14
+  staminaCost: 38
+  armorPierce: 12
+  startupFrames: 24
+  activeFrames: 5
+  recoveryFrames: 24
+  animationClip: {fileID: 0}
+  animatorTriggerName: SpecialMedium
+  attackHeight: 1
+  attackType: 3
+  specialButton: 1
+  comesFrom: 1
+  swingFlow: 3
+  hitSide: 2
+  hitstunFrames: 48
+  hyperArmor: 0
+  hitboxRange: 3
+  hitboxOffset: {x: 0, y: 1, z: 0}
+  hitboxSize: {x: 1.5, y: 0.9, z: 1}
+  aimMode: 0
+  aimMaxAngle: -1
+  aimRollDegrees: 0
+  lungeStopDistance: -1
+  lungeMaxDistance: 1.2
+  hitsWithWeapon: 1
+  comboLinks: []
+  cancelStartFrame: -1
+  cancelEndFrame: -1
+  dodgedRecoveryFrames: -1

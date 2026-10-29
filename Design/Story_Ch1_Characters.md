@@ -66,7 +66,7 @@ Per character, fill in:
 |-----------|-------------------|-------|--------|-------|----------|-----------------------------|
 | Musashi   | = Miyamoto        | = Miyamoto | = Miyamoto | = Miyamoto | = Miyamoto | later |
 | Partner   | = Miyamoto        | = Miyamoto | = Miyamoto | = Miyamoto | = Miyamoto | later |
-| Sensei    | own (next, after Musashi + Partner) | | | | | |
+| Sensei    | own: borrowed strikes (the user's picks, 2026-10-29) - see "Unity phase, Sensei" | | | | | |
 | Kojiro    | own - POSTPONED   |       |        |       |          |                             |
 
 ## Status
@@ -75,7 +75,7 @@ Per character, fill in:
 |-----------|-----------|--------|----------------|----------|-------|
 | Musashi   | yes       | yes (2026-10-29) | wooden sword (`Ch1_Musashi_Bokken`, swap_blade.py) | yes - `Scenes/Story/Ch1_Test_Musashi.unity` (play-verified 2026-10-29) | clean first pass: 0 zero-weight verts, raise + squat render fine |
 | Partner   | yes       | yes (2026-10-29) | wooden sword (`Ch1_Partner_Bokken`, swap_blade.py) | yes - `Scenes/Story/Ch1_Test_Partner.unity` (play-verified 2026-10-29) | clean first pass |
-| Sensei    | yes       | yes (2026-10-29, re-fit `--arm-axis section --arm-mirror 1`) | placeholder katana | no | arms symmetric, 0 bones outside; scabbard on Hips |
+| Sensei    | yes       | yes (2026-10-29, re-fit `--arm-axis section --arm-mirror 1`) | plain bokken (`Ch1_Sensei_Bokken`, swap_blade.py + strip_guard.py, 2026-10-29) | yes - `Scenes/Story/Ch1_Test_Sensei.unity` (play-verified 2026-10-29) | arms symmetric, 0 bones outside; scabbard on Hips |
 | Kojiro    | yes       | yes (2026-10-29) | red-grip katana (seated by the grip pass) | no | needed `--arm-top 1` + `fix_cape_weights.py` (below) |
 
 Models are extracted to `ArtSource/Characters/Tripo/Story_Ch1/<id>/` (gitignored); rigged output is
@@ -173,4 +173,40 @@ including the roster. Weapons: parented to RightHand, fist wraps 315-360 deg rou
 - Not done (out of scope of the rig audit): Musashi/Partner are not in testarena's roster or the story scene's
   ArenaDirectory game - the test scenes are the integration.
 
-**Next:** the Sensei's bokken swap and his own animations. Kojiro deferred (items 3-4).
+**Sensei's bokken (2026-10-29, DONE):** `swap_blade.py ... Miyamoto_Katana_R Ch1_Sensei_Bokken <Bokken_Stick fbx>`,
+then `strip_guard.py -- Ch1_Sensei_Bokken_R`: the Tripo "plain" bokken had a metal tsuba fused in at 18-22% of its
+length; the guard verts are collapsed onto a stepped shaft (grip r 0.017 -> blade r 0.024 in the fist frame), wood UVs.
+Backup `Ch1_Sensei_HD_rigged_katana.{blend,fbx}`.
+
+**Unity phase, Sensei (2026-10-29, DONE):** his own fighter, built by `Editor/CrucibleSensei.cs`
+(`Crucible > Characters > Sensei > 1/2/3`, order in the file header), controller `P7_Sensei` (copied from Miyamoto's),
+data `sensei_data`, attacks in `Characters/Ch1_Sensei/Attacks/`. He lives only in `Ch1_Test_Sensei`, on Player2.
+- **Move set, the user's picks** - every strike borrowed, each with the source move's per-STATE contact and hit geometry:
+
+  | Slot | Name | Animation from |
+  |---|---|---|
+  | Light | Falling Branch | Richard's Heavy (`sword and shield slash`) |
+  | Medium | Temple Bell | Salaadin's Heavy (the SAME file - the user asked for both by name; contacts 17.7 @x1.4 vs 31 @x1.0) |
+  | Heavy | Mountain Splitter | Bjorn's Heavy (`great sword slash`, two-handed) |
+  | SP+Light | Rising Heaven | Genghis's SP+Heavy (`great sword casting`) |
+  | SP+Medium | Circle of Willow | Salaadin's SP+Medium (`sword and shield attack (3)`) |
+  | SP+Heavy | Final Lesson | Bjorn's Heavy again (hyper armour, like every SP+Heavy) |
+
+  Block = Bjorn's guard (AxePack block idle / react). Idle, walks, dashes, run, reacts, death = Miyamoto's.
+  Strings are a placeholder in Genghis's shape: L -> M -> H, H -> SP+H.
+- **One-handed, except the overhead.** `TwoHandGrip.onlyInStates` (new; empty = always, so the roster is unchanged)
+  holds the off hand on the hilt only in his idle, walks, Heavy and SP+Heavy, blending 0.12 s in and out. Measured:
+  grip weight 0 through Light / Medium / SP+Light / SP+Medium and the block, 1 through Heavy and SP+Heavy.
+- **Numbers between Miyamoto and Salaadin, health under both**: 75 hp, 108 stamina, 15 armour, x0.88 damage,
+  walk 4.4, block 68, dash 2.45 / i-frames 0.17, counter window 0.9 at x1.42; each move's frames, damage and stamina
+  between the two fighters' same slot. His `CrucibleBalance` row carries `onlyScene = "Ch1_Test_Sensei"`: his
+  vitals are written to Player2 in that scene only, and Miyamoto's are skipped there.
+- **Mount**: the Partner's numbers hung his bokken straight down - his hand bone rolls differently. Solved in play
+  by giving the bokken the Partner's exact pose relative to the root at idle frame 0 (all three bokkens share the
+  katana's mesh frame): `(0.000699, 0.000420, 0.000135)` / `(339.92, 265.18, 17.10)`.
+- **Verified in play vs Bjorn from 2.4**: all six moves fire their own state and land (5 / 6 / 8 / 10 / 11 / 12
+  damage); stature 2.88 at idle (target 2.86), soles -0.010; photographed idle (two-handed guard), Heavy (both
+  hands on the hilt), block (Bjorn's diagonal guard).
+- Open: walk stride is Miyamoto's (`WalkStride["Sensei"]`), not re-measured on his body; his strings await the user.
+
+**Next:** Kojiro (deferred, items 3-4), or the Sensei's strings when the user names them.

@@ -179,5 +179,23 @@
   "Miyamoto_Heavy_Overhead": {
     "contact": 67.0,
     "speed": 1.0
-  }
+  },
+  "Sensei_Light_FallingBranch": {
+    "contact": 17.7,
+    "speed": 1.4
+  },
+  "Sensei_Medium_TempleBell": {
+    "contact": 31.0,
+    "speed": 1.0
+  },
+  "Sensei_Heavy_MountainSplitter": 21.5,
+  "Sensei_Special_RisingHeaven": {
+    "contact": 65.0,
+    "speed": 1.6
+  },
+  "Sensei_Special_CircleOfWillow": {
+    "contact": 25.2,
+    "speed": 2.0
+  },
+  "Sensei_Special_FinalLesson": 21.5
 }

@@ -46,7 +46,7 @@ MonoBehaviour:
     m_Value: 0.05
   contrast:
     m_OverrideState: 1
-    m_Value: 6
+    m_Value: 4
   colorFilter:
     m_OverrideState: 1
     m_Value: {r: 1, g: 0.99, b: 0.97, a: 1}
@@ -55,7 +55,7 @@ MonoBehaviour:
     m_Value: 0
   saturation:
     m_OverrideState: 1
-    m_Value: -4
+    m_Value: 0
 --- !u!114 &-3264104241650861344
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -68,10 +68,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81180773991d8724ab7f2d216912b564, type: 3}
   m_Name: ChromaticAberration
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.ChromaticAberration
-  active: 1
+  active: 0
   intensity:
     m_OverrideState: 1
-    m_Value: 0.06
+    m_Value: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -182,7 +182,7 @@ MonoBehaviour:
     m_Value: 3
   intensity:
     m_OverrideState: 1
-    m_Value: 0.14
+    m_Value: 0.05
   response:
     m_OverrideState: 1
     m_Value: 0.75

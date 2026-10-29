@@ -4582,3 +4582,49 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 - Calibrated: StandingHeight Musashi 3.212 / Partner 3.323, GroundOffset 0.162/2.8 / 0.170/2.8 -> idle stature
   2.820 / 2.901, soles +0.003 / +0.008. Off-hand miss 10-50% above Miyamoto's in the big swings - watch in play.
 - Visual-fidelity audit (read-only) started at the user's request; report in the conversation, nothing changed.
+
+### 2026-10-29 (night, late) — Visual quality pass (audit fixes 1-4) + the Sensei's bokken
+- The user's answers to the visual-fidelity audit: apply 1, 3, 4; fix 2 = toned-down ACES. All applied by
+  `Crucible > Look > Visual quality pass` (new `Editor/CrucibleVisualQuality.cs`) and
+  `Crucible > Characters > Desktop texture quality`; testarena + the three story scenes saved.
+- Web kept as it was: new `Web_RPAsset` / `Web_Renderer` on the "Mobile" (WebGL default) quality level; texture
+  overrides are Standalone-only. Fighter textures now 4096 BC7 / BC5 normal (masks 2048) - 46 of 67 were 4096 on
+  disk; reimport took 102 s.
+- Reflections: new `Scripts/core/ArenaReflectionProbe.cs`, one per arena root, captured on enable with the fighters
+  hidden for the call. Verified the cube faces: sky up, floor down, per-arena colour (Forest green floor, Desert
+  orange). Sky reflection resolution 256 (and the Fortress script's baked cube now uses the same constant).
+- Grade: grain 0.22/0.14-0.15 -> 0.05, CA 0.06 -> off, saturation -4..-10 -> 0 (Forest -3), contrast eased; the
+  Desert/Forest/Fortress/Musashi/URP-look scripts write the same numbers.
+- Cost, 1080p RT timing on the AMD iGPU (min of 40 frames, ms, before -> after): Fortress 30.1 -> 30.9, Desert
+  41.2 -> 40.4, Forest 41.4 -> 48.2, Dojo 54.5 -> 58.8, Plaza 55.6 -> 56.4. Medians are noisy (+-10 ms). The
+  iGPU was nowhere near 60 fps at 1080p before the pass either.
+- Gotcha: `GetComponent<T>() ?? AddComponent<T>()` throws on a missing component - Unity's fake null is not
+  C# null. Use an explicit `== null` check.
+- **The Sensei's bokken**: `swap_blade.py` with `Bokken_Stick` (the `wooden+bokken` zip). Tripo had fused a metal
+  TSUBA into that "plain" bokken (980k verts, one mesh; the reference image has none). New
+  `ArtSource/Blender/strip_guard.py` runs AFTER the swap (the swap seats the sword tsuba-on-tsuba, so the guard
+  must still be there for it): it finds the run of over-wide slices and collapses those verts radially onto a
+  shaft easing grip radius -> blade radius (the reference's step), wood UVs from the blade side, re-exports.
+  Rendered: a plain stick, stepped grip, small wood collar at the step. Backup:
+  `Ch1_Sensei_HD_rigged_katana.{blend,fbx}`.
+- Sensei's Unity phase NOT started: his controller, grip (one- or two-handed) and mount solve all depend on the
+  animation set, which is the user's call.
+
+### 2026-10-29 (night, later) — The Sensei becomes a fighter
+
+- The user picked his move set from the roster's own strikes (Light = Richard's Heavy, Medium = Salaadin's Heavy,
+  Heavy and SP+Heavy = Bjorn's two-handed overhead, SP+Light = Genghis's SP+Heavy, SP+Medium = Salaadin's), Bjorn's
+  block, Miyamoto's movement, and numbers between Miyamoto and Salaadin with less health than both. Details and
+  numbers: `Design/Story_Ch1_Characters.md`, "Unity phase, Sensei".
+- Built as a seventh controller (`P7_Sensei`) by the new `Editor/CrucibleSensei.cs`; every shared pass now lists it.
+  `Use Mixamo packs` must keep every map in ONE ImportAll call - a pass with a map left out rewrites the shared pack
+  importers without that fighter's takes.
+- `CrucibleMixamoSetup.Wire` now finds the fighter by CONTROLLER, not by `Player<N>` name: in a story test scene
+  Player2 is somebody else, and the name picked the wrong dash and walk numbers.
+- `TwoHandGrip.onlyInStates`: a two-hander that fights one-handed. The Sensei grips only on the overhead.
+- Gotcha: the Partner's mount numbers hung the Sensei's bokken straight down even though the three bokken meshes
+  share one frame - the hand BONES differ. Copy a hold by its pose relative to the ROOT, never by local numbers.
+- Gotcha: `Use Mixamo packs` rewrites the three retired `Clips/Custom/Bjorn_*.fbx.meta` (old Tripo rig, unused)
+  with the current body's rig. Reverted; it will recur on every run until those files are deleted.
+- Gotcha: an eval that opened a scene and then ran a long rebuild returned HTTP 400 and did NEITHER; the next
+  `editor_play` then ran in the old scene. Open the scene in one eval, rebuild in the next.

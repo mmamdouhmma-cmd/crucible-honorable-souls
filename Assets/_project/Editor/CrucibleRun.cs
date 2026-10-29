@@ -23,6 +23,7 @@ public static class CrucibleRun
         "Assets/_project/Animation/Controllers/P4_Salaadin.controller",
         "Assets/_project/Animation/Controllers/P5_Genghis.controller",
         "Assets/_project/Animation/Controllers/P6_Buwaka.controller",
+        "Assets/_project/Animation/Controllers/P7_Sensei.controller",   // story Sensei (Ch1_Test_Sensei only)
     };
 
     const string Param = "Running";

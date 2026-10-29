@@ -23,6 +23,8 @@ public static class CrucibleMixamoSetup
     const string P4Ctrl = "Assets/_project/Animation/Controllers/P4_Salaadin.controller";
     const string P5Ctrl = "Assets/_project/Animation/Controllers/P5_Genghis.controller";
     const string P6Ctrl = "Assets/_project/Animation/Controllers/P6_Buwaka.controller";
+    const string P7Ctrl = "Assets/_project/Animation/Controllers/P7_Sensei.controller";
+    const string SenseiAttacks = "Assets/_project/Characters/Ch1_Sensei/Attacks";
 
     /// <summary>Where a pack lives. "Custom" is the hand-keyed set in Animation/Clips/Custom.</summary>
     static string PackDir(string pack) => pack == "Custom" ? CustomDir : $"{MixamoDir}/{pack}";
@@ -110,6 +112,37 @@ public static class CrucibleMixamoSetup
         ("Dash_Left",                    "AxePack2H", "standing walk left",              false),
         ("Dash_Right",                   "AxePack2H", "standing walk right",             false),
         ("Run_Forward",                  "AxePack", "standing run forward",              true),
+    };
+
+    // The story Sensei (Ch1_Sensei, the user's picks 2026-10-29): Miyamoto's movement, Bjorn's
+    // one-handed guard, and every strike borrowed from another fighter - Light = Richard's Heavy,
+    // Medium = Salaadin's Heavy (the SAME file, the pack's plain overhead: the user asked for both
+    // by name, so the per-STATE contacts are copied from each owner and only speed tells them
+    // apart), Heavy AND SP+Heavy = Bjorn's two-handed overhead (the only move he grips with both
+    // hands, TwoHandGrip.onlyInStates), SP+Light = Genghis's SP+Heavy, SP+Medium = Salaadin's.
+    static readonly (string state, string pack, string clip, bool loop)[] P7Map =
+    {
+        ("Sensei_Idle",                    "AxePack2H", "standing idle",                   true),
+        ("Sensei_Walk_Forward",            "AxePack2H", "standing walk forward",           true),
+        ("Sensei_Walk_Back",               "AxePack2H", "standing walk back",              true),
+        ("Sensei_Light_FallingBranch",     "SwordShieldPack", "sword and shield slash",    false),  // Richard's Heavy
+        ("Sensei_Medium_TempleBell",       "SwordShieldPack", "sword and shield slash",    false),  // Salaadin's Heavy
+        ("Sensei_Heavy_MountainSplitter",  "GreatSwordPack",  "great sword slash",         false),  // Bjorn's Heavy
+        ("Sensei_Special_RisingHeaven",    "GreatSwordPack",  "great sword casting",       false),  // Genghis's SP+Heavy
+        ("Sensei_Special_CircleOfWillow",  "SwordShieldPack", "sword and shield attack (3)", false), // Salaadin's SP+Medium
+        ("Sensei_Special_FinalLesson",     "GreatSwordPack",  "great sword slash",         false),  // Bjorn's Heavy again, as the SP+Heavy
+        ("React_Front",                    "GreatSwordPack", "great sword impact",        false),
+        ("React_Left",                     "GreatSwordPack", "great sword impact (2)",    false),
+        ("React_Right",                    "GreatSwordPack", "great sword impact (3)",    false),
+        ("Block_Hold",                     "AxePack",        "standing block idle",       true),   // Bjorn's guard
+        ("Block_Impact",                   "AxePack",        "standing block react large", false), // Bjorn's
+        ("Parry_Success",                  "AxePack",        "standing block react large", false),
+        ("Death",                          "GreatSwordPack", "two handed sword death (2)", false),
+        ("Dash_Forward",                   "AxePack", "standing run forward",              false),
+        ("Dash_Back",                      "AxePack2H", "standing walk back",              false),
+        ("Dash_Left",                      "AxePack2H", "standing walk left",              false),
+        ("Dash_Right",                     "AxePack2H", "standing walk right",             false),
+        ("Run_Forward",                    "AxePack", "standing run forward",              true),
     };
 
     // Richard: the Pro Sword and Shield pack, plus the four clips it does not contain
@@ -335,6 +368,7 @@ public static class CrucibleMixamoSetup
         { "Salaadin", (1.74f, 1.51f) },
         { "Genghis",  (1.02f, 0.67f) },
         { "Buwaka",   (1.74f, 1.52f) },
+        { "Sensei",   (1.11f, 0.76f) },   // Miyamoto's walks; not yet re-measured on his body
     };
     static readonly Vector2 WalkAnimSpeedRange = new Vector2(0.8f, 2.0f);
     const float BackWalkSpeedMultiplier = 0.85f;   // mirrors BalanceConfig.BACK_WALK_SPEED_MULTIPLIER (the editor asmdef cannot see it)
@@ -373,13 +407,17 @@ public static class CrucibleMixamoSetup
         ComputeTrims(P4Map, "Assets/_project/Characters/salaadin/Attacks");
         ComputeTrims(P5Map, "Assets/_project/Characters/Genghis/Attacks");
         ComputeTrims(P6Map, "Assets/_project/Characters/Buwaka/Attacks");
-        ImportAll(P1Map, P2Map, P3Map, P4Map, P5Map, P6Map);
+        ComputeTrims(P7Map, SenseiAttacks);
+        // Every map goes into ONE ImportAll: an importer's clip list is rewritten whole, so a pass
+        // that left a map out would delete that fighter's takes from every shared pack file.
+        ImportAll(P1Map, P2Map, P3Map, P4Map, P5Map, P6Map, P7Map);
         Wire(P1Ctrl, P1Map, "Assets/_project/Characters/Bjorn/Attacks", "Player1");
         Wire(P2Ctrl, P2Map, "Assets/_project/Characters/Miyamoto/Attacks", "Player2");
         if (File.Exists(P3Ctrl)) Wire(P3Ctrl, P3Map, "Assets/_project/Characters/Richard/Attacks", "Player3");
         if (File.Exists(P4Ctrl)) Wire(P4Ctrl, P4Map, "Assets/_project/Characters/salaadin/Attacks", "Player4");
         if (File.Exists(P5Ctrl)) Wire(P5Ctrl, P5Map, "Assets/_project/Characters/Genghis/Attacks", "Player5");
         if (File.Exists(P6Ctrl)) Wire(P6Ctrl, P6Map, "Assets/_project/Characters/Buwaka/Attacks", "Player6");
+        if (File.Exists(P7Ctrl)) Wire(P7Ctrl, P7Map, SenseiAttacks, "Player2");
         AssetDatabase.SaveAssets();
         Debug.Log("Mixamo packs wired into P1_Bjorn and P2_Miyamoto. Play to check; Dash_* states keep the custom clips.");
     }
@@ -588,7 +626,12 @@ public static class CrucibleMixamoSetup
     {
         var ac = AssetDatabase.LoadAssetAtPath<AnimatorController>(ctrlPath);
         float dashDuration = 0.25f;
-        var playerGo = GameObject.Find(playerName);
+        // The fighter that actually runs this controller: in a story test scene Player2 is the
+        // Sensei (or Musashi on Miyamoto's controller), so the name alone picks the wrong numbers.
+        var playerGo = Object.FindObjectsByType<Animator>(FindObjectsInactive.Include)
+            .Where(a => a.runtimeAnimatorController == ac && a.GetComponent("Fighter") != null)
+            .Select(a => a.gameObject).FirstOrDefault();
+        if (playerGo == null && ctrlPath != P7Ctrl) playerGo = GameObject.Find(playerName);
         var fighterComp = playerGo != null ? playerGo.GetComponent("Fighter") : null;
         float walkSpeed = 0f;   // world units/s, from the fighter's FighterData
         if (fighterComp != null)
@@ -596,6 +639,12 @@ public static class CrucibleMixamoSetup
             var sf = new SerializedObject(fighterComp);
             var pd = sf.FindProperty("dashDuration"); if (pd != null) dashDuration = pd.floatValue;
             var data = sf.FindProperty("fighterData")?.objectReferenceValue;
+            if (data != null) walkSpeed = new SerializedObject(data).FindProperty("movementSpeed").intValue / 10f;
+        }
+        else if (ctrlPath == P7Ctrl)
+        {   // the Sensei is only in his story test scene: take his numbers from the table instead
+            dashDuration = CrucibleBalance.SenseiDashDuration;
+            var data = AssetDatabase.LoadAssetAtPath<ScriptableObject>(CrucibleBalance.SenseiDataPath);
             if (data != null) walkSpeed = new SerializedObject(data).FindProperty("movementSpeed").intValue / 10f;
         }
         var attacks = AssetDatabase.FindAssets("t:AttackData", new[] { attackDir })

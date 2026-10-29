@@ -27,6 +27,12 @@ public class TwoHandGrip : MonoBehaviour
     [Tooltip("Optional elbow hint so the left arm bends outward instead of through the chest.")]
     [SerializeField] private Transform leftElbowHint;
     [SerializeField] private string socketName = "LeftGrip";
+    [Tooltip("Base-layer states in which the off hand takes the grip. Empty = always (the roster's two-handers). " +
+             "The story Sensei fights one-handed and grips with both hands only on his overhead.")]
+    [SerializeField] private string[] onlyInStates = new string[0];
+    [Tooltip("Seconds to blend the grip in or out when onlyInStates is in use.")]
+    [SerializeField] private float stateBlendTime = 0.12f;
+    private float stateWeight = 1f;
 
     [Header("Strike reach")]
     [Tooltip("During an attack, pull the weapon hand toward the opponent so the blade's middle reaches their chest, " +
@@ -189,6 +195,15 @@ public class TwoHandGrip : MonoBehaviour
     private void LateUpdate()
     {
         if (animator == null || leftGrip == null || positionWeight <= 0f) return;
+        if (onlyInStates != null && onlyInStates.Length > 0)
+        {
+            bool want = InGripState(animator.GetCurrentAnimatorStateInfo(0)) ||
+                        (animator.IsInTransition(0) && InGripState(animator.GetNextAnimatorStateInfo(0)));
+            stateWeight = Mathf.MoveTowards(stateWeight, want ? 1f : 0f, Time.deltaTime / Mathf.Max(stateBlendTime, 1e-3f));
+            if (stateWeight <= 0f) { OffHandMiss = 0f; return; }
+        }
+        else stateWeight = 1f;
+        float w = positionWeight * stateWeight;
         if (offHandBone == null) offHandBone = animator.GetBoneTransform(HumanBodyBones.LeftHand);
         var upper = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm);
         var fore = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
@@ -196,9 +211,9 @@ public class TwoHandGrip : MonoBehaviour
 
         Vector3 goal = OffHandGoal();
         Vector3 pole = leftElbowHint != null ? leftElbowHint.position : Vector3.zero;
-        SolveTwoBone(upper, fore, offHandBone, goal, leftElbowHint != null, pole, positionWeight);
+        SolveTwoBone(upper, fore, offHandBone, goal, leftElbowHint != null, pole, w);
         if (rotationWeight > 0f)
-            offHandBone.rotation = Quaternion.Slerp(offHandBone.rotation, leftGrip.rotation, rotationWeight);
+            offHandBone.rotation = Quaternion.Slerp(offHandBone.rotation, leftGrip.rotation, rotationWeight * stateWeight);
 
         // Put the PALM on the haft, not just the wrist near it. offHandPalmLocal is a fixed guess
         // made in the hand's own space; once there are knuckles to look at we can see where the
@@ -210,11 +225,17 @@ public class TwoHandGrip : MonoBehaviour
             Vector3 corr = PalmOffset();
             if (corr.sqrMagnitude < 1e-8f) break;
             goal -= corr;
-            SolveTwoBone(upper, fore, offHandBone, goal, leftElbowHint != null, pole, positionWeight);
+            SolveTwoBone(upper, fore, offHandBone, goal, leftElbowHint != null, pole, w);
         }
 
         OffHandMiss = (offHandBone.position - goal).magnitude;
         CloseFingers();
+    }
+
+    private bool InGripState(AnimatorStateInfo info)
+    {
+        foreach (var n in onlyInStates) if (!string.IsNullOrEmpty(n) && info.IsName(n)) return true;
+        return false;
     }
 
     /// <summary>
