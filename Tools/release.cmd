@@ -4,7 +4,7 @@ rem Bump the version and build (Crucible > Build > Windows app) before running t
 rem NOTES below are this version's notes; Enter at the prompt keeps them, typing replaces them.
 rem Keep them free of the characters cmd treats specially: ampersand, pipe, angle brackets, quotes.
 cd /d "%~dp0.."
-set "NOTES=v0.4.1 - Free-form combos and fairer hits on slopes. Combos: no more fixed strings - any attack, a special included, cancels into the next one as long as the two swings flow (never the same swing twice, except two overheads or two thrusts in a row; a spin follows an overhead only on the same diagonal), up to three hits. Combo-only finishers stay. The Move List strings page is gone. Hits: overheads, low cuts and uppercuts now land whenever the target is in reach, even on uneven ground; mid and high slashes still have to physically connect. Several strikes now dodge and react from the side their animation actually swings from."
+set "NOTES=v0.4.2 - Buwaka reworked, and a window mode. Buwaka: his Heavy (Iklwa Cleave) is now an overhead cut, his SP+Medium (Leopard Wheel) a spinning cut and his SP+Heavy (Great Whirlwind) a spinning overhead. Settings: a new Display row switches between fullscreen and windowed."
 echo.
 echo Notes for this release:
 echo %NOTES%

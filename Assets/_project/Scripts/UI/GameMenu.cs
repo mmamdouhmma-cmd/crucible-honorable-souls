@@ -875,6 +875,34 @@ public class GameMenu : MonoBehaviour
         PlayerPrefs.Save();
     }
 
+    // The window mode is NOT in SettingsData: Unity already saves it per machine (and Alt+Enter changes
+    // it behind our back), so the Display row reads and writes Screen directly and the two never disagree.
+    // pendingFullscreen covers the frame or two before a mode change lands, so the row shows the new value.
+    static bool HasWindowModes => !Application.isMobilePlatform && Application.platform != RuntimePlatform.WebGLPlayer;
+    bool? pendingFullscreen;
+
+    bool IsFullscreen()
+    {
+        bool now = UnityEngine.Screen.fullScreenMode != FullScreenMode.Windowed;
+        if (pendingFullscreen.HasValue && pendingFullscreen.Value != now) return pendingFullscreen.Value;
+        pendingFullscreen = null;
+        return now;
+    }
+
+    void ToggleFullscreen()
+    {
+        bool full = !IsFullscreen();
+        pendingFullscreen = full;
+        var native = UnityEngine.Screen.currentResolution;
+        if (full) UnityEngine.Screen.SetResolution(native.width, native.height, FullScreenMode.FullScreenWindow);
+        else
+        {
+            // A window two thirds the screen's size, 16:9, so it never opens bigger than the desktop.
+            int h = Mathf.Max(480, native.height * 2 / 3);
+            UnityEngine.Screen.SetResolution(h * 16 / 9, h, FullScreenMode.Windowed);
+        }
+    }
+
     float GameSpeed() => Mathf.Clamp(netRole != NetSession.Role.None ? onlineSpeed : settings.gameSpeed, 0.5f, MaxGameSpeed);
     const float MaxGameSpeed = 2f;   // Settings slider tops out at 200% (the user's call, 2026-10-27)
 
@@ -1349,6 +1377,10 @@ public class GameMenu : MonoBehaviour
             // ------------------------------------------------------------ settings
             case Screen.Settings:
                 SetTitle("Settings", "");
+                if (HasWindowModes)
+                    items.Add(new Item { label = "Display", value = () => IsFullscreen() ? "Fullscreen" : "Windowed",
+                        adjust = d => ToggleFullscreen(),
+                        confirm = () => { ToggleFullscreen(); Rebuild(); } });
                 items.Add(new Item { label = "Master volume", value = () => Mathf.RoundToInt(settings.volume * 100) + "%",
                     adjust = d => { settings.volume = Mathf.Clamp01(settings.volume + d * 0.1f); ApplySettings(); SaveSettings(); } });
                 items.Add(new Item { label = "Music", value = () => Mathf.RoundToInt(settings.musicVolume * 100) + "%",
