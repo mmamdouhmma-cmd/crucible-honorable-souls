@@ -31,11 +31,11 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Buwaka_Special_FallingSpear
+      name: Buwaka_Special_GreatImpale
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 22.347656
-      lastFrame: 61.047657
+      firstFrame: 10.606351
+      lastFrame: 60.60635
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

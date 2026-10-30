@@ -4690,3 +4690,19 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
   whole pass instead.
 - Watch in play: the 2H spin drags the shield arm onto the spear; the SP+Heavy still carries the
   thrust's LungeOverride (2.2, 2.0), where Bjorn's spin uses (0.9, 2.6).
+
+### 2026-10-30 — Buwaka's SP+Heavy becomes the leaping plunge
+
+- Bjorn's `great sword high spin attack` did not work on Buwaka (a two-handed GreatSwordPack clip
+  on a shield fighter). The user picked the replacement from three one-handed options: the unused
+  SwordShieldPack `sword and shield attack` (Salaadin's SP+Light for part of 2026-10-23).
+- Wired as "Great Impale": clip map, contact {36.4, 2.0} (Salaadin's old one for this clip),
+  Overhead / FromOverhead / HitStraight, AimFull, SwingFlow Overhead. LungeOverride (2.2, 2.0)
+  kept. The asset fields were written directly (not via `1 Create move set`, which runs Apply).
+- `Use Mixamo packs` timed out over the CLI as usual; read back the controller: state plays
+  `sword and shield attack.fbx`, speed x1.59.
+- Play-verified vs Richard: lands 13 dmg from 1.5 to 5.0, whiffs at 5.5; stops ~2.2 from the
+  target; hips peak 3.27 above root at frame 20 (standing 1.58). Photographed at the peak: both
+  arms thrown up, shield over his head - the CLIP does that, it is not the 2H drag. The user saw it.
+- The GreatSwordPack meta lost Buwaka's take; it was the LAST take and takes carry explicit
+  internalIDs, so Bjorn's state reference was unaffected.

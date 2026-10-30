@@ -1174,7 +1174,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Buwaka_Special_GreatImpale
-  m_Speed: 1.5555557
+  m_Speed: 1.5873016
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -6216280782838244785}
@@ -1187,7 +1187,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -6556537087697243763, guid: 12ea7688bda1f62469316359e5551ac8, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: 6447c45bfff69e14cba858e5bb51fc11, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 

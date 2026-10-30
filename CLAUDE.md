@@ -150,7 +150,10 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   x0.36). Since 2026-10-30 (the user's picks) his Heavy "Iklwa Cleave" plays Richard's Heavy clip,
   SP+Medium "Leopard Wheel" Salaadin's Crescent Slash clip and SP+Heavy "Great Whirlwind" Bjorn's
   SpinOverhead clip (a 2H clip on a shield fighter), each with its source's contact AND hit
-  geometry; asset names unchanged (`Buwaka_Heavy_IklwaThrust`, `_Special_FallingSpear`,
+  geometry. That SP+Heavy was REPLACED the same day (the 2H clip dragged the shield arm onto the
+  spear): it is now "Great Impale", the LEAPING overhead plunge SwordShieldPack
+  `sword and shield attack` (contact {36.4, 2.0}, Overhead flow, AimFull) - lands 1.5-5.0, hips
+  peak 3.27 against 1.58 standing, and at the peak BOTH arms go up, shield over his head; asset names unchanged (`Buwaka_Heavy_IklwaThrust`, `_Special_FallingSpear`,
   `_Special_GreatImpale`). Both built by the metarig chain (`fit_metarig.py` Salaadin-shape targets →
   `metarig_to_mixamo.py` → `mount_body.py`, weapons bone-parented); bodies/rigs are gitignored
   like the rest. Statures calibrated 2026-10-26: Genghis 2.78, Buwaka 2.65 (StandingHeight

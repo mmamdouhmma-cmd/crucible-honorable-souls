@@ -436,7 +436,7 @@ public static class CrucibleBalance
         { "Buwaka_Heavy_IklwaThrust",     SwingFlow.Overhead },   // Richard's overhead clip since 2026-10-30
         { "Buwaka_Special_SerpentSweep",  SwingFlow.SpinRight },  // the full low turn
         { "Buwaka_Special_FallingSpear",  SwingFlow.CutRight },   // Salaadin's Crescent Slash clip since 2026-10-30, same flow as his
-        { "Buwaka_Special_GreatImpale",   SwingFlow.SpinRight },  // Bjorn's spinning overhead since 2026-10-30, same flow as his
+        { "Buwaka_Special_GreatImpale",   SwingFlow.Overhead },   // the leaping overhead plunge since 2026-10-30
         { "Buwaka_Ender_SerpentCoil",     SwingFlow.SpinLeft },   // measured: the clip turns left through its main swing
         { "Buwaka_Riposte_Dash",          SwingFlow.CutLeft },
         { "Buwaka_Riposte_Parry",         SwingFlow.Thrust },     // the spear
@@ -495,7 +495,7 @@ public static class CrucibleBalance
         { "Bjorn_Heavy_SpinOverhead",   (0.9f, 2.6f) },
         // Buwaka is the opposite case: the spear must KEEP its distance rather than close. The
         // default stop (1.7) would walk him inside his own point; these hold him at the spear's
-        // length, and the SP+Heavy (Great Whirlwind) alone drives all the way in.
+        // length, and the SP+Heavy (Great Impale) alone drives all the way in.
         { "Buwaka_Light_HornCut",        (2.3f, 0.9f) },
         { "Buwaka_Medium_SavannaCut",    (2.3f, 0.9f) },
         { "Buwaka_Heavy_IklwaThrust",    (2.6f, 1.0f) },

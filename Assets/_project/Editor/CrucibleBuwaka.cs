@@ -94,12 +94,14 @@ public static class CrucibleBuwaka
                    aim = AimFull, range = 3.5f, size = new Vector3(1.5f, 0.9f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 1.2f, weapon = true },
 
-        // SP + Heavy: Bjorn's SPINNING OVERHEAD (the user's call, 2026-10-30) - GreatSwordPack
-        // "great sword high spin attack", the second strike of Bjorn's Light->Heavy string, with
-        // its hit geometry. Hyper armour (CrucibleBalance), like every SP+Heavy.
-        new Move { asset = "Buwaka_Special_GreatImpale", name = "Great Whirlwind", trigger = "SpecialHeavy",
+        // SP + Heavy: the LEAPING OVERHEAD PLUNGE (the user's pick, 2026-10-30) - SwordShieldPack
+        // "sword and shield attack", the committed overhead Salaadin's SP+Light held briefly
+        // (tipHi 1.45, 86 deg of yaw, a real leap). It replaced Bjorn's spinning overhead, a
+        // two-handed GreatSwordPack clip that pulled the shield arm onto the spear. Overhead, so
+        // it lands on horizontal reach (IsRangeJudged). Hyper armour, like every SP+Heavy.
+        new Move { asset = "Buwaka_Special_GreatImpale", name = "Great Impale", trigger = "SpecialHeavy",
                    height = Overhead, type = Special, specialButton = Heavy, comesFrom = FromOverhead, hitSide = HitStraight,
-                   aim = AimOff, range = 4.0f, size = new Vector3(0.9f, 1.6f, 1f), offset = new Vector3(0f, 1f, 0f),
+                   aim = AimFull, range = 4.0f, size = new Vector3(0.9f, 1.6f, 1f), offset = new Vector3(0f, 1f, 0f),
                    lunge = 2.0f, weapon = true },
 
         // COMBO ENDER (the user's call, 2026-10-26): reachable ONLY as the third hit of
