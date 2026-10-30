@@ -4723,3 +4723,14 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
   cut), so it can no longer be doubled. Bjorn's Light was already CutLeft. Table + asset edited by
   hand (Editor closed). Still doubleable Lights: Buwaka (real thrust), Richard and Sensei (Overhead).
 - Compiled with Roslyn and built in batch mode; NOT play-tested.
+
+### 2026-10-30 — Mac and Android builds of v0.4.4
+
+- `Crucible > Build > Mac app` (Mono, universal, unsigned; `Tools/make_mac_zip.py` keeps the exec bits and
+  adds `Open Crucible.command`) and `Crucible > Build > Android APK` (IL2CPP, ARM64, landscape, debug-signed).
+  Both are attached to the v0.4.4 release; the updater only reads `*-Win64.zip`, so neither self-updates.
+- **Build Android in batch mode with the Editor closed.** Inside an Editor that had not loaded the Android
+  module the report said Succeeded and wrote no APK; `FinishBuild` now reports that as `NoOutput`.
+- `Audio/Ambience/wind_01.ogg` fails the Android audio import and counts as the build's 1 error. It is an
+  unreferenced 3.6 KB stub (the game plays `wind_01.wav`). Harmless.
+- Neither build has run on a real device. Android uses the Mobile quality level (`Web_RPAsset`).

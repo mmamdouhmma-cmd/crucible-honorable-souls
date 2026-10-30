@@ -15,6 +15,8 @@ public static class CrucibleBuild
     const string OutDir = "Builds/WebGL";
 
     const string WinDir = "Builds/CrucibleLite-Win64";
+    const string MacDir = "Builds/Crucible-Mac";
+    const string AndroidDir = "Builds/Crucible-Android";
 
     /// <summary>
     /// The Windows app that friends download (Tools/release.cmd zips and publishes this folder). Bump
@@ -44,6 +46,76 @@ public static class CrucibleBuild
         var s = report.summary;
         Debug.Log($"Windows build v{PlayerSettings.bundleVersion} {s.result}: {s.totalSize / (1024 * 1024)} MB, {s.totalErrors} errors -> {Path.GetFullPath(WinDir)}");
         File.WriteAllText(Path.Combine(WinDir, "build_result.txt"), $"{s.result} v{PlayerSettings.bundleVersion} {s.totalSize} {s.totalErrors} {s.totalTime}");
+    }
+
+    /// <summary>
+    /// The Mac app friends download. Mono, because IL2CPP for Mac can only be built on a Mac; universal,
+    /// so it runs on Intel and Apple Silicon. It is unsigned: Tools/make_mac_zip.py keeps the executable
+    /// bits a Windows build would lose and adds the first-run script macOS needs.
+    /// </summary>
+    [MenuItem("Crucible/Build/Mac app")]
+    public static void BuildMac()
+    {
+        EditorUserBuildSettings.SetPlatformSettings("Standalone", "OSXUniversal", "Architecture", "x64ARM64");
+        if (Directory.Exists(MacDir)) Directory.Delete(MacDir, true);
+        Directory.CreateDirectory(MacDir);
+        string app = Path.Combine(MacDir, "Crucible.app");
+        FinishBuild(RunBuild(BuildTarget.StandaloneOSX, app), "Mac", MacDir, Directory.Exists(app));
+    }
+
+    /// <summary>
+    /// The Android APK friends sideload, landscape only, ARM64 (every phone of the last several years).
+    /// Debug-signed: fine for installing by hand, not for a store.
+    /// </summary>
+    [MenuItem("Crucible/Build/Android APK")]
+    public static void BuildAndroid()
+    {
+        PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.honorablesouls.crucible");
+        PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
+        PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.Android, ManagedStrippingLevel.Low);
+        PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+        PlayerSettings.Android.forceInternetPermission = true;
+        PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+        PlayerSettings.allowedAutorotateToPortrait = false;
+        PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+        PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+        PlayerSettings.allowedAutorotateToLandscapeRight = true;
+        EditorUserBuildSettings.buildAppBundle = false;
+        EditorUserBuildSettings.androidBuildSubtarget = MobileTextureSubtarget.ASTC;
+        Directory.CreateDirectory(AndroidDir);
+        string apk = Path.Combine(AndroidDir, "Crucible.apk");
+        if (File.Exists(apk)) File.Delete(apk);
+        var report = RunBuild(BuildTarget.Android, apk);
+        FinishBuild(report, "Android", AndroidDir, File.Exists(apk));
+    }
+
+    static BuildReport RunBuild(BuildTarget target, string path)
+    {
+        string scene = PrepareScene();
+        try
+        {
+            return BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            {
+                scenes = new[] { scene },
+                locationPathName = path,
+                target = target,
+                options = BuildOptions.None,
+            });
+        }
+        finally
+        {
+            RestoreScene();
+        }
+    }
+
+    /// <summary>The report can say Succeeded with nothing written (a module the running Editor never loaded), so the output has the last word.</summary>
+    static void FinishBuild(BuildReport report, string label, string dir, bool outputExists)
+    {
+        var s = report.summary;
+        string result = s.result == BuildResult.Succeeded && !outputExists ? "NoOutput" : s.result.ToString();
+        Debug.Log($"{label} build v{PlayerSettings.bundleVersion} {result}: {s.totalSize / (1024 * 1024)} MB, {s.totalErrors} errors -> {Path.GetFullPath(dir)}");
+        File.WriteAllText(Path.Combine(dir, "build_result.txt"), $"{result} v{PlayerSettings.bundleVersion} {s.totalSize} {s.totalErrors} {s.totalTime}");
+        if (Application.isBatchMode) EditorApplication.Exit(result == "Succeeded" ? 0 : 1);
     }
 
     [MenuItem("Crucible/Build/WebGL (test build)")]
