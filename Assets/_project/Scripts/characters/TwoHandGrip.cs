@@ -153,6 +153,7 @@ public class TwoHandGrip : MonoBehaviour
         Vector3 target = rend != null
             ? new Vector3(opponent.transform.position.x, Mathf.Lerp(rend.bounds.min.y, rend.bounds.max.y, targetHeight), opponent.transform.position.z)
             : opponent.transform.position + Vector3.up * 1.5f;
+        target = me.StrikeAimPoint(target);   // a dodged combo reaches straight ahead
         var shoulder = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
         if (shoulder == null) return;
         Vector3 toTarget = target - shoulder.position;

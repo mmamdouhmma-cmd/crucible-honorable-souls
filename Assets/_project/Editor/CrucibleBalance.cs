@@ -386,7 +386,7 @@ public static class CrucibleBalance
         { "Bjorn_Riposte_Parry",          SwingFlow.Overhead },   // the chop
 
         // Miyamoto: thrust, side cut, overhead; the specials are draw cuts and spins.
-        { "Miyamoto_Light_Thrust",        SwingFlow.Thrust },
+        { "Miyamoto_Light_Thrust",        SwingFlow.CutRight },   // NOT a thrust: plays `great sword slash (3)`, Genghis's Light cut (the user, 2026-10-30)
         { "Miyamoto_Medium_SideSlash",    SwingFlow.CutLeft },
         { "Miyamoto_Heavy_Overhead",      SwingFlow.Overhead },
         { "Miyamoto_Special_Iaijutsu",    SwingFlow.Thrust },     // the double thrust (measured 2026-10-29: no lateral sweep)

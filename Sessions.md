@@ -4706,3 +4706,20 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
   arms thrown up, shield over his head - the CLIP does that, it is not the 2H drag. The user saw it.
 - The GreatSwordPack meta lost Buwaka's take; it was the LAST take and takes carry explicit
   internalIDs, so Bjorn's state reference was unaffected.
+
+### 2026-10-30 — v0.4.4: straight-run cap, dodged combos stop tracking
+
+- **Two same straights max** (`BalanceConfig.MAX_STRAIGHT_RUN` 2, `CombatSystem.sameFlowRun` /
+  `StraightRunFull`): thrust->thrust and overhead->overhead still flow, a third is refused, across
+  string cancels and raw pressure swings. Buwaka's Light thrust x4 had held opponents at spear
+  length: the same-move 1.5 bar is only set in `FinishAttack`, so cancels never tripped it.
+- **A dodged combo stops tracking** (`CombatSystem.TrackingLost`, set in `MarkEvaded`, cleared by a
+  depth-0 swing, i.e. back in neutral): the follow-ups do not turn (`HandleFacing`, startup
+  included), lunge only along their own facing (`Fighter.LungeGap` - the forward projection of the
+  gap, so a sidestep is not chased and a back-step is), and aim straight ahead
+  (`Fighter.StrikeAimPoint`, used by WeaponAim and TwoHandGrip's reach). Landing is then pure
+  geometry: a spin can meet a sidestep, a straight cannot.
+- **Miyamoto's Light is CutRight, not Thrust** (it plays `great sword slash (3)`, Genghis's Light
+  cut), so it can no longer be doubled. Bjorn's Light was already CutLeft. Table + asset edited by
+  hand (Editor closed). Still doubleable Lights: Buwaka (real thrust), Richard and Sensei (Overhead).
+- Compiled with Roslyn and built in batch mode; NOT play-tested.

@@ -93,6 +93,8 @@ public class CombatSystem : MonoBehaviour
                                         // COMBO_PRESSURE_GAP the next swing is combo pressure
     private int comboPressureCount;     // swings in the current pressure sequence (strings included)
     private SwingFlow lastSwingFlow;    // geometry of the last swing, for the flow rule
+    private int sameFlowRun;            // swings of lastSwingFlow back to back in this pressure run
+    private bool trackingLost;          // a swing of this combo was dodged: the rest of it stops tracking
     private float attackLockoutTimer;  // seconds left of the post-string/post-special lockout (every attack)
     private AttackData bannedAttack;   // the move barred by the repeat limit (null = none)
     private float bannedAttackTimer;   // seconds left of that bar
@@ -480,6 +482,8 @@ public class CombatSystem : MonoBehaviour
         string refusal = null;
         if (!Flows(currentAttack.SwingFlow, next.SwingFlow))
             refusal = $"{next.AttackName} ({next.SwingFlow}) does not flow from a {currentAttack.SwingFlow}";
+        else if (StraightRunFull(next))
+            refusal = $"{next.AttackName} would be {next.SwingFlow} number {sameFlowRun + 1} in a row (limit {BalanceConfig.MAX_STRAIGHT_RUN})";
         else if (bannedAttackTimer > 0f && next == bannedAttack)
             refusal = $"{next.AttackName} is barred {bannedAttackTimer:0.00}s more (thrown {BalanceConfig.SAME_ATTACK_CHAIN_LIMIT}x in a row)";
         if (refusal != null)
@@ -563,6 +567,25 @@ public class CombatSystem : MonoBehaviour
                    (last == SwingFlow.OverheadRight && next == SwingFlow.SpinRight);
         return true;
     }
+
+    /// <summary>
+    /// True when <paramref name="next"/> would be one straight too many: the same geometry as the
+    /// last swing, which has already run MAX_STRAIGHT_RUN times back to back. Only straights can
+    /// repeat at all (see Flows), so in practice this is the third thrust or third overhead.
+    /// </summary>
+    private bool StraightRunFull(AttackData next)
+    {
+        return next.SwingFlow == lastSwingFlow && sameFlowRun >= BalanceConfig.MAX_STRAIGHT_RUN;
+    }
+
+    /// <summary>
+    /// True while this fighter is swinging a combo one of whose swings was DODGED (the user's call,
+    /// 2026-10-30): for the rest of that combo he stops turning, lunging and aiming at the opponent,
+    /// and every follow-up goes out along the line he was already facing. A spin can still catch a
+    /// sidestep and a straight can still catch a back-step, but a straight cannot chase a sidestep.
+    /// Cleared the moment he returns to neutral - the next swing from there squares up as usual.
+    /// </summary>
+    public bool TrackingLost => isAttacking && trackingLost;
 
     /// <summary>
     /// The move a press throws from neutral: the special on that button when the modifier is held,
@@ -653,7 +676,10 @@ public class CombatSystem : MonoBehaviour
         // lengthens the pressure sequence; a swing after a real pause starts a fresh one. The
         // geometry is remembered for the flow rule in TryAttack.
         comboPressureCount = inCombo ? comboPressureCount + 1 : 1;
+        sameFlowRun = inCombo && attack.SwingFlow == lastSwingFlow ? sameFlowRun + 1 : 1;
         lastSwingFlow = attack.SwingFlow;
+        // A swing from neutral squares up again; a string link inherits a dodged combo's lost track.
+        if (depth == 0) trackingLost = false;
         if (inCombo && debugLogs)
         {
             Debug.Log($"P{fighter.PlayerNumber}: combo pressure {comboPressureCount} - {attack.AttackName} pays {spent} stamina " +
@@ -768,6 +794,11 @@ public class CombatSystem : MonoBehaviour
         if (!Flows(lastSwingFlow, found.SwingFlow))
         {
             Debug.Log($"P{pn}: BLOCKED - {found.AttackName} ({found.SwingFlow}) does not flow from a {lastSwingFlow}");
+            return false;
+        }
+        if (StraightRunFull(found))
+        {
+            Debug.Log($"P{pn}: BLOCKED - {found.AttackName} would be {found.SwingFlow} number {sameFlowRun + 1} in a row (limit {BalanceConfig.MAX_STRAIGHT_RUN})");
             return false;
         }
     }
@@ -989,6 +1020,8 @@ public class CombatSystem : MonoBehaviour
     private void MarkEvaded()
     {
         swingEvaded = true;
+        if (!trackingLost && debugLogs) Debug.Log($"P{fighter.PlayerNumber}: {currentAttack?.AttackName} dodged - the rest of this combo stops tracking");
+        trackingLost = true;
         CrucibleAudio.Combat(CrucibleAudio.CombatSound.Dodge,
                              currentAttack != null ? currentAttack.AttackType : AttackType.Medium);
         if (evadedExtraRecovery <= 0f)
@@ -1011,6 +1044,8 @@ public class CombatSystem : MonoBehaviour
         chainCount = 0;
         comboGapTimer = 999f;   // the first swing of a fresh match is never combo pressure
         comboPressureCount = 0;
+        sameFlowRun = 0;
+        trackingLost = false;
         attackLockoutTimer = 0f;
         bannedAttack = null;
         bannedAttackTimer = 0f;

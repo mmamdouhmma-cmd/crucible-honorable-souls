@@ -210,6 +210,8 @@ public class WeaponAim : MonoBehaviour
             target = new Vector3(opponent.transform.position.x, Mathf.Lerp(b.min.y, b.max.y, targetHeight), opponent.transform.position.z);
         }
         else target = opponent.transform.position + Vector3.up * 1.5f;
+        // A dodged combo aims straight ahead, not at where the dodger went.
+        target = me.StrikeAimPoint(target);
         var atk = combat.CurrentAttack;
         AimMode mode = atk != null ? atk.AimMode : AimMode.Full;
         if (mode == AimMode.Off) { ApplyRoll(atk, w); return; }

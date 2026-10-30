@@ -993,8 +993,7 @@ private void HandleAttackLunge()
     if (!lungeStarted)
     {
         lungeStarted = true;
-        Vector3 gap = opponent.transform.position - transform.position;
-        gap.y = 0f;
+        Vector3 gap = LungeGap();
         float dist = gap.magnitude;
         lungeTotal = Mathf.Clamp(dist - a.LungeStopDistance, 0f, a.LungeMaxDistance);
         lungeCovered = 0f;
@@ -1004,8 +1003,7 @@ private void HandleAttackLunge()
             Debug.Log($"P{playerNumber}: {a.AttackName} lunge {lungeTotal:0.00} units (gap {dist:0.00} -> {a.LungeStopDistance:0.00}) over {lungeDuration:0.00}s");
     }
     if (lungeTotal <= 0f || lungeCovered >= lungeTotal || IsInHitstun) return;
-    Vector3 toOpp = opponent.transform.position - transform.position;
-    toOpp.y = 0f;
+    Vector3 toOpp = LungeGap();
     if (toOpp.sqrMagnitude < 1e-4f) return;
     // Ease-out: fast off the mark, settling into the strike (quadratic), so it reads as a step, not a slide.
     float u = lungeDuration > 1e-4f ? Mathf.Clamp01(combatSystem.AttackTime / lungeDuration) : 1f;
@@ -1016,6 +1014,39 @@ private void HandleAttackLunge()
     if (step <= 0f) return;
     transform.position += toOpp.normalized * step;
     lungeCovered += step;
+}
+
+/// <summary>
+/// The flat gap a lunge closes: straight at the opponent, or - once a combo has been dodged - only
+/// the part of it that lies along this fighter's own facing, so the step goes straight ahead and
+/// stops short of someone who sidestepped (a back-step is still caught).
+/// </summary>
+private Vector3 LungeGap()
+{
+    Vector3 gap = opponent.transform.position - transform.position;
+    gap.y = 0f;
+    if (combatSystem == null || !combatSystem.TrackingLost) return gap;
+    Vector3 fwd = transform.forward; fwd.y = 0f;
+    if (fwd.sqrMagnitude < 1e-6f) return gap;
+    fwd.Normalize();
+    return fwd * Mathf.Max(0f, Vector3.Dot(gap, fwd));
+}
+
+/// <summary>
+/// Where a strike should aim for <paramref name="target"/>: the target itself, or - once a combo
+/// has been dodged - the point at the same range and height straight ahead of this fighter.
+/// </summary>
+public Vector3 StrikeAimPoint(Vector3 target)
+{
+    if (combatSystem == null || !combatSystem.TrackingLost) return target;
+    Vector3 gap = target - transform.position;
+    float y = target.y;
+    gap.y = 0f;
+    Vector3 fwd = transform.forward; fwd.y = 0f;
+    if (fwd.sqrMagnitude < 1e-6f) return target;
+    Vector3 p = transform.position + fwd.normalized * gap.magnitude;
+    p.y = y;
+    return p;
 }
 
 private void HandleKnockback()
@@ -1170,6 +1201,9 @@ private void HandleFacing()
     // Facing is locked from the active frames on; during the startup the attacker still squares up so
     // every strike, however the clip swings, is thrown at the opponent's centre.
     if (combatSystem != null && combatSystem.IsAttacking && !InAttackStartup()) return;
+    // A combo that has been dodged stops squaring up, startup included: the follow-ups go out along
+    // the line the first swing was thrown on (see CombatSystem.TrackingLost).
+    if (combatSystem != null && combatSystem.TrackingLost) return;
     float speed = (isDashing || dashCounterTimer > 0f) ? dodgeTurnSpeed : turnSpeed;
 
     Vector3 toOpponent = opponent.transform.position - transform.position;

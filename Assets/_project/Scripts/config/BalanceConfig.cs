@@ -213,6 +213,11 @@ public static class BalanceConfig
     // The authored strings cap at MAX_STRING_LENGTH (3); a FREE-FORM run of quick swings caps
     // here (the user's call, 2026-10-24) - the 5th back-to-back swing is refused until a pause.
     public const int FREEFORM_COMBO_CAP = 4;
+    // Two STRAIGHTS of the same geometry may follow each other (thrust -> thrust, overhead ->
+    // overhead), but never a third (the user's call, 2026-10-30: Buwaka's light thrust thrown four
+    // times in a row held the opponent at spear's length). Counted across string links AND raw
+    // pressure swings alike.
+    public const int MAX_STRAIGHT_RUN = 2;
 
     // A press that arrives while the fighter is mid-attack is held for this long and comes out on
     // the first frame the cancel window allows, so a follow-up pressed slightly early is not eaten.
