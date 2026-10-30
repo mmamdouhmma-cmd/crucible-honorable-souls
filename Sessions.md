@@ -4734,3 +4734,21 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 - `Audio/Ambience/wind_01.ogg` fails the Android audio import and counts as the build's 1 error. It is an
   unreferenced 3.6 KB stub (the game plays `wind_01.wav`). Harmless.
 - Neither build has run on a real device. Android uses the Mobile quality level (`Web_RPAsset`).
+
+### 2026-10-30 — Phone controls, Game Settings, dead fighters stop hitting
+
+- Android report: stuck at character select, tiny rows, a dying fighter's swing killing the winner.
+- Character and arena select got touch arrows, swipe, SELECT and BACK; BACK reads MENU when nothing is left
+  to undo. The fight pad is the face-button layout with eight dashes, sizes in Settings.
+- `Screen.MatchSetup` holds duel time and the three percentages for all platforms. Time-up decision (the
+  bigger share of health wins, else draw) and the 50-200% range were my calls. Practice skips the screen.
+- Hit a real bug late: the `<` of a stepper sat in the zone that raises the value. Fixed with fixed `-` / `+`
+  caps; added hold-to-repeat (50 to 200 was 30 taps), a fixed BACK, a scroll bar, `TouchScreenKeyboard`, and
+  tap-to-cancel for a rebind.
+- Verified in the Editor with touch mode forced at 1233x505: button hits, hold to both limits, drag scroll,
+  the select flow, clock, percentages, time win, draw, the dead fighter's heavy doing nothing.
+- NOT verified: anything on a real phone, the touch keyboard (`isSupported` is false in the Editor), the
+  online rules and clock against a peer, and P2's half of the split select by touch.
+- A dropped `editor_play` leaves the Editor stopped and later evals still run: `StartMatch` then throws a
+  NullReference on `settings`. Check `playMode` before blaming the code.
+- Battle Now on a touch device goes straight to One Player character select; the Two Players row stays on Windows and Mac. Compiled; `IsTouchDevice` is false in the Editor, so the phone branch has not run.

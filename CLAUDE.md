@@ -1624,6 +1624,29 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `Tools/release.cmd` (Windows tar.exe for the zip - Git Bash's tar writes a TAR). The server window
   says SERVER IS ONLINE when published; stop it by typing `stop` + Enter, Ctrl+C, or closing it. The first public
   build has to be downloaded by hand; 0.1.0 builds have no updater.
+- **Every fight starts from GAME SETTINGS (`Screen.MatchSetup`, 2026-10-30)**: speed, regen, Duel time
+  (1-15 min) and Damage / Health / Stamina 50-200% in 5s, held in `Scripts/core/DuelRules.cs` (`DuelRules.Active`,
+  saved in `SettingsData.duel`, carried in the online `R` and `O` lines). Practice skips it and always
+  runs on default rules. The clock runs on unscaled time on the host or local game; the guest follows
+  the `S` frame. At time-up the bigger share of health left wins, equal shares draw (`EndOnTime`, online
+  line `T`). `ShowMatchOver(null, ...)` is a draw. `StartMatch` must set `DuelRules.Active` BEFORE
+  `PlaceFighters`, which builds the bars.
+- **A dead fighter cannot land a blow**: `Fighter.NotifyDeath` calls `CombatSystem.StopForMatchEnd`,
+  `ResolveHit` returns if either side is dead, and the time-up does the same to both fighters.
+- **Phone menus are their own layout (`GameMenu.BigRows`)**: rows 88 tall (62 on dense lists) in a
+  `RectMask2D`, finger-scrolled through `SetScrollPosition` (`scroll` stays the whole-row index, `scrollFrac`
+  the slide), with a scroll bar and a fixed top-left `< BACK` (`LayoutTouchBack`). Rows use `MenuTap`, not
+  Button. An adjustable row draws fixed `-` / `+` caps (`<` / `>` for choices); a press past `ValueColumn`
+  steps it, and `Item.repeats` rows repeat while held. **Set `repeats` on numbers only**, a held toggle
+  flip-flops. Character and arena select have `SelectTouch`: arrows, swipe, SELECT, BACK, feeding
+  `InputManager.PushMenuTouch`, so a tap is the same press as Cross. Fields open `TouchScreenKeyboard`.
+- **The touch fight pad** (`TouchControls`): walk + Special on one side; the four PlayStation face buttons
+  (Triangle Heavy, Cross Medium, Square Light, Circle Parry/Block) with the 8 dashes above on the other.
+  The guard button is a hold: raising it opens the parry window. Sizes are `SetSizes` from Settings, and a
+  column that would hit the health bars shrinks to fit. Button art is generated from distance functions.
+- **Test a touch control at the place it is DRAWN.** `EventSystem.RaycastAll` at the glyph's world centre
+  plus `ExecuteEvents` down/up/click. A test that tapped by fraction of row width passed while the drawn
+  `<` actually raised the value.
 - Known gaps carried forward: the AI cannot parry, throw a special or dial a string on purpose;
   the web build is uncompressed on purpose; hosting means the laptop is the server (relay +
   quick tunnel, new URL each restart); `PlayProbe`, `BladeTrace`

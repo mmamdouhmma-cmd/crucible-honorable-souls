@@ -126,6 +126,34 @@ public class FightHud : MonoBehaviour
 
     public bool IsVisible => canvasObject == null || canvasObject.activeSelf;
 
+    private Text clockText;
+
+    /// <summary>The duel clock between the two health bars; null or empty hides it.</summary>
+    public void SetClock(string text, bool urgent)
+    {
+        bool show = !string.IsNullOrEmpty(text);
+        if (clockText == null)
+        {
+            if (!show || canvasObject == null) return;
+            RectTransform rect = CreateRect("Duel Clock", canvasObject.transform);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = new Vector2(0f, -36f);
+            rect.sizeDelta = new Vector2(320f, 76f);
+            clockText = rect.gameObject.AddComponent<Text>();
+            clockText.font = font;
+            clockText.fontSize = 58;
+            clockText.fontStyle = FontStyle.Bold;
+            clockText.alignment = TextAnchor.MiddleCenter;
+            clockText.raycastTarget = false;
+            Outline outline = rect.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.85f);
+        }
+        if (clockText.gameObject.activeSelf != show) clockText.gameObject.SetActive(show);
+        if (!show) return;
+        clockText.text = text;
+        clockText.color = urgent ? new Color(0.95f, 0.3f, 0.2f) : new Color(0.95f, 0.9f, 0.8f);
+    }
+
     public void Rebuild()
     {
         bool wasVisible = IsVisible;      // a rebuild during a menu must not pop the bars back on

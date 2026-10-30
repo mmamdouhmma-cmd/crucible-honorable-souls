@@ -73,6 +73,11 @@ public class NetSession : MonoBehaviour
     /// <summary>Guest: the host's match rules for the coming fight.</summary>
     public float RulesSpeed { get; private set; } = 1f;
     public bool RulesRegen { get; private set; } = true;
+    public DuelRules RulesDuel { get; private set; } = new DuelRules();
+    /// <summary>Seconds left on the duel clock, -1 = no clock. The host sets it; state frames carry it to the guest.</summary>
+    public float DuelClock { get; set; } = -1f;
+    /// <summary>Guest: the host's clock ran out. Arg = the winner's player number, 0 = a draw.</summary>
+    public event Action<int> OnTimeUp;
     /// <summary>Seconds without a word from the other player before they count as disconnected.</summary>
     public const float PeerTimeout = 8f;
     float lastPeerHeard, nextHeartbeat;
@@ -308,19 +313,22 @@ public class NetSession : MonoBehaviour
     // ---------------------------------------------------------------- match hooks (called by GameMenu)
 
     /// <summary>Host: the fight begins. Guest input drives Player 2 through the InputManager's override slot.</summary>
-    public void HostStartMatch(int p1, int p2, int arena, float speed, bool regen)
+    public void HostStartMatch(int p1, int p2, int arena, float speed, bool regen, DuelRules duel)
     {
         Bind();
         if (InputManager.Instance != null) InputManager.Instance.SetAi(2, true);
-        Send(string.Format(CultureInfo.InvariantCulture, "R {0} {1} {2} {3:0.##} {4}", p1, p2, arena, speed, regen ? 1 : 0));
+        Send(string.Format(CultureInfo.InvariantCulture, "R {0} {1} {2} {3:0.##} {4} {5}", p1, p2, arena, speed, regen ? 1 : 0, duel.Wire()));
         CurrentPhase = Phase.Playing;
         PeerVote = 0;
         lastPeerHeard = Time.unscaledTime;
     }
 
     /// <summary>Host: the match rules shown in the guest's room (sent on every change and when they join).</summary>
-    public void SendRules(float speed, bool regen) =>
-        Send(string.Format(CultureInfo.InvariantCulture, "O {0:0.##} {1}", speed, regen ? 1 : 0));
+    public void SendRules(float speed, bool regen, DuelRules duel) =>
+        Send(string.Format(CultureInfo.InvariantCulture, "O {0:0.##} {1} {2}", speed, regen ? 1 : 0, duel.Wire()));
+
+    /// <summary>Host: the duel clock ran out. <paramref name="winner"/> = player number, 0 = a draw.</summary>
+    public void SendTimeUp(int winner) => Send("T " + winner);
 
     /// <summary>Host: the pause as it stands. <paramref name="by"/> 1 = host, 2 = guest; used = pauses spent.</summary>
     public void SendPauseState(bool on, int by, int used1, int used2) =>
@@ -564,6 +572,7 @@ public class NetSession : MonoBehaviour
     {
         var sb = new System.Text.StringBuilder("S ");
         sb.Append(Time.timeScale.ToString("0.##", CultureInfo.InvariantCulture));
+        sb.Append(' ').Append(DuelClock.ToString("0.#", CultureInfo.InvariantCulture));
         for (int i = 0; i < fighters.Length; i++)
         {
             var f = fighters[i]; var a = animators[i];
@@ -659,7 +668,7 @@ public class NetSession : MonoBehaviour
         if (msg.StartsWith("O "))
         {
             var o = msg.Split(' ');
-            if (o.Length > 2) { RulesSpeed = F(o[1]); RulesRegen = o[2] == "1"; }
+            if (o.Length > 2) { RulesSpeed = F(o[1]); RulesRegen = o[2] == "1"; RulesDuel = DuelRules.Parse(o, 3); }
             return;
         }
         if (msg.StartsWith("ERR")) { Status = msg; return; }
@@ -694,8 +703,10 @@ public class NetSession : MonoBehaviour
                 if (CurrentPhase != Phase.Playing) return;
                 var parts = msg.Substring(2).Split('|');
                 // the host's clock: its game speed, or 0 while paused - the guest's animators follow it
-                float ts = F(parts[0].Trim());
+                var head = parts[0].Trim().Split(' ');
+                float ts = F(head[0]);
                 if (ts >= 0f && ts <= 4f) Time.timeScale = ts;
+                if (head.Length > 1) DuelClock = F(head[1]);
                 for (int i = 1; i < parts.Length && i - 1 < fighters.Length; i++)
                 {
                     var p = parts[i].Trim().Split(' ');
@@ -727,10 +738,11 @@ public class NetSession : MonoBehaviour
                 StartP1 = p.Length > 1 && int.TryParse(p[1], out int a1) ? a1 : -1;
                 StartP2 = p.Length > 2 && int.TryParse(p[2], out int a2) ? a2 : -1;
                 StartArena = p.Length > 3 && int.TryParse(p[3], out int a3) ? a3 : -1;
-                if (p.Length > 5) { RulesSpeed = F(p[4]); RulesRegen = p[5] == "1"; }
+                if (p.Length > 5) { RulesSpeed = F(p[4]); RulesRegen = p[5] == "1"; RulesDuel = DuelRules.Parse(p, 6); }
                 OnStartReceived?.Invoke();
             }
             else if (msg.StartsWith("E ")) { if (CurrentPhase == Phase.Playing) PlayForwarded(msg); }
+            else if (msg.StartsWith("T ")) { if (CurrentPhase == Phase.Playing) OnTimeUp?.Invoke((int)F(msg.Substring(2).Trim())); }
             else if (msg.StartsWith("A ")) OnArenaReceived?.Invoke((int)F(msg.Substring(2).Trim()));
             else if (msg == "F") OnVersusReceived?.Invoke();
             else if (msg == "G") { EnterSelectPhase(); OnSelectReceived?.Invoke(); }

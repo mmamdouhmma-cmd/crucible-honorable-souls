@@ -400,7 +400,7 @@ public class Fighter : MonoBehaviour
 
         if (fighterData != null)
         {
-            stats = new FighterStats(MaxHealth, MaxStamina, Armor);
+            stats = new FighterStats(DuelRules.Active.Health(MaxHealth), DuelRules.Active.Stamina(MaxStamina), Armor);
         }
 
         // Starting side based on player number; HandleFacing keeps it up to date after that
@@ -807,6 +807,9 @@ public class Fighter : MonoBehaviour
     {
         if (isDead) return;
         isDead = true;
+        // A dead man's swing dies with him: left running, it armed its hitbox during the kill shot
+        // and could land on the winner, killing him too.
+        if (combatSystem != null) combatSystem.StopForMatchEnd();
         isBlocking = false;
         isDashing = false;
         isRunning = false;
@@ -879,7 +882,7 @@ private float lungeDuration; // seconds: startup + half the active window, eased
 /// <summary>Fresh stats, no dash/knockback/block/attack, back on the spawn mark (new match or back to the menu).</summary>
 public void ResetForMatch(Vector3 position, Quaternion rotation)
 {
-    stats = new FighterStats(MaxHealth, MaxStamina, Armor);
+    stats = new FighterStats(DuelRules.Active.Health(MaxHealth), DuelRules.Active.Stamina(MaxStamina), Armor);
     isDashing = false;
     isRunning = false;
     dashTimer = 0f;

@@ -735,6 +735,7 @@ public class CombatSystem : MonoBehaviour
     int pn = fighter != null ? fighter.PlayerNumber : 0;
     Debug.Log($"P{pn}: TryAttack({attackType}{(special ? " + SPECIAL" : "")}) called");
 
+    if (fighter != null && fighter.IsDead) { Debug.Log($"P{pn}: BLOCKED - dead"); return false; }
     if (isAttacking)
     {
         // A mid-attack press is not thrown away: if this attack links the button the cancel comes
@@ -744,7 +745,6 @@ public class CombatSystem : MonoBehaviour
         Debug.Log($"P{pn}: buffered {attackType} for {BalanceConfig.INPUT_BUFFER_FRAMES} f - mid-attack");
         return false;
     }
-    if (fighter != null && fighter.IsDead) { Debug.Log($"P{pn}: BLOCKED - dead"); return false; }
     if (inHitstun)   { Debug.Log($"P{pn}: BLOCKED - in hitstun"); return false; }
     if (GuardBreakRecovering) { Debug.Log($"P{pn}: BLOCKED - guard-break recovery, {guardBreakTimer:0.00}s left"); return false; }
     if (attackLockoutTimer > 0f) { Debug.Log($"P{pn}: BLOCKED - chain lockout, {attackLockoutTimer:0.00}s left"); return false; }
@@ -1203,6 +1203,7 @@ public class CombatSystem : MonoBehaviour
     {
         if (target == null || currentAttack == null) return;
         if (target.Stats == null || fighter == null || fighter.fighterData == null) return;
+        if (fighter.IsDead || target.IsDead) return;   // the fight is decided: nothing lands after that
 
         // Already judged a miss when the hitbox armed: a glancing overlap on the way out doesn't count.
         if (swingEvaded)
@@ -1304,6 +1305,7 @@ public class CombatSystem : MonoBehaviour
         // Thrown from under the low-stamina line: the damage cut is at least as deep as the cost
         // cut, so running the bar down can never IMPROVE damage-per-stamina (Plan_Balance 2.3).
         if (currentAttackWeakened) bonus *= BalanceConfig.WEAKENED_DAMAGE_MULTIPLIER;
+        bonus *= DuelRules.Active.DamageScale;   // the Game Settings screen's Damage %
 
         int finalDamage = DamageCalculator.CalculateDamage(
             currentAttack.Damage,
@@ -1603,6 +1605,14 @@ public class CombatSystem : MonoBehaviour
             if (match) return library[i];
         }
         return null;
+    }
+
+    /// <summary>The fight is over for this fighter (he died, or time ran out): drops the swing and any buffered press.</summary>
+    public void StopForMatchEnd()
+    {
+        hasBufferedInput = false;
+        bufferTimer = 0f;
+        if (isAttacking) EndAttack("STOPPED - the fight is over");
     }
 
     private void EndAttack(string reason = "ENDED")

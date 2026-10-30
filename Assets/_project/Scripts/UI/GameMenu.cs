@@ -36,6 +36,7 @@ public class GameMenu : MonoBehaviour
         PickDevices,    // 2-player: who holds what (appended - keep the order)
         Records,        // the saved-fights library on the main menu (appended - keep the order)
         OnlineHostSetup, OnlineCode, OnlineGuest,   // online lobby (appended - keep the order)
+        MatchSetup,     // Game Settings, the last stop before a fight (appended - keep the order)
     }
 
     /// <summary>Which path through the select screens we are on.</summary>
@@ -53,6 +54,8 @@ public class GameMenu : MonoBehaviour
         public bool healthRegen = true;   // passive hp per second; dodge/parry heals are separate
         public int padPlayer = 2;
         public int touchButtons = 0;   // 0 auto (touch devices only), 1 always on, 2 off
+        public int touchMoveSize = 100, touchAttackSize = 100, touchDashSize = 100;   // percent of normal
+        public DuelRules duel = new DuelRules();
     }
 
     class Item
@@ -62,6 +65,7 @@ public class GameMenu : MonoBehaviour
         public Func<string> value2;     // optional second column (controller binding)
         public Action confirm;
         public Action<int> adjust;      // left (-1) / right (+1)
+        public bool repeats;            // a number: holding - or + on a touch screen keeps stepping
         public bool header;             // not selectable
         public bool quiet;              // header drawn small and dim (body copy)
         public FieldSpec field;         // optional: Confirm types into this row
@@ -74,6 +78,8 @@ public class GameMenu : MonoBehaviour
         public Image back;
         public Image gem;
         public Text label, value, value2;
+        public RectTransform stepDown, stepUp;   // the touch - and + of an adjustable row
+        public Text stepDownText, stepUpText;
         public float slide;             // entrance animation, 0..1
     }
 
@@ -216,6 +222,38 @@ public class GameMenu : MonoBehaviour
     int selected, scroll, visibleRows = 16;
     float rowHeight = 46f, rowFont = 28f;
 
+    // Finger scrolling. `scroll` stays the whole-row index everything else uses; scrollFrac is how far
+    // past it a drag has slid the rows, and rowsRoot carries that offset inside the clip.
+    RectTransform rowsRoot;
+    float scrollFrac, scrollFling;
+    bool scrollDragging;
+
+    // The on-screen buttons of the character and arena select, which have no rows to tap.
+    class SelectPad { public RectTransform left, right, select, back; public Text backText; }
+    RectTransform selectTouch;
+    readonly SelectPad[] selectPads = new SelectPad[2];
+    readonly float[] swipeTravel = new float[3];
+    readonly bool[] swipeStepped = new bool[3];
+
+    // Holding a - or +.
+    int holdDir;
+    float holdNext;
+    int holdSteps;
+    bool holdFired;
+    const float HoldDelay = 0.4f, HoldEvery = 0.09f, HoldFastEvery = 0.04f;
+    const int HoldFastAfter = 10;
+
+    RectTransform touchBackButton, scrollBar;
+    TouchScreenKeyboard touchKeyboard;
+
+    const float MenuTouchArrow = 170f;
+    const float SwipeStep = 170f;      // canvas units of finger travel per fighter
+    const float SwipeMinimum = 60f;    // a shorter flick still counts as one step
+    const int TouchSizeMin = 60, TouchSizeMax = 150, TouchSizeStep = 10;
+
+    /// <summary>Thumb-sized menus: true on any device with the on-screen pad, even if it is switched off in Settings.</summary>
+    static bool BigRows => TouchControls.IsTouchDevice || TouchControls.WantsTouch;
+
     RectTransform bootView, selectView, arenaView, vsView;
     Text bootPrompt, bootTitle;
     RawImage bootLogo;
@@ -307,6 +345,8 @@ public class GameMenu : MonoBehaviour
                 onlineSpeed = Net.RulesSpeed;
                 onlineRegen = Net.RulesRegen;
                 Fighter.PassiveRegenOn = onlineRegen;
+                DuelRules.Active = Net.RulesDuel;
+                StartDuelClock();
                 ResetOnlineMatchState();
                 SyncSpeed();
                 if (Net.StartP1 >= 0 && Net.StartP2 >= 0) ApplySides(Net.StartP1, Net.StartP2);
@@ -344,9 +384,10 @@ public class GameMenu : MonoBehaviour
                     ResumeLocal();
                 }
             };
+            Net.OnTimeUp += winner => { if (netRole == NetSession.Role.Guest && inMatch) EndOnTime(winner); };
             Net.OnPeerJoined += () =>
             {
-                Net.SendRules(onlineSpeed, onlineRegen);
+                Net.SendRules(onlineSpeed, onlineRegen, settings.duel);
                 Notice("");
                 if (screen == Screen.CharSelect) RefreshCircleCards();
             };
@@ -385,7 +426,7 @@ public class GameMenu : MonoBehaviour
                 if (netRole == NetSession.Role.None) return;
                 bool serverDown = Net.CurrentPhase == NetSession.Phase.Failed;
                 bool lostContact = Net.Status.StartsWith("Lost contact");
-                bool selecting = !inMatch && (screen == Screen.CharSelect || screen == Screen.ArenaSelect || screen == Screen.Vs);
+                bool selecting = !inMatch && (screen == Screen.CharSelect || screen == Screen.ArenaSelect || screen == Screen.MatchSetup || screen == Screen.Vs);
                 // A host between fights keeps the room open: back to the select, waiting for the next player.
                 if (selecting && netRole == NetSession.Role.Host && Net.CurrentRole == NetSession.Role.Host && !serverDown)
                 {
@@ -431,6 +472,8 @@ public class GameMenu : MonoBehaviour
         if (inputGuard > 0f) inputGuard -= dt;
 
         AnimateRows(dt);
+        UpdateRowScroll(dt);
+        ShowDuelClock();
         if (screen == Screen.Vs) TrackPlates(vsCards, -385f);   // select cards are fixed to their halves now
 
         var im = InputManager.Instance;
@@ -440,6 +483,7 @@ public class GameMenu : MonoBehaviour
         {
             if (inMatch && im.PausePressed()) { Pause(); return; }
             CheckKO();
+            TickDuelClock(dt);
             return;
         }
 
@@ -455,6 +499,11 @@ public class GameMenu : MonoBehaviour
         {
             nextOnlineRefresh = Time.unscaledTime + 0.25f;   // the pause countdown
             Rebuild();
+        }
+        if (screen == Screen.ArenaSelect && netRole == NetSession.Role.Guest && Time.unscaledTime >= nextOnlineRefresh)
+        {
+            nextOnlineRefresh = Time.unscaledTime + 0.25f;   // the host's rules, live
+            subtitle.text = OnlineSelectSubtitle();
         }
         if (screen == Screen.Main && GameUpdater.Instance != null && Time.unscaledTime >= nextOnlineRefresh &&
             (GameUpdater.Instance.Current == GameUpdater.State.Checking || GameUpdater.Instance.Current == GameUpdater.State.Downloading))
@@ -634,6 +683,9 @@ public class GameMenu : MonoBehaviour
         matchSerial++;
         onlineVote = 0;
 
+        // Before PlaceFighters: that is what builds the fighters' bars from these percentages.
+        DuelRules.Active = flow == Flow.Practice ? new DuelRules() : settings.duel;
+        StartDuelClock();
         if (ArenaDirectory.Instance != null) ArenaDirectory.Instance.Select(arenaChoice);
         PlaceFighters();
         SetAi(false, AiController.Rules.Full);     // the computer wakes on FIGHT, with the players
@@ -647,7 +699,7 @@ public class GameMenu : MonoBehaviour
         }
         else practice.End();
 
-        if (netRole == NetSession.Role.Host) Net?.HostStartMatch(p1Character, p2Character, arenaChoice, onlineSpeed, onlineRegen);
+        if (netRole == NetSession.Role.Host) Net?.HostStartMatch(p1Character, p2Character, arenaChoice, onlineSpeed, onlineRegen, settings.duel);
         Fighter.PassiveRegenOn = netRole == NetSession.Role.None ? settings.healthRegen : onlineRegen;
         ResetOnlineMatchState();
         SyncSpeed();
@@ -729,6 +781,7 @@ public class GameMenu : MonoBehaviour
     void EndMatchToMenu()
     {
         inMatch = false;
+        duelClock = false;
         // Leaving during the count-in used to strand the coroutine (it only counts down while the
         // match is on screen), so "FIGHT" stayed up over the main menu until the next fight.
         if (countIn != null) { StopCoroutine(countIn); countIn = null; }
@@ -824,6 +877,57 @@ public class GameMenu : MonoBehaviour
         }
     }
 
+    void StartDuelClock()
+    {
+        duelClock = DuelRules.Active.timed;
+        duelLeft = DuelRules.Active.minutes * 60f;
+        if (Net != null) Net.DuelClock = duelClock ? duelLeft : -1f;
+    }
+
+    /// <summary>Runs the clock on the side that owns it. A guest only follows the host's number.</summary>
+    void TickDuelClock(float dt)
+    {
+        if (!inMatch || !duelClock) return;
+        if (netRole == NetSession.Role.Guest) { if (Net != null && Net.DuelClock >= 0f) duelLeft = Net.DuelClock; return; }
+        duelLeft = Mathf.Max(0f, duelLeft - dt);
+        if (netRole == NetSession.Role.Host) Net.DuelClock = duelLeft;
+        if (duelLeft > 0f) return;
+
+        // Time: the bigger share of health left wins, equal shares are a draw.
+        float a = P1Fighter.Stats.currentHealth / (float)P1Fighter.Stats.maxHealth;
+        float b = P2Fighter.Stats.currentHealth / (float)P2Fighter.Stats.maxHealth;
+        int winner = Mathf.Approximately(a, b) ? 0 : a > b ? 1 : 2;
+        if (netRole == NetSession.Role.Host) Net.SendTimeUp(winner);
+        EndOnTime(winner);
+    }
+
+    void ShowDuelClock()
+    {
+        if (fightHud == null) fightHud = FindAnyObjectByType<FightHud>();
+        if (fightHud == null) return;
+        bool show = duelClock && screen == Screen.None;
+        int left = Mathf.CeilToInt(duelLeft);
+        fightHud.SetClock(show ? $"{left / 60}:{left % 60:00}" : null, left <= 10);
+    }
+
+    /// <summary>Ends the fight on the clock. <paramref name="winner"/> = player number, 0 = a draw.</summary>
+    void EndOnTime(int winner)
+    {
+        inMatch = false;
+        if (countIn != null) { StopCoroutine(countIn); countIn = null; }
+        // Freezing a Fighter does not stop his CombatSystem, so a swing would still land after the bell.
+        foreach (var f in Everyone()) if (f.gameObject.activeInHierarchy && f.Combat != null) f.Combat.StopForMatchEnd();
+        FreezeFighters(true);
+        SetAi(false, AiController.Rules.Full);
+        if (TouchControls.Instance != null) TouchControls.Instance.Hide();
+        if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
+        Fighter standing = winner == 1 ? P1Fighter : winner == 2 ? P2Fighter : null;
+        Fighter beaten = winner == 1 ? P2Fighter : winner == 2 ? P1Fighter : null;
+        if (stage != null) stage.Announce("Time\n" + (standing != null ? standing.CharacterName + "\nwins" : "Draw"),
+                                          MenuArt.BloodLit, 2.0f, null, 140);
+        StartCoroutine(ShowMatchOver(beaten, matchSerial));
+    }
+
     IEnumerator ShowMatchOver(Fighter loser, int serial)
     {
         yield return new WaitForSecondsRealtime(1.9f);
@@ -831,7 +935,8 @@ public class GameMenu : MonoBehaviour
         // Stop here, not at the K.O. itself: the death and the kill shot belong in the record.
         if (ReplayRecorder.Instance != null) ReplayRecorder.Instance.StopRecording();
         Fighter winner = null;
-        foreach (var f in Everyone()) if (f != loser && f.gameObject.activeInHierarchy) winner = f;
+        if (loser != null)   // no loser = a draw on the clock
+            foreach (var f in Everyone()) if (f != loser && f.gameObject.activeInHierarchy) winner = f;
         winnerName = winner != null ? winner.CharacterName : "Nobody";
         winnerNumber = winner != null ? winner.PlayerNumber : 0;
         // Every finished fight lands in the records library, so the main menu can replay it later.
@@ -841,7 +946,7 @@ public class GameMenu : MonoBehaviour
             string arena = ArenaDirectory.Instance != null ? ArenaDirectory.Instance.NameOf(arenaChoice) : "";
             string a = roster[p1Character] != null ? roster[p1Character].CharacterName : "?";
             string b = roster[p2Character] != null ? roster[p2Character].CharacterName : "?";
-            ReplayRecorder.Instance.SaveRecord($"{a} vs {b} - {winnerName} wins", arena);
+            ReplayRecorder.Instance.SaveRecord($"{a} vs {b} - {(winner != null ? winnerName + " wins" : "draw")}", arena);
         }
         history.Clear();
         Show(Screen.MatchOver);
@@ -867,6 +972,7 @@ public class GameMenu : MonoBehaviour
             try { settings = JsonUtility.FromJson<SettingsData>(json) ?? new SettingsData(); }
             catch { settings = new SettingsData(); }
         }
+        if (settings.duel == null) settings.duel = new DuelRules();
     }
 
     void SaveSettings()
@@ -911,6 +1017,8 @@ public class GameMenu : MonoBehaviour
         AudioListener.volume = Mathf.Clamp01(settings.volume);
         CrucibleAudio.SetVolumes(settings.musicVolume, settings.effectsVolume, settings.voiceVolume);
         TouchControls.SetMode(settings.touchButtons);
+        if (TouchControls.Instance != null)
+            TouchControls.Instance.SetSizes(settings.touchMoveSize / 100f, settings.touchAttackSize / 100f, settings.touchDashSize / 100f);
         if (netRole == NetSession.Role.None) Fighter.PassiveRegenOn = settings.healthRegen;
         var dts = GetComponent<DebugTimeScale>();
         if (dts != null) { dts.timeScale = GameSpeed(); dts.enabled = true; }
@@ -972,7 +1080,8 @@ public class GameMenu : MonoBehaviour
             && s != Screen.Replay && s != Screen.Records && !rebuilding && !inMatch)
             ApplySides(p1Character, p2Character);
         if (s != Screen.MatchOver) { confirmAsk = null; confirmYes = null; }
-        if (!rebuilding && s != screen) fieldEdit = null;
+        if (!rebuilding && s != screen) { fieldEdit = null; CloseTouchKeyboard(); }
+        if (!rebuilding) { SetScrollFrac(0f); scrollFling = 0f; InputManager.Instance?.ClearMenuTouches(); }
         // The kill-shot darkness holds through the K.O. screen (the corpse under a black sky IS
         // the shot); any real menu screen brings the arena lights back for the select views.
         if (s != Screen.None && s != Screen.Pause && s != Screen.MatchOver) KillShot.RestoreLights();
@@ -1028,6 +1137,7 @@ public class GameMenu : MonoBehaviour
         if (onStage) StageFighters(s == Screen.Vs, s == Screen.ArenaSelect);
         else if (staged) Unstage();
         if (s == Screen.CharSelect) BeginCharSelect();
+        LayoutSelectTouch(s);
 
         bootView.gameObject.SetActive(s == Screen.Boot);
         selectView.gameObject.SetActive(s == Screen.CharSelect);
@@ -1056,6 +1166,8 @@ public class GameMenu : MonoBehaviour
         visibleRows = 16; rowHeight = 46f; rowFont = 28;
         subtitle.text = "";
         BuildScreen(s);
+        if (BigRows) FitRowsForTouch(onStage);
+        LayoutTouchBack(s);
 
         LayoutPanel();
         LayoutRows();
@@ -1063,6 +1175,36 @@ public class GameMenu : MonoBehaviour
         Refresh();
         if (!rebuilding) for (int i = 0; i < rows.Count; i++) rows[i].slide = 0f;   // stagger the entrance
     }
+
+    /// <summary>Thumb-sized rows, as many as fit between the header and the footer; the rest scroll.</summary>
+    void FitRowsForTouch(bool onStage)
+    {
+        bool dense = rowHeight < 46f;   // the long lists and the body copy keep more on screen
+        rowHeight = dense ? 62f : 88f;
+        rowFont = dense ? 30f : 42f;
+        visibleRows = Mathf.Max(3, Mathf.FloorToInt((RowSpace() - 64f) / rowHeight));
+        if (EventSystem.current != null)
+            EventSystem.current.pixelDragThreshold = Mathf.Max(10, Mathf.RoundToInt(UnityEngine.Screen.dpi * 0.08f));
+        if (onStage && screen == Screen.CharSelect) footerText.text = "Swipe or tap the arrows    SELECT to lock in";
+        if (onStage && screen == Screen.ArenaSelect && netRole != NetSession.Role.Guest) footerText.text = "Swipe or tap the arrows    SELECT to fight";
+    }
+
+    /// <summary>
+    /// A Back that is always in the same corner, because a long list's own Back row can be scrolled out
+    /// of sight. The screens with nothing to go back to, or their own buttons, don't get one.
+    /// </summary>
+    void LayoutTouchBack(Screen s)
+    {
+        bool none = s == Screen.None || s == Screen.Boot || s == Screen.Main || s == Screen.Pause || s == Screen.MatchOver
+                 || s == Screen.Vs || s == Screen.CharSelect || s == Screen.ArenaSelect;
+        touchBackButton.gameObject.SetActive(BigRows && !none);
+        if (none) return;
+        float notch = UnityEngine.Screen.safeArea.xMin / canvas.scaleFactor;
+        MenuArt.Box(touchBackButton, new Vector2(0f, 1f), new Vector2(230f, 96f), new Vector2(notch + 140f, -72f));
+    }
+
+    /// <summary>Height the slab may use between the header (210) and the footer (96).</summary>
+    float RowSpace() => canvasRect.rect.height - 306f;
 
     void BuildScreen(Screen s)
     {
@@ -1075,7 +1217,16 @@ public class GameMenu : MonoBehaviour
                 if (upd != null && (upd.Current == GameUpdater.State.Available || upd.Current == GameUpdater.State.Downloading ||
                                     upd.Current == GameUpdater.State.Installing || upd.Current == GameUpdater.State.Failed))
                     items.Add(new Item { label = "Update", value = () => UpdateRowValue(upd), confirm = () => { upd.Install(); Rebuild(); } });
-                items.Add(new Item { label = "Battle Now", value = () => "1 or 2 players on this device", confirm = () => { flow = Flow.Local; GoWiped(Screen.LocalSetup); } });
+                // Two people cannot share a phone's screen, so there it goes straight to you against the computer.
+                bool soloDevice = TouchControls.IsTouchDevice;
+                items.Add(new Item { label = "Battle Now", value = () => soloDevice ? "you against the computer" : "1 or 2 players on this device", confirm = () =>
+                {
+                    flow = Flow.Local;
+                    if (!soloDevice) { GoWiped(Screen.LocalSetup); return; }
+                    playerCount = 1;
+                    InputManager.Instance?.ClearPlayerDevices();
+                    GoWiped(Screen.CharSelect);
+                } });
                 items.Add(new Item { label = "Online", value = () => "host or join a game", confirm = () => { flow = Flow.Online; InputManager.Instance?.ClearPlayerDevices(); Net?.ConnectToServer(); Show(Screen.Online); } });
                 items.Add(new Item { label = "Practice", value = () => "a dummy that obeys your rules", confirm = () => { flow = Flow.Practice; playerCount = 1; InputManager.Instance?.ClearPlayerDevices(); GoWiped(Screen.CharSelect); } });
                 items.Add(new Item { label = "Move List", confirm = () => Show(Screen.Moves) });
@@ -1111,7 +1262,7 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "", header = true });
                 items.Add(new Item { label = "Begin", confirm = () => { ApplyDeviceChoices(); GoWiped(Screen.CharSelect); } });
                 items.Add(new Item { label = "Back", confirm = Back });
-                footerText.text = "Left / Right to change    " + NavHint();
+                footerText.text = ChangeHint();
                 break;
 
             // ------------------------------------------------------------ difficulty
@@ -1140,7 +1291,7 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "", header = true });
                 items.Add(new Item { label = "Begin", confirm = () => { vsAi = true; GoWiped(Screen.Vs); } });
                 items.Add(new Item { label = "Back", confirm = Back });
-                footerText.text = "Left / Right to change    " + NavHint();
+                footerText.text = ChangeHint();
                 break;
 
             // ------------------------------------------------------------ online
@@ -1177,8 +1328,8 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Game name", value = () => FieldValue(hostNameField), field = hostNameField,
                                      adjust = d => { hostNamePreset = (hostNamePreset + d + HostNamePresets().Length) % HostNamePresets().Length; hostName = HostNamePresets()[hostNamePreset]; Rebuild(); } });
                 items.Add(new Item { label = "Code", value = () => FieldValue(hostCodeField), field = hostCodeField });
-                items.Add(new Item { label = "Game speed", value = () => "< " + Mathf.RoundToInt(onlineSpeed * 100f) + "% >", adjust = d => StepOnlineSpeed(d), confirm = () => StepOnlineSpeed(1) });
-                items.Add(new Item { label = "Health regen per second", value = () => "< " + OnOff(onlineRegen) + " >", adjust = d => ToggleOnlineRegen(), confirm = ToggleOnlineRegen });
+                items.Add(new Item { label = "Game speed", value = () => Mathf.RoundToInt(onlineSpeed * 100f) + "%", repeats = true, adjust = d => StepOnlineSpeed(d), confirm = () => StepOnlineSpeed(1) });
+                items.Add(new Item { label = "Health regen per second", value = () => OnOff(onlineRegen), adjust = d => ToggleOnlineRegen(), confirm = ToggleOnlineRegen });
                 items.Add(new Item { label = "", header = true });
                 items.Add(new Item { label = "Open the game", value = () => "wait for a player on the fighter select", confirm = () =>
                 {
@@ -1189,7 +1340,7 @@ public class GameMenu : MonoBehaviour
                 } });
                 items.Add(new Item { label = "Back", confirm = Back });
                 footerText.text = (fieldEdit == hostNameField ? "Type, or pad: Up/Down letter  Left/Right move  Square delete  Triangle clear  Cross done    "
-                                   : fieldEdit != null ? "Type, then Enter    " : "Confirm on a field to type    ") + NavHint();
+                                   : fieldEdit != null ? "Type, then Enter    " : (BigRows ? "Tap a field to type    " : "Confirm on a field to type    ")) + NavHint();
                 break;
 
             case Screen.OnlineJoin:
@@ -1217,6 +1368,11 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Join", confirm = TryJoinWithCode });
                 items.Add(new Item { label = "Back", confirm = Back });
                 footerText.text = (fieldEdit != null ? "Type the digits, then Enter    " : "") + NavHint();
+                break;
+
+            // ------------------------------------------------------------ game settings
+            case Screen.MatchSetup:
+                BuildMatchSetup();
                 break;
 
             // ------------------------------------------------------------ pause
@@ -1382,15 +1538,15 @@ public class GameMenu : MonoBehaviour
                         adjust = d => ToggleFullscreen(),
                         confirm = () => { ToggleFullscreen(); Rebuild(); } });
                 items.Add(new Item { label = "Master volume", value = () => Mathf.RoundToInt(settings.volume * 100) + "%",
-                    adjust = d => { settings.volume = Mathf.Clamp01(settings.volume + d * 0.1f); ApplySettings(); SaveSettings(); } });
+                    repeats = true, adjust = d => { settings.volume = Mathf.Clamp01(settings.volume + d * 0.1f); ApplySettings(); SaveSettings(); } });
                 items.Add(new Item { label = "Music", value = () => Mathf.RoundToInt(settings.musicVolume * 100) + "%",
-                    adjust = d => { settings.musicVolume = Mathf.Clamp01(settings.musicVolume + d * 0.1f); ApplySettings(); SaveSettings(); } });
+                    repeats = true, adjust = d => { settings.musicVolume = Mathf.Clamp01(settings.musicVolume + d * 0.1f); ApplySettings(); SaveSettings(); } });
                 items.Add(new Item { label = "Sound effects", value = () => Mathf.RoundToInt(settings.effectsVolume * 100) + "%",
-                    adjust = d => { settings.effectsVolume = Mathf.Clamp01(settings.effectsVolume + d * 0.1f); ApplySettings(); SaveSettings(); } });
+                    repeats = true, adjust = d => { settings.effectsVolume = Mathf.Clamp01(settings.effectsVolume + d * 0.1f); ApplySettings(); SaveSettings(); } });
                 items.Add(new Item { label = "Voices", value = () => Mathf.RoundToInt(settings.voiceVolume * 100) + "%",
-                    adjust = d => { settings.voiceVolume = Mathf.Clamp01(settings.voiceVolume + d * 0.1f); ApplySettings(); SaveSettings(); } });
+                    repeats = true, adjust = d => { settings.voiceVolume = Mathf.Clamp01(settings.voiceVolume + d * 0.1f); ApplySettings(); SaveSettings(); } });
                 items.Add(new Item { label = "Game speed", value = () => Mathf.RoundToInt(settings.gameSpeed * 100) + "%",
-                    adjust = d => { settings.gameSpeed = Mathf.Clamp(settings.gameSpeed + d * 0.05f, 0.5f, MaxGameSpeed); ApplySettings(); SaveSettings(); } });
+                    repeats = true, adjust = d => { settings.gameSpeed = Mathf.Clamp(settings.gameSpeed + d * 0.05f, 0.5f, MaxGameSpeed); ApplySettings(); SaveSettings(); } });
                 if (netRole == NetSession.Role.None)
                     items.Add(new Item { label = "Health regen per second", value = () => OnOff(settings.healthRegen),
                         adjust = d => { settings.healthRegen = !settings.healthRegen; ApplySettings(); SaveSettings(); },
@@ -1402,6 +1558,15 @@ public class GameMenu : MonoBehaviour
                     value = () => settings.touchButtons == 1 ? "Always" : settings.touchButtons == 2 ? "Off" : "Auto (phones)",
                     adjust = d => { settings.touchButtons = (settings.touchButtons + (d > 0 ? 1 : 2)) % 3; ApplySettings(); SaveSettings(); },
                     confirm = () => { settings.touchButtons = (settings.touchButtons + 1) % 3; ApplySettings(); SaveSettings(); Rebuild(); } });
+                if (BigRows)
+                {
+                    items.Add(new Item { label = "Walk and Special button size", value = () => settings.touchMoveSize + "%",
+                        repeats = true, adjust = d => StepTouchSize(ref settings.touchMoveSize, d) });
+                    items.Add(new Item { label = "Attack button size", value = () => settings.touchAttackSize + "%",
+                        repeats = true, adjust = d => StepTouchSize(ref settings.touchAttackSize, d) });
+                    items.Add(new Item { label = "Dash button size", value = () => settings.touchDashSize + "%",
+                        repeats = true, adjust = d => StepTouchSize(ref settings.touchDashSize, d) });
+                }
                 items.Add(new Item { label = "Controller drives", value = () => settings.padPlayer == 1 ? "Player 1" : "Player 2",
                     adjust = d => { settings.padPlayer = settings.padPlayer == 1 ? 2 : 1; ApplySettings(); SaveSettings(); },
                     confirm = () => { settings.padPlayer = settings.padPlayer == 1 ? 2 : 1; ApplySettings(); SaveSettings(); Rebuild(); } });
@@ -1409,7 +1574,7 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Controls", value = () => "rebind every key and button", confirm = () => Show(Screen.Controls) });
                 items.Add(new Item { label = "How to Fight", confirm = () => Show(Screen.Help) });
                 items.Add(new Item { label = "Back", confirm = Back });
-                footerText.text = "Left / Right to change    " + NavHint();
+                footerText.text = ChangeHint();
                 break;
 
             // ------------------------------------------------------------ controls
@@ -1514,6 +1679,77 @@ public class GameMenu : MonoBehaviour
         }
     }
 
+    void StepTouchSize(ref int size, int dir)
+    {
+        size = Mathf.Clamp(size + dir * TouchSizeStep, TouchSizeMin, TouchSizeMax);
+        ApplySettings();
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Game Settings, the last stop before any fight: speed and regen (the same numbers as Settings,
+    /// or the room's online) plus this fight's time limit and damage, health and stamina percentages.
+    /// </summary>
+    void BuildMatchSetup()
+    {
+        var d = settings.duel;
+        bool host = netRole == NetSession.Role.Host;
+        SetTitle("Game Settings", host ? "your opponent sees these as you change them" : "the rules for this fight");
+        items.Add(new Item { label = "Game speed", value = () => Mathf.RoundToInt(GameSpeed() * 100f) + "%", repeats = true, adjust = dir =>
+        {
+            if (host) { StepOnlineSpeed(dir); return; }
+            settings.gameSpeed = Mathf.Clamp(settings.gameSpeed + dir * 0.05f, 0.5f, MaxGameSpeed);
+            ApplySettings(); SaveSettings();
+        } });
+        Action toggleRegen = () =>
+        {
+            if (host) { ToggleOnlineRegen(); return; }
+            settings.healthRegen = !settings.healthRegen;
+            ApplySettings(); SaveSettings(); Rebuild();
+        };
+        items.Add(new Item { label = "Health regen per second", value = () => OnOff(host ? onlineRegen : settings.healthRegen),
+                             adjust = dir => toggleRegen(), confirm = toggleRegen });
+        Action toggleTime = () => { d.timed = !d.timed; RulesChanged(); Rebuild(); };
+        items.Add(new Item { label = "Duel time", value = () => OnOff(d.timed), adjust = dir => toggleTime(), confirm = toggleTime });
+        if (d.timed)
+            items.Add(new Item { label = "   Time limit", value = () => d.minutes + " min", repeats = true, adjust = dir =>
+            {
+                d.minutes = Mathf.Clamp(d.minutes + dir, 1, DuelRules.MaxMinutes);
+                RulesChanged();
+            } });
+        items.Add(PercentRow("Damage", () => d.damagePercent, v => d.damagePercent = v));
+        items.Add(PercentRow("Health", () => d.healthPercent, v => d.healthPercent = v));
+        items.Add(PercentRow("Stamina", () => d.staminaPercent, v => d.staminaPercent = v));
+        items.Add(new Item { label = "", header = true });
+        items.Add(new Item { label = "Begin", confirm = BeginFight });
+        items.Add(new Item { label = "Back", confirm = Back });
+        footerText.text = ChangeHint();
+    }
+
+    Item PercentRow(string label, Func<int> get, Action<int> set) => new Item
+    {
+        label = label,
+        value = () => get() + "%",
+        repeats = true,
+        adjust = dir =>
+        {
+            set(Mathf.Clamp(get() + dir * DuelRules.PercentStep, DuelRules.MinPercent, DuelRules.MaxPercent));
+            RulesChanged();
+        },
+    };
+
+    void RulesChanged()
+    {
+        SaveSettings();
+        if (netRole == NetSession.Role.Host && Net != null && Net.PeerConnected) Net.SendRules(onlineSpeed, onlineRegen, settings.duel);
+    }
+
+    void BeginFight()
+    {
+        if (netRole == NetSession.Role.Host) { Net?.SendArena(arenaChoice); Net?.SendVersus(); }
+        GoWiped(Screen.Vs);
+    }
+
     void SetTitle(string t, string sub)
     {
         title.text = MenuArt.Track(t.ToUpperInvariant(), 1);
@@ -1535,7 +1771,7 @@ public class GameMenu : MonoBehaviour
     {
         aiDifficulty = d;
         vsAi = true;
-        GoWiped(Screen.Vs);
+        GoWiped(Screen.MatchSetup);
     }
 
     void CycleRulesPreset(int dir)
@@ -1559,8 +1795,10 @@ public class GameMenu : MonoBehaviour
         return r.walk && r.attack && r.block && r.dodge && r.punish ? "Full fight" : "Custom";
     }
 
-    static string NavHint() => TouchControls.WantsTouch
-        ? "Tap an item"
+    static string ChangeHint() => BigRows ? "Tap - or +, hold to keep going    Drag to scroll" : "Left / Right to change    " + NavHint();
+
+    static string NavHint() => BigRows
+        ? "Tap an item    Drag to scroll"
         : "Arrows / D-pad: move    Enter / Cross: select    Esc / Circle: back";
 
     // ================================================================ boot
@@ -1766,8 +2004,7 @@ public class GameMenu : MonoBehaviour
         if (flow == Flow.Practice) { GoWiped(Screen.PracticeRules); return; }
         if (playerCount == 1) { GoWiped(Screen.Difficulty); return; }
         vsAi = false;
-        if (netRole == NetSession.Role.Host) { Net?.SendArena(arenaChoice); Net?.SendVersus(); }
-        GoWiped(Screen.Vs);
+        GoWiped(Screen.MatchSetup);
     }
 
     // ================================================================ navigation
@@ -1776,6 +2013,7 @@ public class GameMenu : MonoBehaviour
     {
         if (items.Count == 0) return;
         if (sound) CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
+        SetScrollFrac(0f);
 
         // Screens that are nearly all body copy (How to Fight, the move list) have one or two
         // selectable rows, so following the selection would never scroll them. Scroll the view.
@@ -1921,7 +2159,7 @@ public class GameMenu : MonoBehaviour
     void StepOnlineSpeed(int d)
     {
         onlineSpeed = Mathf.Clamp(Mathf.Round((onlineSpeed + d * 0.1f) * 10f) / 10f, 0.5f, MaxGameSpeed);
-        if (Net != null && Net.PeerConnected) Net.SendRules(onlineSpeed, onlineRegen);
+        if (Net != null && Net.PeerConnected) Net.SendRules(onlineSpeed, onlineRegen, settings.duel);
         CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
         Rebuild();
     }
@@ -1929,12 +2167,18 @@ public class GameMenu : MonoBehaviour
     void ToggleOnlineRegen()
     {
         onlineRegen = !onlineRegen;
-        if (Net != null && Net.PeerConnected) Net.SendRules(onlineSpeed, onlineRegen);
+        if (Net != null && Net.PeerConnected) Net.SendRules(onlineSpeed, onlineRegen, settings.duel);
         CrucibleAudio.Ui(CrucibleAudio.UiSound.Navigate);
         Rebuild();
     }
 
     // ---------------------------------------------------------------- online: select, arena, K.O. votes
+
+    // The duel clock: this fight's time limit, on real time and only while the fight is on screen.
+    // The host (or a local game) runs it; a guest shows the host's number.
+    bool duelClock;
+    float duelLeft;
+    FightHud fightHud;
 
     int matchSerial;      // bumps at every fight start, so a late K.O. card from the last one is dropped
     int onlineVote;       // my K.O. card vote: 0 none, 1 rematch, 2 character select
@@ -2051,7 +2295,8 @@ public class GameMenu : MonoBehaviour
             return room + " - " + (hostCode.Length == 6 && netRole == NetSession.Role.Host ? "code " + hostCode + " - " : "") + "waiting for a player to join";
         float speed = netRole == NetSession.Role.Guest ? Net.RulesSpeed : onlineSpeed;
         bool regen = netRole == NetSession.Role.Guest ? Net.RulesRegen : onlineRegen;
-        return room + " - game speed " + Mathf.RoundToInt(speed * 100f) + "%, health regen " + OnOff(regen).ToLowerInvariant();
+        var duel = netRole == NetSession.Role.Guest ? Net.RulesDuel : settings.duel;
+        return room + " - game speed " + Mathf.RoundToInt(speed * 100f) + "%, health regen " + OnOff(regen).ToLowerInvariant() + ", " + duel.Summary();
     }
 
     /// <summary>Guest: puts up the arena the host has on screen.</summary>
@@ -2208,13 +2453,41 @@ public class GameMenu : MonoBehaviour
         fieldCursor = Mathf.Min((f.get() ?? "").Length, f.max - 1);
         inputGuard = 0.15f;
         CrucibleAudio.Ui(CrucibleAudio.UiSound.Select);
+        if (TouchScreenKeyboard.isSupported)
+        {
+            touchKeyboard = TouchScreenKeyboard.Open(f.get() ?? "", f.digits ? TouchScreenKeyboardType.NumberPad : TouchScreenKeyboardType.Default,
+                                                     false, false, false);
+            touchKeyboard.characterLimit = f.max;
+        }
         Rebuild();
+    }
+
+    void CloseTouchKeyboard()
+    {
+        if (touchKeyboard != null) touchKeyboard.active = false;
+        touchKeyboard = null;
+    }
+
+    /// <summary>Follows the phone's keyboard into the field. True while it is the keyboard's turn.</summary>
+    bool UpdateTouchKeyboard(FieldSpec f)
+    {
+        if (touchKeyboard == null) return false;
+        string typed = touchKeyboard.text ?? "";
+        if (f.digits) typed = new string(typed.Where(char.IsDigit).ToArray());
+        if (typed.Length > f.max) typed = typed.Substring(0, f.max);
+        f.set(typed);
+        fieldCursor = Mathf.Min(typed.Length, f.max - 1);
+        if (touchKeyboard.status == TouchScreenKeyboard.Status.Visible) { Refresh(); return true; }
+        // Tapping away from the keyboard keeps what was typed; only its own Cancel throws it out.
+        EndFieldEdit(touchKeyboard.status != TouchScreenKeyboard.Status.Canceled);
+        return true;
     }
 
     void EndFieldEdit(bool commit)
     {
         var f = fieldEdit;
         fieldEdit = null;
+        CloseTouchKeyboard();
         CrucibleAudio.Ui(commit ? CrucibleAudio.UiSound.Select : CrucibleAudio.UiSound.Back);
         if (commit && f != null && f.commit != null) f.commit();
         else Rebuild();
@@ -2229,6 +2502,7 @@ public class GameMenu : MonoBehaviour
     void UpdateFieldEdit(InputManager im)
     {
         var f = fieldEdit;
+        if (UpdateTouchKeyboard(f)) return;
         string t = f.get() ?? "";
         foreach (char c in Input.inputString)
         {
@@ -2550,13 +2824,13 @@ public class GameMenu : MonoBehaviour
         capturing = true;
         capturePlayer = player;
         captureAction = (int)a;
-        captureText.text = $"Press a key or controller button for\n\nPLAYER {player}   {ControlBindings.ActionLabel(a)}\n\n(Esc cancels)";
+        captureText.text = $"Press a key or controller button for\n\nPLAYER {player}   {ControlBindings.ActionLabel(a)}\n\n{(BigRows ? "(tap the screen to cancel)" : "(Esc cancels)")}";
         captureBack.gameObject.SetActive(true);
     }
 
     void CaptureRebind()
     {
-        if (Input.GetKeyDown(KeyCode.Escape)) { EndCapture(); return; }
+        if (Input.GetKeyDown(KeyCode.Escape) || (BigRows && Input.GetMouseButtonDown(0))) { EndCapture(); return; }
         var b = InputManager.Instance.Bindings;
         foreach (KeyCode k in ControlBindings.BindableKeys)
         {
@@ -2621,6 +2895,7 @@ public class GameMenu : MonoBehaviour
         BuildSelectView();
         BuildArenaView();
         BuildVsView();
+        BuildSelectTouch();
 
         stage = go.AddComponent<MenuStage>();
         stage.Build(canvasRect);
@@ -2672,6 +2947,7 @@ public class GameMenu : MonoBehaviour
 
         var slab = MenuArt.Img(panel, "Slab", MenuArt.Panel, new Color(0.15f, 0.125f, 0.105f, 0.97f), Image.Type.Sliced);
         MenuArt.Stretch(slab.rectTransform);
+        slab.raycastTarget = true;     // a drag may start on a gap between rows
         var sink = MenuArt.Img(panel, "Sink", MenuArt.FadeDown, MenuArt.Fade(Color.black, 0.45f));
         MenuArt.Stretch(sink.rectTransform);
         var frame = MenuArt.Img(panel, "Frame", MenuArt.Frame, Color.white, Image.Type.Sliced);
@@ -2684,6 +2960,30 @@ public class GameMenu : MonoBehaviour
         footerText = MenuArt.Shadowed(footer, "Text", "", 19, TextAnchor.MiddleCenter, MenuArt.Dim);
         MenuArt.Place(footerText.rectTransform, 0f, 0f, 1f, 0f, new Vector2(40, 18), new Vector2(-40, 56));
 
+        // The rows live in a clip, so ones dragged past the top or bottom of the slab are cut off cleanly.
+        const float clipInset = 20f;
+        var clip = MenuArt.Rect(panel, "RowsClip");
+        MenuArt.Place(clip, 0f, 0f, 1f, 1f, new Vector2(0f, clipInset), new Vector2(0f, -clipInset));
+        clip.gameObject.AddComponent<RectMask2D>();
+        rowsRoot = MenuArt.Rect(clip, "Rows");
+        MenuArt.Place(rowsRoot, 0f, 0f, 1f, 1f, new Vector2(0f, -clipInset), new Vector2(0f, clipInset));
+        frame.transform.SetAsLastSibling();
+
+        var bar = MenuArt.Img(panel, "ScrollBar", MenuArt.Solid, MenuArt.Bronze);
+        scrollBar = bar.rectTransform;
+        scrollBar.offsetMin = Vector2.zero; scrollBar.offsetMax = Vector2.zero;
+        scrollBar.gameObject.SetActive(false);
+
+        var drag = panel.gameObject.AddComponent<MenuDrag>();
+        drag.begin = e => { scrollDragging = true; scrollFling = 0f; holdDir = 0; };
+        drag.drag = e =>
+        {
+            float rowsMoved = e.delta.y / canvas.scaleFactor / rowHeight;
+            SetScrollPosition(scroll + scrollFrac + rowsMoved);
+            if (Time.unscaledDeltaTime > 0f) scrollFling = Mathf.Lerp(scrollFling, rowsMoved / Time.unscaledDeltaTime, 0.35f);
+        };
+        drag.end = e => scrollDragging = false;
+
         for (int i = 0; i < RowPool; i++) rows.Add(BuildRow(i));
     }
 
@@ -2694,16 +2994,16 @@ public class GameMenu : MonoBehaviour
     void LayoutPanel()
     {
         int shown = Mathf.Min(items.Count, visibleRows);
-        float height = Mathf.Clamp(shown * rowHeight + 64f, 180f, 640f);
-        panel.sizeDelta = new Vector2(1380f, height);
+        float height = Mathf.Clamp(shown * rowHeight + 64f, 180f, BigRows ? RowSpace() : 640f);
+        panel.sizeDelta = new Vector2(BigRows ? Mathf.Min(canvasRect.rect.width - 80f, 1760f) : 1380f, height);
         // The record screen's controls sit low, so the replay playing behind them stays in view.
-        panel.anchoredPosition = new Vector2(0f, screen == Screen.Replay ? -540f + height * 0.5f + 48f : -56f);
+        panel.anchoredPosition = new Vector2(0f, screen == Screen.Replay ? -canvasRect.rect.height * 0.5f + height * 0.5f + 48f : -56f);
     }
 
     Row BuildRow(int index)
     {
         var row = new Row();
-        row.rt = MenuArt.Rect(panel, "Row" + index);
+        row.rt = MenuArt.Rect(rowsRoot, "Row" + index);
         row.go = row.rt.gameObject;
 
         row.back = row.go.AddComponent<Image>();
@@ -2711,19 +3011,13 @@ public class GameMenu : MonoBehaviour
         row.back.color = Color.clear;
         row.back.raycastTarget = true;
 
-        var btn = row.go.AddComponent<Button>();
-        btn.transition = Selectable.Transition.None;
-        // No EventSystem navigation: this menu tracks its own selection and draws its own gem.
-        btn.navigation = new Navigation { mode = Navigation.Mode.None };
+        // A plain tap handler, not a Button: this menu tracks its own selection and draws its own gem,
+        // and nothing here may ever be selected in the EventSystem.
         int rowIndex = index;
-        btn.onClick.AddListener(() =>
-        {
-            int idx = scroll + rowIndex;
-            // Clicking a Selectable leaves it selected in the EventSystem, and the next Enter would
-            // then fire THIS row again - whatever it happens to say on the screen you moved on to.
-            if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
-            if (idx < items.Count && !items[idx].header) { selected = idx; Refresh(); Confirm(); }
-        });
+        var tap = row.go.AddComponent<MenuTap>();
+        tap.tap = e => TapRow(rowIndex, e);
+        tap.press = e => PressRow(rowIndex, e);
+        tap.release = e => holdDir = 0;
 
         row.gem = MenuArt.Img(row.rt, "Gem", MenuArt.Diamond, Color.clear);
         MenuArt.Box(row.gem.rectTransform, new Vector2(0f, 0.5f), new Vector2(12f, 12f), new Vector2(26f, 0f));
@@ -2737,11 +3031,122 @@ public class GameMenu : MonoBehaviour
         row.value2 = MenuArt.Label(row.rt, "Value2", "", 24, TextAnchor.MiddleRight, MenuArt.Bronze);
         MenuArt.Place(row.value2.rectTransform, 0.86f, 0f, 1f, 1f, new Vector2(0, 0), new Vector2(-26, 0));
 
+        row.stepDown = StepButton(row.rt, "StepDown", StepDownAt, out row.stepDownText);
+        row.stepUp = StepButton(row.rt, "StepUp", StepUpAt, out row.stepUpText);
         return row;
+    }
+
+    /// <summary>A - or + cap on a row. The row itself takes the touch, so this only has to be seen.</summary>
+    RectTransform StepButton(RectTransform parent, string name, float centre, out Text text)
+    {
+        var rt = MenuArt.Rect(parent, name);
+        rt.anchorMin = new Vector2(centre - StepHalfWidth, 0.1f);
+        rt.anchorMax = new Vector2(centre + StepHalfWidth, 0.9f);
+        rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+        var slab = MenuArt.Img(rt, "Slab", MenuArt.Solid, MenuArt.Fade(MenuArt.Bronze, 0.22f));
+        MenuArt.Stretch(slab.rectTransform);
+        text = MenuArt.Label(rt, "Glyph", "", 42, TextAnchor.MiddleCenter, MenuArt.BronzeLit);
+        MenuArt.Stretch(text.rectTransform);
+        return rt;
+    }
+
+    const float StepDownAt = 0.66f, StepUpAt = 0.94f, StepHalfWidth = 0.04f;
+
+    /// <summary>Which way a touch on a row's value column steps it, or 0 if it is not on that column.</summary>
+    int StepAt(int rowIndex, PointerEventData e)
+    {
+        var rt = rows[rowIndex].rt;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(rt, e.position, null, out Vector2 at);
+        float x = Mathf.InverseLerp(rt.rect.xMin, rt.rect.xMax, at.x);
+        return x < ValueColumn ? 0 : x < (StepDownAt + StepUpAt) * 0.5f ? -1 : 1;
+    }
+
+    /// <summary>A finger came down on a row. On the - or + of a number it may be the start of a hold.</summary>
+    void PressRow(int rowIndex, PointerEventData e)
+    {
+        holdFired = false;
+        holdDir = 0;
+        int idx = scroll + rowIndex;
+        if (!BigRows || idx >= items.Count || !items[idx].repeats) return;
+        holdDir = StepAt(rowIndex, e);
+        if (holdDir == 0) return;
+        selected = idx;
+        Refresh();
+        holdNext = Time.unscaledTime + HoldDelay;
+        holdSteps = 0;
+    }
+
+    void UpdateHold()
+    {
+        if (holdDir == 0 || Time.unscaledTime < holdNext) return;
+        Adjust(holdDir);
+        holdFired = true;
+        holdNext = Time.unscaledTime + (++holdSteps >= HoldFastAfter ? HoldFastEvery : HoldEvery);
+    }
+
+    /// <summary>
+    /// A tap on a row: its value column steps the value, anywhere else presses it. This is how a touch
+    /// screen reaches the rows that are only Left / Right on a pad.
+    /// </summary>
+    void TapRow(int rowIndex, PointerEventData e)
+    {
+        int idx = scroll + rowIndex;
+        if (idx >= items.Count || items[idx].header) return;
+        selected = idx;
+        Refresh();
+        var item = items[idx];
+        if (item.adjust != null)
+        {
+            int step = StepAt(rowIndex, e);
+            if (step != 0)
+            {
+                if (holdFired) holdFired = false;   // the hold already did the work
+                else Adjust(step);
+                return;
+            }
+            if (item.confirm == null && item.field == null) return;
+        }
+        Confirm();
+    }
+
+    const float ValueColumn = 0.6f;
+
+    void SetScrollFrac(float frac)
+    {
+        scrollFrac = frac;
+        if (rowsRoot != null) rowsRoot.anchoredPosition = new Vector2(0f, frac * rowHeight);
+    }
+
+    void SetScrollPosition(float position)
+    {
+        float top = Mathf.Max(0, items.Count - visibleRows);
+        position = Mathf.Clamp(position, 0f, top);
+        scroll = Mathf.FloorToInt(position);
+        SetScrollFrac(position - scroll);
+        Refresh();
+    }
+
+    /// <summary>After the finger lifts: coast, then settle on a whole row so nothing rests cut in half.</summary>
+    void UpdateRowScroll(float dt)
+    {
+        UpdateHold();
+        if (scrollDragging || (scrollFrac <= 0f && scrollFling == 0f)) return;
+        float at = scroll + scrollFrac;
+        if (Mathf.Abs(scrollFling) > 2f)
+        {
+            SetScrollPosition(at + scrollFling * dt);
+            scrollFling *= Mathf.Exp(-5f * dt);
+            float top = Mathf.Max(0, items.Count - visibleRows);
+            if (at <= 0f || at >= top) scrollFling = 0f;
+            return;
+        }
+        scrollFling = 0f;
+        SetScrollPosition(Mathf.MoveTowards(at, Mathf.Round(at), 6f * dt));
     }
 
     void LayoutRows()
     {
+        bool fit = BigRows;
         for (int i = 0; i < rows.Count; i++)
         {
             float top = -32f - i * rowHeight;
@@ -2749,6 +3154,16 @@ public class GameMenu : MonoBehaviour
             rows[i].label.fontSize = Mathf.RoundToInt(rowFont);
             rows[i].value.fontSize = Mathf.RoundToInt(rowFont * 0.86f);
             rows[i].value2.fontSize = Mathf.RoundToInt(rowFont * 0.86f);
+            rows[i].stepDownText.fontSize = rows[i].stepUpText.fontSize = Mathf.RoundToInt(rowFont * 1.15f);
+            // Big type in a fixed row: anything long shrinks to fit instead of running off it.
+            foreach (var t in new[] { rows[i].label, rows[i].value, rows[i].value2 })
+            {
+                t.resizeTextForBestFit = fit;
+                t.resizeTextMinSize = 14;
+                t.resizeTextMaxSize = t.fontSize;
+                t.horizontalOverflow = fit ? HorizontalWrapMode.Wrap : HorizontalWrapMode.Overflow;
+                t.verticalOverflow = fit ? VerticalWrapMode.Truncate : VerticalWrapMode.Overflow;
+            }
         }
     }
 
@@ -2758,7 +3173,7 @@ public class GameMenu : MonoBehaviour
         {
             int idx = scroll + i;
             var row = rows[i];
-            bool has = i < visibleRows && idx < items.Count;
+            bool has = i < visibleRows + (scrollFrac > 0f ? 1 : 0) && idx < items.Count;
             if (row.go.activeSelf != has) row.go.SetActive(has);
             if (!has) continue;
 
@@ -2768,7 +3183,24 @@ public class GameMenu : MonoBehaviour
             row.label.text = it.label;
             row.value.text = it.value != null ? it.value() : "";
             row.value2.text = it.value2 != null ? it.value2() : "";
-            if (it.adjust != null && sel) row.value.text = "<   " + row.value.text + "   >";
+            bool big = BigRows;
+            bool steps = big && it.adjust != null;
+            if (it.adjust != null && sel && !big) row.value.text = "<   " + row.value.text + "   >";
+            row.stepDown.gameObject.SetActive(steps);
+            row.stepUp.gameObject.SetActive(steps);
+            if (steps)
+            {
+                row.stepDownText.text = it.repeats ? "-" : "<";
+                row.stepUpText.text = it.repeats ? "+" : ">";
+            }
+            if (big)
+            {
+                // A row with no value gets its whole width; a stepper keeps its value between - and +.
+                row.label.rectTransform.anchorMax = new Vector2(it.value == null ? 1f : 0.6f, 1f);
+                row.value.alignment = steps ? TextAnchor.MiddleCenter : TextAnchor.MiddleRight;
+                row.value.rectTransform.anchorMin = new Vector2(steps ? StepDownAt + StepHalfWidth : 0.6f, 0f);
+                row.value.rectTransform.anchorMax = new Vector2(steps ? StepUpAt - StepHalfWidth : it.value2 == null ? 0.98f : 0.86f, 1f);
+            }
 
             bool sectionHead = it.header && !it.quiet && !string.IsNullOrEmpty(it.label);
             row.label.color = it.header
@@ -2776,11 +3208,21 @@ public class GameMenu : MonoBehaviour
                             : (sel ? MenuArt.BronzeLit : MenuArt.Bone);
             row.label.fontStyle = sectionHead ? FontStyle.Bold : FontStyle.Normal;
             row.label.fontSize = Mathf.RoundToInt(it.quiet ? rowFont * 0.95f : rowFont);
+            row.label.resizeTextMaxSize = row.label.fontSize;
             row.value.color = sel ? MenuArt.BronzeLit : MenuArt.Fade(MenuArt.Bronze, 0.8f);
             row.value2.color = row.value.color;
             row.gem.color = sel ? MenuArt.BronzeLit : Color.clear;
             row.back.color = sel ? MenuArt.Fade(MenuArt.Blood, 0.62f) : Color.clear;
             row.back.raycastTarget = !it.header;
+        }
+
+        bool more = BigRows && items.Count > visibleRows;
+        scrollBar.gameObject.SetActive(more);
+        if (more)
+        {
+            float top = 1f - (scroll + scrollFrac) / items.Count, span = visibleRows / (float)items.Count;
+            scrollBar.anchorMin = new Vector2(0.993f, 0.03f + (top - span) * 0.94f);
+            scrollBar.anchorMax = new Vector2(0.998f, 0.03f + top * 0.94f);
         }
     }
 
@@ -2859,6 +3301,147 @@ public class GameMenu : MonoBehaviour
         selectView.gameObject.SetActive(false);
     }
 
+    /// <summary>
+    /// The touch controls of the character and arena select, which have no rows to tap: arrows and a
+    /// swipe to move, SELECT, and BACK. Everything goes into the InputManager's menu reads, so a tap
+    /// is the same press as Cross on a pad. Two pads for the split screen, one per half.
+    /// </summary>
+    void BuildSelectTouch()
+    {
+        selectTouch = MenuArt.Rect(content, "SelectTouch");
+        MenuArt.Stretch(selectTouch);
+
+        touchBackButton = MenuButton(content, "< BACK", out _, Back);
+        touchBackButton.gameObject.SetActive(false);
+
+        var swipeArea = MenuArt.Img(selectTouch, "Swipe", MenuArt.Solid, Color.clear);
+        MenuArt.Stretch(swipeArea.rectTransform);
+        swipeArea.raycastTarget = true;
+        var drag = swipeArea.gameObject.AddComponent<MenuDrag>();
+        drag.begin = e => { int p = SwipeSide(e); swipeTravel[p] = 0f; swipeStepped[p] = false; };
+        drag.drag = e =>
+        {
+            int p = SwipeSide(e);
+            swipeTravel[p] += e.delta.x / canvas.scaleFactor;
+            if (Mathf.Abs(swipeTravel[p]) < SwipeStep) return;
+            StepBySwipe(p, swipeTravel[p]);
+            swipeTravel[p] = 0f;
+            swipeStepped[p] = true;
+        };
+        drag.end = e =>
+        {
+            int p = SwipeSide(e);
+            if (!swipeStepped[p] && Mathf.Abs(swipeTravel[p]) >= SwipeMinimum) StepBySwipe(p, swipeTravel[p]);
+        };
+
+        for (int i = 0; i < 2; i++)
+        {
+            int slot = i + 1;
+            var pad = new SelectPad();
+            pad.left = MenuButton(selectTouch, "<", out _, () => InputManager.Instance?.PushMenuTouch(slot, Vector2.left, false, false));
+            pad.right = MenuButton(selectTouch, ">", out _, () => InputManager.Instance?.PushMenuTouch(slot, Vector2.right, false, false));
+            pad.select = MenuButton(selectTouch, "SELECT", out _, () => InputManager.Instance?.PushMenuTouch(slot, Vector2.zero, true, false));
+            pad.back = MenuButton(selectTouch, "BACK", out pad.backText, () => TapSelectBack(slot));
+            selectPads[i] = pad;
+        }
+        selectTouch.gameObject.SetActive(false);
+    }
+
+    RectTransform MenuButton(RectTransform parent, string text, out Text label, Action tap)
+    {
+        var rt = MenuArt.Rect(parent, "Btn " + text);
+        var slab = MenuArt.Img(rt, "Slab", MenuArt.Panel, new Color(0.11f, 0.09f, 0.08f, 0.9f), Image.Type.Sliced);
+        MenuArt.Stretch(slab.rectTransform);
+        slab.raycastTarget = true;
+        var frame = MenuArt.Img(rt, "Frame", MenuArt.Frame, MenuArt.Bronze, Image.Type.Sliced);
+        MenuArt.Stretch(frame.rectTransform, -4f);
+        label = MenuArt.Shadowed(rt, "Label", text, 36, TextAnchor.MiddleCenter, MenuArt.BronzeLit, FontStyle.Bold);
+        MenuArt.Stretch(label.rectTransform);
+        rt.gameObject.AddComponent<MenuTap>().tap = e =>
+        {
+            if (stage != null && stage.Wiping) return;
+            tap();
+        };
+        return rt;
+    }
+
+    int SwipeSide(PointerEventData e) =>
+        splitSelect && !OnlineSelect && e.pressPosition.x >= UnityEngine.Screen.width * 0.5f ? 2 : 1;
+
+    /// <summary>The ring follows the finger: a swipe to the left brings the next fighter in from the right.</summary>
+    void StepBySwipe(int slot, float travel) =>
+        InputManager.Instance?.PushMenuTouch(slot, travel < 0f ? Vector2.right : Vector2.left, false, false);
+
+    bool BackLeavesForMain(int slot) => screen == Screen.CharSelect && !OnlineSelect && !pickingP2 && !lock1 && !lock2;
+
+    /// <summary>On the character select BACK goes straight to the main menu, once nothing is left to undo.</summary>
+    void TapSelectBack(int slot)
+    {
+        if (!BackLeavesForMain(slot)) { InputManager.Instance?.PushMenuTouch(slot, Vector2.zero, false, true); return; }
+        CrucibleAudio.Ui(CrucibleAudio.UiSound.Back);
+        flow = Flow.None;
+        history.Clear();
+        if (stage != null) stage.Wipe(() => Show(Screen.Main, push: false));
+        else Show(Screen.Main, push: false);
+    }
+
+    /// <summary>Shows and places the select buttons for screen <paramref name="s"/>: one pad, or one per half.</summary>
+    void LayoutSelectTouch(Screen s)
+    {
+        bool on = BigRows && (s == Screen.CharSelect || s == Screen.ArenaSelect);
+        selectTouch.gameObject.SetActive(on);
+        if (!on) return;
+
+        bool split = s == Screen.CharSelect && splitSelect && !OnlineSelect;
+        float halfWidth = canvasRect.rect.width * 0.5f;
+        selectPads[1].left.gameObject.SetActive(split);
+        selectPads[1].right.gameObject.SetActive(split);
+        selectPads[1].select.gameObject.SetActive(split);
+        selectPads[1].back.gameObject.SetActive(split);
+
+        if (split)
+        {
+            PlaceSelectPad(selectPads[0], -480f, -halfWidth * 0.5f, halfWidth * 0.5f - 110f);
+            PlaceSelectPad(selectPads[1], 480f, halfWidth * 0.5f, halfWidth * 0.5f - 110f);
+        }
+        else
+        {
+            // Online the screen is split but I only have one half to drive.
+            bool half = s == Screen.CharSelect && OnlineSelect;
+            float side = !half ? 0f : MySide == 1 ? -1f : 1f;
+            PlaceSelectPad(selectPads[0], side * 480f, side * halfWidth * 0.5f, half ? halfWidth * 0.5f - 110f : halfWidth - 130f);
+        }
+        // The host picks the arena: a guest watching it only has Back.
+        bool picks = s == Screen.CharSelect || netRole != NetSession.Role.Guest;
+        selectPads[0].left.gameObject.SetActive(picks);
+        selectPads[0].right.gameObject.SetActive(picks);
+        selectPads[0].select.gameObject.SetActive(picks);
+        RefreshSelectBack();
+    }
+
+    /// <summary>The arrows spread about the middle of the half; BACK and SELECT flank its name plate.</summary>
+    void PlaceSelectPad(SelectPad pad, float plate, float middle, float arrows)
+    {
+        var arrow = new Vector2(MenuTouchArrow, MenuTouchArrow);
+        var wide = new Vector2(200f, 100f);
+        var mid = new Vector2(0.5f, 0.5f);
+        MenuArt.Box(pad.left, mid, arrow, new Vector2(middle - arrows, 0f));
+        MenuArt.Box(pad.right, mid, arrow, new Vector2(middle + arrows, 0f));
+        // Either side of the name plate, which sits at -385 and is 470 wide.
+        MenuArt.Box(pad.back, mid, wide, new Vector2(plate - 360f, -385f));
+        MenuArt.Box(pad.select, mid, wide, new Vector2(plate + 360f, -385f));
+    }
+
+    /// <summary>BACK says what it will do next.</summary>
+    void RefreshSelectBack()
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            bool locked = splitSelect && !OnlineSelect && (i == 0 ? lock1 : lock2);
+            selectPads[i].backText.text = locked ? "UNLOCK" : BackLeavesForMain(i + 1) ? "MENU" : "BACK";
+        }
+    }
+
     /// <summary>A plate: tag, name, one line of character, and the numbers that matter.</summary>
     CharacterCard BuildPlate(RectTransform parent, string name)
     {
@@ -2921,6 +3504,7 @@ public class GameMenu : MonoBehaviour
             FixPlate(cards[0], pickingP2 ? p2Character : p1Character, tag,
                      pickingP2 ? MenuArt.P2 : MenuArt.P1, new Vector2(0f, -385f), false);
         }
+        RefreshSelectBack();
     }
 
     void FixPlate(CharacterCard card, int rosterIndex, string tag, Color tagColor, Vector2 at, bool locked)
@@ -3457,4 +4041,23 @@ public class GameMenu : MonoBehaviour
         $"heavy {ControlBindings.KeyLabel(k.Key(GameAction.Heavy))}   block {ControlBindings.KeyLabel(k.Key(GameAction.Block))}  " +
         $"parry {ControlBindings.KeyLabel(k.Key(GameAction.Defense))}   special {ControlBindings.KeyLabel(k.Key(GameAction.Special))}+strike   " +
         $"dash {ControlBindings.KeyLabel(k.Key(GameAction.Dash))}";
+}
+
+/// <summary>Hands a menu's drags to whoever is listening. Added to the parent of tappable things, it also
+/// stops a drag that began on one of them from counting as a tap when the finger lifts.</summary>
+public class MenuDrag : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+{
+    public Action<PointerEventData> begin, drag, end;
+    public void OnBeginDrag(PointerEventData e) => begin?.Invoke(e);
+    public void OnDrag(PointerEventData e) => drag?.Invoke(e);
+    public void OnEndDrag(PointerEventData e) => end?.Invoke(e);
+}
+
+/// <summary>A tap on a menu element, with the event, so the handler can tell where it landed.</summary>
+public class MenuTap : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IPointerUpHandler
+{
+    public Action<PointerEventData> tap, press, release;
+    public void OnPointerClick(PointerEventData e) => tap?.Invoke(e);
+    public void OnPointerDown(PointerEventData e) => press?.Invoke(e);
+    public void OnPointerUp(PointerEventData e) => release?.Invoke(e);
 }

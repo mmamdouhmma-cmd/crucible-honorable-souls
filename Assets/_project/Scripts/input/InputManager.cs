@@ -346,6 +346,7 @@ public class InputManager : MonoBehaviour
 
     public bool MenuConfirm()
     {
+        if (TakeTouchConfirm(1)) return true;
         if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Space)) return true;
         foreach (var g in Gamepad.all) if (g.buttonSouth.wasPressedThisFrame) return true;
         return false;
@@ -353,16 +354,40 @@ public class InputManager : MonoBehaviour
 
     public bool MenuBack()
     {
+        if (TakeTouchBack(1)) return true;
         if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Backspace)) return true;
         foreach (var g in Gamepad.all) if (g.buttonEast.wasPressedThisFrame || g.startButton.wasPressedThisFrame) return true;
         return false;
     }
 
+    // Presses from the on-screen select buttons and swipes, waiting for the menu to read them.
+    // Slot 1 is also what the whole-screen reads below take; slot 2 is the right half of a split select.
+    private readonly Vector2[] touchNav = new Vector2[3];
+    private readonly bool[] touchConfirm = new bool[3], touchBack = new bool[3];
+
+    /// <summary>Queues a menu press from the touch screen for <paramref name="player"/> (1 or 2).</summary>
+    public void PushMenuTouch(int player, Vector2 nav, bool confirm, bool back)
+    {
+        touchNav[player] = nav;
+        touchConfirm[player] |= confirm;
+        touchBack[player] |= back;
+    }
+
+    public void ClearMenuTouches()
+    {
+        for (int i = 1; i <= 2; i++) { touchNav[i] = Vector2.zero; touchConfirm[i] = touchBack[i] = false; }
+    }
+
+    private Vector2 TakeTouchNav(int player) { var v = touchNav[player]; touchNav[player] = Vector2.zero; return v; }
+    private bool TakeTouchConfirm(int player) { bool v = touchConfirm[player]; touchConfirm[player] = false; return v; }
+    private bool TakeTouchBack(int player) { bool v = touchBack[player]; touchBack[player] = false; return v; }
+
     private Vector2 lastMenuStick;
     /// <summary>Menu navigation this frame: y = +1 up / -1 down, x = +1 right / -1 left (edge-triggered).</summary>
     public Vector2 MenuNavigate()
     {
-        float x = 0f, y = 0f;
+        Vector2 touch = TakeTouchNav(1);
+        float x = touch.x, y = touch.y;
         if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W)) y += 1f;
         if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S)) y -= 1f;
         if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A)) x -= 1f;
@@ -397,7 +422,8 @@ public class InputManager : MonoBehaviour
     /// <summary>Menu navigation for ONE player (edge-triggered, like <see cref="MenuNavigate"/>).</summary>
     public Vector2 MenuNavigateFor(int player)
     {
-        float x = 0f, y = 0f;
+        Vector2 touch = TakeTouchNav(player);
+        float x = touch.x, y = touch.y;
         var pad = PadForPlayer(player, out bool keys);
         if (keys)
         {
@@ -436,6 +462,7 @@ public class InputManager : MonoBehaviour
     /// <summary>Confirm for ONE player: his pad's Cross, or his half of the keyboard.</summary>
     public bool MenuConfirmFor(int player)
     {
+        if (TakeTouchConfirm(player)) return true;
         var pad = PadForPlayer(player, out bool keys);
         if (keys)
         {
@@ -448,6 +475,7 @@ public class InputManager : MonoBehaviour
     /// <summary>Back for ONE player: his pad's Circle. (Escape stays the whole-screen back.)</summary>
     public bool MenuBackFor(int player)
     {
+        if (TakeTouchBack(player)) return true;
         var pad = PadForPlayer(player, out bool keys);
         if (keys && player == 1 && Input.GetKeyDown(KeyCode.Backspace)) return true;
         if (keys && player == 2 && Input.GetKeyDown(KeyCode.Delete)) return true;
