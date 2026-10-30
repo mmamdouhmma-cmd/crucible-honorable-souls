@@ -45,7 +45,9 @@ if (apkBuilt) {
   assets.push(apk);
 } else console.warn(`WARNING: no Android build at ${tag} - this release has no APK and phones will not update.`);
 
-const url = run("gh", ["release", "create", tag, ...assets, "--title", `CRUCIBLE ${tag}`, "--notes",
+// --target: left out, GitHub tags the default branch, which is not where the game is built from.
+const commit = run("git", ["rev-parse", "HEAD"]);
+const url = run("gh", ["release", "create", tag, ...assets, "--target", commit, "--title", `CRUCIBLE ${tag}`, "--notes",
   notes + "\n\nDownload the zip below, unzip it anywhere you can write to (Desktop, Documents - not Program Files), run Crucible.exe. " +
   "Windows may warn that the app is unrecognised: More info > Run anyway. Later versions install themselves from the main menu."]);
 console.log("released: " + url);
