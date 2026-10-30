@@ -294,6 +294,7 @@ public class GameMenu : MonoBehaviour
     float replayTime, trimStart, trimEnd;
     int replayMarker;                   // which event marker "Jump to" is on
     bool exportingUi;                   // the menu is hidden while a video is being written
+    bool replayFullScreen;              // the menu is hidden so the replay can be watched or screen recorded
 
     ReplayRecorder Rec
     {
@@ -1183,6 +1184,7 @@ public class GameMenu : MonoBehaviour
         rowHeight = dense ? 62f : 88f;
         rowFont = dense ? 30f : 42f;
         visibleRows = Mathf.Max(3, Mathf.FloorToInt((RowSpace() - 64f) / rowHeight));
+        if (screen == Screen.Replay) { rowHeight = 62f; rowFont = 30f; visibleRows = 3; }   // the fight is what's on show
         if (EventSystem.current != null)
             EventSystem.current.pixelDragThreshold = Mathf.Max(10, Mathf.RoundToInt(UnityEngine.Screen.dpi * 0.08f));
         if (onStage && screen == Screen.CharSelect) footerText.text = "Swipe or tap the arrows    SELECT to lock in";
@@ -1450,6 +1452,12 @@ public class GameMenu : MonoBehaviour
                 }
                 items.Add(new Item
                 {
+                    label = "Watch full screen",
+                    value = () => "hides this menu, " + (BigRows ? "tap" : "any press") + " brings it back",
+                    confirm = EnterReplayFullScreen,
+                });
+                items.Add(new Item
+                {
                     label = "Playback",
                     value = () => (replayPlaying ? "Playing" : "Paused") + $"   {Clock(replayTime)} / {Clock(rec.Duration)}",
                     confirm = () => replayPlaying = !replayPlaying,
@@ -1484,14 +1492,17 @@ public class GameMenu : MonoBehaviour
                     adjust = d => { trimEnd = Mathf.Clamp(trimEnd + d * 0.5f, trimStart + 0.5f, rec.Duration); replayTime = Mathf.Min(replayTime, trimEnd); },
                     confirm = () => trimEnd = Mathf.Max(replayTime, trimStart + 0.5f),
                 });
-                items.Add(new Item
-                {
-                    label = "Export as video",
-                    value = () => $"the {Clock(trimEnd - trimStart)} cut, {ReplayRecorder.ExportFps} fps .avi",
-                    confirm = BeginVideoExport,
-                });
+                // A phone has nowhere useful to put an .avi: it records its own screen instead.
+                bool canExport = !Application.isMobilePlatform;
+                if (canExport)
+                    items.Add(new Item
+                    {
+                        label = "Export as video",
+                        value = () => $"the {Clock(trimEnd - trimStart)} cut, {ReplayRecorder.ExportFps} fps .avi",
+                        confirm = BeginVideoExport,
+                    });
                 var moments = rec.HighlightSegments();
-                if (moments.Count > 0)
+                if (canExport && moments.Count > 0)
                 {
                     float highlightLen = 0f;
                     foreach (var m in moments) highlightLen += m.y - m.x;
@@ -1503,7 +1514,8 @@ public class GameMenu : MonoBehaviour
                     });
                 }
                 items.Add(new Item { label = "Back", confirm = Back });
-                footerText.text = "Left / Right scrubs and trims    Confirm on a cut marks the current moment    " + NavHint();
+                footerText.text = BigRows ? "Drag to scroll    Tap a cut to mark the current moment"
+                                          : "Left / Right scrubs and trims    Confirm on a cut marks the current moment    " + NavHint();
                 break;
             }
 
@@ -2760,8 +2772,30 @@ public class GameMenu : MonoBehaviour
             if (replayTime > trimEnd) replayTime = trimStart;      // loop the cut
         }
         rec.Apply(replayTime);
+        if (replayFullScreen)
+        {
+            // On the finger's LIFT: the menu must still be away when it comes down, or the same tap
+            // would land on whichever row reappears under it.
+            var im = InputManager.Instance;
+            if (Input.GetMouseButtonUp(0) || im.MenuConfirm() || im.MenuBack()) ExitReplayFullScreen();
+            return true;
+        }
         Refresh();                                                 // the clock readout ticks live
         return false;
+    }
+
+    void EnterReplayFullScreen()
+    {
+        replayFullScreen = true;
+        replayPlaying = true;
+        content.gameObject.SetActive(false);
+    }
+
+    void ExitReplayFullScreen()
+    {
+        replayFullScreen = false;
+        content.gameObject.SetActive(true);
+        inputGuard = 0.15f;
     }
 
     /// <summary>Puts the playhead a moment before the chosen event marker and lets it play.</summary>

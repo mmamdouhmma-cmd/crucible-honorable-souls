@@ -4758,3 +4758,9 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 - `GameUpdater` on Android: download the release APK, open the system installer via `CrucibleApkProvider`.
   The version code now rises with the version; `release.js` uploads the APK.
 - The first APK carrying this still installs by hand. Not tested on a device.
+
+### 2026-10-30 — Watching a replay on a phone
+
+- The big phone rows covered the fight on the Game Record screen, so it could not be screen recorded. It now
+  keeps three slim rows, and `Watch full screen` hides the whole menu until a tap (on the LIFT, or the tap
+  lands on the row that reappears). Export rows are hidden on mobile.
