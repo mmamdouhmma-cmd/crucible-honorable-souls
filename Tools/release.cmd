@@ -4,7 +4,7 @@ rem Bump the version and build (Crucible > Build > Windows app) before running t
 rem NOTES below are this version's notes; Enter at the prompt keeps them, typing replaces them.
 rem Keep them free of the characters cmd treats specially: ampersand, pipe, angle brackets, quotes.
 cd /d "%~dp0.."
-set "NOTES=v0.4.2 - Buwaka reworked, and a window mode. Buwaka: his Heavy (Iklwa Cleave) is now an overhead cut, his SP+Medium (Leopard Wheel) a spinning cut and his SP+Heavy (Great Whirlwind) a spinning overhead. Settings: a new Display row switches between fullscreen and windowed."
+set "NOTES=v0.4.3 - Buwaka has a new SP+Heavy. Great Impale is a leaping overhead plunge that lands from further away than any of his other moves."
 echo.
 echo Notes for this release:
 echo %NOTES%
