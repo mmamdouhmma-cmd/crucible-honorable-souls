@@ -1,8 +1,9 @@
-// Publishes the Windows build as a GitHub release that friends download and the game updates from.
+// Publishes the Windows build, and the Android APK when it is the same version, as a GitHub release
+// that friends download and the game updates from.
 //   node Tools/release.js ["what changed"]        (or double-click Tools/release.cmd)
 // 1. reads the version from ProjectSettings (Player Settings > Version) - the release tag is v<version>
 // 2. zips Builds/CrucibleLite-Win64 (without the Burst debug folder) to Builds/Crucible-v<version>-Win64.zip
-// 3. creates the release on the public repo and uploads the zip (gh CLI, your login)
+// 3. creates the release on the public repo and uploads the zip and APK (gh CLI, your login)
 // The game compares that tag with its own version on start, so: bump the version, build
 // (Crucible > Build > Windows app), THEN run this. Re-running for a version already released is refused.
 const { execFileSync } = require("child_process");
@@ -33,7 +34,18 @@ run("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path.joi
 console.log(`${(fs.statSync(zip).size / 1048576).toFixed(0)} MB -> ${zip}`);
 
 console.log(`creating release ${tag} and uploading (this takes a while) ...`);
-const url = run("gh", ["release", "create", tag, zip, "--title", `CRUCIBLE ${tag}`, "--notes",
+// Phones update from the -Android.apk asset, so a release without it just leaves them where they are.
+const assets = [zip];
+const androidDir = path.join(root, "Builds", "Crucible-Android");
+const androidResult = path.join(androidDir, "build_result.txt");
+const apkBuilt = fs.existsSync(androidResult) && fs.readFileSync(androidResult, "utf8").startsWith(`Succeeded ${tag} `);
+if (apkBuilt) {
+  const apk = path.join(root, "Builds", `Crucible-${tag}-Android.apk`);
+  fs.copyFileSync(path.join(androidDir, "Crucible.apk"), apk);
+  assets.push(apk);
+} else console.warn(`WARNING: no Android build at ${tag} - this release has no APK and phones will not update.`);
+
+const url = run("gh", ["release", "create", tag, ...assets, "--title", `CRUCIBLE ${tag}`, "--notes",
   notes + "\n\nDownload the zip below, unzip it anywhere you can write to (Desktop, Documents - not Program Files), run Crucible.exe. " +
   "Windows may warn that the app is unrecognised: More info > Run anyway. Later versions install themselves from the main menu."]);
 console.log("released: " + url);

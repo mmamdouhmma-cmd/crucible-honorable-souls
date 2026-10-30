@@ -4752,3 +4752,9 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 - A dropped `editor_play` leaves the Editor stopped and later evals still run: `StartMatch` then throws a
   NullReference on `settings`. Check `playMode` before blaming the code.
 - Battle Now on a touch device goes straight to One Player character select; the Two Players row stays on Windows and Mac. Compiled; `IsTouchDevice` is false in the Editor, so the phone branch has not run.
+
+### 2026-10-30 — The Android in-game updater
+
+- `GameUpdater` on Android: download the release APK, open the system installer via `CrucibleApkProvider`.
+  The version code now rises with the version; `release.js` uploads the APK.
+- The first APK carrying this still installs by hand. Not tested on a device.

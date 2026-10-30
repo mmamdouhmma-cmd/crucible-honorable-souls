@@ -1617,7 +1617,15 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
     deactivate at FIGHT was wiping the guest's input slot, so the guest could never move.
   - All verified 2026-10-28 with `peer2.js` (scratchpad, a scripted opponent) on both roles, plus one
     run through a real trycloudflare tunnel.
-- **Updates**: `GameUpdater` (Windows player only) compares `Application.version` with the latest
+- **Android updates itself too (2026-10-30)**: `GameUpdater` downloads the release's `*-Android.apk` to the
+  private cache and opens the system installer through `CrucibleApkProvider`
+  (`Assets/Plugins/Android/`, no androidx dependency; `CrucibleAndroidManifest` adds it and
+  `REQUEST_INSTALL_PACKAGES` to the generated manifest). The player confirms in Android's installer;
+  returning without installing re-offers it without a second download. `BuildAndroid` sets the version code
+  from the version (0.4.5 = 405). **An update must be signed with the key already on the phone**: the APK
+  is debug-signed with `~/.android/debug.keystore`, so back that file up; losing it means every phone
+  uninstalls once. `Tools/release.js` attaches the APK when `Builds/Crucible-Android` is that version.
+- **Updates**: `GameUpdater` (Windows player) compares `Application.version` with the latest
   GitHub release tag `v<ver>` on `mmamdouhmma-cmd/crucible-honorable-souls`, downloads `*-Win64.zip`
   and hands off to a batch file that waits for the game to exit, copies over the install and
   relaunches. Release = bump Player Settings > Version, `Crucible > Build > Windows app`,

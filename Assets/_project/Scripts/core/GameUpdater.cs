@@ -13,8 +13,14 @@ using Debug = UnityEngine.Debug;
 /// <c>*-Win64.zip</c>, writes a small batch file that waits for the game to close, unzips the new build
 /// over the install folder and starts it again, then quits.
 ///
-/// Windows app only - the Editor and the web build never update themselves (the web page always serves
-/// whatever the server holds). The install folder must be writable, which an unzipped download always is.
+/// On Android a game cannot replace itself, so it downloads the release's <c>*-Android.apk</c> into its
+/// private cache and hands it to the system installer through CrucibleApkProvider; the player confirms
+/// there. The APK must carry the same signing key as the installed one and a higher version code, which
+/// CrucibleBuild derives from the version.
+///
+/// Windows and Android apps only - the Editor and the web build never update themselves (the web page
+/// always serves whatever the server holds). The Windows install folder must be writable, which an
+/// unzipped download always is.
 /// </summary>
 public class GameUpdater : MonoBehaviour
 {
@@ -33,10 +39,21 @@ public class GameUpdater : MonoBehaviour
     public string Error { get; private set; } = "";
 
     /// <summary>True on the platforms that can replace their own files.</summary>
-    public static bool Supported => Application.platform == RuntimePlatform.WindowsPlayer;
+    public static bool Supported => Application.platform == RuntimePlatform.WindowsPlayer || IsAndroid;
+
+    static bool IsAndroid => Application.platform == RuntimePlatform.Android;
+
+    /// <summary>The download's size, shown first on a phone: an update is hundreds of MB of someone's data.</summary>
+    public long DownloadBytes { get; private set; }
+
+    const string ApkName = "update.apk";          // CrucibleApkProvider serves this one name
+    const string ApkMime = "application/vnd.android.package-archive";
+    const int FlagGrantReadUri = 0x00000001, FlagNewTask = 0x10000000;
 
     string downloadUrl;
     UnityWebRequest download;
+    bool apkDownloaded;     // this run already holds the complete APK, so a retry skips the download
+    bool awayInInstaller;
 
     void Awake()
     {
@@ -50,7 +67,7 @@ public class GameUpdater : MonoBehaviour
     }
 
     [Serializable] class Release { public string tag_name; public Asset[] assets; }
-    [Serializable] class Asset { public string name; public string browser_download_url; }
+    [Serializable] class Asset { public string name; public string browser_download_url; public long size; }
 
     IEnumerator Check()
     {
@@ -73,7 +90,12 @@ public class GameUpdater : MonoBehaviour
             downloadUrl = null;
             if (rel.assets != null)
                 foreach (var a in rel.assets)
-                    if (a.name.EndsWith(assetSuffix, StringComparison.OrdinalIgnoreCase)) { downloadUrl = a.browser_download_url; break; }
+                    if (a.name.EndsWith(IsAndroid ? "-Android.apk" : assetSuffix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        downloadUrl = a.browser_download_url;
+                        DownloadBytes = a.size;
+                        break;
+                    }
             Current = downloadUrl != null && IsNewer(LatestVersion, Application.version) ? State.Available : State.UpToDate;
             Debug.Log($"Updater: this is {Application.version}, latest release {LatestVersion} -> {Current}");
         }
@@ -98,7 +120,74 @@ public class GameUpdater : MonoBehaviour
     {
         if (Current != State.Available && Current != State.Failed) return;
         if (string.IsNullOrEmpty(downloadUrl)) return;
-        StartCoroutine(DownloadAndRestart());
+        if (IsAndroid) StartCoroutine(DownloadAndInstallApk());
+        else StartCoroutine(DownloadAndRestart());
+    }
+
+    /// <summary>The Android path: download into the cache, then the system installer takes over.</summary>
+    IEnumerator DownloadAndInstallApk()
+    {
+        if (!apkDownloaded)
+        {
+            string apk = ApkPath();
+            try { if (File.Exists(apk)) File.Delete(apk); }
+            catch (Exception e) { Fail("cannot write the download: " + e.Message); yield break; }
+
+            Current = State.Downloading;
+            Error = "";
+            Progress = 0f;
+            int sleep = Screen.sleepTimeout;
+            Screen.sleepTimeout = SleepTimeout.NeverSleep;   // a locked phone would stall a long download
+            download = new UnityWebRequest(downloadUrl, UnityWebRequest.kHttpVerbGET) { downloadHandler = new DownloadHandlerFile(apk) { removeFileOnAbort = true } };
+            download.SetRequestHeader("User-Agent", "CRUCIBLE");
+            var op = download.SendWebRequest();
+            while (!op.isDone) { Progress = download.downloadProgress; yield return null; }
+            bool ok = download.result == UnityWebRequest.Result.Success;
+            string err = download.error;
+            download.Dispose();
+            download = null;
+            Screen.sleepTimeout = sleep;
+            if (!ok) { Fail("download failed: " + err); yield break; }
+            apkDownloaded = true;
+        }
+        Progress = 1f;
+        Current = State.Installing;
+        try { OpenInstaller(); }
+        catch (Exception e) { Fail("could not open the installer: " + e.Message); yield break; }
+        awayInInstaller = true;
+    }
+
+    /// <summary>The app's private cache, the folder CrucibleApkProvider reads from.</summary>
+    static string ApkPath()
+    {
+        using (var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+        using (var activity = player.GetStatic<AndroidJavaObject>("currentActivity"))
+        using (var cache = activity.Call<AndroidJavaObject>("getCacheDir"))
+            return Path.Combine(cache.Call<string>("getAbsolutePath"), ApkName);
+    }
+
+    static void OpenInstaller()
+    {
+        using (var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+        using (var activity = player.GetStatic<AndroidJavaObject>("currentActivity"))
+        using (var uriClass = new AndroidJavaClass("android.net.Uri"))
+        using (var uri = uriClass.CallStatic<AndroidJavaObject>("parse", $"content://{Application.identifier}.update/{ApkName}"))
+        using (var intent = new AndroidJavaObject("android.content.Intent", "android.intent.action.VIEW"))
+        {
+            intent.Call<AndroidJavaObject>("setDataAndType", uri, ApkMime).Dispose();
+            intent.Call<AndroidJavaObject>("addFlags", FlagGrantReadUri | FlagNewTask).Dispose();
+            activity.Call("startActivity", intent);
+        }
+    }
+
+    // Back from the installer with the game still running means nothing was installed (a finished install
+    // ends this process): the player cancelled, or Android sent them to allow installs from this app.
+    // The main menu then offers it again, without downloading twice.
+    void OnApplicationFocus(bool focused)
+    {
+        if (!focused || !awayInInstaller) return;
+        awayInInstaller = false;
+        Current = State.Available;
     }
 
     IEnumerator DownloadAndRestart()

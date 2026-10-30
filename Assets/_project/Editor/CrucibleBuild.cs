@@ -75,6 +75,7 @@ public static class CrucibleBuild
         PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.Android, ManagedStrippingLevel.Low);
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
         PlayerSettings.Android.forceInternetPermission = true;
+        PlayerSettings.Android.bundleVersionCode = VersionCode(PlayerSettings.bundleVersion);
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
         PlayerSettings.allowedAutorotateToPortrait = false;
         PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
@@ -87,6 +88,15 @@ public static class CrucibleBuild
         if (File.Exists(apk)) File.Delete(apk);
         var report = RunBuild(BuildTarget.Android, apk);
         FinishBuild(report, "Android", AndroidDir, File.Exists(apk));
+    }
+
+    /// <summary>0.4.5 -> 405. Android refuses an update whose code is lower than the installed one's.</summary>
+    static int VersionCode(string version)
+    {
+        var parts = version.Split('.');
+        int code = 0;
+        for (int i = 0; i < 3; i++) code = code * 100 + (i < parts.Length && int.TryParse(parts[i], out int n) ? n : 0);
+        return code;
     }
 
     static BuildReport RunBuild(BuildTarget target, string path)

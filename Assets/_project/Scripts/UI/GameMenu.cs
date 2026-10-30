@@ -2067,9 +2067,11 @@ public class GameMenu : MonoBehaviour
         switch (u.Current)
         {
             case GameUpdater.State.Downloading: return $"downloading v{u.LatestVersion}... {Mathf.RoundToInt(u.Progress * 100f)}%";
-            case GameUpdater.State.Installing: return "installing - the game will restart";
+            case GameUpdater.State.Installing: return Application.isMobilePlatform ? "opening the installer..." : "installing - the game will restart";
             case GameUpdater.State.Failed: return "failed - press to try again";
-            default: return $"v{u.LatestVersion} is out (you have v{Application.version}) - press to update";
+            default:
+                string size = Application.isMobilePlatform && u.DownloadBytes > 0 ? $", {u.DownloadBytes / (1024 * 1024)} MB" : "";
+                return $"v{u.LatestVersion} is out (you have v{Application.version}{size}) - press to update";
         }
     }
 
