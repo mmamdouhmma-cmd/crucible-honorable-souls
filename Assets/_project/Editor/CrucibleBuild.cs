@@ -50,8 +50,8 @@ public static class CrucibleBuild
 
     /// <summary>
     /// The Mac app friends download. Mono, because IL2CPP for Mac can only be built on a Mac; universal,
-    /// so it runs on Intel and Apple Silicon. It is unsigned: Tools/make_mac_zip.py keeps the executable
-    /// bits a Windows build would lose and adds the first-run script macOS needs.
+    /// so it runs on Intel and Apple Silicon. It is not notarized: Tools/make_mac_zip.py keeps the executable
+    /// bits a Windows build would lose, and players install with the Terminal line in the release notes.
     /// </summary>
     [MenuItem("Crucible/Build/Mac app")]
     public static void BuildMac()

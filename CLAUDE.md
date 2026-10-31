@@ -1632,6 +1632,7 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   `Tools/release.cmd` (Windows tar.exe for the zip - Git Bash's tar writes a TAR). The server window
   says SERVER IS ONLINE when published; stop it by typing `stop` + Enter, Ctrl+C, or closing it. The first public
   build has to be downloaded by hand; 0.1.0 builds have no updater.
+- **Macs install from a Terminal line, not a browser download (2026-10-31).** The Mac app is ad-hoc signed, not notarized. `Open Crucible.command` was removed from the zip: it is quarantined with the download, so macOS blocks the script meant to lift the quarantine and offers Move to Trash. `Tools/release.js` zips and attaches the Mac build when `Builds/Crucible-Mac` is that version and writes the curl line into the notes. The real fix is a $99/yr Apple Developer ID plus notarization (`rcodesign` can do it from Windows), which also needs a real bundle id: it is still `com.Unity-Technologies.com.unity.template.urp-blank`.
 - **Every fight starts from GAME SETTINGS (`Screen.MatchSetup`, 2026-10-30)**: speed, regen, Duel time
   (1-15 min) and Damage / Health / Stamina 50-200% in 5s, held in `Scripts/core/DuelRules.cs` (`DuelRules.Active`,
   saved in `SettingsData.duel`, carried in the online `R` and `O` lines). Practice skips it and always

@@ -1,4 +1,4 @@
-// Publishes the Windows build, and the Android APK when it is the same version, as a GitHub release
+// Publishes the Windows build, and the Mac zip and Android APK when they are the same version, as a GitHub release
 // that friends download and the game updates from.
 //   node Tools/release.js ["what changed"]        (or double-click Tools/release.cmd)
 // 1. reads the version from ProjectSettings (Player Settings > Version) - the release tag is v<version>
@@ -45,10 +45,27 @@ if (apkBuilt) {
   assets.push(apk);
 } else console.warn(`WARNING: no Android build at ${tag} - this release has no APK and phones will not update.`);
 
+// Macs install from Terminal: curl sets no quarantine flag, so Gatekeeper and the browser's download
+// scanner never get to offer Move to Trash on an app that is not notarized.
+const macDir = path.join(root, "Builds", "Crucible-Mac");
+const macResult = path.join(macDir, "build_result.txt");
+const macBuilt = fs.existsSync(macResult) && fs.readFileSync(macResult, "utf8").startsWith(`Succeeded ${tag} `);
+const repo = run("gh", ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"]);
+let macNotes = "";
+if (macBuilt) {
+  run("python", [path.join(__dirname, "make_mac_zip.py"), version]);
+  const macName = `Crucible-${tag}-Mac.zip`;
+  assets.push(path.join(root, "Builds", macName));
+  const macUrl = `https://github.com/${repo}/releases/download/${tag}/${macName}`;
+  macNotes = "\n\n**Mac:** do not download the zip in a browser, macOS will offer to bin it. Open Terminal, paste this line and press Return:\n\n```\n" +
+    `mkdir -p ~/Games && cd ~/Games && curl -fL -o Crucible-Mac.zip ${macUrl} && unzip -oq Crucible-Mac.zip && rm Crucible-Mac.zip && xattr -cr Crucible/Crucible.app && codesign --force --deep --sign - Crucible/Crucible.app && open Crucible/Crucible.app` +
+    "\n```\n\nAfter that the game is in your home folder under Games > Crucible.";
+} else console.warn(`WARNING: no Mac build at ${tag} - this release has no Mac zip.`);
+
 // --target: left out, GitHub tags the default branch, which is not where the game is built from.
 const commit = run("git", ["rev-parse", "HEAD"]);
 const url = run("gh", ["release", "create", tag, ...assets, "--target", commit, "--title", `CRUCIBLE ${tag}`, "--notes",
   notes + "\n\nDownload the zip below, unzip it anywhere you can write to (Desktop, Documents - not Program Files), run Crucible.exe. " +
-  "Windows may warn that the app is unrecognised: More info > Run anyway. Later versions install themselves from the main menu."]);
+  "Windows may warn that the app is unrecognised: More info > Run anyway. Later versions install themselves from the main menu." + macNotes]);
 console.log("released: " + url);
-console.log("download page for friends: https://github.com/" + run("gh", ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"]) + "/releases/latest");
+console.log(`download page for friends: https://github.com/${repo}/releases/latest`);

@@ -1,9 +1,10 @@
 # Zips the Mac build so it still runs after being built and zipped on Windows.
 #   python Tools/make_mac_zip.py <version>     -> Builds/Crucible-v<version>-Mac.zip
 # Windows has no executable bit, so a plain zip gives a Mac an app that will not start: every entry here
-# is marked as written on Unix, with mode 755 on the app's binaries. The app is unsigned, so the zip also
-# carries "Open Crucible.command", which clears the download quarantine and ad-hoc signs the app
-# (Apple Silicon refuses to run an unsigned binary at all).
+# is marked as written on Unix, with mode 755 on the app's binaries.
+# The app is not notarized, and nothing in this zip can get round that: a script packed beside it is
+# quarantined with it, so macOS blocks the script and offers Move to Trash. Players install with the
+# Terminal line in the release notes (Tools/release.js) instead.
 import os
 import shutil
 import sys
@@ -12,14 +13,6 @@ import zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP = os.path.join(ROOT, "Builds", "Crucible-Mac", "Crucible.app")
 TOP = "Crucible"
-
-OPEN_SCRIPT = """#!/bin/bash
-cd "$(dirname "$0")"
-xattr -cr Crucible.app
-codesign --force --deep --sign - Crucible.app
-open Crucible.app
-"""
-
 
 def is_binary(rel):
     return "/MacOS/" in "/" + rel or rel.endswith((".dylib", ".so")) or ".framework/" in rel or ".bundle/Contents/MacOS/" in rel
@@ -46,7 +39,6 @@ def main():
                 info = entry("%s/Crucible.app/%s" % (TOP, rel), 0o755 if is_binary(rel) else 0o644)
                 with open(path, "rb") as src, z.open(info, "w", force_zip64=True) as dst:
                     shutil.copyfileobj(src, dst, 1024 * 1024)
-        z.writestr(entry(TOP + "/Open Crucible.command", 0o755), OPEN_SCRIPT.encode())
     print("%.0f MB -> %s" % (os.path.getsize(out) / 1048576, out))
 
 
