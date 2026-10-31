@@ -4764,3 +4764,9 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 - The big phone rows covered the fight on the Game Record screen, so it could not be screen recorded. It now
   keeps three slim rows, and `Watch full screen` hides the whole menu until a tap (on the LIFT, or the tap
   lands on the row that reappears). Export rows are hidden on mobile.
+
+### 2026-10-31 — Watch full screen closed itself
+
+- A row's click fires on the lift and the EventSystem (order -1000) runs before `GameMenu`, so `Input.GetMouseButtonUp`
+  was still true in the frame `EnterReplayFullScreen` ran, and the replay left full screen at once. Keyboard and pad
+  never showed it. Only a press that began in full screen closes it now.

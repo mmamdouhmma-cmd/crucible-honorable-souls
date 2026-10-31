@@ -295,6 +295,7 @@ public class GameMenu : MonoBehaviour
     int replayMarker;                   // which event marker "Jump to" is on
     bool exportingUi;                   // the menu is hidden while a video is being written
     bool replayFullScreen;              // the menu is hidden so the replay can be watched or screen recorded
+    bool replayFullScreenPress;         // a tap or click began after the menu was hidden
 
     ReplayRecorder Rec
     {
@@ -2775,9 +2776,13 @@ public class GameMenu : MonoBehaviour
         if (replayFullScreen)
         {
             // On the finger's LIFT: the menu must still be away when it comes down, or the same tap
-            // would land on whichever row reappears under it.
+            // would land on whichever row reappears under it. Only a press that STARTED in full screen
+            // counts: the row's click fires on a lift too, and the EventSystem runs first, so without
+            // this the click that opened full screen closed it again in the same frame.
+            if (Input.GetMouseButtonDown(0)) replayFullScreenPress = true;
             var im = InputManager.Instance;
-            if (Input.GetMouseButtonUp(0) || im.MenuConfirm() || im.MenuBack()) ExitReplayFullScreen();
+            bool tapped = replayFullScreenPress && Input.GetMouseButtonUp(0);
+            if (tapped || im.MenuConfirm() || im.MenuBack()) ExitReplayFullScreen();
             return true;
         }
         Refresh();                                                 // the clock readout ticks live
@@ -2787,6 +2792,7 @@ public class GameMenu : MonoBehaviour
     void EnterReplayFullScreen()
     {
         replayFullScreen = true;
+        replayFullScreenPress = false;
         replayPlaying = true;
         content.gameObject.SetActive(false);
     }
