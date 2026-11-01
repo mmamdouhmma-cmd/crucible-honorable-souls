@@ -4,26 +4,34 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
-/// <summary>Every rebindable game action. Dash is a modifier: hold it and press a direction (keyboard), or flick the right stick (pad).</summary>
+/// <summary>
+/// Every rebindable game action. Dash is a modifier: hold it and press a direction (keyboard), or flick
+/// the right stick (pad). The four diagonal actions dash on one tap, with no modifier. Appended only:
+/// the saved key arrays are indexed by this order.
+/// </summary>
 public enum GameAction
 {
     MoveLeft, MoveRight, Up, Down,
     Light, Medium, Heavy, Defense,
     Block, Throw, Special, Low,
-    Run, Stance, Dash
+    Run, Stance, Dash,
+    DashUpLeft, DashUpRight, DashDownLeft, DashDownRight
 }
 
 /// <summary>
-/// Keyboard and gamepad bindings for both players, saved to PlayerPrefs as JSON. Keyboard keys use
-/// Unity's legacy KeyCode (read with Input.GetKey); gamepad buttons use the Input System's
-/// GamepadButton so PS4/PS5 pads work out of the box (Square = West, Cross = South, Triangle = North,
-/// Circle = East). A pad value of -1 means "not bound".
+/// Keyboard and gamepad bindings, saved to PlayerPrefs as JSON. There are THREE key sets: <see cref="solo"/>
+/// for one person at the keyboard (against the AI, Practice, Online), and <see cref="p1"/> / <see cref="p2"/>
+/// for two players sharing it. Keyboard keys use Unity's legacy KeyCode (read with Input.GetKey); gamepad
+/// buttons use the Input System's GamepadButton so PS4/PS5 pads work out of the box (Square = West,
+/// Cross = South, Triangle = North, Circle = East). A pad value of -1 means "not bound".
 /// </summary>
 [Serializable]
 public class ControlBindings
 {
-    public const int ActionCount = 15;
+    public const int ActionCount = 19;
     const string PrefsKey = "crucible.controls.v1";
+    /// <summary>Bump when the default keys change: an older save keeps its pad buttons and takes the new keys.</summary>
+    const int CurrentLayout = 2;
 
     [Serializable]
     public class PlayerBindings
@@ -37,29 +45,54 @@ public class ControlBindings
 
     public PlayerBindings p1 = new PlayerBindings();
     public PlayerBindings p2 = new PlayerBindings();
+    /// <summary>One person at the keyboard: against the AI, Practice and Online. Keys only; pads stay on p1 / p2.</summary>
+    public PlayerBindings solo = new PlayerBindings();
+    /// <summary>The alternative solo layout: the sides swapped, moving on the left and attacking on the right.</summary>
+    public PlayerBindings soloAlt = new PlayerBindings();
+    /// <summary>Which solo layout is in use: 0 = solo, 1 = soloAlt.</summary>
+    public int soloLayout;
     /// <summary>Which player the first connected controller drives (1 or 2). A second controller drives the other one.</summary>
     public int firstPadPlayer = 2;
+    public int layoutVersion = CurrentLayout;
 
-    public PlayerBindings Player(int n) => n == 1 ? p1 : p2;
+    /// <summary>1 and 2 are the two-player sets; 0 is the solo layout in use.</summary>
+    public PlayerBindings Player(int n) => n == 0 ? (soloLayout == 1 ? soloAlt : solo) : n == 1 ? p1 : p2;
+
+    public string SoloLayoutName => soloLayout == 1 ? "WASD move, B N M attack" : "Arrows move, A S D attack";
 
     public static ControlBindings Defaults()
     {
         var b = new ControlBindings();
-        SetKeys(b.p1, new Dictionary<GameAction, KeyCode>
+        SetKeys(b.solo, new Dictionary<GameAction, KeyCode>
+        {
+            { GameAction.MoveLeft, KeyCode.LeftArrow }, { GameAction.MoveRight, KeyCode.RightArrow }, { GameAction.Up, KeyCode.UpArrow }, { GameAction.Down, KeyCode.DownArrow },
+            { GameAction.Light, KeyCode.A }, { GameAction.Medium, KeyCode.S }, { GameAction.Heavy, KeyCode.D },
+            { GameAction.Defense, KeyCode.Keypad0 }, { GameAction.Block, KeyCode.Keypad0 },
+            { GameAction.Special, KeyCode.LeftShift }, { GameAction.Run, KeyCode.Space }, { GameAction.Dash, KeyCode.Space },
+        });
+        SetKeys(b.soloAlt, new Dictionary<GameAction, KeyCode>
         {
             { GameAction.MoveLeft, KeyCode.A }, { GameAction.MoveRight, KeyCode.D }, { GameAction.Up, KeyCode.W }, { GameAction.Down, KeyCode.S },
-            { GameAction.Light, KeyCode.J }, { GameAction.Medium, KeyCode.K }, { GameAction.Heavy, KeyCode.L }, { GameAction.Defense, KeyCode.Semicolon },
-            { GameAction.Block, KeyCode.P }, { GameAction.Throw, KeyCode.O }, { GameAction.Special, KeyCode.U }, { GameAction.Low, KeyCode.I },
-            { GameAction.Run, KeyCode.LeftShift }, { GameAction.Stance, KeyCode.R }, { GameAction.Dash, KeyCode.Space },
+            { GameAction.Light, KeyCode.B }, { GameAction.Medium, KeyCode.N }, { GameAction.Heavy, KeyCode.M },
+            { GameAction.Defense, KeyCode.RightAlt }, { GameAction.Block, KeyCode.RightAlt },
+            { GameAction.Special, KeyCode.RightControl }, { GameAction.Run, KeyCode.Space }, { GameAction.Dash, KeyCode.Space },
+        });
+        SetKeys(b.p1, new Dictionary<GameAction, KeyCode>
+        {
+            { GameAction.MoveLeft, KeyCode.A }, { GameAction.MoveRight, KeyCode.D }, { GameAction.Up, KeyCode.W }, { GameAction.Down, KeyCode.X },
+            { GameAction.DashUpLeft, KeyCode.Q }, { GameAction.DashUpRight, KeyCode.E }, { GameAction.DashDownLeft, KeyCode.Z }, { GameAction.DashDownRight, KeyCode.C },
+            { GameAction.Light, KeyCode.H }, { GameAction.Medium, KeyCode.J }, { GameAction.Heavy, KeyCode.K },
+            { GameAction.Defense, KeyCode.O }, { GameAction.Block, KeyCode.O },
+            { GameAction.Special, KeyCode.L }, { GameAction.Run, KeyCode.F }, { GameAction.Dash, KeyCode.F },
         });
         SetKeys(b.p2, new Dictionary<GameAction, KeyCode>
         {
             { GameAction.MoveLeft, KeyCode.LeftArrow }, { GameAction.MoveRight, KeyCode.RightArrow }, { GameAction.Up, KeyCode.UpArrow }, { GameAction.Down, KeyCode.DownArrow },
-            { GameAction.Light, KeyCode.Comma }, { GameAction.Medium, KeyCode.Period }, { GameAction.Heavy, KeyCode.Slash }, { GameAction.Defense, KeyCode.RightBracket },
-            { GameAction.Block, KeyCode.Quote }, { GameAction.Throw, KeyCode.Backslash }, { GameAction.Special, KeyCode.RightControl }, { GameAction.Low, KeyCode.RightAlt },
-            { GameAction.Run, KeyCode.RightShift }, { GameAction.Stance, KeyCode.Equals }, { GameAction.Dash, KeyCode.RightShift },
+            { GameAction.Light, KeyCode.Keypad4 }, { GameAction.Medium, KeyCode.Keypad5 }, { GameAction.Heavy, KeyCode.Keypad6 },
+            { GameAction.Defense, KeyCode.Keypad9 }, { GameAction.Block, KeyCode.Keypad9 },
+            { GameAction.Special, KeyCode.KeypadPlus }, { GameAction.Run, KeyCode.Keypad0 }, { GameAction.Dash, KeyCode.Keypad0 },
         });
-        foreach (var p in new[] { b.p1, b.p2 }) SetPad(p, DefaultPad());
+        foreach (var p in new[] { b.p1, b.p2, b.solo, b.soloAlt }) SetPad(p, DefaultPad());
         return b;
     }
 
@@ -95,13 +128,28 @@ public class ControlBindings
         try
         {
             var saved = JsonUtility.FromJson<ControlBindings>(json);
-            if (saved != null && saved.p1 != null && saved.p2 != null &&
+            if (saved == null || saved.p1 == null || saved.p2 == null) return b;
+            if (saved.layoutVersion >= CurrentLayout && saved.solo != null &&
+                saved.solo.keys.Length == ActionCount &&
                 saved.p1.keys.Length == ActionCount && saved.p2.keys.Length == ActionCount &&
                 saved.p1.pad.Length == ActionCount && saved.p2.pad.Length == ActionCount)
+            {
+                // A save from before the alternative layout existed holds an empty set.
+                if (saved.soloAlt == null || Array.TrueForAll(saved.soloAlt.keys, k => k == 0)) saved.soloAlt = b.soloAlt;
                 return saved;
+            }
+            // A save from an older layout: the new keys, but the player's controller choices stay.
+            CopyPad(saved.p1, b.p1);
+            CopyPad(saved.p2, b.p2);
+            b.firstPadPlayer = saved.firstPadPlayer;
         }
         catch (Exception e) { Debug.LogWarning("Controls: saved bindings unreadable, using defaults: " + e.Message); }
         return b;
+    }
+
+    static void CopyPad(PlayerBindings from, PlayerBindings to)
+    {
+        for (int i = 0; i < ActionCount && i < from.pad.Length; i++) to.pad[i] = from.pad[i];
     }
 
     public void Save()
@@ -129,8 +177,12 @@ public class ControlBindings
         {
             case GameAction.MoveLeft: return "Move left";
             case GameAction.MoveRight: return "Move right";
-            case GameAction.Up: return "Up (taunt)";
-            case GameAction.Down: return "Down (crouch)";
+            case GameAction.Up: return "Dash up";
+            case GameAction.Down: return "Dash down";
+            case GameAction.DashUpLeft: return "Dash up-left";
+            case GameAction.DashUpRight: return "Dash up-right";
+            case GameAction.DashDownLeft: return "Dash down-left";
+            case GameAction.DashDownRight: return "Dash down-right";
             case GameAction.Light: return "Light attack";
             case GameAction.Medium: return "Medium attack";
             case GameAction.Heavy: return "Heavy attack";
@@ -171,8 +223,14 @@ public class ControlBindings
             case KeyCode.RightControl: return "R Ctrl";
             case KeyCode.LeftAlt: return "L Alt";
             case KeyCode.RightAlt: return "R Alt";
+            case KeyCode.KeypadPlus: return "Num +";
+            case KeyCode.KeypadMinus: return "Num -";
+            case KeyCode.KeypadMultiply: return "Num *";
+            case KeyCode.KeypadDivide: return "Num /";
+            case KeyCode.KeypadPeriod: return "Num .";
         }
         string s = k.ToString();
+        if (s.StartsWith("Keypad")) return "Num " + s.Substring(6);
         return s.StartsWith("Alpha") ? s.Substring(5) : s;
     }
 

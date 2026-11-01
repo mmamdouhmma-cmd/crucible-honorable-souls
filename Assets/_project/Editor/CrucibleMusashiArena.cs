@@ -72,14 +72,16 @@ public static class CrucibleMusashiArena
     // ---- the two fight spaces: root name, select-screen name, blurb, centre, floor y, radius ----
     // Dojo: the courtyard floor is flat to +-0.15 out to radius 10 and the first prop (a lantern
     // stand) is at 10.4. Plaza: the clear stretch where the village paths cross, on the terrain's
-    // own ground (0.4 +- 0.7 over the disc; nothing taller than 0.8 above the local ground). It was
+    // own ground (0 +- 0.95 over the disc). Widened from radius 10 at z -5 on 2026-11-01: the rim
+    // stops 0.6 short of House_02 (z 6.1), which has no collider, so do not grow it north. It was
     // levelled once with prep_env_lod.py's "plateau" and that stretched a bank at the rim into a
     // long smear, so it is left as authored - the fighters ground by raycast anyway.
     static readonly (string root, string title, string blurb, Vector3 centre, float radius)[] FightSpaces =
     {
         ("Musashi_Dojo",  "Dojo Courtyard", "Packed earth inside the dojo's rail.",       new Vector3( 0f, 0.00f,  0f), 9.5f),
-        ("Musashi_Plaza", "Village Plaza",  "Where the paths cross. The boss waits here.", new Vector3(57f, 0.40f, -5f), 10f),
+        ("Musashi_Plaza", "Village Plaza",  "Where the paths cross. The boss waits here.", new Vector3(57f, 0.40f, -10.5f), 16f),
     };
+    static readonly Vector3[] PlazaKeepOut = { new Vector3(55.2f, 2.2f, -16.5f), new Vector3(52f, 1.1f, -24f) };   // x, radius, z
     static readonly string[] OwnedRoots = { "Environment", "Lighting", "Cameras", "Musashi_Dojo", "Musashi_Plaza" };
 
     // ---- the forest ring: a hill rising outward from just under the terrain's rim ----
@@ -485,6 +487,13 @@ public static class CrucibleMusashiArena
             so.FindProperty("markP1").objectReferenceValue = p1;
             so.FindProperty("markP2").objectReferenceValue = p2;
             so.FindProperty("cameraHome").objectReferenceValue = home;
+            if (fs.root == "Musashi_Plaza")
+            {
+                // Two terrain mounds tall enough to stop a fighter dead (BlockObstacles): slide him round.
+                var keep = so.FindProperty("keepOut");
+                keep.arraySize = PlazaKeepOut.Length;
+                for (int i = 0; i < PlazaKeepOut.Length; i++) keep.GetArrayElementAtIndex(i).vector3Value = PlazaKeepOut[i];
+            }
             so.ApplyModifiedPropertiesWithoutUndo();
             root.SetActive(k == 0);   // ArenaDirectory switches them; the dojo is the default
         }

@@ -11646,6 +11646,11 @@ MonoBehaviour:
   punchInOnHeavy: 0
   slowMoOnHeavy: 0
   clashShake: 0
+  swapSeconds: 0.8
+  swapSlowMo: 0.35
+  swapDarken: 0.4
+  swapMinDistance: 3.2
+  swapCooldown: 1.5
 --- !u!114 &330585549
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -67721,10 +67726,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ArenaBounds
   shape: 0
-  centre: {x: 57, y: 0.4, z: -5}
-  radius: 10
+  centre: {x: 57, y: 0.4, z: -10.5}
+  radius: 16
   halfExtents: {x: 29, y: 19}
-  keepOut: []
+  keepOut:
+  - {x: 55.2, y: 2.2, z: -16.5}
+  - {x: 52, y: 1.1, z: -24}
   ringOutGaps: []
   ringOutDepth: 2
   scenery: {fileID: 707378058}
@@ -67741,7 +67748,7 @@ Transform:
   m_GameObject: {fileID: 1701735410}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 57, y: 0.4, z: -5}
+  m_LocalPosition: {x: 57, y: 0.4, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:

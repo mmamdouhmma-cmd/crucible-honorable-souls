@@ -143,13 +143,9 @@ public class AiController : MonoBehaviour
         InputManager.Instance.SetAiInput(playerNumber, input);
     }
 
-    // screen-relative direction toward the foe: +1 = right on screen
-    int ScreenDirToFoe()
-    {
-        Vector3 d = foe.transform.position - me.transform.position;
-        float side = cam != null ? Vector3.Dot(d, cam.right) : d.x;
-        return side >= 0f ? 1 : -1;
-    }
+    // The input direction that means "toward the foe". Taken from the fighter's own facing, because
+    // that is what turns the input into a move: it holds through a camera swap while the screen flips.
+    int ScreenDirToFoe() => me.IsFacingRight() ? 1 : -1;
 
     float Gap()
     {

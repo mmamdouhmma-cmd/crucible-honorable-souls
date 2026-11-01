@@ -37,6 +37,7 @@ public class GameMenu : MonoBehaviour
         Records,        // the saved-fights library on the main menu (appended - keep the order)
         OnlineHostSetup, OnlineCode, OnlineGuest,   // online lobby (appended - keep the order)
         MatchSetup,     // Game Settings, the last stop before a fight (appended - keep the order)
+        KeyReview,      // 2-player keyboard: both players' keys, editable, before the fight (appended - keep the order)
     }
 
     /// <summary>Which path through the select screens we are on.</summary>
@@ -267,7 +268,7 @@ public class GameMenu : MonoBehaviour
     RectTransform captureBack;
     Text captureText;
     bool capturing;
-    int captureAction = -1, capturePlayer;
+    int captureAction = -1, capturePlayer, captureAlso = -1;
 
     /// <summary>
     /// A name plate that rides under a fighter on the select screens. There is no portrait: the
@@ -279,6 +280,7 @@ public class GameMenu : MonoBehaviour
         public Image slab, frame, tag;
         public Text name, tagText, stats, tagline;
         public Transform follow;        // the fighter this plate sits under
+        public bool showStyle;          // the select plate is wide enough for the play style; the VS plate is not
     }
 
     string winnerName = "";
@@ -1378,6 +1380,10 @@ public class GameMenu : MonoBehaviour
                 BuildMatchSetup();
                 break;
 
+            case Screen.KeyReview:
+                BuildKeyReview();
+                break;
+
             // ------------------------------------------------------------ pause
             case Screen.Pause:
                 SetTitle("Paused", PauseSubtitle());
@@ -1594,10 +1600,11 @@ public class GameMenu : MonoBehaviour
             case Screen.Controls:
                 SetTitle("Controls", "pick an action, then press the key or pad button for it");
                 visibleRows = 20; rowHeight = 37f; rowFont = 23;
-                for (int p = 1; p <= 2; p++)
+                items.Add(SoloLayoutRow());
+                for (int p = 0; p <= 2; p++)
                 {
                     int player = p;
-                    items.Add(new Item { label = $"PLAYER {p}", header = true, value = () => "keyboard", value2 = () => "controller" });
+                    items.Add(new Item { label = KeySetName(p).ToUpperInvariant(), header = true, value = () => "keyboard", value2 = () => player == 0 ? "" : "controller" });
                     foreach (GameAction a in Enum.GetValues(typeof(GameAction)))
                     {
                         GameAction act = a;
@@ -1605,7 +1612,7 @@ public class GameMenu : MonoBehaviour
                         {
                             label = "   " + ControlBindings.ActionLabel(act),
                             value = () => ControlBindings.KeyLabel(InputManager.Instance.Bindings.Player(player).Key(act)),
-                            value2 = () => ControlBindings.PadLabel(InputManager.Instance.Bindings.Player(player).Pad(act)),
+                            value2 = () => player == 0 ? "" : ControlBindings.PadLabel(InputManager.Instance.Bindings.Player(player).Pad(act)),
                             confirm = () => BeginCapture(player, act),
                         });
                     }
@@ -1618,7 +1625,7 @@ public class GameMenu : MonoBehaviour
                     Rebuild();
                 } });
                 items.Add(new Item { label = "Back", confirm = Back });
-                footerText.text = "Dash: hold the dash key + a direction, or flick the right stick    " + NavHint();
+                footerText.text = DashRule + "    " + NavHint();
                 break;
 
             // ------------------------------------------------------------ moves
@@ -1733,6 +1740,7 @@ public class GameMenu : MonoBehaviour
         items.Add(PercentRow("Damage", () => d.damagePercent, v => d.damagePercent = v));
         items.Add(PercentRow("Health", () => d.healthPercent, v => d.healthPercent = v));
         items.Add(PercentRow("Stamina", () => d.staminaPercent, v => d.staminaPercent = v));
+        if (vsAi || netRole != NetSession.Role.None) items.Add(SoloLayoutRow());
         items.Add(new Item { label = "", header = true });
         items.Add(new Item { label = "Begin", confirm = BeginFight });
         items.Add(new Item { label = "Back", confirm = Back });
@@ -1760,7 +1768,108 @@ public class GameMenu : MonoBehaviour
     void BeginFight()
     {
         if (netRole == NetSession.Role.Host) { Net?.SendArena(arenaChoice); Net?.SendVersus(); }
-        GoWiped(Screen.Vs);
+        bool twoLocal = netRole == NetSession.Role.None && !vsAi && flow != Flow.Practice && playerCount >= 2;
+        GoWiped(twoLocal && (p1Device < 0 || p2Device < 0) ? Screen.KeyReview : Screen.Vs);
+    }
+
+    const string DashRule = "Dash: hold the dash key + a direction. One-tap dash keys need no modifier. Hold the forward dash to run.";
+
+    /// <summary>Switches the one-player keyboard layout and saves the choice.</summary>
+    Item SoloLayoutRow()
+    {
+        Action swap = () =>
+        {
+            var b = InputManager.Instance.Bindings;
+            b.soloLayout = 1 - b.soloLayout;
+            b.Save();
+            Rebuild();
+        };
+        return new Item
+        {
+            label = "One-player layout",
+            value = () => InputManager.Instance.Bindings.SoloLayoutName,
+            adjust = d => swap(),
+            confirm = swap,
+        };
+    }
+
+    static string KeySetName(int set) => set == 0 ? "One player" : $"Two players: Player {set}";
+
+    // The rows of the review screen. A row with a second action writes both, so Block keeps its parry
+    // and Dash keeps its run.
+    static readonly (string label, GameAction action, int also)[] ReviewRows =
+    {
+        ("Move left", GameAction.MoveLeft, -1), ("Move right", GameAction.MoveRight, -1),
+        ("Dash modifier + run", GameAction.Dash, (int)GameAction.Run),
+        ("Dash up", GameAction.Up, -1), ("Dash down", GameAction.Down, -1),
+        ("Dash up-left", GameAction.DashUpLeft, -1), ("Dash up-right", GameAction.DashUpRight, -1),
+        ("Dash down-left", GameAction.DashDownLeft, -1), ("Dash down-right", GameAction.DashDownRight, -1),
+        ("Light attack", GameAction.Light, -1), ("Medium attack", GameAction.Medium, -1), ("Heavy attack", GameAction.Heavy, -1),
+        ("Special modifier", GameAction.Special, -1),
+        ("Block + parry", GameAction.Block, (int)GameAction.Defense),
+    };
+
+    int reviewPlayer = 1;
+
+    void BuildKeyReview()
+    {
+        bool k1 = p1Device < 0, k2 = p2Device < 0;
+        if (!k1) reviewPlayer = 2;
+        if (!k2) reviewPlayer = 1;
+        string clash = KeyClash(k1, k2);
+        SetTitle("Check Your Keys", clash ?? "both players, side by side - change anything before the fight");
+        visibleRows = 18; rowHeight = 29f; rowFont = 20;
+
+        items.Add(new Item { label = "", header = true,
+                             value = () => k1 ? "PLAYER 1" : "P1: controller",
+                             value2 = () => k2 ? "PLAYER 2" : "P2: controller" });
+        foreach (var row in ReviewRows)
+        {
+            var r = row;
+            items.Add(new Item
+            {
+                label = r.label,
+                value = () => k1 ? ReviewCell(1, r.action) : "",
+                value2 = () => k2 ? ReviewCell(2, r.action) : "",
+                adjust = d => { if (k1 && k2) { reviewPlayer = 3 - reviewPlayer; Refresh(); } },
+                confirm = () => BeginCapture(reviewPlayer, r.action, r.also),
+            });
+        }
+        items.Add(new Item { label = "", header = true });
+        items.Add(new Item { label = "Begin", confirm = () => GoWiped(Screen.Vs) });
+        items.Add(new Item { label = "Back", confirm = Back });
+        footerText.text = "Left / Right picks the player, Enter changes the key    " + DashRule;
+    }
+
+    string ReviewCell(int player, GameAction a)
+    {
+        var keys = InputManager.Instance.Bindings.Player(player);
+        string key = ControlBindings.KeyLabel(keys.Key(a));
+        // An unbound diagonal is not missing: it is the modifier plus two directions.
+        if (keys.Key(a) == KeyCode.None && a >= GameAction.DashUpLeft)
+            key = ControlBindings.KeyLabel(keys.Key(GameAction.Dash)) + " + 2 dirs";
+        return player == reviewPlayer ? $"[ {key} ]" : key;
+    }
+
+    /// <summary>The first key two review rows share, as a warning, or null when none do.</summary>
+    string KeyClash(bool k1, bool k2)
+    {
+        var seen = new Dictionary<KeyCode, string>();
+        var b = InputManager.Instance.Bindings;
+        for (int p = 1; p <= 2; p++)
+        {
+            if (!(p == 1 ? k1 : k2)) continue;
+            foreach (var row in ReviewRows)
+            {
+                KeyCode k = b.Player(p).Key(row.action);
+                if (k == KeyCode.None) continue;
+                string who = $"P{p} {row.label}";
+                if (seen.TryGetValue(k, out string first))
+                    return $"careful: {ControlBindings.KeyLabel(k)} is both {first} and {who}";
+                seen[k] = who;
+            }
+        }
+        return null;
     }
 
     void SetTitle(string t, string sub)
@@ -1936,22 +2045,36 @@ public class GameMenu : MonoBehaviour
         return $"HEALTH {f.MaxHealth}      STAMINA {f.MaxStamina}      ARMOUR {f.Armor}%\nSTRIKES {strikes}";
     }
 
+    // Each fighter's play style, in the user's words (2026-11-01). The Sensei has none yet.
+    static readonly (string key, string name, string style)[] Styles =
+    {
+        ("Miy", "Miyamoto", "Relies on attack speed and fast movement and dashing: in and out fast, countering after successful dashes. At the expense of low armour, block and health."),
+        ("Bj",  "Bjorn",    "Aggressive attacks that blocking is not enough to stop. Capitalises on his attacks to land his damaging strikes."),
+        ("Sal", "Salaadin", "Balanced attributes and diverse combos."),
+        ("Ric", "Richard",  "A tank who hits from range, with the heaviest armour and block."),
+        ("Gen", "Genghis",  "A lighter tank who relies on parrying and is good at short range."),
+        ("Buw", "Buwaka",   "Balanced movement, some ranged diversity and a decent block."),
+    };
+
     static string Tagline(string character)
     {
         if (string.IsNullOrEmpty(character)) return "";
-        if (character.StartsWith("Miy", StringComparison.OrdinalIgnoreCase))
-            return "Katana. Quick, exact, unforgiving of a wasted swing.";
-        if (character.StartsWith("Ric", StringComparison.OrdinalIgnoreCase))
-            return "Sword and kite shield. The hardest man to put down.";
-        if (character.StartsWith("Bj", StringComparison.OrdinalIgnoreCase))
-            return "Dane axe. Slow to start, heavy to stop, longest reach.";
-        if (character.StartsWith("Sal", StringComparison.OrdinalIgnoreCase))
-            return "Falchion and round shield. His strings flow where others stop.";
-        if (character.StartsWith("Gen", StringComparison.OrdinalIgnoreCase))
-            return "Two-handed saber. Catch his guard and no man punishes harder.";
-        if (character.StartsWith("Buw", StringComparison.OrdinalIgnoreCase))
-            return "Spear and hide shield. The longest reach, and he keeps it.";
+        foreach (var s in Styles)
+            if (character.StartsWith(s.key, StringComparison.OrdinalIgnoreCase)) return s.style;
         return "";
+    }
+
+    /// <summary>Breaks text at spaces for the menus' one-line rows, which do not wrap.</summary>
+    static IEnumerable<string> Wrapped(string text, int width)
+    {
+        var line = new System.Text.StringBuilder();
+        foreach (string word in text.Split(' '))
+        {
+            if (line.Length > 0 && line.Length + 1 + word.Length > width) { yield return line.ToString(); line.Clear(); }
+            if (line.Length > 0) line.Append(' ');
+            line.Append(word);
+        }
+        if (line.Length > 0) yield return line.ToString();
     }
 
     void ConfirmCharacter()
@@ -2861,12 +2984,13 @@ public class GameMenu : MonoBehaviour
 
     // ================================================================ rebinding
 
-    void BeginCapture(int player, GameAction a)
+    void BeginCapture(int player, GameAction a, int alsoAction = -1)
     {
         capturing = true;
         capturePlayer = player;
         captureAction = (int)a;
-        captureText.text = $"Press a key or controller button for\n\nPLAYER {player}   {ControlBindings.ActionLabel(a)}\n\n{(BigRows ? "(tap the screen to cancel)" : "(Esc cancels)")}";
+        captureAlso = alsoAction;
+        captureText.text = $"Press a key or controller button for\n\n{KeySetName(player).ToUpperInvariant()}   {ControlBindings.ActionLabel(a)}\n\n{(BigRows ? "(tap the screen to cancel)" : "(Esc cancels)")}";
         captureBack.gameObject.SetActive(true);
     }
 
@@ -2879,11 +3003,13 @@ public class GameMenu : MonoBehaviour
             if (Input.GetKeyDown(k))
             {
                 b.Player(capturePlayer).keys[captureAction] = (int)k;
+                if (captureAlso >= 0) b.Player(capturePlayer).keys[captureAlso] = (int)k;
                 b.Save();
                 EndCapture();
                 return;
             }
         }
+        if (capturePlayer == 0) return;   // the solo set is keys only
         foreach (var g in Gamepad.all)
         {
             foreach (GamepadButton btn in ControlBindings.BindablePadButtons)
@@ -2891,6 +3017,7 @@ public class GameMenu : MonoBehaviour
                 if (g[btn].wasPressedThisFrame)
                 {
                     b.Player(capturePlayer).pad[captureAction] = (int)btn;
+                    if (captureAlso >= 0) b.Player(capturePlayer).pad[captureAlso] = (int)btn;
                     b.Save();
                     EndCapture();
                     return;
@@ -2904,7 +3031,8 @@ public class GameMenu : MonoBehaviour
         capturing = false;
         captureBack.gameObject.SetActive(false);
         inputGuard = 0.2f;
-        Refresh();
+        if (screen == Screen.KeyReview) Rebuild();   // the warning sits in the subtitle
+        else Refresh();
     }
 
     // ================================================================ canvas
@@ -3332,7 +3460,7 @@ public class GameMenu : MonoBehaviour
         MenuArt.Stretch(selectView);
 
         cards = new CharacterCard[Mathf.Max(2, roster.Length)];
-        for (int i = 0; i < cards.Length; i++) cards[i] = BuildPlate(selectView, "Card" + i);
+        for (int i = 0; i < cards.Length; i++) cards[i] = BuildPlate(selectView, "Card" + i, true);
 
         // The seam between the two halves of the split select.
         splitDivider = MenuArt.Img(selectView, "Divider", MenuArt.Solid, MenuArt.Fade(MenuArt.Bronze, 0.75f));
@@ -3485,11 +3613,11 @@ public class GameMenu : MonoBehaviour
     }
 
     /// <summary>A plate: tag, name, one line of character, and the numbers that matter.</summary>
-    CharacterCard BuildPlate(RectTransform parent, string name)
+    CharacterCard BuildPlate(RectTransform parent, string name, bool showStyle = false)
     {
-        var card = new CharacterCard();
+        var card = new CharacterCard { showStyle = showStyle };
         card.rt = MenuArt.Rect(parent, name);
-        MenuArt.Box(card.rt, new Vector2(0.5f, 0.5f), new Vector2(470f, 142f), Vector2.zero);
+        MenuArt.Box(card.rt, new Vector2(0.5f, 0.5f), showStyle ? new Vector2(760f, 156f) : new Vector2(470f, 142f), Vector2.zero);
 
         card.slab = MenuArt.Img(card.rt, "Slab", MenuArt.Panel, new Color(0.11f, 0.09f, 0.08f, 0.9f), Image.Type.Sliced);
         MenuArt.Stretch(card.slab.rectTransform);
@@ -3504,12 +3632,12 @@ public class GameMenu : MonoBehaviour
         card.name = MenuArt.Shadowed(card.rt, "Name", "", 36, TextAnchor.MiddleCenter, MenuArt.BronzeLit, FontStyle.Bold);
         MenuArt.Place(card.name.rectTransform, 0f, 1f, 1f, 1f, new Vector2(0f, -54f), new Vector2(0f, -8f));
 
-        card.tagline = MenuArt.Label(card.rt, "Tagline", "", 18, TextAnchor.UpperCenter, MenuArt.Dim, FontStyle.Italic);
-        MenuArt.Place(card.tagline.rectTransform, 0f, 1f, 1f, 1f, new Vector2(14f, -82f), new Vector2(-14f, -54f));
+        card.tagline = MenuArt.Label(card.rt, "Tagline", "", 18, TextAnchor.UpperCenter, MenuArt.Fade(MenuArt.Bone, 0.88f), FontStyle.Italic);
+        MenuArt.Place(card.tagline.rectTransform, 0f, 1f, 1f, 1f, new Vector2(14f, showStyle ? -104f : -82f), new Vector2(-14f, -54f));
         card.tagline.horizontalOverflow = HorizontalWrapMode.Wrap;
 
         card.stats = MenuArt.Label(card.rt, "Stats", "", 17, TextAnchor.UpperCenter, MenuArt.Fade(MenuArt.Bone, 0.88f));
-        MenuArt.Place(card.stats.rectTransform, 0f, 1f, 1f, 1f, new Vector2(10f, -136f), new Vector2(-10f, -84f));
+        MenuArt.Place(card.stats.rectTransform, 0f, 1f, 1f, 1f, new Vector2(10f, showStyle ? -152f : -136f), new Vector2(-10f, showStyle ? -106f : -84f));
 
         return card;
     }
@@ -3535,16 +3663,16 @@ public class GameMenu : MonoBehaviour
         if (splitSelect)
         {
             FixPlate(cards[0], p1Character, SideTag(1) + (lock1 ? "  READY" : ""), MenuArt.P1,
-                     new Vector2(-480f, -385f), lock1);
+                     new Vector2(-480f, -290f), lock1);
             if (cards.Length > 1)
                 FixPlate(cards[1], p2Character, SideTag(2) + (lock2 ? "  READY" : ""), MenuArt.P2,
-                         new Vector2(480f, -385f), lock2);
+                         new Vector2(480f, -290f), lock2);
         }
         else
         {
             string tag = pickingP2 ? (flow == Flow.Practice ? "DUMMY" : "COMPUTER") : "PLAYER 1";
             FixPlate(cards[0], pickingP2 ? p2Character : p1Character, tag,
-                     pickingP2 ? MenuArt.P2 : MenuArt.P1, new Vector2(0f, -385f), false);
+                     pickingP2 ? MenuArt.P2 : MenuArt.P1, new Vector2(0f, -290f), false);
         }
         RefreshSelectBack();
     }
@@ -3620,7 +3748,7 @@ public class GameMenu : MonoBehaviour
         card.frame.color = MenuArt.BronzeLit;
         card.slab.color = new Color(0.11f, 0.09f, 0.08f, 0.9f);
         card.stats.text = StatsLine(roster[rosterIndex]);
-        card.tagline.text = Tagline(roster[rosterIndex].CharacterName);
+        card.tagline.text = card.showStyle ? Tagline(roster[rosterIndex].CharacterName) : "";
         card.rt.localScale = Vector3.one;
     }
 
@@ -4003,10 +4131,12 @@ public class GameMenu : MonoBehaviour
         var r = MovesRoster();
         if (r.Count == 0) { yield return "No fighters in the scene."; yield break; }
         var entry = r[Mathf.Clamp(page, 0, r.Count - 1)];
-        var b = InputManager.Instance != null ? InputManager.Instance.Bindings : ControlBindings.Defaults();
-        var keys = b.Player(entry.player);
+        var keys = InputManager.Instance != null ? InputManager.Instance.KeysFor(entry.player) : ControlBindings.Defaults().Player(entry.player);
 
         yield return $"{entry.name.ToUpperInvariant()}   (Player {entry.player})      damage / stamina / startup-active-recovery";
+        string style = Tagline(entry.name);
+        if (style.Length > 0)
+            foreach (string line in Wrapped(style, 96)) yield return "   " + line;
         yield return "";
         foreach (var attack in Library(entry.combat))
             yield return $"   {Press(keys, attack, movesShowPad),-16} {attack.AttackName,-23} {attack.Damage,2} dmg   " +
@@ -4045,43 +4175,88 @@ public class GameMenu : MonoBehaviour
 
     IEnumerable<string> HelpLines()
     {
-        yield return "Walk toward or away from your opponent. Light, Medium and Heavy strikes each have a wind-up,";
-        yield return "an active window and a recovery. Heavier strikes hit harder and take longer. Every strike";
-        yield return "steps forward a little to reach its target.";
+        yield return "THE BASICS";
+        yield return "Light is quick, Medium is in between, Heavy is slow and hits hardest. Hold Special and press a";
+        yield return "strike for that fighter's special version of it. Specials hit harder and cost far more stamina.";
+        yield return "Every strike steps you forward a little, but a swing that misses leaves you open for longer.";
         yield return "";
-        yield return "BLOCK    Hold Block to absorb a hit for stamina. Holding drains stamina; an empty bar breaks the guard.";
-        yield return "PARRY    Tap Parry just as a strike lands to deflect it: no damage, no stamina lost, and the attacker";
-        yield return "         is stunned long enough to punish, with a window to counter for extra damage. It is its own";
-        yield return "         button, never the guard: it costs stamina and a second of cooldown, so read the swing.";
-        yield return "DASH     Dash key + direction, or flick the right stick. A dash timed against a strike dodges it.";
-        yield return "         A side dash circles your opponent so you stay in range. After a clean dodge you have";
-        yield return "         a moment to counter for extra damage, and the attacker who missed is stuck recovering.";
-        yield return "CLASH    Two strikes of equal weight meeting cancel each other. The heavier strike wins otherwise.";
-        yield return "SPECIAL  Hold the Special modifier and press a strike for that character's special version of it:";
-        yield return "         three per fighter. They hit harder, cost about two and a half times the stamina, and";
-        yield return "         leave a beat afterwards in which you cannot attack. On a phone, tap SP then the strike.";
-        yield return "STRINGS  Press the next button before the current move finishes to cancel into it - up to three";
-        yield return "         hits. Any strike flows into any other except the same swing twice (two overheads or two";
-        yield return "         thrusts are fine), and a spin follows an overhead only on the same diagonal.";
-        yield return "HEALTH   You get a little health back for a dodge, a parry, and for landing the counter they earn.";
-        yield return "         Go a few seconds without being hit and you start slowly regenerating.";
-        yield return "KO       Empty your opponent's health bar.";
+        yield return "STAMINA";
+        yield return "Strikes, dashes and blocked hits all use it. Below 40% of your bar your strikes get weaker and";
+        yield return "slower, so stop and breathe before you run dry. Whoever manages their bar usually wins.";
+        yield return "";
+        yield return "BLOCK AND PARRY";
+        yield return "Hold Block to take far less damage. Holding it costs nothing, but every hit you block takes";
+        yield return "stamina, and each hit of a combo takes more. If you cannot pay, your guard breaks: you take the";
+        yield return "full hit, lose your bar, and for a moment you can only walk or dash.";
+        yield return "Raise your block just before a hit lands and you parry it instead: no damage, and your opponent";
+        yield return "is left stunned. Raise it too early and it is only a block, and you cannot parry again straight";
+        yield return "away, so watch the end of the swing and do not mash.";
+        yield return "";
+        yield return "DASH";
+        yield return "Dash in any direction, diagonals too. The start of a dash dodges a strike, the end of it does";
+        yield return "not, so time it. A clean dodge gives your stamina back. You can also dash out of a swing once it";
+        yield return "has finished hitting. Hold the dash toward your opponent to run.";
+        yield return "";
+        yield return "COUNTER";
+        yield return "After a parry or a clean dodge you have a moment to strike back: your next swing is faster, hits";
+        yield return "harder and gives you health back. This is the biggest swing in any fight, so always be ready.";
+        yield return "";
+        yield return "COMBOS";
+        yield return "There is no list of combos to memorise. A combo is one swing flowing into the next, the way a";
+        yield return "real sword fight moves. Press your next strike before the last one ends and it carries on, up";
+        yield return "to three hits. A cut from the right wants to come back from the left, then maybe a thrust or an";
+        yield return "overhead. The one thing that will not flow is the same swing twice: your blade has to go";
+        yield return "somewhere new. Two thrusts or two overheads are the exception. A spin after an overhead only";
+        yield return "works if the overhead came down on the same side as the spin.";
+        yield return "";
+        yield return "So your combos depend on who you are playing. Each fighter swings differently, so learn your";
+        yield return "fighter's moves in Practice, see which ones lead into which, and get creative. Mix in a special,";
+        yield return "start low, finish high, make your own. The best combo is the one your opponent has not seen.";
+        yield return "";
+        yield return "Land the first hit cleanly and the rest of your combo cannot be knocked out of you, though a";
+        yield return "parry still stops it. Press the next strike early and it comes out faster. Keep swinging without";
+        yield return "a pause and each swing costs extra stamina, and after four you have to stop for a second. The";
+        yield return "same move thrown twice in a row also needs a moment before it can be used again.";
+        yield return "";
+        yield return "CAUGHT IN A COMBO?";
+        yield return "After a hit you can still dash out, if you pick the right way. Dash the wrong way and you get";
+        yield return "hit harder and stunned longer. On a blocked combo you can dash out too, but only by timing it.";
+        yield return "";
+        yield return "OTHER THINGS TO KNOW";
+        yield return "Heavy specials cannot be stopped by a hit: they take the damage and keep going. Parry them.";
+        yield return "Two strikes of equal weight meeting cancel out. Otherwise the heavier one wins.";
+        yield return "When the fighters swap sides the camera swings round and the fight resets the distance between";
+        yield return "you. Use that moment: hold block and move to get ready.";
+        yield return "You get a little health back for a dodge, a parry or a counter, and slowly on your own after a";
+        yield return "few seconds without being hit, if the game's health regen is on.";
+        yield return "Empty your opponent's health bar to win. In a timed duel, whoever has more health left wins.";
+        yield return "";
+        yield return "FIGHTER STYLES";
+        foreach (var s in Styles)
+        {
+            bool first = true;
+            foreach (string line in Wrapped(s.style, 88))
+            {
+                yield return (first ? s.name.ToUpperInvariant().PadRight(10) : "          ") + line;
+                first = false;
+            }
+        }
         yield return "";
         var b = InputManager.Instance != null ? InputManager.Instance.Bindings : ControlBindings.Defaults();
-        yield return KeyboardLine("P1", b.p1);
-        yield return KeyboardLine("P2", b.p2);
+        yield return KeyboardLine("One player", b.Player(0));
+        yield return KeyboardLine("Two players P1", b.p1);
+        yield return KeyboardLine("Two players P2", b.p2);
         var pp = b.Player(b.firstPadPlayer);
         yield return $"Controller (Player {b.firstPadPlayer}):  move stick/d-pad   light {ControlBindings.PadLabel(pp.Pad(GameAction.Light))}  " +
                      $"medium {ControlBindings.PadLabel(pp.Pad(GameAction.Medium))}  heavy {ControlBindings.PadLabel(pp.Pad(GameAction.Heavy))}   " +
-                     $"block {ControlBindings.PadLabel(pp.Pad(GameAction.Block))}  parry {ControlBindings.PadLabel(pp.Pad(GameAction.Defense))}   " +
+                     $"block / parry {ControlBindings.PadLabel(pp.Pad(GameAction.Block))}   " +
                      $"special {ControlBindings.PadLabel(pp.Pad(GameAction.Special))}+strike   dash: flick right stick   pause: Options";
     }
 
     static string KeyboardLine(string who, ControlBindings.PlayerBindings k) =>
         $"{who} keyboard:  move {ControlBindings.KeyLabel(k.Key(GameAction.MoveLeft))}/{ControlBindings.KeyLabel(k.Key(GameAction.MoveRight))}   " +
         $"light {ControlBindings.KeyLabel(k.Key(GameAction.Light))}  medium {ControlBindings.KeyLabel(k.Key(GameAction.Medium))}  " +
-        $"heavy {ControlBindings.KeyLabel(k.Key(GameAction.Heavy))}   block {ControlBindings.KeyLabel(k.Key(GameAction.Block))}  " +
-        $"parry {ControlBindings.KeyLabel(k.Key(GameAction.Defense))}   special {ControlBindings.KeyLabel(k.Key(GameAction.Special))}+strike   " +
+        $"heavy {ControlBindings.KeyLabel(k.Key(GameAction.Heavy))}   block / parry {ControlBindings.KeyLabel(k.Key(GameAction.Block))}   special {ControlBindings.KeyLabel(k.Key(GameAction.Special))}+strike   " +
         $"dash {ControlBindings.KeyLabel(k.Key(GameAction.Dash))}";
 }
 

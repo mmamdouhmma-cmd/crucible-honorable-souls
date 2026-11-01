@@ -873,6 +873,17 @@ public class Fighter : MonoBehaviour
         clashFlashTimer = BalanceConfig.CLASH_HUD_FLASH_DURATION;
     }
 
+    /// <summary>
+    /// Slides the fighter the given way over the given seconds. It is the knockback slide, so walls
+    /// and the arena edge stop it, and it leaves the fighter's actions alone.
+    /// </summary>
+    public void SlideBy(Vector3 offset, float seconds)
+    {
+        offset.y = 0f;
+        knockbackVelocity = offset / Mathf.Max(0.01f, seconds);
+        knockbackTimer = seconds;
+    }
+
     /// <summary>Slides the fighter along the clash knockback for its duration.</summary>
     private bool lungeStarted;
 private float lungeTotal;    // distance the lunge covers in all
@@ -1215,11 +1226,14 @@ private void HandleFacing()
 
     // Which screen side the opponent is on decides how left/right input maps to
     // forward/backward. Measured along the camera's right so it stays correct as the
-    // camera orbits; the dead zone stops it flickering when lined up in depth.
+    // camera orbits; the dead zone stops it flickering when lined up in depth. The mapping
+    // holds while a direction is held and through a camera swap: flipping it there turned a
+    // held "toward" into "away", which stopped the fighter and sent him backward.
     float screenSide = cameraTransform != null
         ? Vector3.Dot(toOpponent, cameraTransform.right)
         : toOpponent.x;
-    if (Mathf.Abs(screenSide) > FACING_FLIP_DEAD_ZONE)
+    bool directionHeld = isDashing || isRunning || currentInput.runHeld || currentInput.moveDirection != 0f;
+    if (Mathf.Abs(screenSide) > FACING_FLIP_DEAD_ZONE && !directionHeld && !FightCamera.Swapping)
     {
         facingRight = screenSide > 0f;
     }

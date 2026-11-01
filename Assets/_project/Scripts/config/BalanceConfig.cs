@@ -58,6 +58,7 @@ public static class BalanceConfig
     // 2026-10-25 - it replaced a walk multiplier, 1.3x at its last value), so the per-fighter dash
     // table in CrucibleBalance is also the run table: Miyamoto 11.8 u/s, Salaadin 8.8, Bjorn 7.3,
     // Richard 5.9. No multiplier constant exists any more; tune a fighter's run by tuning his dash.
+    public const float DASH_CHORD_WINDOW = 0.05f;        // seconds a keyboard dash waits for a second direction key, so two keys make a diagonal
     public const float RUN_DOUBLE_FLICK_WINDOW = 0.5f;   // max seconds between the two flicks (0.35 proved too tight to land deliberately)
     public const float RUN_MIN_FORWARD = 0.5f;           // how squarely toward the opponent the held stick must point
     // Running costs stamina per DISTANCE covered (the user's call, 2026-10-25), so a fast runner
@@ -134,6 +135,11 @@ public static class BalanceConfig
     /// close first, by walking or by dashing.
     /// </summary>
     public const float MATCH_START_GAP = 6.5f;
+
+    // After the camera swaps sides, fighters closer than this slide apart to it, so the fight
+    // restarts evenly. World units, centre to centre. Fighters already further apart stay put.
+    public const float SWAP_RESET_GAP = 5.0f;
+    public const float SWAP_RESET_SECONDS = 0.35f;
 
     // ==================== LOW STAMINA ====================
     // Below WEAKENED_STAMINA_FRACTION of the bar an attack costs less, deals less and comes out

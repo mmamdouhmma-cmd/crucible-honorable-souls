@@ -43,6 +43,11 @@ public class InputManager : MonoBehaviour
         public float lastFlickTime = -99f;  // unscaled time of the last flick
         public Vector2 lastFlickDir;
         public bool runLatch;               // a second flick landed in the window and is still held
+        // Keyboard dash waiting a moment for a second direction key, so two keys that land a
+        // frame apart make a diagonal instead of a straight dash.
+        public bool chordPending;
+        public float chordUntil;
+        public Vector2 chordDir;
     }
     private readonly PadFlickState p1Flick = new PadFlickState();
     private readonly PadFlickState p2Flick = new PadFlickState();
@@ -122,6 +127,22 @@ public class InputManager : MonoBehaviour
 
     public bool IsAi(int player) => player == 1 ? ai1 : ai2;
 
+    /// <summary>One person at the keyboard. Two Players always pins both devices; every other mode clears them.</summary>
+    public bool SoloKeyboard => !device1Chosen && !device2Chosen;
+
+    private readonly ControlBindings.PlayerBindings soloView = new ControlBindings.PlayerBindings();
+
+    /// <summary>The keys and pad buttons this player is using right now. Player 1 is the local player
+    /// in every solo mode, online guest included.</summary>
+    public ControlBindings.PlayerBindings KeysFor(int player)
+    {
+        var b = Bindings.Player(player);
+        if (player != 1 || !SoloKeyboard) return b;
+        soloView.keys = Bindings.Player(0).keys;
+        soloView.pad = b.pad;
+        return soloView;
+    }
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -170,6 +191,7 @@ public class InputManager : MonoBehaviour
         {
             player1Input = new InputData();
             player2Input = new InputData();
+            p1Flick.chordPending = p2Flick.chordPending = false;
             return;
         }
         player1Input = ai1 ? aiInput1 : Read(1, p1Flick);
@@ -187,7 +209,8 @@ public class InputManager : MonoBehaviour
 
     private InputData Read(int player, PadFlickState flick)
     {
-        var b = Bindings.Player(player);
+        var b = KeysFor(player);
+        bool solo = player == 1 && SoloKeyboard;
         var pad = PadForPlayer(player, out bool keys);
         InputData data = new InputData();
 
@@ -217,17 +240,19 @@ public class InputManager : MonoBehaviour
         data.throwButton = Pressed(b, pad, GameAction.Throw, keys);
         data.stanceSwitch = Pressed(b, pad, GameAction.Stance, keys);
 
-        data.dashDirection = ReadDash(player, b, pad, keys, flick);
+        data.dashDirection = ReadDash(player, b, pad, keys, solo, flick);
 
         // Run: the double-flick latch (set in ReadDash) while the stick is still held, or the
-        // Run key held while walking (the keyboard route - P1 is on the keyboard).
+        // forward dash held on the keyboard: the Run key shares the dash key, so a held dash rolls
+        // into a run when it ends. A diagonal never runs, and nor does a dash still being read.
         if (pad != null && flick.runLatch)
         {
             Vector2 rs = pad.rightStick.ReadValue();
             data.runHeld = true;
             data.runDirection = rs.normalized;
         }
-        else if (data.run && !Mathf.Approximately(data.moveDirection, 0f))
+        else if (data.run && !Mathf.Approximately(data.moveDirection, 0f) && !flick.chordPending &&
+                 data.dashDirection == Vector2.zero && !data.taunt && !data.crouch)
         {
             data.runHeld = true;
             data.runDirection = new Vector2(data.moveDirection, 0f);
@@ -250,24 +275,17 @@ public class InputManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Dash, 8-way (x = screen left/right, y = up = into the screen): keyboard = dash key held + a direction key
-    /// pressed (or the dash key pressed with directions held); Player 1 also keeps the number-row layout
-    /// (7 8 9 / 4 6 / 1 2 3). Pad = a flick of the right stick, or the pad dash button with the left stick.
+    /// Dash, 8-way (x = screen left/right, y = up = into the screen): keyboard = dash key held + direction keys
+    /// (or the dash key pressed with directions held), and two directions together make a diagonal. Player 1
+    /// also keeps the number-row layout (7 8 9 / 4 6 / 1 2 3). Pad = a flick of the right stick, or the pad
+    /// dash button with the left stick.
     /// </summary>
-    private Vector2 ReadDash(int player, ControlBindings.PlayerBindings b, Gamepad pad, bool keys, PadFlickState flickState)
+    private Vector2 ReadDash(int player, ControlBindings.PlayerBindings b, Gamepad pad, bool keys, bool solo, PadFlickState flickState)
     {
         if (keys)
         {
-            KeyCode dashKey = b.Key(GameAction.Dash);
-            KeyCode l = b.Key(GameAction.MoveLeft), r = b.Key(GameAction.MoveRight), u = b.Key(GameAction.Up), d = b.Key(GameAction.Down);
-            bool dirDown = Input.GetKeyDown(l) || Input.GetKeyDown(r) || Input.GetKeyDown(u) || Input.GetKeyDown(d);
-            bool dirHeld = Input.GetKey(l) || Input.GetKey(r) || Input.GetKey(u) || Input.GetKey(d);
-            bool fire = dashKey != KeyCode.None && ((Input.GetKey(dashKey) && dirDown) || (Input.GetKeyDown(dashKey) && dirHeld));
-            if (fire)
-            {
-                Vector2 v = new Vector2((Input.GetKey(r) ? 1f : 0f) - (Input.GetKey(l) ? 1f : 0f), (Input.GetKey(u) ? 1f : 0f) - (Input.GetKey(d) ? 1f : 0f));
-                if (v.magnitude >= dashThreshold) return v.normalized;
-            }
+            Vector2 keyDash = ReadKeyDash(b, solo, flickState);
+            if (keyDash != Vector2.zero) return keyDash;
         }
 
         if (player == 1 && keys)
@@ -315,6 +333,63 @@ public class InputManager : MonoBehaviour
             }
         }
         return Vector2.zero;
+    }
+
+    /// <summary>
+    /// The keyboard's dash. One-tap keys fire at once. A modifier dash with one direction waits
+    /// DASH_CHORD_WINDOW for a second direction, because two fingers never land on the same frame;
+    /// a short tap released inside the wait still dashes. In the two-player sets, Up and Down also
+    /// dash on one tap: nothing else uses them, and the modifier only has to tell A / D from a walk.
+    /// </summary>
+    private static Vector2 ReadKeyDash(ControlBindings.PlayerBindings b, bool solo, PadFlickState state)
+    {
+        if (Tapped(b, GameAction.DashUpLeft)) return Tap(-1f, 1f, state);
+        if (Tapped(b, GameAction.DashUpRight)) return Tap(1f, 1f, state);
+        if (Tapped(b, GameAction.DashDownLeft)) return Tap(-1f, -1f, state);
+        if (Tapped(b, GameAction.DashDownRight)) return Tap(1f, -1f, state);
+
+        KeyCode dashKey = b.Key(GameAction.Dash);
+        KeyCode l = b.Key(GameAction.MoveLeft), r = b.Key(GameAction.MoveRight), u = b.Key(GameAction.Up), d = b.Key(GameAction.Down);
+        Vector2 held = new Vector2((Input.GetKey(r) ? 1f : 0f) - (Input.GetKey(l) ? 1f : 0f),
+                                   (Input.GetKey(u) ? 1f : 0f) - (Input.GetKey(d) ? 1f : 0f));
+
+        if (state.chordPending)
+        {
+            if (held.x != 0f) state.chordDir.x = held.x;
+            if (held.y != 0f) state.chordDir.y = held.y;
+            bool diagonal = state.chordDir.x != 0f && state.chordDir.y != 0f;
+            if (!diagonal && Time.unscaledTime < state.chordUntil) return Vector2.zero;
+            state.chordPending = false;
+            return state.chordDir.normalized;
+        }
+
+        bool dirDown = Input.GetKeyDown(l) || Input.GetKeyDown(r) || Input.GetKeyDown(u) || Input.GetKeyDown(d);
+        bool modifierHeld = dashKey != KeyCode.None && Input.GetKey(dashKey);
+        bool fire = (modifierHeld && dirDown) || (dashKey != KeyCode.None && Input.GetKeyDown(dashKey));
+        if (fire && held != Vector2.zero)
+        {
+            if (held.x != 0f && held.y != 0f) return held.normalized;
+            state.chordPending = true;
+            state.chordDir = held;
+            state.chordUntil = Time.unscaledTime + BalanceConfig.DASH_CHORD_WINDOW;
+            return Vector2.zero;
+        }
+
+        if (!solo && !modifierHeld)
+        {
+            if (Tapped(b, GameAction.Up)) return Vector2.up;
+            if (Tapped(b, GameAction.Down)) return Vector2.down;
+        }
+        return Vector2.zero;
+    }
+
+    private static bool Tapped(ControlBindings.PlayerBindings b, GameAction a) =>
+        b.Key(a) != KeyCode.None && Input.GetKeyDown(b.Key(a));
+
+    private static Vector2 Tap(float x, float y, PadFlickState state)
+    {
+        state.chordPending = false;
+        return new Vector2(x, y).normalized;
     }
 
     private static bool Held(ControlBindings.PlayerBindings b, Gamepad pad, GameAction a, bool keys = true)

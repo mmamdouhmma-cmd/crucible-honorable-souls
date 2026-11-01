@@ -4770,3 +4770,41 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 - A row's click fires on the lift and the EventSystem (order -1000) runs before `GameMenu`, so `Input.GetMouseButtonUp`
   was still true in the frame `EnterReplayFullScreen` ran, and the replay left full screen at once. Keyboard and pad
   never showed it. Only a press that began in full screen closes it now.
+
+### 2026-11-01 — Keyboard layouts and the dash fix
+
+- Three key sets now: `solo` (against the AI, Practice, Online) and `p1` / `p2` (two players on one keyboard). `InputManager.SoloKeyboard` is true when no device is pinned: Two Players always pins both, every other mode clears them. Player 1 is the local player in every solo mode, online guest included.
+- `ControlBindings.layoutVersion`: a save older than `CurrentLayout` takes the new keys and keeps its pad buttons. Bump it whenever the default keys change.
+- `InputManager.ReadKeyDash` waits `DASH_CHORD_WINDOW` (0.05 s) for a second direction. One-tap keys and two-player Up / Down fire at once.
+- `simulate_key` does not reach legacy `Input.GetKey`, so dash logic was tested by extracting `ReadKeyDash` into a scratch harness with stub `Input` and `Time` types.
+- New `Screen.KeyReview` after Game Settings for two-player keyboard games. A rematch skips it.
+
+### 2026-11-01 — Camera side swap
+
+- The camera's +-70 degree limit made the side leap across when the fighters' line crossed the view, and `facingRight` flipped with it, so a held "toward" became "away". That was the pause and backfire.
+- `FightCamera.BeginSwap` now sweeps to the new side when the side would jump more than 60 degrees in a frame, on the arc behind the moving fighter, with slow motion and a dark overlay under the HUD. `FightCamera.Swapping` is true meanwhile.
+- `Fighter.HandleFacing` only updates `facingRight` when no direction is held and no swap is running. `AiController.ScreenDirToFoe` reads that facing instead of the camera, or the AI would walk backward during the hold.
+- `KillShot.Begin` must call `CancelSwap` before reading `Time.timeScale`, or it restores the slowed speed.
+- `WallCutout` casts both ways now, because a ray starting inside a mesh does not hit it. During a sweep it also tests collider-less props by their bounds: the Musashi arenas have 552 renderers without colliders. Outside a sweep they stay solid.
+- A finished sweep slides the pair apart to `SWAP_RESET_GAP` through `Fighter.SlideBy`, which is the knockback slide, so walls stop it. A cancelled sweep does not. Online only the host does this.
+
+### 2026-11-01 — Bigger Village Plaza
+
+- Plaza radius 10 -> 16, centre z -5 -> -10.5 (`FightSpaces`). Patched in testarena and the story scene instead of rebuilding, so the bake and the village stayed untouched. The rim stops 0.6 short of House_02, which has no collider: do not grow it north.
+- A capsule scan at `OBSTACLE_STEP_HEIGHT` over 800 floor points found 7 blocked, all on two mounds, now keep-out circles (`PlazaKeepOut`).
+- `WallCutout` also opens a hole whenever the camera is inside a collider-less prop's box, outside a sweep too, because the bigger plaza can push the camera into House_02 from the rim.
+
+### 2026-11-01 — The Sensei's shake on character select
+
+- The shake was his left FINGERS, not his body: root, hips and head were steady. `TwoHandGrip.CloseFingers` ran a stateless sweep every frame, so where two angles seated a finger about equally (or the bend axis went near-singular, finger pointing straight at the haft) the answer flipped frame to frame. Index tip: 0.20 units a frame, 53 reversals in 240 frames, jerk 0.267.
+- Each finger now keeps its last bend axis (in hand space) and angle, eases both over 0.05 s, and the sweep charges for distance from last frame's angle. The early-out at the haft surface went too: it was a second way to snap. Worst bone on his rig is now the wrist's idle sway at 0.016. The three other two-handers share the code and stayed steady, largest finger gap 0.08. Only idle on the ring was measured, not mid-swing.
+- Find this kind of fault by ranking EVERY transform under the fighter by frame-to-frame jerk and counting direction reversals; a hand-picked bone list only showed the left hand at about twice the others and hid the finger.
+
+### 2026-11-01 — Fighter styles in the menus
+
+- The user wrote the six play styles (not the Sensei); they live in `GameMenu.Styles` with spelling tidied. `Tagline()` now returns them, so the old weapon taglines are gone, including two that contradicted each other on "longest reach".
+- Shown on the select plate, each Move List page and a FIGHTER STYLES block in How to Fight. Only the select plates grew (760 x 156, `BuildPlate(showStyle)`, moved up to -290 to clear the footer): at that width the two VS plates overlapped, so VS keeps its 470 plate with no style line.
+
+### 2026-11-01 — How to Fight rewritten
+
+- `GameMenu.HelpLines` is a player's guide now (the user's brief: explain combos as a player, not a developer; your combos depend on your fighter's moves, so learn them and get creative). It drops the old block drain and the separate parry button, and the key lines read "block / parry" on one key.

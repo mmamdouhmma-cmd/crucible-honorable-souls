@@ -35,6 +35,8 @@ public class WallCutout : MonoBehaviour
     private Transform arenaRoot;
     private readonly List<Renderer> arenaRenderers = new List<Renderer>();
     private readonly List<MeshCollider> arenaColliders = new List<MeshCollider>();
+    private readonly List<Renderer> arenaProps = new List<Renderer>();   // visible meshes with no collider of their own
+    private const float PropMaxSize = 30f;   // bigger than this is ground or a whole building, not a prop
 
     // Swap state: each renderer whose materials are replaced, with its own originals.
     private readonly Dictionary<Renderer, Material[]> swapped = new Dictionary<Renderer, Material[]>();
@@ -84,7 +86,12 @@ public class WallCutout : MonoBehaviour
             Vector3 chest = HitEffects.Chest(f);
             Vector3 toChest = chest - camPos;
             float dist = toChest.magnitude;
-            bool occluded = dist > 0.5f && Blocked(new Ray(camPos, toChest / dist), dist - 0.2f);
+            // Cast both ways: a ray that starts inside a mesh does not hit it, so the camera sitting
+            // inside a wall or a prop only shows from the fighter's end.
+            Ray sight = new Ray(camPos, toChest / dist);
+            bool occluded = dist > 0.5f && (Blocked(sight, dist - 0.2f) ||
+                                            Blocked(new Ray(chest, -sight.direction), dist) ||
+                                            (FightCamera.Swapping ? PropBlocks(sight, dist) : CameraInProp(camPos)));
 
             Fade(slot, occluded ? 1f : 0f);
             if (strength[slot] > 0.001f)
@@ -110,11 +117,14 @@ public class WallCutout : MonoBehaviour
         arenaRoot = root;
         arenaRenderers.Clear();
         arenaColliders.Clear();
+        arenaProps.Clear();
         if (root == null) return;
         foreach (var r in root.GetComponentsInChildren<MeshRenderer>(true))
             if (r.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly) arenaRenderers.Add(r);
         foreach (var c in root.GetComponentsInChildren<MeshCollider>(true))
             if (!c.isTrigger) arenaColliders.Add(c);
+        foreach (var r in arenaRenderers)
+            if (r.GetComponent<Collider>() == null && r.bounds.size.magnitude < PropMaxSize) arenaProps.Add(r);
         if (debugLogs) Debug.Log($"WallCutout: arena {root.name}, {arenaRenderers.Count} renderers, {arenaColliders.Count} occluders");
     }
 
@@ -122,6 +132,29 @@ public class WallCutout : MonoBehaviour
     {
         foreach (var c in arenaColliders)
             if (c != null && c.enabled && c.gameObject.activeInHierarchy && c.Raycast(ray, out _, maxDistance)) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// A prop with no collider cannot be raycast, so its box stands in. A box is generous, which is
+    /// fine for the moment a camera sweep lasts, and only then.
+    /// </summary>
+    private bool PropBlocks(Ray ray, float maxDistance)
+    {
+        foreach (var r in arenaProps)
+        {
+            if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+            Bounds b = r.bounds;
+            if (b.Contains(ray.origin) || (b.IntersectRay(ray, out float hit) && hit <= maxDistance)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>The camera backing into a house at the rim. Stricter than a sweep: only its own box counts.</summary>
+    private bool CameraInProp(Vector3 camPos)
+    {
+        foreach (var r in arenaProps)
+            if (r != null && r.enabled && r.gameObject.activeInHierarchy && r.bounds.Contains(camPos)) return true;
         return false;
     }
 

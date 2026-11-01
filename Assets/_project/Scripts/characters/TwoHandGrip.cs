@@ -282,6 +282,15 @@ public class TwoHandGrip : MonoBehaviour
     private float[] fingerSpan;         // rest distal-from-knuckle, to scale each finger's curl
     private bool fingersChecked;
 
+    // What each finger did last frame. The sweep alone has no memory: where two angles seat a finger
+    // about equally well it took a different one each frame, and where a finger points straight at
+    // the haft its bend axis whirled - the Sensei's index tip jumped 0.2 units a frame in his idle.
+    private Vector3[] curlAxisLocal;    // in the hand's own space, so it rides along with the hand
+    private float[] curlDeg;
+    private bool[] curlSeeded;
+    private const float CurlSmoothTime = 0.05f;
+    private const float CurlJumpCost = 0.005f;   // fraction of the finger's span per degree moved
+
     private static readonly HumanBodyBones[][] LeftFingerBones =
     {
         new[]{ HumanBodyBones.LeftIndexProximal,  HumanBodyBones.LeftIndexIntermediate,  HumanBodyBones.LeftIndexDistal  },
@@ -311,6 +320,9 @@ public class TwoHandGrip : MonoBehaviour
         fingerSpan = new float[fingers.Length];
         for (int i = 0; i < fingers.Length; i++)
             fingerSpan[i] = Vector3.Distance(fingers[i][0].position, fingers[i][2].position);
+        curlAxisLocal = new Vector3[fingers.Length];
+        curlDeg = new float[fingers.Length];
+        curlSeeded = new bool[fingers.Length];
     }
 
     /// <summary>The haft's direction, taken from the two points we know are on it: the main hand
@@ -341,7 +353,7 @@ public class TwoHandGrip : MonoBehaviour
         for (int i = 0; i < fingers.Length; i++)
         {
             bool thumb = i == fingers.Length - 1 && fingers.Length == 5;
-            Curl(fingers[i], axis, onHaft, radius, thumb ? thumbCurl : fingerCurl);
+            Curl(i, axis, onHaft, radius, thumb ? thumbCurl : fingerCurl);
         }
     }
 
@@ -358,11 +370,11 @@ public class TwoHandGrip : MonoBehaviour
     /// found on a copy of the joint positions - no transform is written until the answer is known,
     /// so the search costs a handful of vector operations instead of a hierarchy update per step.
     /// </summary>
-    private void Curl(Transform[] f, Vector3 haft, Vector3 onHaft, float radius, float maxDeg)
+    private void Curl(int index, Vector3 haft, Vector3 onHaft, float radius, float maxDeg)
     {
+        Transform[] f = fingers[index];
         Vector3[] rest = { f[0].position, f[1].position, f[2].position };
         float at0 = PerpDistance(rest[2], onHaft, haft);
-        if (at0 <= radius) return;                      // already on the haft (or inside it)
 
         // The finger bends in the plane that actually faces the haft. Turning it about the haft's
         // own direction only sweeps it round a cone, and these fingers lie partly ALONG the haft,
@@ -376,17 +388,31 @@ public class TwoHandGrip : MonoBehaviour
         if (bend.sqrMagnitude < 1e-10f) return;
         bend.Normalize();
 
-        // sweep and keep the angle that seats the last joint on the surface
-        float bestA = 0f, bestErr = Mathf.Abs(at0 - radius);
+        bool seeded = curlSeeded[index];
+        float ease = seeded ? 1f - Mathf.Exp(-Time.deltaTime / CurlSmoothTime) : 1f;
+        Vector3 axisLocal = offHandBone.InverseTransformDirection(bend);
+        curlAxisLocal[index] = seeded
+            ? Vector3.Slerp(curlAxisLocal[index], axisLocal, ease).normalized
+            : axisLocal.normalized;
+        bend = offHandBone.TransformDirection(curlAxisLocal[index]);
+
+        // sweep and keep the angle that seats the last joint on the surface, charging for distance
+        // from last frame's angle so that two near-equal answers cannot trade places
+        float last = curlDeg[index];
+        float jumpCost = seeded ? fingerSpan[index] * CurlJumpCost : 0f;
+        float bestA = 0f, bestErr = Mathf.Abs(at0 - radius) + last * jumpCost;
         const int STEPS = 24;
         for (int s = 1; s <= STEPS; s++)
         {
             float a = maxDeg * s / STEPS;
-            float err = Mathf.Abs(PerpDistance(Simulate(rest, bend, a)[2], onHaft, haft) - radius);
+            float err = Mathf.Abs(PerpDistance(Simulate(rest, bend, a)[2], onHaft, haft) - radius)
+                      + Mathf.Abs(a - last) * jumpCost;
             if (err < bestErr) { bestErr = err; bestA = a; }
         }
-        float total = bestA * fingerCurlWeight;
-        if (total <= 0.5f) return;
+        curlDeg[index] = Mathf.Lerp(last, bestA, ease);
+        curlSeeded[index] = true;
+        float total = curlDeg[index] * fingerCurlWeight;
+        if (total <= 0.01f) return;
 
         float[] share = Split(total);
         for (int j = 0; j < 3; j++)
