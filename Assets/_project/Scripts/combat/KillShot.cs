@@ -52,7 +52,6 @@ public static class KillShot
         }
 
         dark = true;
-        if (FightCamera.Instance != null) FightCamera.Instance.CancelSwap();   // before reading the scale: a swap has it slowed
         float matchScale = Mathf.Max(0.05f, Time.timeScale);
         if (timeRoutine != null) runner.StopCoroutine(timeRoutine);
         if (lightRoutine != null) runner.StopCoroutine(lightRoutine);

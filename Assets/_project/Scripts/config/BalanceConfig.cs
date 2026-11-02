@@ -136,10 +136,6 @@ public static class BalanceConfig
     /// </summary>
     public const float MATCH_START_GAP = 6.5f;
 
-    // After the camera swaps sides, fighters closer than this slide apart to it, so the fight
-    // restarts evenly. World units, centre to centre. Fighters already further apart stay put.
-    public const float SWAP_RESET_GAP = 5.0f;
-    public const float SWAP_RESET_SECONDS = 0.35f;
 
     // ==================== LOW STAMINA ====================
     // Below WEAKENED_STAMINA_FRACTION of the bar an attack costs less, deals less and comes out

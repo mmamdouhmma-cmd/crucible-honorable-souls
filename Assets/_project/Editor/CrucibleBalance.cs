@@ -90,7 +90,7 @@ public static class CrucibleBalance
         new Vitals { character = "Richard", player = "Player3", fighterName = "Richard", archetype = "Tank",
                      dataPath = "Assets/_project/Data/Fighters/richard_data.asset",
                      // armor 22 -> 20 (user's hand tune in the scene, 2026-10-24)
-                     health = 115, stamina = 85, armor = 20, damageMultiplier = 100, moveSpeed = 32,
+                     health = 115, stamina = 85, armor = 20, damageMultiplier = 100, moveSpeed = 35,   // 32 -> 35, +10% (user, 2026-11-02)
                      regen = 20f, dashDistance = 2.0f, dashDuration = 0.34f, dashStamina = 16,
                      blockReduction = 85, blockDrain = 0f,
                      // 35% dash coverage - the wall blocks, he does not slip. Base parry.
@@ -124,7 +124,7 @@ public static class CrucibleBalance
         // (Miyamoto's is 1.5), paid through a 12-damage riposte - the great-sword wheel.
         new Vitals { character = "Genghis", player = "Player5", fighterName = "Genghis", archetype = "Warlord",
                      dataPath = "Assets/_project/Data/Fighters/genghis_data.asset",
-                     health = 105, stamina = 95, armor = 18, damageMultiplier = 100, moveSpeed = 36,
+                     health = 105, stamina = 95, armor = 18, damageMultiplier = 100, moveSpeed = 40,   // 36 -> 40, +10% (user, 2026-11-02)
                      regen = 20f, dashDistance = 2.1f, dashDuration = 0.30f, dashStamina = 16,
                      // "lower block": a two-handed saber is no shield - between Miyamoto's 60 and
                      // Bjorn's 68, on a TANK, so his defence has to be the parry.
@@ -132,7 +132,9 @@ public static class CrucibleBalance
                      // 43% dash coverage. The counter window runs longer than base so the wheel
                      // (36 f + the stun maths) always fits inside it.
                      dashIFrames = 0.13f,
-                     parryWindow = 0.2f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
+                     // parryWindow 0.2 -> 0.23: the user's hand tune in the scene, 2026-11-02 - the
+                     // parry fighter gets the roster's only wider window.
+                     parryWindow = 0.23f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
                      parryCounterWindow = 1.2f, parryCounterDamage = 1.7f },
 
         // The RANGE fighter (the user's brief, 2026-10-25): the spear out-reaches every weapon in
@@ -496,11 +498,13 @@ public static class CrucibleBalance
         // Buwaka is the opposite case: the spear must KEEP its distance rather than close. The
         // default stop (1.7) would walk him inside his own point; these hold him at the spear's
         // length, and the SP+Heavy (Great Impale) alone drives all the way in.
-        { "Buwaka_Light_HornCut",        (2.3f, 0.9f) },
-        { "Buwaka_Medium_SavannaCut",    (2.3f, 0.9f) },
-        { "Buwaka_Heavy_IklwaThrust",    (2.6f, 1.0f) },
-        { "Buwaka_Special_SerpentSweep", (2.2f, 1.2f) },
-        { "Buwaka_Special_FallingSpear", (2.4f, 1.2f) },
+        // 2026-11-02 (user): longer lunges (max 0.9-1.2 -> 1.5-1.6) so his reach beats Richard's;
+        // the stops are unchanged, so he still keeps the spear's distance. Speed cap still applies.
+        { "Buwaka_Light_HornCut",        (2.3f, 1.5f) },
+        { "Buwaka_Medium_SavannaCut",    (2.3f, 1.5f) },
+        { "Buwaka_Heavy_IklwaThrust",    (2.6f, 1.6f) },
+        { "Buwaka_Special_SerpentSweep", (2.2f, 1.6f) },
+        { "Buwaka_Special_FallingSpear", (2.4f, 1.6f) },
         { "Buwaka_Special_GreatImpale",  (2.2f, 2.0f) },
         { "Buwaka_Riposte_Dash",         (2.3f, 0.9f) },
         // Richard's Lion Riposte sat exactly on the trigger boundary after the 2026-10-26 reach
@@ -601,7 +605,7 @@ public static class CrucibleBalance
     {
         { "Bjorn",   1.05f },
         { "Richard", 1.185f },
-        { "Genghis", 1.185f },
+        { "Genghis", 1.363f },   // 2026-11-02 (user): +15% on top of 1.185
     };
     static float CharacterSpeedUpFor(string asset)
     {

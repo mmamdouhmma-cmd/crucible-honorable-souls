@@ -2035,25 +2035,97 @@ public class GameMenu : MonoBehaviour
 
     // ================================================================ character select
 
-    static string StatsLine(Fighter f)
+    /// <summary>
+    /// Five ratings out of 100 and their average, read from the live numbers so they follow any
+    /// rebalance. Each part is placed on the roster's own range (weakest 40, strongest 100). The
+    /// split is the user's (2026-11-02):
+    ///   Vitality  health, armour
+    ///   Defense   block (half), dash distance and dash speed (a quarter each). No parry: it is
+    ///             mostly the player's skill, not the fighter's.
+    ///   Attack    damage per normal (with the damage scalar), reach
+    ///   Speed     walk speed, attack speed (normals' startup), dash speed
+    ///   Stamina   the bar, and how many normal strikes it pays for
+    /// </summary>
+    string StatsLine(Fighter f, bool wide = true)
     {
-        var combat = f.Combat;
-        var dmg = new List<string>();
-        if (combat != null && combat.Attacks != null)
-            foreach (var a in combat.Attacks) if (a != null) dmg.Add(a.Damage.ToString());
-        string strikes = dmg.Count > 0 ? string.Join(" / ", dmg) : "-";
-        return $"HEALTH {f.MaxHealth}      STAMINA {f.MaxStamina}      ARMOUR {f.Armor}%\nSTRIKES {strikes}";
+        int[] r = Ratings(f);
+        string five = $"VITALITY {r[0]}   DEFENSE {r[1]}   ATTACK {r[2]}   SPEED {r[3]}   STAMINA {r[4]}";
+        if (!wide)   // the VS plate is too narrow for one line: two lines of three
+            return $"OVERALL {r[5]}   VITALITY {r[0]}   DEFENSE {r[1]}\nATTACK {r[2]}   SPEED {r[3]}   STAMINA {r[4]}";
+        return $"OVERALL {r[5]}     {five}";
     }
 
-    // Each fighter's play style, in the user's words (2026-11-01). The Sensei has none yet.
+    int[] Ratings(Fighter f)
+    {
+        var parts = new List<float[]>();
+        foreach (var other in roster) if (other != null) parts.Add(RatingParts(other));
+        float[] mine = RatingParts(f);
+        float Score(int k)
+        {
+            float lo = float.MaxValue, hi = float.MinValue;
+            foreach (var p in parts) { lo = Mathf.Min(lo, p[k]); hi = Mathf.Max(hi, p[k]); }
+            return hi - lo < 1e-5f ? 70f : 40f + 60f * (mine[k] - lo) / (hi - lo);
+        }
+        float vit = (Score(0) + Score(1)) / 2f;
+        float def = Score(2) * 0.5f + Score(3) * 0.25f + Score(4) * 0.25f;   // the block is the defence you feel most
+        float atk = (Score(5) + Score(6)) / 2f;
+        float spd = (Score(7) + Score(8) + Score(4)) / 3f;
+        float sta = (Score(9) + Score(10)) / 2f;
+        return new[]
+        {
+            Mathf.RoundToInt(vit), Mathf.RoundToInt(def), Mathf.RoundToInt(atk), Mathf.RoundToInt(spd), Mathf.RoundToInt(sta),
+            Mathf.RoundToInt((vit + def + atk + spd + sta) / 5f),
+        };
+    }
+
+    // How far each fighter's three normals land, averaged, in world units. MEASURED in a live match
+    // (2026-11-02): each normal thrown at Richard (Richard's at Bjorn), narrowing to the furthest
+    // distance it still takes health. The hitbox range alone does not predict it - the lunge and the
+    // swing's arc matter as much - so re-measure after changing a move's range, lunge or clip.
+    static readonly (string key, float reach)[] MeasuredReach =
+    {
+        ("Bj", 3.39f), ("Miy", 3.54f), ("Ric", 4.53f), ("Sal", 3.72f),
+        ("Gen", 3.54f), ("Buw", 5.35f), ("Sen", 3.69f),   // Buwaka 4.05 -> 5.35 after the 2026-11-02 size-up, spear x1.25 and longer lunges
+    };
+
+    static float Reach(Fighter f)
+    {
+        foreach (var r in MeasuredReach)
+            if (f.CharacterName.StartsWith(r.key, StringComparison.OrdinalIgnoreCase)) return r.reach;
+        float sum = 0f; int n = 0;   // an unmeasured fighter: his hitbox range plus the default lunge
+        var c = f.Combat != null ? f.Combat : f.GetComponent<CombatSystem>();
+        if (c != null && c.Attacks != null)
+            foreach (var a in c.Attacks) if (a != null) { sum += a.HitboxRange + a.LungeMaxDistance * 0.5f; n++; }
+        return n > 0 ? sum / n : 3.5f;
+    }
+
+    static float[] RatingParts(Fighter f)
+    {
+        var combat = f.Combat != null ? f.Combat : f.GetComponent<CombatSystem>();
+        float damage = 0f, startup = 0f, cost = 0f; int n = 0;
+        if (combat != null && combat.Attacks != null)
+            foreach (var a in combat.Attacks)
+                if (a != null) { damage += a.Damage; startup += a.StartupFrames; cost += a.StaminaCost; n++; }
+        if (n > 0) { damage /= n; startup /= n; cost /= n; }
+        return new[]
+        {
+            f.MaxHealth, f.Armor,                                             // 0-1  vitality
+            f.BlockDamageReduction, f.DashDistance, f.DashSpeed,              // 2-4  defense (dash speed is shared with Speed)
+            damage * f.DamageMultiplier / 100f, Reach(f),                     // 5-6  attack
+            f.WalkSpeed, startup > 0f ? 1f / startup : 0f,                    // 7-8  speed (+ dash speed, 4)
+            f.MaxStamina, cost > 0f ? f.MaxStamina / cost : 0f,               // 9-10 stamina
+        };
+    }
+
+    // Each fighter's play style, from the user's notes (2026-11-01), rewritten against the ratings 2026-11-02. The Sensei has none yet.
     static readonly (string key, string name, string style)[] Styles =
     {
-        ("Miy", "Miyamoto", "Relies on attack speed and fast movement and dashing: in and out fast, countering after successful dashes. At the expense of low armour, block and health."),
-        ("Bj",  "Bjorn",    "Aggressive attacks that blocking is not enough to stop. Capitalises on his attacks to land his damaging strikes."),
-        ("Sal", "Salaadin", "Balanced attributes and diverse combos."),
-        ("Ric", "Richard",  "A tank who hits from range, with the heaviest armour and block."),
-        ("Gen", "Genghis",  "A lighter tank who relies on parrying and is good at short range."),
-        ("Buw", "Buwaka",   "Balanced movement, some ranged diversity and a decent block."),
+        ("Miy", "Miyamoto", "The fastest fighter in the roster. Quick strikes and a long, quick dash carry him in and out, and a clean dodge sets up his counter. The price: the least health, armour and block."),
+        ("Bj",  "Bjorn",    "All-out aggression. His blows hit too hard to simply block, so keep the pressure on and land the heavy strikes. Slow on his feet, so make every opening count."),
+        ("Sal", "Salaadin", "Balanced in every way, with the deepest stamina and the most varied combos. Keep the swings flowing and change direction often."),
+        ("Ric", "Richard",  "A fortress. The most health and armour, the best block and a long reach, but slow on his feet and quick to tire. Make every swing count."),
+        ("Gen", "Genghis",  "A lighter tank built on the parry, with a quicker blade than his size suggests. Read the swing, deflect it and punish hard. Strongest up close."),
+        ("Buw", "Buwaka",   "The longest reach in the roster. Balanced movement and a decent block: keep the spear between you and your opponent and fight at your range."),
     };
 
     static string Tagline(string character)
@@ -3747,7 +3819,7 @@ public class GameMenu : MonoBehaviour
         card.tag.color = tagColor;
         card.frame.color = MenuArt.BronzeLit;
         card.slab.color = new Color(0.11f, 0.09f, 0.08f, 0.9f);
-        card.stats.text = StatsLine(roster[rosterIndex]);
+        card.stats.text = StatsLine(roster[rosterIndex], card.showStyle);
         card.tagline.text = card.showStyle ? Tagline(roster[rosterIndex].CharacterName) : "";
         card.rt.localScale = Vector3.one;
     }
@@ -4225,8 +4297,8 @@ public class GameMenu : MonoBehaviour
         yield return "OTHER THINGS TO KNOW";
         yield return "Heavy specials cannot be stopped by a hit: they take the damage and keep going. Parry them.";
         yield return "Two strikes of equal weight meeting cancel out. Otherwise the heavier one wins.";
-        yield return "When the fighters swap sides the camera swings round and the fight resets the distance between";
-        yield return "you. Use that moment: hold block and move to get ready.";
+        yield return "The camera circles with you, so you stay on your side of the screen. If you pass right through";
+        yield return "your opponent you swap sides; whatever direction you are holding keeps going until you let go.";
         yield return "You get a little health back for a dodge, a parry or a counter, and slowly on your own after a";
         yield return "few seconds without being hit, if the game's health regen is on.";
         yield return "Empty your opponent's health bar to win. In a timed duel, whoever has more health left wins.";

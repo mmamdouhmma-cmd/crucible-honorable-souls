@@ -92,8 +92,8 @@ ModelImporter:
       name: Genghis_Medium_HordeSlash
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 9.975554
-      lastFrame: 29.575554
+      firstFrame: 10.029999
+      lastFrame: 29.63
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -121,8 +121,8 @@ ModelImporter:
       name: Genghis_Special_HordeBreaker
       takeName: mixamo.com
       internalID: -6556537087697243763
-      firstFrame: 3.857999
-      lastFrame: 38.058
+      firstFrame: 3.8113627
+      lastFrame: 38.011364
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

@@ -1,10 +1,11 @@
 using UnityEngine;
 using UnityEngine.Serialization;
-using UnityEngine.UI;
 
 /// <summary>
 /// Fighting-game camera. Stays side-on to the line between the two fighters,
-/// centred on their midpoint, and pulls back as they move apart. The framing set
+/// centred on their midpoint, and pulls back as they move apart. It orbits with them as they
+/// circle, so whoever starts on the left stays on the left; screen sides only change when one
+/// fighter passes through the other, and then instantly, the way UFC and Tekken do it. The framing set
 /// up in the scene (height, distance, tilt) is kept as the starting view.
 /// Also owns the impact feel: shake, punch-in and a short slow-motion beat, all
 /// cosmetic (they never touch fighter state or frame data). Attach to the Main Camera.
@@ -27,16 +28,8 @@ public class FightCamera : MonoBehaviour
     [Tooltip("Camera stops re-angling while the fighters are closer than this, " +
              "so a dash through the opponent swaps screen sides instead of spinning the camera.")]
     [SerializeField] private float passThroughDistance = 1.5f;
-    [Tooltip("The camera keeps to the side of the arena the scene starts it on: it never swings further " +
-             "than this many degrees away from that home side, so orbiting dashes cannot carry the view " +
-             "round behind the fight. Dashes still swing it up to this much.")]
-    [Range(0f, 90f)]
-    [SerializeField] private float maxSideSwing = 70f;
-
-    [Tooltip("How square the fighters' line has to be to the home side before the camera is allowed to " +
-             "pick the other perpendicular. Keeps the view from flip-flopping when they line up with the camera.")]
-    [Range(0f, 0.5f)]
-    [SerializeField] private float sideStickiness = 0.2f;
+    [Tooltip("How quickly the camera orbits round to follow the fighters as they circle. Higher = snappier.")]
+    [SerializeField] private float orbitSharpness = 5f;
 
 
     [Header("Zoom")]
@@ -65,39 +58,12 @@ public class FightCamera : MonoBehaviour
     [SerializeField] private bool slowMoOnHeavy = false;
     [SerializeField] private bool clashShake = false;
 
-    [Header("Side swap")]
-    [Tooltip("Real seconds of the sweep for a half turn. A longer arc takes proportionally longer.")]
-    [SerializeField] private float swapSeconds = 0.8f;
-    [Tooltip("Match speed at the middle of the sweep, as a fraction of normal.")]
-    [Range(0.1f, 1f)]
-    [SerializeField] private float swapSlowMo = 0.35f;
-    [Tooltip("How dark the screen gets at the middle of the sweep (0 = off). The HUD stays above it.")]
-    [Range(0f, 1f)]
-    [SerializeField] private float swapDarken = 0.4f;
-    [Tooltip("The camera never comes closer than this to either fighter during the sweep, in world units.")]
-    [SerializeField] private float swapMinDistance = 3.2f;
-    [Tooltip("Real seconds after a sweep before another may start, so the view does not flip-flop.")]
-    [SerializeField] private float swapCooldown = 1.5f;
-
-    /// <summary>True during a side swap: fighters keep their input mapping until it ends.</summary>
-    public static bool Swapping { get; private set; }
-
-    private const float SwapTriggerAngle = 60f;   // the side jumping this far in a frame is a swap, not a drift
-    private Vector3 swapFrom;
-    private float swapSweep;           // signed degrees about Up, from swapFrom
-    private float swapTime;            // 0..1
-    private float swapDuration;
-    private float swapBaseScale;
-    private float nextSwapAllowed;
-    private Fighter fighter1, fighter2;
-    private Image swapShade;
-    private Text swapPrompt;
 
     private Vector3 localOffset;      // camera position relative to the pair at start
     private Quaternion localRotation; // camera rotation relative to the pair at start
     private float startSeparation;
-    private Vector3 sideDirection;    // ground direction from the midpoint toward the camera
-    private Vector3 homeSide;         // the side the scene set the camera up on; the view stays within maxSideSwing of it
+    private Vector3 sideDirection;    // ground direction from the midpoint toward the camera: where it is heading
+    private Vector3 cameraSide;       // where it is now, easing round toward sideDirection
     private bool initialized;
 
     private Camera cam;
@@ -127,8 +93,6 @@ public class FightCamera : MonoBehaviour
         if (slowMoRunning) Time.timeScale = 1f;
     }
 
-    private void OnDisable() { CancelSwap(); }
-
     private void Start()
     {
         if (player1 == null || player2 == null) FindPair();
@@ -140,6 +104,12 @@ public class FightCamera : MonoBehaviour
         CaptureFraming();
     }
 
+    /// <summary>
+    /// Screen right for the fighters' left/right controls: where the camera is heading, not where it
+    /// has got to, so the controls never flip back and forth while it is still swinging round.
+    /// </summary>
+    public Vector3 ScreenRight => initialized ? Vector3.Cross(Vector3.up, -sideDirection) : transform.right;
+
     private void FindPair()
     {
         player1 = player2 = null;
@@ -148,126 +118,6 @@ public class FightCamera : MonoBehaviour
             if (player1 == null && fighter.PlayerNumber == 1) player1 = fighter.transform;
             else if (player2 == null && fighter.PlayerNumber == 2) player2 = fighter.transform;
         }
-    }
-
-    // ==================== side swap ====================
-
-    /// <summary>
-    /// The fighters' line has rotated past what the home side can follow, so the view must cross to
-    /// the other side of them. It orbits there round the back of whoever is moving, in slow motion.
-    /// </summary>
-    private void BeginSwap(Vector3 toSide, Vector3 midpoint)
-    {
-        Fighter mover = fighter1.IsDashing || fighter1.IsRunning ? fighter1
-                      : fighter2.IsDashing || fighter2.IsRunning ? fighter2
-                      : (fighter1.transform.position - transform.position).sqrMagnitude <
-                        (fighter2.transform.position - transform.position).sqrMagnitude ? fighter1 : fighter2;
-
-        // Two arcs reach the new side: take the one whose middle lies behind the mover.
-        float shortArc = Vector3.SignedAngle(sideDirection, toSide, Vector3.up);
-        Vector3 shortMiddle = Quaternion.AngleAxis(shortArc * 0.5f, Vector3.up) * sideDirection;
-        Vector3 toMover = mover.transform.position - midpoint;
-        toMover.y = 0f;
-        swapSweep = Vector3.Dot(shortMiddle, toMover) >= 0f ? shortArc : shortArc - Mathf.Sign(shortArc) * 360f;
-
-        swapFrom = sideDirection;
-        swapTime = 0f;
-        swapDuration = swapSeconds * Mathf.Max(0.75f, Mathf.Abs(swapSweep) / 180f);
-        swapBaseScale = Time.timeScale;
-        Swapping = true;
-    }
-
-    /// <summary>Ends a sweep where it stands and hands the match speed and the screen back.</summary>
-    public void CancelSwap()
-    {
-        if (!Swapping) return;
-        Swapping = false;
-        nextSwapAllowed = Time.unscaledTime + swapCooldown;
-        if (ControlsMatchSpeed && Time.timeScale > 0f) Time.timeScale = swapBaseScale;
-        SetShade(0f);
-    }
-
-    // The online guest copies the host's match speed from the state frame.
-    private static bool ControlsMatchSpeed =>
-        NetSession.Instance == null || NetSession.Instance.CurrentRole != NetSession.Role.Guest;
-
-    /// <summary>Advances the sweep. Pausing holds it where it is.</summary>
-    private void UpdateSwap(float dt)
-    {
-        if (Time.timeScale <= 0f) return;
-        swapTime = Mathf.Clamp01(swapTime + dt / swapDuration);
-        sideDirection = Quaternion.AngleAxis(swapSweep * Mathf.SmoothStep(0f, 1f, swapTime), Vector3.up) * swapFrom;
-
-        float strength = Mathf.Sin(swapTime * Mathf.PI);   // 0 at both ends, 1 in the middle
-        if (ControlsMatchSpeed) Time.timeScale = swapBaseScale * Mathf.Lerp(1f, swapSlowMo, Mathf.Sqrt(strength));
-        SetShade(swapDarken * strength);
-
-        if (swapTime >= 1f)
-        {
-            CancelSwap();
-            ResetSpacing();
-        }
-    }
-
-    /// <summary>The sweep has landed: slide the pair apart to a neutral distance. The host's call online.</summary>
-    private void ResetSpacing()
-    {
-        if (!ControlsMatchSpeed || fighter1 == null || fighter2 == null) return;
-        Vector3 apart = player2.position - player1.position;
-        apart.y = 0f;
-        float gap = apart.magnitude;
-        if (gap >= BalanceConfig.SWAP_RESET_GAP || gap < 0.01f) return;
-        Vector3 half = apart / gap * ((BalanceConfig.SWAP_RESET_GAP - gap) * 0.5f);
-        fighter1.SlideBy(-half, BalanceConfig.SWAP_RESET_SECONDS);
-        fighter2.SlideBy(half, BalanceConfig.SWAP_RESET_SECONDS);
-    }
-
-    private void SetShade(float alpha)
-    {
-        if (swapShade == null)
-        {
-            if (alpha <= 0f) return;
-            var go = new GameObject("Camera Swap Shade", typeof(Canvas), typeof(Image));
-            go.transform.SetParent(transform, false);
-            var canvas = go.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 50;   // under the fight HUD (100)
-            swapShade = go.GetComponent<Image>();
-            swapShade.raycastTarget = false;
-            var rect = swapShade.rectTransform;
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = rect.offsetMax = Vector2.zero;
-
-            var note = new GameObject("Reset Prompt", typeof(Text));
-            note.transform.SetParent(go.transform, false);
-            swapPrompt = note.GetComponent<Text>();
-            swapPrompt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            swapPrompt.fontSize = 34;
-            swapPrompt.fontStyle = FontStyle.Bold;
-            swapPrompt.alignment = TextAnchor.MiddleCenter;
-            swapPrompt.raycastTarget = false;
-            swapPrompt.horizontalOverflow = HorizontalWrapMode.Overflow;
-            swapPrompt.verticalOverflow = VerticalWrapMode.Overflow;
-            swapPrompt.text = "FIGHT RESET\n<size=24>Hold block + move to get ready</size>";
-            var noteRect = swapPrompt.rectTransform;
-            noteRect.anchorMin = new Vector2(0f, 0.72f);
-            noteRect.anchorMax = new Vector2(1f, 0.84f);
-            noteRect.offsetMin = noteRect.offsetMax = Vector2.zero;
-        }
-        swapShade.color = new Color(0f, 0f, 0f, alpha);
-        swapShade.enabled = alpha > 0f;
-        swapPrompt.color = new Color(1f, 1f, 1f, swapDarken > 0f ? Mathf.Clamp01(alpha / swapDarken * 2f) : 0f);
-    }
-
-    /// <summary>Pushes a camera position straight out from any fighter it has come too close to.</summary>
-    private Vector3 KeepClearOf(Transform fighter, Vector3 position)
-    {
-        Vector3 away = position - fighter.position;
-        away.y = 0f;
-        float distance = away.magnitude;
-        if (distance >= swapMinDistance || distance < 0.001f) return position;
-        return position + away / distance * (swapMinDistance - distance);
     }
 
     /// <summary>
@@ -280,7 +130,6 @@ public class FightCamera : MonoBehaviour
     /// </summary>
     public void RetargetToFighters()
     {
-        CancelSwap();
         FindPair();
         if (player1 == null || player2 == null) return;
         // An arena with its own camera home (a set-dressed environment holding several fight
@@ -312,9 +161,7 @@ public class FightCamera : MonoBehaviour
         localOffset = Quaternion.Inverse(frame) * (transform.position - midpoint);
         localRotation = Quaternion.Inverse(frame) * transform.rotation;
 
-        homeSide = sideDirection;
-        fighter1 = player1.GetComponent<Fighter>();
-        fighter2 = player2.GetComponent<Fighter>();
+        cameraSide = sideDirection;
         initialized = true;
     }
 
@@ -395,53 +242,32 @@ public class FightCamera : MonoBehaviour
         toPlayer2.y = 0f;
         float separation = toPlayer2.magnitude;
 
-        if (Swapping) UpdateSwap(Time.unscaledDeltaTime);
-        else if (separation > passThroughDistance)
+        float dt = Time.unscaledDeltaTime;
+        if (separation > passThroughDistance)
         {
+            // Of the two sides of the fighters' line, keep the one the camera is already on. As they
+            // circle it orbits with them; when one passes THROUGH the other the line reverses, the
+            // same side is still nearest, and the two simply trade places on screen. Inside
+            // passThroughDistance the line is too short to trust, so the side is held.
             Vector3 perpendicular = Vector3.Cross(Vector3.up, toPlayer2 / separation);
-
-            // Pick the perpendicular that keeps the camera on its home half of the arena, so a long
-            // run of orbiting dashes cannot walk the view around to the far side. Near the boundary
-            // (the fighters' line pointing almost at the camera) the two choices are equally far from
-            // home, so keep the one we are already using instead of flip-flopping between them.
-            float homeDot = Vector3.Dot(perpendicular, homeSide);
-            Vector3 side = Mathf.Abs(homeDot) < sideStickiness
-                ? (Vector3.Dot(perpendicular, sideDirection) < 0f ? -perpendicular : perpendicular)
-                : (homeDot < 0f ? -perpendicular : perpendicular);
-
-            // Dashes still swing the view, but only this far off the home side.
-            float swing = Vector3.SignedAngle(homeSide, side, Vector3.up);
-            float clamped = Mathf.Clamp(swing, -maxSideSwing, maxSideSwing);
-            if (!Mathf.Approximately(swing, clamped))
-            {
-                side = Quaternion.AngleAxis(clamped, Vector3.up) * homeSide;
-            }
-
-            // The side leaping across in one frame is the fighters' line crossing the view: sweep
-            // there instead of whipping. Inside the cooldown the view just stays where it is.
-            bool fighting = fighter1 != null && fighter2 != null && fighter1.enabled && fighter2.enabled &&
-                            !fighter1.IsDead && !fighter2.IsDead && !KillShot.IsActive;
-            if (Vector3.Angle(sideDirection, side) <= SwapTriggerAngle || !fighting) sideDirection = side;
-            else if (Time.unscaledTime >= nextSwapAllowed && Time.timeScale > 0f) BeginSwap(side, midpoint);
+            sideDirection = Vector3.Dot(perpendicular, sideDirection) >= 0f ? perpendicular : -perpendicular;
         }
 
-        Quaternion frame = Quaternion.LookRotation(-sideDirection, Vector3.up);
+        // Orbit round the midpoint toward that side, rather than letting the position cut straight
+        // across: a big swing would otherwise carry the camera through the fighters.
+        float behind = Vector3.SignedAngle(cameraSide, sideDirection, Vector3.up);
+        cameraSide = Quaternion.AngleAxis(behind * (1f - Mathf.Exp(-orbitSharpness * dt)), Vector3.up) * cameraSide;
+
+        Quaternion frame = Quaternion.LookRotation(-cameraSide, Vector3.up);
         float zoomOut = Mathf.Clamp((separation - startSeparation) * zoomOutPerUnit, 0f, maxZoomOut);
 
         Vector3 targetPosition = midpoint + frame * (localOffset + Vector3.back * zoomOut);
         Quaternion targetRotation = frame * localRotation;
 
         // Frame-rate independent smoothing (unscaled so slow motion doesn't make the camera lag).
-        // A sweep is already smooth, and the camera must keep up with it to hold its distance.
-        float dt = Time.unscaledDeltaTime;
-        float t = 1f - Mathf.Exp(-(Swapping ? followSharpness * 3f : followSharpness) * dt);
+        float t = 1f - Mathf.Exp(-followSharpness * dt);
         transform.position = Vector3.Lerp(transform.position, targetPosition, t);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, t);
-        if (Swapping)
-        {
-            transform.position = KeepClearOf(player1, transform.position);
-            transform.position = KeepClearOf(player2, transform.position);
-        }
 
         // Shake: decaying random offset in the camera's plane.
         if (shakeTimer > 0f)

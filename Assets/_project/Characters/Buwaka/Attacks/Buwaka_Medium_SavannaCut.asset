@@ -36,7 +36,7 @@ MonoBehaviour:
   aimMaxAngle: -1
   aimRollDegrees: 0
   lungeStopDistance: 2.3
-  lungeMaxDistance: 0.9
+  lungeMaxDistance: 1.5
   hitsWithWeapon: 1
   comboLinks:
   - input: 1

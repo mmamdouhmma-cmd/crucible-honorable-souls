@@ -4808,3 +4808,41 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 ### 2026-11-01 — How to Fight rewritten
 
 - `GameMenu.HelpLines` is a player's guide now (the user's brief: explain combos as a player, not a developer; your combos depend on your fighter's moves, so learn them and get creative). It drops the old block drain and the separate parry button, and the key lines read "block / parry" on one key.
+
+### 2026-11-02 — The camera orbits like UFC; the cinematic swap is gone
+
+- Players said movement got confusing for ~3 s at every swap and swaps came too often. The cause was the home side: the camera could swing only `maxSideSwing` 70 deg off the side the scene set it on, so a few circling dashes ran it out of room and forced a swap.
+- `FightCamera` now has no home side. Each frame it takes whichever perpendicular of the fighters' line is nearer its current side, then eases round the midpoint (`orbitSharpness` 5). Circling orbits the camera with the pair, so screen sides never change. A pass-through reverses the line, the same side stays nearest, and the fighters trade sides instantly with no camera move, as in UFC and Tekken. The sweep, slow motion, darkening, FIGHT RESET prompt, `Fighter.SlideBy` and `SWAP_RESET_*` are deleted.
+- `Fighter.HandleFacing` reads `FightCamera.ScreenRight`, the side the camera is heading for rather than where it has got to, so controls never flicker while it swings. The held-direction latch stays.
+- Measured: a 360 deg circle at 120 deg/s gave 0 side changes, 0 control flips and controls matching the screen on every frame. A pass-through turned the camera 0.0 deg and flipped P1 once, correctly.
+- Test trap hit again: without `ApplySides(0, 1)` before `StartMatch`, P1's opponent was Player3, and the facing numbers were wrong while the camera numbers looked fine.
+
+### 2026-11-02 — Ratings out of 100 on the fighter cards; styles reworded
+
+- The select and VS plates show OVERALL plus four ratings in place of raw health / stamina / armour / strike damage. VITALITY is health and armour; DEFENSE is block (2/3) and dash dodge time (1/3); ATTACK is damage per normal (with the scalar), the normals' startup and REACH; STAMINA is the bar and how many normals it pays for. OVERALL is the mean of the four. Each part is placed on the roster's own range, 40 to 100, and read live (`GameMenu.Ratings`), apart from reach.
+- **The parry is NOT counted** (the user's call: it is mostly the player's skill). Block weighs more than the dash because with equal parts Richard rated below Miyamoto on defence.
+- **Reach is a MEASURED table** (`GameMenu.MeasuredReach`): each normal thrown at Richard (Richard's at Bjorn) in a live match, bisecting to the furthest distance that still takes health, then averaged. Bjorn 3.39, Miyamoto 3.54, Richard 4.53, Salaadin 3.72, Genghis 3.54, Buwaka 4.05, Sensei 3.69. Hitbox range does NOT predict it (Richard's boxes are shorter than Bjorn's), so re-measure after changing a move's range, lunge or clip. Shortest normal in the game: Bjorn's Heavy, 2.67.
+- Now (OVR / V / D / A / S): Salaadin 76/72/77/54/99, Richard 75/100/80/79/40, Sensei 68/49/69/60/93, Bjorn 64/59/59/63/74, Buwaka 64/67/63/56/70, Miyamoto 63/44/60/63/85, Genghis 60/84/47/52/58.
+- The VS plate is too narrow for one line (needs ~570 of 450), so OVERALL sits on its own line above the four there (419 wide, fits).
+- The user widened Genghis's parry window to 0.23 in the scene; `CrucibleBalance` carries 0.23 too. That is the only gameplay change.
+- Gotchas: the CLI `capture_game_view --save_path` resolves under `Assets/` (delete the capture and its .meta), and `eval_file` turns a backslash-n `\n` inside a string literal into a real newline, which breaks the compile.
+
+### 2026-11-02 — Buwaka out-reaches Richard
+
+- The user: Buwaka should reach further than Richard, by scaling his size and weapon, then "increase his lunge attack reach".
+- `CrucibleCharacterSetup`: Stature 2.98 -> 3.22 and StandingHeight 3.491 -> 3.772 (x1.0805); GroundOffset 0.073 -> 0.0789 /3.5 (the root-local lift scales with the body); `WeaponScale` Buwaka_Spear 1.25 (the spear's node was at 1, so the entry stamps nothing over an authored scale). Rebuilt Player6 through `eval`, scene saved.
+- `CrucibleBalance.LungeOverride`: Light and Medium max 0.9 -> 1.5, Heavy 1.0 -> 1.6, SerpentSweep and FallingSpear 1.2 -> 1.6; stops unchanged, so he still holds the spear's distance. Applied: only those five `.asset`s changed. The CLI returned a 400 (main-thread timeout) on Apply, but the work landed - read back the assets.
+- Measured live (each normal at Richard): Horn Thrust 5.20, Savanna Cut 5.73, Iklwa Cleave 5.12, mean **5.35** (was 4.05; Richard 4.53). Soles +0.084 above the floor (Richard +0.186 on the same spot), head bone 2.77 against Richard's 2.80, capsule radius 0.39.
+- Ratings now: Buwaka OVR 66 (A 56 -> 64), Richard 73 (A 79 -> 71, he lost the top of the reach range). Richard's style no longer claims the longest reach; Buwaka's does.
+
+### 2026-11-02 — Genghis +15% attack speed; five ratings with SPEED
+
+- `CrucibleBalance.CharacterSpeedUp` Genghis 1.185 -> 1.363 (the user's +15%). Apply wrote only his eight AttackData (Light startup 17 -> 15, Medium 24 -> 21, Heavy 35 -> 31; recovery likewise; whole-frame rounding makes it 12-15%). `Use Mixamo packs` via `eval` returned a 400 (main-thread timeout) but RAN: a before/after dump of every controller state showed only P5_Genghis changing, every state ~x1.135 faster (Light 0.93 -> 1.05, specials 1.37 -> 1.56), and the four GreatSwordPack .meta changes are his own takes (windows shifted < 0.5 source frame).
+- The ratings are FIVE now, on the user's split: VITALITY health + armour; DEFENSE block (half) + dash distance + dash speed (a quarter each); ATTACK damage + reach; SPEED walk + attack speed (normals' startup) + dash speed; STAMINA unchanged. OVERALL = mean of five. The VS plate shows two lines of three (321 of 450 wide); five on one line needed 521.
+- Now (OVR V D A SPD S): Salaadin 72/72/73/45/70/99, Miyamoto 68/44/70/42/100/85, Sensei 68/49/72/47/82/93, Richard 67/100/70/78/46/40, Buwaka 67/67/63/76/58/70, Bjorn 64/59/58/70/56/74, Genghis 60/84/48/56/55/58.
+- The six play styles were rewritten against the ratings: Miyamoto fastest, Bjorn slow on his feet, Salaadin deepest stamina, Richard slow and quick to tire, Genghis a quicker blade than his size suggests, Buwaka the longest reach. All six fit the select plate in two lines (41 of 50 tall).
+
+### 2026-11-02 — Richard and Genghis walk +10%
+
+- Table moveSpeed Richard 32 -> 35, Genghis 36 -> 40 (whole numbers; after `WalkSpeedScale` 0.6 the live walk is 1.9 -> 2.1 and 2.2 -> 2.4). Apply (the first call hung up and wrote nothing - read back) changed only richard_data and genghis_data.
+- `Use Mixamo packs` (400 timeout, ran anyway): only Richard_Walk_Forward/Back moved, x1.27 -> x1.40. Genghis's walk states sit on the 2.0 animation cap already, so his feet slide a little more now.

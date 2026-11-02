@@ -166,7 +166,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Walk_Back
-  m_Speed: 1.281746
+  m_Speed: 1.4166666
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -17639643576323005}
@@ -1777,7 +1777,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Richard_Walk_Forward
-  m_Speed: 1.2666667
+  m_Speed: 1.4
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 2898572388029439008}

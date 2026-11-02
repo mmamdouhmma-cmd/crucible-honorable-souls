@@ -4,7 +4,7 @@ rem Bump the version and build (Crucible > Build > Windows app) before running t
 rem NOTES below are this version's notes; Enter at the prompt keeps them, typing replaces them.
 rem Keep them free of the characters cmd treats specially: ampersand, pipe, angle brackets, quotes.
 cd /d "%~dp0.."
-set "NOTES=v0.4.8 - New keyboard controls: every dash direction with the arrows or Space, an alternative one-player layout, a two-player keyboard layout with a review screen before each game. Holding the forward dash runs. The camera now swings round in slow motion when fighters swap sides, the dash keeps going, and the fight resets the distance. Walls and objects the camera passes through turn see-through. The Village Plaza fight zone is about 2.5 times bigger. Fighter styles on character select and the Move List, a new How to Fight guide, and the Sensei hand shake is fixed. Online players need the same version."
+set "NOTES=v0.4.9 - The camera now circles with the fighters, like UFC games: you stay on your side of the screen, with no more slow-motion swaps. Fighter cards show an overall and five ratings - vitality, defense, attack, speed and stamina - under rewritten play styles. Buwaka is bigger with a longer spear and lunge, and now has the longest reach. Genghis attacks about 15 percent faster and has a slightly wider parry window. Richard and Genghis walk about 10 percent faster. Online players need the same version."
 echo.
 echo Notes for this release:
 echo %NOTES%

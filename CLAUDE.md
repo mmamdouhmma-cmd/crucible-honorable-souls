@@ -965,6 +965,7 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   all; the desert hill's MeshCollider is exactly what they were climbing and floating on). The
   desert carries two: the plateau at (-0.5, 12.3) r 5 and the small rock at (0.5, -6) r 1.8.
   Play-verified: a fighter dropped on the hill centre is expelled to the rim exactly.
+- **The fight camera orbits with the pair and has NO home side (2026-11-02, the user's call, UFC-style).** It keeps whichever side of the fighters' line it is already on, so circling never swaps screen sides; only a pass-through does, instantly. Controls read `FightCamera.ScreenRight`. The 2026-11-01 cinematic swap (sweep, slow-mo, darken, spacing reset) was tried and removed: players found it confusing.
 - **Walls go see-through when they swallow a fighter** (2026-10-24): each arena is ONE mesh, so no
   material fade can work - `WallCutout` (on GameMangers) linecasts camera->chest against the active
   arena's collider and, while blocked, swaps the arena onto `Crucible/ArenaCutout`
@@ -1566,13 +1567,14 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
 - **The test settings were tuned up after testing (2026-10-27, the user's calls)**: walk and dash
   +20% (`WalkSpeedScale` 0.6, `DashTimeScale` 2/1.2 - i-frames shrink with it; the run is
   unchanged), per-fighter attack speed `CrucibleBalance.CharacterSpeedUp` (Bjorn 1.05, Richard
-  and Genghis 1.185 - divides startup and recovery, the `UserFrames` too, so clips play that much
+  1.185, Genghis 1.363 since 2026-11-02 (+15%, the user's call) - divides startup and recovery, the `UserFrames` too, so clips play that much
   faster), the guard +20% (`Crucible > Animation > Set the block speed`, `CrucibleBlockSpeed`:
   raise/lower/impact blends and Block_Impact x1.2, written from base numbers so it never
   compounds), the FIRST swing in a parry or dodge counter window at x1.25 pace
   (`BalanceConfig.COUNTER_ATTACK_PACE_MULTIPLIER`, clock and animation together), and the
   Settings game speed now runs 50-200% (`GameMenu.MaxGameSpeed`). Walk states for
   Bjorn/Miyamoto/Genghis now sit on the 2.0 anim cap, so their feet slide a little more.
+- **Buwaka out-reaches Richard (2026-11-02, the user's call)**: stature 2.98 -> 3.22 (Richard's height), spear `WeaponScale` x1.25, normal/special lunge max 0.9-1.2 -> 1.5-1.6 (stops unchanged). Measured reach of the three normals: 5.35 average against Richard's 4.53 (was 4.05). The fighter cards show OVERALL plus Vitality/Defense/Attack/Speed/Stamina ratings (`GameMenu.Ratings`, the split is the user's: no parry, Attack = damage + reach, Speed = walk + attack + dash speed); reach is the measured `MeasuredReach` table there - re-measure after changing a move's range, lunge or clip.
 - **Size order (the user's, 2026-10-27)**: smallest to largest Miyamoto 2.82, Salaadin 2.90, Buwaka
   2.98, Bjorn 3.06, Genghis 3.14, Richard 3.22 (even 0.08 steps; `Stature` table). Measured live
   statures wander +-0.05 with the idle, so judge the order across runs, not one reading.

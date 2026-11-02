@@ -42,6 +42,16 @@ public class Fighter : MonoBehaviour
 
     /// <summary>Armor percent for this fighter: its own value, else the archetype's.</summary>
     public int Armor => armor >= 0 ? armor : (fighterData != null ? fighterData.Armor : 0);
+    /// <summary>Damage scalar in percent (100 = authored damage), from the fighter's data.</summary>
+    public int DamageMultiplier => fighterData != null ? fighterData.DamageMultiplier : 100;
+    /// <summary>Seconds at the start of a dash that dodge a strike.</summary>
+    public float DashIFrames => dashIFrameDuration;
+    /// <summary>World units one dash covers.</summary>
+    public float DashDistance => dashDistance;
+    /// <summary>World units per second while dashing.</summary>
+    public float DashSpeed => dashDistance / Mathf.Max(dashDuration, 0.05f);
+    /// <summary>Forward walk speed in world units per second, from the fighter's data.</summary>
+    public float WalkSpeed => fighterData != null ? fighterData.MovementSpeed / 10f : 0f;
 
     [Header("Runtime State")]
     [SerializeField] private FighterStats stats;
@@ -873,17 +883,6 @@ public class Fighter : MonoBehaviour
         clashFlashTimer = BalanceConfig.CLASH_HUD_FLASH_DURATION;
     }
 
-    /// <summary>
-    /// Slides the fighter the given way over the given seconds. It is the knockback slide, so walls
-    /// and the arena edge stop it, and it leaves the fighter's actions alone.
-    /// </summary>
-    public void SlideBy(Vector3 offset, float seconds)
-    {
-        offset.y = 0f;
-        knockbackVelocity = offset / Mathf.Max(0.01f, seconds);
-        knockbackTimer = seconds;
-    }
-
     /// <summary>Slides the fighter along the clash knockback for its duration.</summary>
     private bool lungeStarted;
 private float lungeTotal;    // distance the lunge covers in all
@@ -1225,15 +1224,16 @@ private void HandleFacing()
     if (toOpponent.sqrMagnitude < 0.0001f) return;
 
     // Which screen side the opponent is on decides how left/right input maps to
-    // forward/backward. Measured along the camera's right so it stays correct as the
-    // camera orbits; the dead zone stops it flickering when lined up in depth. The mapping
-    // holds while a direction is held and through a camera swap: flipping it there turned a
-    // held "toward" into "away", which stopped the fighter and sent him backward.
-    float screenSide = cameraTransform != null
-        ? Vector3.Dot(toOpponent, cameraTransform.right)
-        : toOpponent.x;
+    // forward/backward. Measured along the fight camera's screen right, which orbits with the
+    // pair, so it only changes when one fighter passes through the other; the dead zone stops it
+    // flickering when lined up in depth. The mapping holds while a direction is held: flipping it
+    // there turned a held "toward" into "away", which stopped the fighter and sent him backward.
+    Vector3 screenRight = FightCamera.Instance != null && FightCamera.Instance.isActiveAndEnabled
+        ? FightCamera.Instance.ScreenRight
+        : cameraTransform != null ? cameraTransform.right : Vector3.right;
+    float screenSide = Vector3.Dot(toOpponent, screenRight);
     bool directionHeld = isDashing || isRunning || currentInput.runHeld || currentInput.moveDirection != 0f;
-    if (Mathf.Abs(screenSide) > FACING_FLIP_DEAD_ZONE && !directionHeld && !FightCamera.Swapping)
+    if (Mathf.Abs(screenSide) > FACING_FLIP_DEAD_ZONE && !directionHeld)
     {
         facingRight = screenSide > 0f;
     }

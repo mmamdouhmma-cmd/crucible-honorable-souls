@@ -91,7 +91,7 @@ public class WallCutout : MonoBehaviour
             Ray sight = new Ray(camPos, toChest / dist);
             bool occluded = dist > 0.5f && (Blocked(sight, dist - 0.2f) ||
                                             Blocked(new Ray(chest, -sight.direction), dist) ||
-                                            (FightCamera.Swapping ? PropBlocks(sight, dist) : CameraInProp(camPos)));
+                                            PropBlocks(sight, dist));
 
             Fade(slot, occluded ? 1f : 0f);
             if (strength[slot] > 0.001f)
@@ -136,8 +136,8 @@ public class WallCutout : MonoBehaviour
     }
 
     /// <summary>
-    /// A prop with no collider cannot be raycast, so its box stands in. A box is generous, which is
-    /// fine for the moment a camera sweep lasts, and only then.
+    /// A prop with no collider cannot be raycast, so its box stands in. The camera orbits all the way
+    /// round now, so a house at the rim can come between it and the fight at any time.
     /// </summary>
     private bool PropBlocks(Ray ray, float maxDistance)
     {
@@ -147,14 +147,6 @@ public class WallCutout : MonoBehaviour
             Bounds b = r.bounds;
             if (b.Contains(ray.origin) || (b.IntersectRay(ray, out float hit) && hit <= maxDistance)) return true;
         }
-        return false;
-    }
-
-    /// <summary>The camera backing into a house at the rim. Stricter than a sweep: only its own box counts.</summary>
-    private bool CameraInProp(Vector3 camPos)
-    {
-        foreach (var r in arenaProps)
-            if (r != null && r.enabled && r.gameObject.activeInHierarchy && r.bounds.Contains(camPos)) return true;
         return false;
     }
 

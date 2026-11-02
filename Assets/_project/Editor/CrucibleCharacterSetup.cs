@@ -64,7 +64,7 @@ public static class CrucibleCharacterSetup
         // crown MINUS sole, in each man's own idle): Genghis reads as a big armoured tank
         // (between Bjorn and Richard), Buwaka a lean mid-sized hunter.
         { "Genghis",  3.750f },   // ORDER 2026-10-27 (user): 3.394 measured 2.842, x 3.14/2.842
-        { "Buwaka",   3.491f },   // ORDER 2026-10-27 (user): 3.642 measured 3.109, x 2.98/3.109
+        { "Buwaka",   3.772f },   // 2026-11-02 (user): +8% for the spear's reach, x 3.22/2.98 (was 3.491)
         // Story Chapter One cast (2026-10-29), on Salaadin's rig like the roster; first guesses at
         // Miyamoto's bounds-to-stature ratio (3.426 / 2.82), to be calibrated in play the same way.
         { "Ch1_Musashi", 3.212f },   // 3.426 measured 3.008 in play (Miyamoto_Idle), x 2.82/3.008
@@ -90,7 +90,7 @@ public static class CrucibleCharacterSetup
         { "Miyamoto", 2.82f },    // 2026-10-26 new body: Salaadin's height exactly
         // 2026-10-25 placeholders; re-measure with StandingHeight.
         { "Genghis",  3.14f },
-        { "Buwaka",   2.98f },   // the user's size experiment (root 3.3/3.5/3.3), 2026-10-27
+        { "Buwaka",   3.22f },   // 2026-11-02 (user): scaled up so his reach beats Richard's (was 2.98)
         // Story cast, PROPOSAL (Design/Story_Ch1_Characters.md): young Musashi = the roster
         // Miyamoto's size, his partner a step taller. The user has not confirmed these.
         { "Ch1_Musashi", 2.82f },
@@ -188,7 +188,7 @@ public static class CrucibleCharacterSetup
         // 2026-10-25 placeholders for the metarig pair; measure in play as the lowest BAKED
         // skinned vertex whose dominant bone is a foot/toe/ankle, in each man's own idle.
         { "Genghis",  0.076f / 3.3f },   // size order 2026-10-27: sole read -0.009 at 0.067; // HD body 2026-10-27, root scale 3.3: sole verified in play
-        { "Buwaka",   0.073f / 3.5f }, // HD body 2026-10-27, root y-scale 3.5
+        { "Buwaka",   0.0789f / 3.5f }, // 0.073 x 1.0805 for the 2026-11-02 size-up (root-local lift scales with the body)
     };
 
     /// <summary>
@@ -482,6 +482,9 @@ public static class CrucibleCharacterSetup
         // Bjorn_Axe (0.85) removed 2026-10-26: the user scaled the axe to 0.80 by hand in
         // Bjorn_Studio.blend and apply_studio_weapons.py baked it into the body FBX's node
         // scale - an entry here would stamp 0.85 back over it on every rebuild.
+        // 2026-11-02 (user): Buwaka should out-reach Richard. Scales about the right fist (the
+        // spear's origin), so the leaf head moves further out; the blade box grows with it.
+        { "Buwaka_Spear", 1.25f },
     };
 
     /// <summary>Per-shield visual scale, relative to the size the body FBX carries; see the off-hand

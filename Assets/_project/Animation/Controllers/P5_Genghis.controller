@@ -224,7 +224,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Medium_HordeSlash
-  m_Speed: 0.8711111
+  m_Speed: 0.98
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -4285678766431743475}
@@ -574,7 +574,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Light_SteppeCut
-  m_Speed: 0.9264706
+  m_Speed: 1.05
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 6154231440653099939}
@@ -704,7 +704,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Riposte_Dash
-  m_Speed: 0.94565225
+  m_Speed: 1.0609756
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -8863867264099751728}
@@ -780,7 +780,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Riposte_Parry
-  m_Speed: 0.9931035
+  m_Speed: 1.1294118
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -2551659555219594105}
@@ -1366,7 +1366,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Heavy_KhanCleave
-  m_Speed: 0.6268657
+  m_Speed: 0.71186435
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 3833894737063416081}
@@ -1418,7 +1418,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Special_HordeBreaker
-  m_Speed: 1.3656801
+  m_Speed: 1.5540291
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1853712354027020721}
@@ -1476,7 +1476,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Special_WrathOfTengri
-  m_Speed: 1.3811613
+  m_Speed: 1.5644444
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 5095289648131785075}
@@ -1814,7 +1814,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Genghis_Special_SteppeStorm
-  m_Speed: 1.3813953
+  m_Speed: 1.5631579
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -5648808868077471529}
