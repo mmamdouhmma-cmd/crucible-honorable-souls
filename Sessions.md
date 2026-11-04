@@ -4846,3 +4846,63 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 
 - Table moveSpeed Richard 32 -> 35, Genghis 36 -> 40 (whole numbers; after `WalkSpeedScale` 0.6 the live walk is 1.9 -> 2.1 and 2.2 -> 2.4). Apply (the first call hung up and wrote nothing - read back) changed only richard_data and genghis_data.
 - `Use Mixamo packs` (400 timeout, ran anyway): only Richard_Walk_Forward/Back moved, x1.27 -> x1.40. Genghis's walk states sit on the 2.0 animation cap already, so his feet slide a little more now.
+
+### 2026-11-04 — Chapter 1: Arima's move set, Phase C (the story layer)
+- Arima Kihei's moves: the user's picks, built by `Editor/CrucibleArima.cs` (`P8_Arima`), all six land from 2.6. Light and Medium both cut right to left, so L->M never flows; the user kept it as it is.
+- **Run `Use Mixamo packs` from testarena, never the chapter scene**: it fits walk/dash speeds from the fighters in the OPEN scene and reset the five roster controllers whose fighters the chapter does not hold. Restored from git.
+- Phase C: `Scripts/story/` (ChapterRunner, StoryLines, StorySubtitles, StoryProgress, StoryBeats), data in `Story/Chapter1/*.json`, font `Fonts/NotoSansJP-Story.otf` from `ArtSource/Fonts/subset_jp.py`. Details in the tracker, section 5d.
+- `GameMenu.Resume` used to set `InputEnabled = true` unconditionally, which would have handed control back in the middle of a story beat; it now respects `storyHeld` (set by `StoryHold`, cleared by `StoryResume`). The duel game never calls StoryHold, so it is unchanged there.
+- A Unity OTF import is a dynamic `Font` that legacy uGUI `Text` uses directly; no TextMeshPro needed for the Japanese.
+- Phase D (Sensei lessons): tracker section 5e. Gotchas of the day:
+  - A dodged swing adds `DODGED_RECOVERY_FRAMES` (48) to the attacker's recovery, so a Sensei whose overhead was dodged
+    could not block the counter however short his own recovery was. The training copies set the per-move
+    `dodgedRecoveryFrames` override to 0.
+  - A back dash leaves Musashi ~4 from the Sensei whatever the starting gap (both lunge/dash), and his Special Light
+    whiffs from there: the lesson became dodge-back, step-in, counter (1.5 s).
+  - `ResetForMatch` replaces the fighter's `FighterStats`, so `minHealth` is lost on every reset; `ChapterRunner.Reposition`
+    carries health, stamina and the floor across.
+  - A lesson that waits for the Sensei's swing to END before reading the counter has already consumed the counter's
+    events: decide the dodge, stop reading, then read on.
+- Phase E (sparring): tracker section 5f. Gotchas:
+  - `PlayBeat` resumed the fight whenever an encounter existed, even inside a knockdown that had held it on purpose,
+    so the Sensei's lines played over a live fight. `ChapterRunner.Held` now tracks who held it.
+  - The Partner's quick thrust lands again before the 0.8 s get-hit stun ends: an AI can stun-lock a beginner. Training
+    rounds give him a 0.8 s breather after Musashi's stun.
+  - A test that raises the guard at startup-6 is too late against a 14-frame thrust (contact lands early); startup-11
+    parries every time.
+- Phase F (village walk, Arima): tracker section 5g. Gotchas:
+  - A walkability probe that raycasts from high above lands on roofs and canopies and reports the whole village
+    unreachable; cast from just above the cell you arrive from, like the walker does.
+  - The fight's 0.6 step height (knee) is too low for walking a village: the dojo gate's sill is 0.84.
+  - The pause menu's resume switches fighters and the HUD back on; the walker re-asserts both every frame.
+  - `crucible.story.unlocked` is an INT key: `GetString` reads it as empty.
+  - A coroutine run on the ChapterRunner dies with the scene when the chapter completes and loads testarena; write
+    test results as you go.
+
+### 2026-11-04 — Chapter 1 feedback batch (resets walk, demos, guide, Partner rhythm, Arima's Heavy, katana)
+
+- The user's nine notes after a full play-through, all done; the tracker's section 5h has the list and the numbers.
+- **"An attack passes over him" was the Heavy, not the Light.** Measure the tip against the target's crown through
+  the ARMED window before re-pointing anything: Arima's Light was already Bjorn's Light and fine; his Heavy (the 2H
+  `standing melee attack downward`) never came below +1.43 over Musashi's head. Swapped for the 1H AxePack clip of the
+  same name (Richard's Light).
+- **A sparring "stuck in block" is BLOCK-STUN.** `TryAttack` refuses during hitstun, and a guard being hit keeps
+  re-stunning; a scripted attacker must wait the stun out and retry, and say when it gives up.
+- **Frame-count waits break under slow motion.** The demo runs at x0.35, so "25 frames" is a third of the swing;
+  time scripted presses in `Time.time`.
+- **Editor scripts need a recompile before `UseMixamo` sees a table edit** - the first run silently wired the old
+  clip. Read the controller back (state motion + FBX path) after every run.
+- A HitDetector whose object is inactive keeps a stale `TipPosition`; pick the active detector when measuring.
+- `WeaponSkin` is the pattern for "same weapon slot, different look": swap the mesh on the mounted object when the two
+  meshes share a frame, and the hitbox and aim need nothing.
+
+### 2026-11-04 — Demo replay, weapon tip, guided walk to Arima
+
+- Tracker section 5i has the details.
+- **Abandoning a running story exercise**: `StopCoroutine` does not run finally blocks, so the lesson body is stepped by
+  hand (`ChapterRunner.RunUntil`) and its iterator stack DISPOSED, which does. Coroutines started separately
+  (`chapter.StartCoroutine(SenseiAttack...)`) outlive that, hence the serial in `TrainingDriver.CancelAttack`.
+- **A JSON TextAsset edited from outside is NOT reimported until the Editor refreshes** - the step table still had no
+  `guides` in play. `AssetDatabase.ImportAsset(path, ForceUpdate)` before testing.
+- The straight dojo -> plaza line passes under something 7.8 up; any scripted walker needs a route, not a line.
+

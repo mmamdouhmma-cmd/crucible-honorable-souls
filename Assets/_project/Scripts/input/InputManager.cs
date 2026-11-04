@@ -227,6 +227,12 @@ public class InputManager : MonoBehaviour
 
         data.taunt = Held(b, pad, GameAction.Up, keys) || (pad != null && pad.leftStick.y.ReadValue() >= stickDeadZone);
         data.crouch = Held(b, pad, GameAction.Down, keys) || (pad != null && pad.leftStick.y.ReadValue() <= -stickDeadZone);
+        data.moveVector = new Vector2(move, data.taunt ? 1f : data.crouch ? -1f : 0f);
+        if (pad != null)
+        {
+            Vector2 ls = pad.leftStick.ReadValue();
+            if (ls.magnitude >= stickDeadZone) data.moveVector = ls;
+        }
 
         data.run = Held(b, pad, GameAction.Run, keys);
         data.specialModifier = Held(b, pad, GameAction.Special, keys);

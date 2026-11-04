@@ -1,0 +1,76 @@
+{
+  "note": "arena = the fight space (ArenaDirectory root) switched to before the step. ai = the opponent AI difficulty (boss). spots may be paths like Musashi_Plaza/Mark_P1. puppets = background cast, Name:Spot:mode (practice / idle); a step with none clears them. gap = opening distance between the pair (0 = the spots as placed). Chapter 1's running order. Each step is a checkpoint: it is saved as done only when it completes, and a reload resumes at the first step not done. kind picks the step's logic (StoryStepKinds); a kind with no logic yet runs as a placeholder that the Editor's F9 completes. cast = [Player 1, Player 2] by character name, spots = their marks under Chapter1_Spots. beats play in order before the step (intro) and after it (outro).",
+  "chapter": "ch1",
+  "title": "Chapter One: The Way of the Sword",
+  "steps": [
+    { "id": "opening",  "kind": "beats",       "title": "The Dojo",
+      "puppets": ["Partner:Spot_PartnerPractice:practice"],
+      "arena": "Musashi_Dojo",
+      "cast": ["Musashi", "Sensei"], "spots": ["Spot_MusashiStart", "Spot_OpponentStart"],
+      "intro": ["ch1.open", "ch1.sensei_intro"] },
+
+    { "id": "lesson1",  "kind": "lesson_light", "title": "Lesson 1: Light Attack Discipline",
+      "puppets": ["Partner:Spot_PartnerPractice:practice"],
+      "arena": "Musashi_Dojo",
+      "cast": ["Musashi", "Sensei"], "spots": ["Spot_MusashiStart", "Spot_OpponentStart"],
+      "intro": ["ch1.lesson1.intro"], "outro": ["ch1.lesson1_to_2"],
+      "objective": "Strike the sensei with Light Attacks", "target": 3 },
+
+    { "id": "lesson2",  "kind": "lesson_dodge_counter", "title": "Lesson 2: Dodge and Counter",
+      "puppets": ["Partner:Spot_PartnerPractice:practice"],
+      "arena": "Musashi_Dojo",
+      "cast": ["Musashi", "Sensei"], "spots": ["Spot_MusashiStart", "Spot_OpponentStart"],
+      "intro": ["ch1.lesson2.intro"], "outro": ["ch1.lesson2_to_3"],
+      "objective": "Dash back from the overhead, dash in and counter with a Special Light", "target": 3 },
+
+    { "id": "lesson3",  "kind": "lesson_spin", "title": "Lesson 3: Read the Movement",
+      "puppets": ["Partner:Spot_PartnerPractice:practice"],
+      "arena": "Musashi_Dojo",
+      "cast": ["Musashi", "Sensei"], "spots": ["Spot_MusashiStart", "Spot_OpponentStart"],
+      "intro": ["ch1.lesson3.intro"],
+      "objective": "Dodge the spin, dash in fast, then strike his guard three times in a row", "target": 3 },
+
+    { "id": "spar1",    "kind": "spar_dodge",   "title": "Sparring, Round 1",
+      "puppets": ["Sensei:Spot_SenseiObserve:idle"],
+      "arena": "Musashi_Dojo",
+      "cast": ["Musashi", "Partner"], "spots": ["Spot_MusashiStart", "Spot_OpponentStart"],
+      "intro": ["ch1.spar.intro", "ch1.spar.round1"],
+      "objective": "Dodge and counter attacks", "target": 5 },
+
+    { "id": "spar2",    "kind": "spar_parry",   "title": "Sparring, Round 2",
+      "puppets": ["Sensei:Spot_SenseiObserve:idle"],
+      "arena": "Musashi_Dojo",
+      "cast": ["Musashi", "Partner"], "spots": ["Spot_MusashiStart", "Spot_OpponentStart"],
+      "intro": ["ch1.spar.round2"],
+      "objective": "Parry and counter attacks", "target": 5 },
+
+    { "id": "spar3",    "kind": "spar_clean",   "title": "Sparring, Round 3",
+      "puppets": ["Sensei:Spot_SenseiObserve:idle"],
+      "arena": "Musashi_Dojo",
+      "cast": ["Musashi", "Partner"], "spots": ["Spot_MusashiStart", "Spot_OpponentStart"],
+      "intro": ["ch1.spar.round3"],
+      "objective": "Land 10 attacks while taking fewer than 5 hits", "target": 10 },
+
+    { "id": "spar4",    "kind": "spar_bout",    "title": "Sparring, Round 4",
+      "puppets": ["Sensei:Spot_SenseiObserve:idle"],
+      "arena": "Musashi_Dojo",
+      "cast": ["Musashi", "Partner"], "spots": ["Spot_MusashiStart", "Spot_OpponentStart"],
+      "intro": ["ch1.spar.round4"], "outro": ["ch1.spar.partner_down", "ch1.dismiss"],
+      "objective": "Defeat your sparring partner" },
+
+    { "id": "village",  "kind": "explore",      "title": "The Village",
+      "arena": "Musashi_Dojo",
+      "puppets": ["Sensei:Spot_SenseiObserve:idle", "Partner:Spot_PartnerPractice:practice", "Arima:Musashi_Plaza/Mark_P2:idle"],
+      "cast": ["Musashi", "Arima"], "spots": ["Spot_MusashiStart", "Musashi_Plaza/Mark_P1", "Musashi_Plaza/Mark_P2"],
+      "guides": ["Sensei:Spot_PlazaSensei", "Partner:Spot_PlazaPartner"],
+      "intro": ["ch1.explore.intro"],
+      "objective": "Follow your Sensei to the village plaza" },
+
+    { "id": "boss",     "kind": "boss",         "title": "Arima Kihei",
+      "arena": "Musashi_Plaza", "ai": "Insane",
+      "puppets": ["Sensei:Spot_PlazaSensei:idle", "Partner:Spot_PlazaPartner:idle"],
+      "cast": ["Musashi", "Arima"], "spots": ["Musashi_Plaza/Mark_P1", "Musashi_Plaza/Mark_P2"],
+      "intro": ["ch1.boss.intro"], "outro": ["ch1.boss.won", "ch1.end"],
+      "objective": "Defeat Arima Kihei" }
+  ]
+}

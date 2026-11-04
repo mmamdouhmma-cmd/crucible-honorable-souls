@@ -70,6 +70,9 @@ public static class CrucibleCharacterSetup
         { "Ch1_Musashi", 3.212f },   // 3.426 measured 3.008 in play (Miyamoto_Idle), x 2.82/3.008
         { "Ch1_Partner", 3.323f },   // 3.524 -> 3.387 (3.017 at idle frame 0) -> measured 2.956 over Miyamoto_Idle, x 2.90/2.956
         { "Ch1_Sensei",  3.383f },   // 3.300 measured 2.790 over Miyamoto_Idle, x 2.86/2.790
+        // Kojiro's body stands in for the Chapter One boss, Arima Kihei (the user, 2026-11-03). First guess at
+        // Miyamoto's bounds-to-stature ratio (3.426 / 2.82) for a 3.06 stature; calibrate in play.
+        { "Ch1_Kojiro",  3.718f },
     };
 
     static float HeightOf(string charName) =>
@@ -96,6 +99,7 @@ public static class CrucibleCharacterSetup
         { "Ch1_Musashi", 2.82f },
         { "Ch1_Partner", 2.90f },
         { "Ch1_Sensei",  2.86f },   // between Miyamoto and Salaadin, like his numbers (not the user's call yet)
+        { "Ch1_Kojiro",  3.06f },   // the boss, the tallest of the story cast (Design/Story_Ch1_Characters.md proposal)
     };
 
     static float StandingStature(string charName) =>
@@ -167,6 +171,7 @@ public static class CrucibleCharacterSetup
         { "Ch1_Musashi", 0.162f / 2.8f },   // story cast 2026-10-29: sole read -0.159 at 0 in Miyamoto_Idle (Miyamoto reads +0.003)
         { "Ch1_Partner", 0.170f / 2.8f },   // story cast 2026-10-29: sole read +0.007 at 0.173 (Miyamoto_Idle), less 2% for the last shrink
         { "Ch1_Sensei",  0.166f / 2.8f },   // first guess between the other two; calibrate in play
+        { "Ch1_Kojiro",  0.197f / 2.8f },   // Arima stand-in 2026-11-03: sole read -0.031 at 0.166 (Miyamoto_Idle), lifted by that
         // 2026-10-22c: re-measured after the -11% size change. GroundOffset is a FIXED root-local
         // lift, so shrinking the body left the same lift under shorter legs and he hovered 0.027.
         { "Richard", 0.182f / 3f },   // HD body 2026-10-27; size order: sole read -0.013 at 0.169
@@ -200,7 +205,7 @@ public static class CrucibleCharacterSetup
         "Assets/_project/Characters/" + (charName == "Salaadin" ? "salaadin" : charName);
 
     /// <summary>Fighters whose off hand holds the haft. Richard's holds a shield, so he has no grip IK.</summary>
-    static readonly string[] TwoHanded = { "Bjorn", "Miyamoto", "Genghis", "Ch1_Musashi", "Ch1_Partner", "Ch1_Sensei" };
+    static readonly string[] TwoHanded = { "Bjorn", "Miyamoto", "Genghis", "Ch1_Musashi", "Ch1_Partner", "Ch1_Sensei", "Ch1_Kojiro" };
 
     // A two-hander that fights ONE-handed: the off hand takes the hilt only in these states
     // (TwoHandGrip.onlyInStates). The Sensei (the user's brief, 2026-10-29) grips with both hands
@@ -209,6 +214,10 @@ public static class CrucibleCharacterSetup
     {
         { "Ch1_Sensei", new[] { "Sensei_Idle", "Sensei_Walk_Forward", "Sensei_Walk_Back",
                                 "Sensei_Heavy_MountainSplitter", "Sensei_Special_FinalLesson" } },
+        // Kojiro's body is Arima Kihei's for now (the user's call, 2026-11-04): both hands on the hilt in his
+        // stance and on the two-handed-pack strikes; one hand on the three borrowed from the shield packs.
+        { "Ch1_Kojiro", new[] { "Arima_Idle", "Arima_Walk_Forward", "Arima_Walk_Back",
+                                "Arima_Light_ProudEdge", "Arima_Heavy_ArimasVerdict", "Arima_Special_WhirlwindAdvance" } },
     };
 
     [MenuItem("Crucible/Characters/Rebuild Player1 (Bjorn new body)")]
@@ -270,7 +279,7 @@ public static class CrucibleCharacterSetup
         }
     }
 
-    static void Rebuild(string playerName, string charName)
+    public static void Rebuild(string playerName, string charName)
     {
         string charDir = CharDir(charName);
         string fbxPath = $"{charDir}/Model/{charName}_Body.fbx";
@@ -471,6 +480,7 @@ public static class CrucibleCharacterSetup
         { "Ch1_Musashi_Bokken", (0.24f, 0.04f) },
         { "Ch1_Partner_Bokken", (0.24f, 0.04f) },
         { "Ch1_Sensei_Bokken",  (0.24f, 0.04f) },   // no tsuba: the box starts at the stepped collar
+        { "Ch1_Kojiro_Katana",  (0.24f, 0.04f) },   // Miyamoto's katana recoloured (recolour_grip.py): same mesh, same tsuba
     };
 
     /// <summary>Per-weapon visual scale, applied to the weapon node (mesh + blade box shrink
@@ -536,6 +546,7 @@ public static class CrucibleCharacterSetup
         { "Ch1_Musashi", (new Vector3(0.00013f, 0.0006f, 0f), new Vector3(70f, 90f, 180f), 1f) },
         { "Ch1_Partner", (new Vector3(0.00013f, 0.0006f, 0f), new Vector3(70f, 90f, 180f), 1f) },
         { "Ch1_Sensei",  (new Vector3(0.00013f, 0.0006f, 0f), new Vector3(70f, 90f, 180f), 1f) },
+        { "Ch1_Kojiro",  (new Vector3(0.00013f, 0.0006f, 0f), new Vector3(70f, 90f, 180f), 1f) },   // Miyamoto's katana, Miyamoto's socket
     };
 
     static readonly System.Collections.Generic.Dictionary<string, (Vector3 localPos, Vector3 localEuler)> ShieldWeaponMount =
@@ -620,6 +631,11 @@ public static class CrucibleCharacterSetup
         // exact pose relative to the root (all three bokkens share the katana's mesh frame), the hand
         // offset scaled 2.86/2.90.
         { "Ch1_Sensei_Bokken",  (new Vector3(0.000699f, 0.000420f, 0.000135f), new Vector3(339.92f, 265.18f, 17.10f)) },
+        // Kojiro's katana as Arima's (2026-11-03): hd_rig.py left it in the Tripo sculpt's own hold, which under
+        // Miyamoto's clips pointed the blade straight DOWN (root-space dir y -0.97). Solved in play the same way as
+        // the bokkens: Miyamoto_Idle frame 0, the katana given Musashi's bokken pose relative to the root (all share
+        // the katana's mesh frame), the hand offset scaled by stature 3.06/2.82. Blade dir now matches Musashi's.
+        { "Ch1_Kojiro_Katana",  (new Vector3(-0.000796f, 0.000014f, -0.000267f), new Vector3(318.16f, 40.67f, 65.11f)) },
     };
 
     static void SetupWeapon(GameObject player, GameObject inst, string charName, Animator rootAnim)

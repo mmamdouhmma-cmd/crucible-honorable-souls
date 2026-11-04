@@ -166,6 +166,17 @@ public class ArenaDirectory : MonoBehaviour
         }
     }
 
+    /// <summary>Selects the arena whose root is named <paramref name="rootName"/> (the story picks its fight space by
+    /// name). False if there is none.</summary>
+    public bool SelectRoot(string rootName, bool remember = false)
+    {
+        Resolve();
+        var list = Selectable;
+        for (int i = 0; i < list.Count; i++)
+            if (string.Equals(list[i].rootName, rootName, StringComparison.OrdinalIgnoreCase)) { Select(i, remember); return true; }
+        return false;
+    }
+
     /// <summary>Display name of a selectable arena, for the menus.</summary>
     public string NameOf(int index)
     {

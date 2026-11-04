@@ -265,12 +265,29 @@ public static class CrucibleCombos
         }),
     };
 
+    // The story boss Arima: the Sensei's shape (the user's call, 2026-11-04). Placeholder strings.
+    static readonly (string attack, Link[] links)[] Arima =
+    {
+        ("Arima_Light_ProudEdge", new[]
+        {
+            new Link(M, false, "Arima_Medium_SeveringCut",      true,  Always),
+        }),
+        ("Arima_Medium_SeveringCut", new[]
+        {
+            new Link(H, false, "Arima_Heavy_ArimasVerdict",    true,  Always),
+        }),
+        ("Arima_Heavy_ArimasVerdict", new[]
+        {
+            new Link(H, true,  "Arima_Special_HeavensFall",    false, HitOrBlock),
+        }),
+    };
+
     [MenuItem("Crucible/Combat/Wire combo strings")]
     public static void Wire()
     {
         var all = LoadAttacks(null);
         int written = 0;
-        foreach (var table in new[] { Bjorn, Miyamoto, Richard, Salaadin, Genghis, Buwaka, Sensei })
+        foreach (var table in new[] { Bjorn, Miyamoto, Richard, Salaadin, Genghis, Buwaka, Sensei, Arima })
             foreach (var (attackName, links) in table)
             {
                 if (!all.TryGetValue(attackName, out var attack)) { Debug.LogError($"no AttackData named {attackName}"); continue; }
@@ -322,7 +339,8 @@ public static class CrucibleCombos
                                            ("Assets/_project/Characters/salaadin/Attacks", "Salaadin"),
                                            ("Assets/_project/Characters/Genghis/Attacks", "Genghis"),
                                            ("Assets/_project/Characters/Buwaka/Attacks", "Buwaka"),
-                                           ("Assets/_project/Characters/Ch1_Sensei/Attacks", "Sensei") })
+                                           ("Assets/_project/Characters/Ch1_Sensei/Attacks", "Sensei"),
+                                           ("Assets/_project/Characters/Ch1_Arima/Attacks", "Arima") })
         {
             var lines = new List<string>();
             foreach (var opener in LoadAttacks(dir).Values.OrderBy(a => a.name))

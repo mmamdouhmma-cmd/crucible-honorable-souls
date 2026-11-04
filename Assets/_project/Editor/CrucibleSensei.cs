@@ -187,7 +187,7 @@ public static class CrucibleSensei
         Debug.Log("Player7 is the Sensei in testarena. Run 'Use Mixamo packs' (walk/dash fit to his numbers), then save the scene.");
     }
 
-    static bool WireCombat(GameObject go)
+    public static bool WireCombat(GameObject go)
     {
         var anim = go.GetComponent<Animator>();
         var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(P7Ctrl);

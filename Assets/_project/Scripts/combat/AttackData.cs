@@ -271,6 +271,18 @@ public class AttackData : ScriptableObject
     /// <summary>Frames of recovery after active window ends.</summary>
     public int RecoveryFrames => recoveryFrames;
 
+    /// <summary>A runtime copy with a different recovery, and with the dodged-swing penalty set to
+    /// <paramref name="dodgedFrames"/> (story training: the Sensei back on guard quickly, even after a dodge).
+    /// The asset itself is never touched; destroy the copy when done.</summary>
+    public AttackData CloneWithRecovery(int frames, int dodgedFrames = -1)
+    {
+        var copy = Instantiate(this);
+        copy.name = name + " (training)";
+        copy.recoveryFrames = Mathf.Max(1, frames);
+        if (dodgedFrames >= 0) copy.dodgedRecoveryFrames = dodgedFrames;
+        return copy;
+    }
+
     /// <summary>Percentage of defender armor that this attack ignores (0-100).</summary>
     public int ArmorPierce => armorPierce;
 

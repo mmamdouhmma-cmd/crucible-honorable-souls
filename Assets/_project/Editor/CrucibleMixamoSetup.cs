@@ -25,6 +25,8 @@ public static class CrucibleMixamoSetup
     const string P6Ctrl = "Assets/_project/Animation/Controllers/P6_Buwaka.controller";
     const string P7Ctrl = "Assets/_project/Animation/Controllers/P7_Sensei.controller";
     const string SenseiAttacks = "Assets/_project/Characters/Ch1_Sensei/Attacks";
+    const string P8Ctrl = "Assets/_project/Animation/Controllers/P8_Arima.controller";
+    const string ArimaAttacks = "Assets/_project/Characters/Ch1_Arima/Attacks";
 
     /// <summary>Where a pack lives. "Custom" is the hand-keyed set in Animation/Clips/Custom.</summary>
     static string PackDir(string pack) => pack == "Custom" ? CustomDir : $"{MixamoDir}/{pack}";
@@ -136,6 +138,35 @@ public static class CrucibleMixamoSetup
         ("React_Right",                    "GreatSwordPack", "great sword impact (3)",    false),
         ("Block_Hold",                     "AxePack",        "standing block idle",       true),   // Bjorn's guard
         ("Block_Impact",                   "AxePack",        "standing block react large", false), // Bjorn's
+        ("Parry_Success",                  "AxePack",        "standing block react large", false),
+        ("Death",                          "GreatSwordPack", "two handed sword death (2)", false),
+        ("Dash_Forward",                   "AxePack", "standing run forward",              false),
+        ("Dash_Back",                      "AxePack2H", "standing walk back",              false),
+        ("Dash_Left",                      "AxePack2H", "standing walk left",              false),
+        ("Dash_Right",                     "AxePack2H", "standing walk right",             false),
+        ("Run_Forward",                    "AxePack", "standing run forward",              true),
+    };
+
+    // The story boss ARIMA KIHEI (Chapter One, the user's picks 2026-11-04): Miyamoto's movement and
+    // two-handed guard (Kojiro's own animation comes later), and every strike borrowed - none from
+    // Musashi (Miyamoto's clips) or the Sensei, so he reads as neither. Each state carries its source
+    // state's per-STATE contact in swing_contacts.json.
+    static readonly (string state, string pack, string clip, bool loop)[] P8Map =
+    {
+        ("Arima_Idle",                     "AxePack2H", "standing idle",                   true),
+        ("Arima_Walk_Forward",             "AxePack2H", "standing walk forward",           true),
+        ("Arima_Walk_Back",                "AxePack2H", "standing walk back",              true),
+        ("Arima_Light_ProudEdge",          "AxePack",   "standing melee attack horizontal", false),   // Bjorn's Light
+        ("Arima_Medium_SeveringCut",       "SwordShieldPack", "sword and shield slash (5)", false),   // Richard's Medium
+        ("Arima_Heavy_ArimasVerdict",      "AxePack",   "standing melee attack downward",  false),   // Richard's Light, the barbarian overhead (2026-11-04: the 2H chop it replaced stayed 1.5 above Musashi's head through its whole hit window - the user saw it pass over him every time)
+        ("Arima_Special_RisingCrane",      "AxePack",   "standing melee attack backhand",  false),   // Richard's SP+Light
+        ("Arima_Special_WhirlwindAdvance", "AxePack",   "standing melee attack 360 low",   false),   // Bjorn's SP+Medium
+        ("Arima_Special_HeavensFall",      "SwordShieldPack", "sword and shield slash (4)", false),   // Salaadin's SP+Heavy, the spinning jumping slash
+        ("React_Front",                    "GreatSwordPack", "great sword impact",        false),
+        ("React_Left",                     "GreatSwordPack", "great sword impact (2)",    false),
+        ("React_Right",                    "GreatSwordPack", "great sword impact (3)",    false),
+        ("Block_Hold",                     "GreatSwordPack", "great sword blocking (2)",  true),    // Miyamoto's two-handed guard
+        ("Block_Impact",                   "AxePack",        "standing block react large", false),
         ("Parry_Success",                  "AxePack",        "standing block react large", false),
         ("Death",                          "GreatSwordPack", "two handed sword death (2)", false),
         ("Dash_Forward",                   "AxePack", "standing run forward",              false),
@@ -369,6 +400,7 @@ public static class CrucibleMixamoSetup
         { "Genghis",  (1.02f, 0.67f) },
         { "Buwaka",   (1.74f, 1.52f) },
         { "Sensei",   (1.11f, 0.76f) },   // Miyamoto's walks; not yet re-measured on his body
+        { "Arima",    (1.11f, 0.76f) },   // Miyamoto's walks; not yet re-measured on Kojiro's body
     };
     static readonly Vector2 WalkAnimSpeedRange = new Vector2(0.8f, 2.0f);
     const float BackWalkSpeedMultiplier = 0.85f;   // mirrors BalanceConfig.BACK_WALK_SPEED_MULTIPLIER (the editor asmdef cannot see it)
@@ -408,9 +440,10 @@ public static class CrucibleMixamoSetup
         ComputeTrims(P5Map, "Assets/_project/Characters/Genghis/Attacks");
         ComputeTrims(P6Map, "Assets/_project/Characters/Buwaka/Attacks");
         ComputeTrims(P7Map, SenseiAttacks);
+        ComputeTrims(P8Map, ArimaAttacks);
         // Every map goes into ONE ImportAll: an importer's clip list is rewritten whole, so a pass
         // that left a map out would delete that fighter's takes from every shared pack file.
-        ImportAll(P1Map, P2Map, P3Map, P4Map, P5Map, P6Map, P7Map);
+        ImportAll(P1Map, P2Map, P3Map, P4Map, P5Map, P6Map, P7Map, P8Map);
         Wire(P1Ctrl, P1Map, "Assets/_project/Characters/Bjorn/Attacks", "Player1");
         Wire(P2Ctrl, P2Map, "Assets/_project/Characters/Miyamoto/Attacks", "Player2");
         if (File.Exists(P3Ctrl)) Wire(P3Ctrl, P3Map, "Assets/_project/Characters/Richard/Attacks", "Player3");
@@ -418,6 +451,7 @@ public static class CrucibleMixamoSetup
         if (File.Exists(P5Ctrl)) Wire(P5Ctrl, P5Map, "Assets/_project/Characters/Genghis/Attacks", "Player5");
         if (File.Exists(P6Ctrl)) Wire(P6Ctrl, P6Map, "Assets/_project/Characters/Buwaka/Attacks", "Player6");
         if (File.Exists(P7Ctrl)) Wire(P7Ctrl, P7Map, SenseiAttacks, "Player2");
+        if (File.Exists(P8Ctrl)) Wire(P8Ctrl, P8Map, ArimaAttacks, "Arima");
         AssetDatabase.SaveAssets();
         Debug.Log("Mixamo packs wired into P1_Bjorn and P2_Miyamoto. Play to check; Dash_* states keep the custom clips.");
     }
@@ -631,7 +665,7 @@ public static class CrucibleMixamoSetup
         var playerGo = Object.FindObjectsByType<Animator>(FindObjectsInactive.Include)
             .Where(a => a.runtimeAnimatorController == ac && a.GetComponent("Fighter") != null)
             .Select(a => a.gameObject).FirstOrDefault();
-        if (playerGo == null && ctrlPath != P7Ctrl) playerGo = GameObject.Find(playerName);
+        if (playerGo == null && ctrlPath != P7Ctrl && ctrlPath != P8Ctrl) playerGo = GameObject.Find(playerName);
         var fighterComp = playerGo != null ? playerGo.GetComponent("Fighter") : null;
         float walkSpeed = 0f;   // world units/s, from the fighter's FighterData
         if (fighterComp != null)
@@ -645,6 +679,12 @@ public static class CrucibleMixamoSetup
         {   // the Sensei is only in his story test scene: take his numbers from the table instead
             dashDuration = CrucibleBalance.SenseiDashDuration;
             var data = AssetDatabase.LoadAssetAtPath<ScriptableObject>(CrucibleBalance.SenseiDataPath);
+            if (data != null) walkSpeed = new SerializedObject(data).FindProperty("movementSpeed").intValue / 10f;
+        }
+        else if (ctrlPath == P8Ctrl)
+        {   // Arima is only in the chapter scene: take his numbers from the table
+            dashDuration = CrucibleBalance.ArimaDashDuration;
+            var data = AssetDatabase.LoadAssetAtPath<ScriptableObject>(CrucibleBalance.ArimaDataPath);
             if (data != null) walkSpeed = new SerializedObject(data).FindProperty("movementSpeed").intValue / 10f;
         }
         var attacks = AssetDatabase.FindAssets("t:AttackData", new[] { attackDir })

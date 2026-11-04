@@ -197,5 +197,26 @@
     "contact": 25.2,
     "speed": 2.0
   },
-  "Sensei_Special_FinalLesson": 21.5
+  "Sensei_Special_FinalLesson": 21.5,
+  "Arima_Light_ProudEdge": 28.7,
+  "Arima_Medium_SeveringCut": {
+    "contact": 17.4,
+    "speed": 1.6
+  },
+  "Arima_Heavy_ArimasVerdict": {
+    "contact": 22.5,
+    "speed": 1.3
+  },
+  "Arima_Special_RisingCrane": {
+    "contact": 30.0,
+    "speed": 1.3
+  },
+  "Arima_Special_WhirlwindAdvance": {
+    "contact": 31.7,
+    "speed": 2.0
+  },
+  "Arima_Special_HeavensFall": {
+    "contact": 42.0,
+    "speed": 2.2
+  }
 }

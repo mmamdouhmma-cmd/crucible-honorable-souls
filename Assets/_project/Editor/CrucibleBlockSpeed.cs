@@ -29,6 +29,7 @@ public static class CrucibleBlockSpeed
         "Assets/_project/Animation/Controllers/P5_Genghis.controller",
         "Assets/_project/Animation/Controllers/P6_Buwaka.controller",
         "Assets/_project/Animation/Controllers/P7_Sensei.controller",   // story Sensei (Ch1_Test_Sensei only)
+        "Assets/_project/Animation/Controllers/P8_Arima.controller",    // story boss Arima (Musashi_Chapter01 only)
     };
 
     [MenuItem("Crucible/Animation/Set the block speed")]

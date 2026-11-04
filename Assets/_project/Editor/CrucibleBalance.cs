@@ -52,6 +52,8 @@ public static class CrucibleBalance
 
     public const string SenseiDataPath = "Assets/_project/Data/Fighters/sensei_data.asset";
     public static float SenseiDashDuration => 0.24f * DashTimeScale;
+    public const string ArimaDataPath = "Assets/_project/Data/Fighters/arima_data.asset";
+    public static float ArimaDashDuration => 0.24f * DashTimeScale;
 
     static readonly Vitals[] Fighters =
     {
@@ -163,6 +165,18 @@ public static class CrucibleBalance
                      dashIFrames = 0.17f,
                      parryWindow = 0.2f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
                      parryCounterWindow = 0.9f, parryCounterDamage = 1.42f },
+
+        // The story BOSS Arima Kihei (Chapter One, the user's call 2026-11-04): a step above Musashi
+        // (Miyamoto's row) so he reads as a boss - more health, a little more armour, plain damage.
+        // He exists only in Musashi_Chapter01, on the object "Arima" (no other scene has one).
+        new Vitals { character = "Ch1_Arima", player = "Arima", fighterName = "Arima Kihei", archetype = "Duelist",
+                     dataPath = ArimaDataPath,
+                     health = 105, stamina = 100, armor = 14, damageMultiplier = 100, moveSpeed = 40,
+                     regen = 20f, dashDistance = 2.5f, dashDuration = 0.24f, dashStamina = 13,
+                     blockReduction = 65, blockDrain = 0f,
+                     dashIFrames = 0.15f,
+                     parryWindow = 0.2f, parryCost = 8, parryCooldown = 0.8f, parryStun = 0.5f,
+                     parryCounterWindow = 1.0f, parryCounterDamage = 1.5f },
     };
 
     // ------------------------------------------------------------------ the moves
@@ -295,6 +309,17 @@ public static class CrucibleBalance
             N("Sensei_Special_RisingHeaven",          13,  34, 10,     15,  5, 16,  12),
             N("Sensei_Special_CircleOfWillow",        14,  38, 12,     15,  5, 15,  13),
             N("Sensei_Special_FinalLesson",           15,  42, 14,     16,  5, 17,  14),
+        },
+
+        // Arima: each slot near the move whose clip it borrows, pitched a touch above Musashi's.
+        ["Ch1_Arima"] = new[]
+        {                                          // dmg stam pierce  start act rec  hitstun
+            N("Arima_Light_ProudEdge",                 7,  17,  4,      9,  3,  7,   7),   // Bjorn's Light
+            N("Arima_Medium_SeveringCut",               9,  20,  6,     12,  4, 10,   8),   // Richard's Medium
+            N("Arima_Heavy_ArimasVerdict",            12,  24, 10,     15,  4, 13,  10),   // Richard's Light's overhead
+            N("Arima_Special_RisingCrane",            14,  36, 10,     13,  5, 16,  12),   // Richard's SP+Light
+            N("Arima_Special_WhirlwindAdvance",       15,  42,  8,     18,  5, 19,  13),   // Bjorn's SP+Medium
+            N("Arima_Special_HeavensFall",            17,  46, 14,     20,  5, 20,  14),   // Salaadin's SP+Heavy
         },
     };
 
@@ -449,6 +474,13 @@ public static class CrucibleBalance
         { "Sensei_Special_RisingHeaven",    SwingFlow.Overhead },   // Genghis's SP+Heavy
         { "Sensei_Special_CircleOfWillow",  SwingFlow.CutRight },   // Salaadin's SP+Medium
         { "Sensei_Special_FinalLesson",     SwingFlow.Overhead },
+        // Arima: the flow of each move whose animation he borrows (measured in play, see CrucibleArima.cs).
+        { "Arima_Light_ProudEdge",          SwingFlow.CutLeft },        // Bjorn's Light
+        { "Arima_Medium_SeveringCut",       SwingFlow.CutLeft },        // Richard's Medium
+        { "Arima_Heavy_ArimasVerdict",      SwingFlow.Overhead },       // the barbarian overhead
+        { "Arima_Special_RisingCrane",      SwingFlow.Thrust },         // Richard's SP+Light
+        { "Arima_Special_WhirlwindAdvance", SwingFlow.CutLeft },        // Bjorn's SP+Medium
+        { "Arima_Special_HeavensFall",      SwingFlow.OverheadRight },  // Salaadin's SP+Heavy
     };
 
     static SwingFlow FlowFor(string asset, int hitSideIndex)
@@ -478,6 +510,7 @@ public static class CrucibleBalance
         "Genghis_Special_WrathOfTengri",
         "Buwaka_Special_GreatImpale",
         "Sensei_Special_FinalLesson",
+        "Arima_Special_HeavensFall",
     };
 
     /// <summary>
@@ -530,6 +563,8 @@ public static class CrucibleBalance
         // The Sensei's SP+Heavy steps like everyone's; his SP+Light keeps Genghis's step with the clip.
         { "Sensei_Special_FinalLesson",   (1.35f, 1.5f) },
         { "Sensei_Special_RisingHeaven",  (1.35f, 1.5f) },
+        // Arima keeps each source's step: the spin closes through like Bjorn's, the leap steps like every SP+Heavy.
+        { "Arima_Special_HeavensFall",       (1.35f, 1.5f) },
     };
 
     // Every get-hit stun is 0.8 s (48 frames at 60fps) - the user's call, 2026-10-24, raising the
@@ -630,6 +665,22 @@ public static class CrucibleBalance
         else if (System.Array.Exists(Fighters, o => o.storyScene == scene && v.player == "Player2")) return;
         var go = GameObject.Find(player);
         if (go == null) { Debug.LogWarning($"balance: {player} not in the open scene"); return; }
+        WriteFighter(v, go);
+    }
+
+    /// <summary>Writes <paramref name="character"/>'s vitals (the table row) onto the Fighter on
+    /// <paramref name="go"/>, whatever the object is called. Used by the story chapter's cast.</summary>
+    public static bool WriteVitals(string character, GameObject go)
+    {
+        int i = System.Array.FindIndex(Fighters, o => o.character == character);
+        if (i < 0 || go == null) { Debug.LogError($"balance: no row for {character} (or no object)"); return false; }
+        WriteFighter(Fighters[i], go);
+        return true;
+    }
+
+    static void WriteFighter(Vitals v, GameObject go)
+    {
+        string player = go.name;
         var fighter = go.GetComponent(System.Type.GetType("Fighter, Assembly-CSharp"));
         if (fighter == null) { Debug.LogWarning($"balance: {player} has no Fighter"); return; }
         var so = new SerializedObject(fighter);

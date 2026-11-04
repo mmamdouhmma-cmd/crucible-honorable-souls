@@ -38,6 +38,7 @@ public class GameMenu : MonoBehaviour
         OnlineHostSetup, OnlineCode, OnlineGuest,   // online lobby (appended - keep the order)
         MatchSetup,     // Game Settings, the last stop before a fight (appended - keep the order)
         KeyReview,      // 2-player keyboard: both players' keys, editable, before the fight (appended - keep the order)
+        Story,          // main menu > Story: continue / start over / subtitles (appended - keep the order)
     }
 
     /// <summary>Which path through the select screens we are on.</summary>
@@ -146,6 +147,15 @@ public class GameMenu : MonoBehaviour
     [Tooltip("Open on Battle Now's One Player / Two Players choice instead of the boot logo and " +
              "main menu - for a test scene (the Musashi arena). Everything after it is the normal flow.")]
     [SerializeField] bool openOnBattleSetup = false;
+    [Tooltip("This scene is a STORY CHAPTER: no boot or main menu here - the chapter runs its own encounters, " +
+             "and leaving through the pause menu loads the game scene back.")]
+    [SerializeField] bool storyScene = false;
+
+    /// <summary>The story chapter's scene and the main game's scene (both must be in the build).</summary>
+    public const string ChapterOneScene = "Musashi_Chapter01", GameScene = "testarena";
+    /// <summary>Set when leaving a chapter: the game scene opens straight on the main menu, not the boot screen.</summary>
+    static bool openOnMainMenu;
+    public bool IsStoryScene => storyScene;
     [SerializeField] Vector3 p1Mark = new Vector3(-0.217f, 0.24f, -0.209f);
     [SerializeField] float p1Yaw = 90f;
     [SerializeField] Vector3 p2Mark = new Vector3(2.078f, 0.75f, -0.065f);
@@ -458,7 +468,9 @@ public class GameMenu : MonoBehaviour
         if (ArenaDirectory.Instance != null) arenaChoice = ArenaDirectory.Instance.LoadSaved();
         FreezeFighters(true);
         if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
-        if (openOnBattleSetup) { flow = Flow.Local; Show(Screen.LocalSetup); }
+        if (storyScene) { Show(Screen.None); StartCoroutine(HideHudAfterBuild()); }
+        else if (openOnMainMenu) { openOnMainMenu = false; Show(Screen.Main); }
+        else if (openOnBattleSetup) { flow = Flow.Local; Show(Screen.LocalSetup); }
         else Show(Screen.Boot);
     }
 
@@ -722,6 +734,149 @@ public class GameMenu : MonoBehaviour
         countIn = StartCoroutine(CountInRoutine());
     }
 
+    // ================================================================ story encounters
+    // A story chapter runs its fights through these instead of StartMatch: no count-in, no duel
+    // clock, no K.O. card and no AI - the chapter decides how an exchange starts, ends and resets.
+    // Off (the default) the normal game is untouched.
+
+    /// <summary>True while a story encounter is running: CheckKO stands down and the chapter owns the outcome.</summary>
+    public bool StoryOwnsOutcome { get; private set; }
+
+    /// <summary>Fired when the player leaves a story encounter through the pause menu.</summary>
+    public static event System.Action StoryLeftToMenu;
+
+    /// <summary>Makes <paramref name="p1"/> and <paramref name="p2"/> the fighting pair (both must be in the roster); everyone else is benched.</summary>
+    public bool StoryApplyPair(Fighter p1, Fighter p2)
+    {
+        int a = System.Array.IndexOf(roster, p1), b = System.Array.IndexOf(roster, p2);
+        if (a < 0 || b < 0) { Debug.LogWarning($"Story: {(a < 0 ? p1 : p2)} is not in the roster"); return false; }
+        ApplySides(a, b);
+        if (FightCamera.Instance != null) FightCamera.Instance.RetargetToFighters();
+        return true;
+    }
+
+    /// <summary>Starts the current pair fighting with no clock, no count-in and no K.O. card. The fighters stay where the chapter put them.</summary>
+    public void StartStoryEncounter()
+    {
+        matchSerial++;
+        StoryOwnsOutcome = true;
+        if (countIn != null) { StopCoroutine(countIn); countIn = null; }
+        if (stage != null) stage.ClearBeat();
+        DuelRules.Active = new DuelRules();   // untimed, 100% damage / health / stamina
+        duelClock = false;
+        if (PracticeMode.Instance != null) PracticeMode.Instance.End();
+        SetAi(false, AiController.Rules.Full);   // the chapter drives the opponent itself
+        Fighter.PassiveRegenOn = false;          // the chapter sets its own recovery per encounter
+        KillShot.RestoreLights();
+        Time.timeScale = GameSpeed();
+        Show(Screen.None);
+        var hud = FindAnyObjectByType<FightHud>();
+        if (hud != null) hud.Rebuild();
+        inMatch = true;
+        StoryResume();
+    }
+
+    /// <summary>Freezes the pair and turns input off (between exchanges, during dialogue beats).</summary>
+    public void StoryHold()
+    {
+        storyHeld = true;
+        foreach (var f in Everyone()) if (f.gameObject.activeInHierarchy && f.Combat != null) f.Combat.StopForMatchEnd();
+        FreezeFighters(true);
+        if (InputManager.Instance != null) InputManager.Instance.InputEnabled = false;
+        if (TouchControls.Instance != null) TouchControls.Instance.Hide();
+    }
+
+    /// <summary>Hands control back after <see cref="StoryHold"/>.</summary>
+    public void StoryResume()
+    {
+        storyHeld = false;
+        FreezeFighters(false);
+        if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
+        if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(1);
+    }
+
+    /// <summary>The story's free walk: no fight, input on, the pause menu available (it needs a "match"), and the
+    /// chapter owns what happens. The walker moves the fighter itself; <see cref="EndStoryEncounter"/> ends it.</summary>
+    public void StartStoryExplore()
+    {
+        matchSerial++;
+        StoryOwnsOutcome = true;
+        SetAi(false, AiController.Rules.Full);
+        KillShot.RestoreLights();
+        Time.timeScale = GameSpeed();
+        Show(Screen.None);
+        var hud = FindAnyObjectByType<FightHud>();
+        if (hud != null) hud.SetVisible(false);
+        inMatch = true;
+        storyHeld = false;
+        if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
+    }
+
+    /// <summary>Ends the story encounter (the chapter moves on); fighters frozen, input off.</summary>
+    public void EndStoryEncounter()
+    {
+        StoryHold();
+        inMatch = false;
+        StoryOwnsOutcome = false;
+        Fighter.PassiveRegenOn = settings.healthRegen;
+        StoryClearHud();
+    }
+
+    /// <summary>Both bars back on: the normal game always shows both.</summary>
+    void StoryClearHud()
+    {
+        var hud = FindAnyObjectByType<FightHud>();
+        if (hud != null) { hud.SetPlayerBarsVisible(1, true); hud.SetPlayerBarsVisible(2, true); }
+    }
+
+    /// <summary>A story scene opens with no bars: the chapter shows them per encounter. FightHud builds them in its
+    /// own Start, after this one, so the hide waits a frame.</summary>
+    IEnumerator HideHudAfterBuild()
+    {
+        yield return null;
+        if (StoryOwnsOutcome) yield break;   // an encounter already began and wants them
+        if (fightHud == null) fightHud = FindAnyObjectByType<FightHud>();
+        if (fightHud != null) fightHud.SetVisible(false);
+    }
+
+    bool storyHeld;   // StoryHold is in force: input stays off whatever the pause menu does
+
+    /// <summary>Chapter One's id in the story save (StoryProgress) - the steps table's "chapter".</summary>
+    public const string ChapterOneId = "ch1";
+
+    /// <summary>The chapter is over (or abandoned by code): back to the duel game's main menu.</summary>
+    public void LeaveStory()
+    {
+        if (StoryOwnsOutcome) { StoryOwnsOutcome = false; StoryClearHud(); }
+        if (stage != null) stage.Wipe(() => LoadScene(GameScene, toMainMenu: true));
+        else LoadScene(GameScene, toMainMenu: true);
+    }
+
+    /// <summary>Main menu > Story: loads Chapter One's scene.</summary>
+    void LoadChapterOne()
+    {
+        if (!Application.CanStreamedLevelBeLoaded(ChapterOneScene)) { CrucibleAudio.Ui(CrucibleAudio.UiSound.Back); return; }
+        if (stage != null) stage.Wipe(() => LoadScene(ChapterOneScene, toMainMenu: false));
+        else LoadScene(ChapterOneScene, toMainMenu: false);
+    }
+
+    void LoadScene(string sceneName, bool toMainMenu)
+    {
+        openOnMainMenu = toMainMenu;
+        inMatch = false;
+        if (TouchControls.Instance != null) TouchControls.Instance.Hide();
+        Time.timeScale = 1f;   // a pause leaves it at 0; the next scene's menu sets the game speed
+        // InputManager makes its WHOLE object (GameMangers: this menu, the AI, audio, the recorder...)
+        // DontDestroyOnLoad. Left that way it would survive into the next scene, whose own GameMangers
+        // then destroys itself as a duplicate - leaving this menu driving a roster of destroyed fighters.
+        // Hand the managers back to this scene so they unload with it and the next scene's take over.
+        var keep = InputManager.Instance != null ? InputManager.Instance.gameObject : null;
+        if (keep != null && keep.transform.parent == null && keep.scene.name == "DontDestroyOnLoad")
+            UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(keep, UnityEngine.SceneManagement.SceneManager.GetActiveScene());
+        CombatEvents.Clear();
+        UnityEngine.SceneManagement.SceneManager.LoadScene(sceneName);
+    }
+
     public void Pause()
     {
         if (netRole == NetSession.Role.None) { PauseLocal(); return; }
@@ -778,12 +933,16 @@ public class GameMenu : MonoBehaviour
     {
         if (TouchControls.Instance != null) TouchControls.Instance.ShowForMatch(playerCount >= 2 && !vsAi && netRole == NetSession.Role.None ? 2 : 1);
         Time.timeScale = savedTimeScale > 0f ? savedTimeScale : GameSpeed();
-        if (InputManager.Instance != null) InputManager.Instance.InputEnabled = true;
+        // A story beat holds the fight with input off; un-pausing in the middle of one must not hand it back.
+        if (InputManager.Instance != null) InputManager.Instance.InputEnabled = !storyHeld;
+        if (storyHeld && TouchControls.Instance != null) TouchControls.Instance.Hide();
         Show(Screen.None);
     }
 
     void EndMatchToMenu()
     {
+        if (StoryOwnsOutcome) { StoryOwnsOutcome = false; StoryClearHud(); StoryLeftToMenu?.Invoke(); }
+        if (storyScene) { LoadScene(GameScene, toMainMenu: true); return; }
         inMatch = false;
         duelClock = false;
         // Leaving during the count-in used to strand the coroutine (it only counts down while the
@@ -858,7 +1017,7 @@ public class GameMenu : MonoBehaviour
 
     void CheckKO()
     {
-        if (!inMatch) return;
+        if (!inMatch || StoryOwnsOutcome) return;   // a story encounter decides its own ending
         foreach (var f in Everyone())
         {
             if (!f.gameObject.activeInHierarchy) continue;    // a benched fighter is not in this match
@@ -1232,6 +1391,9 @@ public class GameMenu : MonoBehaviour
                     InputManager.Instance?.ClearPlayerDevices();
                     GoWiped(Screen.CharSelect);
                 } });
+                items.Add(new Item { label = "Story", value = () => Application.CanStreamedLevelBeLoaded(ChapterOneScene)
+                                         ? "Musashi - Chapter 1: The Way of the Sword" : "not in this build yet",
+                                     confirm = () => { if (Application.CanStreamedLevelBeLoaded(ChapterOneScene)) Show(Screen.Story); else CrucibleAudio.Ui(CrucibleAudio.UiSound.Back); } });
                 items.Add(new Item { label = "Online", value = () => "host or join a game", confirm = () => { flow = Flow.Online; InputManager.Instance?.ClearPlayerDevices(); Net?.ConnectToServer(); Show(Screen.Online); } });
                 items.Add(new Item { label = "Practice", value = () => "a dummy that obeys your rules", confirm = () => { flow = Flow.Practice; playerCount = 1; InputManager.Instance?.ClearPlayerDevices(); GoWiped(Screen.CharSelect); } });
                 items.Add(new Item { label = "Move List", confirm = () => Show(Screen.Moves) });
@@ -1240,6 +1402,28 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Quit", confirm = Quit });
                 footerText.text = NavHint();
                 break;
+
+            // ------------------------------------------------------------ story
+            case Screen.Story:
+            {
+                SetTitle("Story", "Miyamoto Musashi - Chapter One: The Way of the Sword");
+                var saved = StoryProgress.Exists(ChapterOneId) ? StoryProgress.Load(ChapterOneId) : null;
+                bool midway = saved != null && !saved.chapterComplete && saved.completed.Count > 0;
+                if (midway)
+                    items.Add(new Item { label = "Continue", value = () => string.IsNullOrEmpty(saved.nextTitle) ? "where you left off" : saved.nextTitle,
+                                         confirm = () => { StoryProgress.StartFreshRequested = false; LoadChapterOne(); } });
+                items.Add(new Item { label = midway ? "Start from the beginning" : saved != null && saved.chapterComplete ? "Play again" : "Begin",
+                                     value = () => midway ? "your progress in this chapter is erased" : "",
+                                     confirm = () => { StoryProgress.StartFreshRequested = true; LoadChapterOne(); } });
+                if (saved != null && saved.chapterComplete)
+                    items.Add(new Item { label = "Chapter One complete", header = true, quiet = true });
+                items.Add(new Item { label = "Subtitles", value = () => StorySettings.Label(StorySettings.SubtitleMode),
+                                     adjust = d => StorySettings.SubtitleMode = (StorySettings.Subtitles)(((int)StorySettings.SubtitleMode + d + 3) % 3),
+                                     confirm = () => { StorySettings.SubtitleMode = (StorySettings.Subtitles)(((int)StorySettings.SubtitleMode + 1) % 3); Rebuild(); } });
+                items.Add(new Item { label = "Back", confirm = Back });
+                footerText.text = NavHint();
+                break;
+            }
 
             // ------------------------------------------------------------ local setup
             case Screen.LocalSetup:
@@ -1396,8 +1580,20 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Settings", confirm = () => Show(Screen.Settings) });
                 if (flow == Flow.Practice)
                     items.Add(new Item { label = "Practice rules", confirm = () => Show(Screen.PracticeRules) });
-                if (netRole == NetSession.Role.None)
+                if (netRole == NetSession.Role.None && !storyScene)
                     items.Add(new Item { label = "Restart the fight", confirm = () => { if (stage != null) stage.Wipe(StartMatch); else StartMatch(); } });
+                if (storyScene)
+                {
+                    // a lesson or training round: watch its slow-motion demonstration again (the exercise restarts after it)
+                    var chapter = FindAnyObjectByType<ChapterRunner>();
+                    if (chapter != null && chapter.CanReplayDemo)
+                        items.Add(new Item { label = "Replay the demonstration", value = () => "the exercise starts again after it",
+                                             confirm = () => { Resume(); chapter.RequestDemoReplay(); } });
+                }
+                if (storyScene)
+                    items.Add(new Item { label = "Subtitles", value = () => StorySettings.Label(StorySettings.SubtitleMode),
+                                         adjust = d => StorySettings.SubtitleMode = (StorySettings.Subtitles)(((int)StorySettings.SubtitleMode + d + 3) % 3),
+                                         confirm = () => { StorySettings.SubtitleMode = (StorySettings.Subtitles)(((int)StorySettings.SubtitleMode + 1) % 3); Rebuild(); } });
                 items.Add(new Item { label = netRole == NetSession.Role.None ? "Main Menu" : "Leave the match", confirm = () => { if (stage != null) stage.Wipe(EndMatchToMenu); else EndMatchToMenu(); } });
                 footerText.text = "Options / Esc resumes    " + NavHint();
                 break;

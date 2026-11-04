@@ -21,6 +21,7 @@ public struct InputData
 
     // ==================== MOVEMENT ====================
     public float moveDirection;  // -1 to 1 (left/right)
+    public Vector2 moveVector;   // the whole left stick / move keys, for free movement (the story's village walk)
     public bool crouch;          // Down on stick
     public bool taunt;           // Up on stick
     public bool run;             // L3 click

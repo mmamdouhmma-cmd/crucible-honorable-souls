@@ -1,0 +1,51 @@
+{
+  "note": "Chapter 1 dialogue. Lines marked draft:true are placeholders written for beats the spec names without text. After editing the Japanese, re-run ArtSource/Fonts/subset_jp.py so the font carries every glyph. seconds 0 = from the text length.",
+  "speakers": [
+    { "id": "sensei",  "ja": "師匠",       "en": "Sensei" },
+    { "id": "musashi", "ja": "武蔵",       "en": "Musashi" },
+    { "id": "partner", "ja": "稽古相手",   "en": "Partner" },
+    { "id": "arima",   "ja": "有馬喜兵衛", "en": "Arima Kihei" },
+    { "id": "title",   "ja": "",           "en": "" }
+  ],
+  "lines": [
+    { "id": "ch1.open",                 "speaker": "title",   "ja": "第一章　剣の道",                     "en": "Chapter One: The Way of the Sword", "seconds": 3.5, "draft": true },
+    { "id": "ch1.sensei_intro",         "speaker": "sensei",  "ja": "武蔵、木刀を取れ。",                 "en": "Musashi. Take up your bokken.",   "draft": true },
+
+    { "id": "ch1.lesson1.intro",        "speaker": "sensei",  "ja": "軽く打て！",                         "en": "Strike lightly!" },
+    { "id": "ch1.lesson1.wrong.1",      "speaker": "sensei",  "ja": "軽くだ！",                           "en": "LIGHT!",                          "group": "ch1.lesson1.wrong" },
+    { "id": "ch1.lesson1.wrong.2",      "speaker": "sensei",  "ja": "軽くと言っただろう！",               "en": "I said light!",                   "group": "ch1.lesson1.wrong" },
+    { "id": "ch1.lesson1.wrong.3",      "speaker": "sensei",  "ja": "力任せに振るな！",                   "en": "Don't swing with brute force!",   "group": "ch1.lesson1.wrong" },
+    { "id": "ch1.lesson1.wrong.4",      "speaker": "sensei",  "ja": "指示をよく聞け！",                   "en": "Listen to my instructions!",      "group": "ch1.lesson1.wrong" },
+    { "id": "ch1.good.1",               "speaker": "sensei",  "ja": "よし。",                             "en": "Good.",                           "group": "ch1.good", "draft": true },
+    { "id": "ch1.good.2",               "speaker": "sensei",  "ja": "その調子だ。",                       "en": "That's it.",                      "group": "ch1.good", "draft": true },
+    { "id": "ch1.lesson1_to_2",         "speaker": "sensei",  "ja": "よし。次だ。",                       "en": "Good. Next.",                     "draft": true },
+
+    { "id": "ch1.lesson2.intro",        "speaker": "sensei",  "ja": "後ろへ避けろ。そして反撃しろ！",     "en": "Dodge backward. Then counterattack!" },
+    { "id": "ch1.lesson2.wrong.1",      "speaker": "sensei",  "ja": "ためらうな！",                       "en": "Don't hesitate!",                 "group": "ch1.lesson2.wrong" },
+    { "id": "ch1.lesson2.wrong.2",      "speaker": "sensei",  "ja": "集中しろ！",                         "en": "Focus!",                          "group": "ch1.lesson2.wrong" },
+    { "id": "ch1.lesson2.wrong.3",      "speaker": "sensei",  "ja": "なぜ言うことを聞かん！",             "en": "Why won't you listen?",           "group": "ch1.lesson2.wrong" },
+    { "id": "ch1.lesson2_to_3",         "speaker": "sensei",  "ja": "悪くない。最後だ。",                 "en": "Not bad. One more.",              "draft": true },
+
+    { "id": "ch1.lesson3.intro",        "speaker": "sensei",  "ja": "動きを見極めろ！",                   "en": "Read the movement!" },
+
+    { "id": "ch1.knockdown.stop",       "speaker": "sensei",  "ja": "そこまで！",                         "en": "That's enough!" },
+    { "id": "ch1.knockdown.getup",      "speaker": "sensei",  "ja": "立て、武蔵！",                       "en": "Get up, Musashi!" },
+    { "id": "ch1.retry",                "speaker": "sensei",  "ja": "もう一度だ！",                       "en": "Again!" },
+
+    { "id": "ch1.spar.intro",           "speaker": "sensei",  "ja": "今度は相手と戦え！",                 "en": "Now face your opponent!" },
+    { "id": "ch1.spar.round1",          "speaker": "sensei",  "ja": "避けて、返せ！",                     "en": "Evade, then strike back!",        "draft": true },
+    { "id": "ch1.spar.round2",          "speaker": "sensei",  "ja": "受け流して、返せ！",                 "en": "Parry, then strike back!",        "draft": true },
+    { "id": "ch1.spar.round3",          "speaker": "sensei",  "ja": "打たれるな。打て！",                 "en": "Don't get hit. Strike!",          "draft": true },
+    { "id": "ch1.spar.round4",          "speaker": "sensei",  "ja": "本気でやれ！",                       "en": "Now fight for real!",             "draft": true },
+    { "id": "ch1.spar.round_failed",    "speaker": "sensei",  "ja": "もう一度だ！",                       "en": "Again!" },
+    { "id": "ch1.spar.partner_down",    "speaker": "sensei",  "ja": "そこまで！",                         "en": "That's enough!" },
+    { "id": "ch1.dismiss",              "speaker": "sensei",  "ja": "今日の稽古はここまでだ。",           "en": "That is enough training for today." },
+
+    { "id": "ch1.explore.intro",        "speaker": "musashi", "ja": "……村が騒がしいな。",                "en": "...The village is restless.",     "draft": true },
+    { "id": "ch1.boss.intro.1",         "speaker": "arima",   "ja": "小僧、この有馬喜兵衛に挑むか！",     "en": "Boy! You dare challenge Arima Kihei?", "draft": true },
+    { "id": "ch1.boss.intro.2",         "speaker": "musashi", "ja": "挑む。",                             "en": "I do.",                           "draft": true },
+    { "id": "ch1.boss.lost",            "speaker": "arima",   "ja": "出直してこい、小僧！",               "en": "Come back when you've grown, boy!", "draft": true },
+    { "id": "ch1.boss.won",             "speaker": "musashi", "ja": "……これが、剣の道か。",              "en": "...So this is the way of the sword.", "draft": true },
+    { "id": "ch1.end",                  "speaker": "title",   "ja": "第一章　完",                         "en": "Chapter One: Complete",           "seconds": 3.5, "draft": true }
+  ]
+}

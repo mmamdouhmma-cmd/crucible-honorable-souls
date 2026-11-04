@@ -44,6 +44,14 @@ public class AiController : MonoBehaviour
     [Tooltip("What this opponent may do. Practice mode writes this; a normal match uses Full.")]
     public Rules rules = Rules.Full;
 
+    /// <summary>A steady attack rhythm (a sparring partner): when x > 0 the AI attacks every x..y seconds whenever the
+    /// foe is within <see cref="attackReach"/>, and its random aggression roll is off. Cleared by Activate.</summary>
+    [System.NonSerialized] public Vector2 attackInterval;
+    /// <summary>> 0: the distance it attacks from (uses its reach instead of walking up to point blank). The distance it
+    /// likes to stand at is re-picked between <see cref="standRange"/>.x and .y after every attack. Cleared by Activate.</summary>
+    [System.NonSerialized] public float attackReach;
+    [System.NonSerialized] public Vector2 standRange;
+
     /// <summary>True while the AI is in charge of its player.</summary>
     public bool Active { get; private set; }
 
@@ -86,6 +94,7 @@ public class AiController : MonoBehaviour
     float backOffUntil;
     int backOffDir;
     float lastDashAt = -10f;
+    float nextAttackAt, likeRange;   // the attack rhythm (attackInterval) and the distance currently liked
     int lastFoeAttackId;           // changes when the foe starts a new attack
     float parryAt = -1f;           // Time.time to press Defense so the parry window covers the hit
     float parryPressUntil = -1f;   // Defense is held until here: the AI snapshot is consumed once
@@ -111,6 +120,7 @@ public class AiController : MonoBehaviour
         Active = true;
         nextThink = Time.time + 0.5f;
         threatSeenAt = -1f; threatHandled = false; blockUntil = 0f; backOffUntil = 0f; parryAt = -1f; parryPressUntil = -1f;
+        attackInterval = Vector2.zero; attackReach = 0f; standRange = Vector2.zero; nextAttackAt = 0f; likeRange = 0f;
         if (InputManager.Instance != null) InputManager.Instance.SetAi(playerNumber, true);
         if (debugLogs) Debug.Log($"AI: driving Player {playerNumber} at {d}");
     }
@@ -253,6 +263,28 @@ public class AiController : MonoBehaviour
         {
             Pick(ref input, preferHeavy: foeRecovering, stamina);
             if (debugLogs) Debug.Log(counterOpen ? "AI: COUNTER" : "AI: PUNISH");
+            return input;
+        }
+
+        // ---- a steady rhythm (sparring): attack from reach on the beat, otherwise keep the liked distance
+        if (attackInterval.x > 0f)
+        {
+            float reach = attackReach > 0f ? attackReach : BalanceConfig.ATTACK_LUNGE_STOP + BalanceConfig.ATTACK_LUNGE_MAX - 0.1f;
+            if (likeRange <= 0f) likeRange = standRange.x > 0f ? Random.Range(standRange.x, standRange.y) : p.range;
+            if (rules.attack && now >= nextAttackAt && gap <= reach && stamina >= 10 && !foeWindingUp)
+            {
+                Pick(ref input, preferHeavy: false, stamina);
+                nextAttackAt = now + Random.Range(attackInterval.x, Mathf.Max(attackInterval.x, attackInterval.y));
+                likeRange = standRange.x > 0f ? Random.Range(standRange.x, standRange.y) : p.range;
+                return input;
+            }
+            if (rules.walk)
+            {
+                // walk to the liked distance: further than it means closing in (always while the attack is due)
+                bool due = rules.attack && now >= nextAttackAt;
+                if (gap > (due ? Mathf.Min(likeRange, reach) : likeRange) + 0.15f) input.moveDirection = toFoe;
+                else if (!due && gap < likeRange - 0.6f) input.moveDirection = -toFoe;
+            }
             return input;
         }
 

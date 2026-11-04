@@ -44,6 +44,9 @@ public class Fighter : MonoBehaviour
     public int Armor => armor >= 0 ? armor : (fighterData != null ? fighterData.Armor : 0);
     /// <summary>Damage scalar in percent (100 = authored damage), from the fighter's data.</summary>
     public int DamageMultiplier => fighterData != null ? fighterData.DamageMultiplier : 100;
+    /// <summary>Runtime damage scale on top of everything else (not saved). The story sets it on young Musashi
+    /// (x0.7, the user's call); 1 in every duel.</summary>
+    public float ExtraDamageScale { get; set; } = 1f;
     /// <summary>Seconds at the start of a dash that dodge a strike.</summary>
     public float DashIFrames => dashIFrameDuration;
     /// <summary>World units one dash covers.</summary>
@@ -149,6 +152,8 @@ public class Fighter : MonoBehaviour
              "(2026-10-27); CrucibleBalance writes the old dash speed here so the run kept its pace.")]
     [SerializeField] private float runSpeed = 0f;
     private float RunSpeed => runSpeed > 0f ? runSpeed : dashDistance / Mathf.Max(dashDuration, 0.05f);
+    /// <summary>Ground speed of the held run (the story's village walk uses it).</summary>
+    public float RunGroundSpeed => RunSpeed;
 
     [Tooltip("Seconds from the start of a dash during which it can still EVADE (the i-frames). " +
              "Past this the dash's tail is an ordinary target: it no longer dodges, and a forward " +
@@ -275,6 +280,17 @@ public class Fighter : MonoBehaviour
     /// CombatSystem before blocking is considered.
     /// </summary>
     public bool ParryReady => parryActiveTimer > 0f;
+
+    // ---- story / training switches: set by a layer on top of the fight, OFF in the normal game ----
+    /// <summary>True = raising the guard never opens a parry window (a pure block). Story training only.</summary>
+    [System.NonSerialized] public bool ParryDisabled;
+    /// <summary>When above 0, the guard breaks on that strike of a string whatever stamina is left
+    /// (3 = the third strike breaks it). 0 = the normal stamina rule. Story training only.</summary>
+    [System.NonSerialized] public int GuardBreaksAtStrike;
+    /// <summary>The current/last dash relative to facing: +1 forward, -1 back.</summary>
+    public float DashForwardAmount => dashForwardAmount;
+    /// <summary>The current/last dash relative to facing: +1 right, -1 left.</summary>
+    public float DashRightAmount => dashRightAmount;
 
     /// <summary>Seconds left of the parry cooldown (0 when a parry can be attempted).</summary>
     public float ParryCooldownTimeLeft => Mathf.Max(parryCooldownTimer, 0f);
@@ -673,6 +689,8 @@ public class Fighter : MonoBehaviour
         bool stunBars = combatSystem != null && combatSystem.IsInHitstun && !combatSystem.ParriedStun;
         bool busy = combatSystem != null && (combatSystem.IsAttacking || stunBars || combatSystem.GuardBreakRecovering);
         if (busy || isDashing) return;
+
+        if (ParryDisabled) return;   // story training: the guard goes up as a plain block
 
         if (parryCooldownTimer > 0f)
         {

@@ -53,8 +53,16 @@ public class FighterStats
     public void TakeDamage(int amount)
     {
         currentHealth -= amount;
+        if (currentHealth < minHealth) currentHealth = minHealth;
         if (currentHealth < 0) currentHealth = 0;
     }
+
+    /// <summary>Health never drops below this. 0 in the normal game; a nonlethal story encounter
+    /// sets 1 and treats a blow that leaves the fighter on it as a knockdown.</summary>
+    [System.NonSerialized] public int minHealth = 0;
+
+    /// <summary>True when a nonlethal floor is set and health sits on it.</summary>
+    public bool OnNonLethalFloor => minHealth > 0 && currentHealth <= minHealth;
 
     /// <summary>
     /// Restores health up to <see cref="maxHealth"/>.

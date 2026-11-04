@@ -50,6 +50,7 @@ public class FightHud : MonoBehaviour
     {
         public Fighter fighter;
         public bool innerIsRight; // the side of the bar nearest the screen centre
+        public RectTransform root;
 
         public RectTransform healthFill;
         public RectTransform healthTrail;
@@ -126,6 +127,22 @@ public class FightHud : MonoBehaviour
 
     public bool IsVisible => canvasObject == null || canvasObject.activeSelf;
 
+    private readonly bool[] barsHidden = new bool[3];
+
+    /// <summary>Shows or hides ONE player's bars (story mode: the Sensei shows none). Survives a Rebuild.</summary>
+    public void SetPlayerBarsVisible(int player, bool visible)
+    {
+        if (player < 1 || player > 2) return;
+        barsHidden[player] = !visible;
+        ApplyBarsHidden();
+    }
+
+    private void ApplyBarsHidden()
+    {
+        if (player1Bars != null && player1Bars.root != null) player1Bars.root.gameObject.SetActive(!barsHidden[1]);
+        if (player2Bars != null && player2Bars.root != null) player2Bars.root.gameObject.SetActive(!barsHidden[2]);
+    }
+
     private Text clockText;
 
     /// <summary>The duel clock between the two health bars; null or empty hides it.</summary>
@@ -198,6 +215,7 @@ public class FightHud : MonoBehaviour
         RectTransform canvasRect = (RectTransform)canvasObject.transform;
         if (player1 != null) player1Bars = BuildPlayerBars(canvasRect, player1, mirrored: false);
         if (player2 != null) player2Bars = BuildPlayerBars(canvasRect, player2, mirrored: true);
+        ApplyBarsHidden();
     }
 
     /// <summary>
@@ -222,6 +240,7 @@ public class FightHud : MonoBehaviour
         root.anchorMin = root.anchorMax = root.pivot = new Vector2(cornerX, 1f);
         root.anchoredPosition = new Vector2(mirrored ? -screenMargin : screenMargin, -screenMargin);
         root.sizeDelta = new Vector2(barWidth, staminaTop + staminaBarHeight);
+        bars.root = root;
 
         // ----- Text row -----
         string fighterName = fighter.CharacterName;

@@ -115,6 +115,14 @@ public class CombatSystem : MonoBehaviour
     /// <summary>The moves the special modifier produces, keyed by AttackData.specialButton.</summary>
     public AttackData[] Specials => specials;
 
+    /// <summary>Story training only: swaps the move lists TryAttack draws from (the Sensei's short-recovery
+    /// copies). Pass the arrays read from <see cref="Attacks"/> / <see cref="Specials"/> to put them back.</summary>
+    public void SetLibraries(AttackData[] newAttacks, AttackData[] newSpecials)
+    {
+        attacks = newAttacks;
+        specials = newSpecials;
+    }
+
     /// <summary>The move a plain press gives while a dash counter is open (null = the normal).</summary>
     public AttackData DashRiposte => dashRiposte;
 
@@ -657,6 +665,8 @@ public class CombatSystem : MonoBehaviour
             if (debugLogs) Debug.Log($"P{fighter.PlayerNumber}: counter swing at x{currentAttackPace:0.00} pace");
         }
 
+        CombatEvents.RaiseAttackStarted(fighter, attack, depth);
+
         // Judged ONCE, at the moment the swing starts and before the cost comes off the bar,
         // and held for the whole swing: recovering past the line mid-swing does not speed it up.
         currentAttackWeakened = IsWeakened();
@@ -928,6 +938,20 @@ public class CombatSystem : MonoBehaviour
 
     /// <summary>The attack currently being performed, or null when idle.</summary>
     public AttackData CurrentAttack => currentAttack;
+    /// <summary>Links taken in the current string (0 = a fresh swing).</summary>
+    public int StringDepth => stringDepth;
+
+    /// <summary>Raises <see cref="CombatEvents.HitResolved"/> for the current attack against <paramref name="target"/>.</summary>
+    private void Report(Fighter target, HitOutcome outcome, int damage, bool evadeOpensCounter)
+    {
+        CombatEvents.RaiseHit(new HitReport
+        {
+            attacker = fighter, target = target, attack = currentAttack, outcome = outcome, damage = damage,
+            stringDepth = stringDepth, dashCounter = currentAttackIsDashCounter, parryCounter = currentAttackIsParryCounter,
+            evadeOpensCounter = evadeOpensCounter,
+            dodgeDirection = outcome == HitOutcome.Evaded && target != null ? target.DescribeDash() : "",
+        });
+    }
 
     /// <summary>
     /// True while this fighter is swinging a string FOLLOW-UP whose opener landed clean: incoming
@@ -1033,6 +1057,20 @@ public class CombatSystem : MonoBehaviour
     }
 
     /// <summary>Clears any attack, hitstun and queued hits (new match / return to the menu).</summary>
+    /// <summary>Clears the repeat bar, the string/special lockout and the combo-pressure run - the gates that judge
+    /// a fighter's OWN rhythm. For a scripted story opponent (the Sensei) whose lesson strike must always come out.
+    /// Stun is untouched: wait it out.</summary>
+    public void ClearRhythmLocks()
+    {
+        attackLockoutTimer = 0f;
+        bannedAttack = null;
+        bannedAttackTimer = 0f;
+        chainCount = 0;
+        comboGapTimer = 999f;
+        comboPressureCount = 0;
+        sameFlowRun = 0;
+    }
+
     public void ResetForMatch()
     {
         if (isAttacking) EndAttack("match reset");
@@ -1219,6 +1257,7 @@ public class CombatSystem : MonoBehaviour
             bool counterAllowed = dashOutcome == DashHitOutcome.Evaded;
             MarkEvaded();
             target.NotifyEvaded(counterAllowed);
+            Report(target, HitOutcome.Evaded, 0, counterAllowed);
 
             if (debugLogs)
             {
@@ -1260,6 +1299,7 @@ public class CombatSystem : MonoBehaviour
                           $"no damage, attacker stunned {stunFrames} f");
             }
 
+            Report(target, HitOutcome.Parried, 0, false);
             EndAttack("PARRIED");
             fighter.NotifyParried(stunFrames);
             if (ReplayRecorder.Instance != null) ReplayRecorder.Instance.Mark($"P{target.PlayerNumber} parry");
@@ -1276,7 +1316,17 @@ public class CombatSystem : MonoBehaviour
         if (blocked)
         {
             blockCost = GetBlockStaminaCost(currentAttack.AttackType);
-            if (stringDepth > 0)
+            // A story/training rule may break the guard on a set strike of a string whatever the bar
+            // holds (Fighter.GuardBreaksAtStrike; 0 = off, the normal game).
+            if (target.GuardBreaksAtStrike > 0 && stringDepth + 1 >= target.GuardBreaksAtStrike)
+            {
+                blocked = false;
+                guardBroken = true;
+                target.Stats.UseStamina(target.Stats.currentStamina);
+                if (target.Combat != null) target.Combat.BeginGuardBreak();
+                if (debugLogs) Debug.Log($"P{target.PlayerNumber}: GUARD BROKEN by strike {stringDepth + 1} (training rule)");
+            }
+            else if (stringDepth > 0)
             {
                 float escalated = blockCost * (1f + BalanceConfig.COMBO_BLOCK_COST_GROWTH * stringDepth);
                 // The 3rd strike of a string bites a further 25% harder (the user's call, 2026-10-25).
@@ -1306,6 +1356,7 @@ public class CombatSystem : MonoBehaviour
         // cut, so running the bar down can never IMPROVE damage-per-stamina (Plan_Balance 2.3).
         if (currentAttackWeakened) bonus *= BalanceConfig.WEAKENED_DAMAGE_MULTIPLIER;
         bonus *= DuelRules.Active.DamageScale;   // the Game Settings screen's Damage %
+        bonus *= fighter.ExtraDamageScale;      // a story's per-fighter scale (young Musashi), 1 everywhere else
 
         int finalDamage = DamageCalculator.CalculateDamage(
             currentAttack.Damage,
@@ -1369,6 +1420,7 @@ public class CombatSystem : MonoBehaviour
         // Remembered for string links that must be earned by connecting.
         attackTouched = true;
         attackHitClean = !blocked;
+        Report(target, blocked ? HitOutcome.Blocked : guardBroken ? HitOutcome.GuardBroken : HitOutcome.Hit, finalDamage, false);
 
         if (!blocked && finalDamage > 0 && bloodOnHit)
         {
@@ -1453,6 +1505,7 @@ public class CombatSystem : MonoBehaviour
         bool counterAllowed = outcome == DashHitOutcome.Evaded;
         MarkEvaded();
         target.NotifyEvaded(counterAllowed);
+        Report(target, HitOutcome.Evaded, 0, counterAllowed);
 
         if (debugLogs)
         {
@@ -1617,6 +1670,7 @@ public class CombatSystem : MonoBehaviour
 
     private void EndAttack(string reason = "ENDED")
     {
+        if (currentAttack != null && fighter != null) CombatEvents.RaiseAttackEnded(fighter, currentAttack, attackTouched);
         if (hitboxActive && hitDetector != null)
         {
             hitDetector.Deactivate();
