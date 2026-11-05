@@ -4935,3 +4935,8 @@ stroke with combat off and stopped at once on an interrupted end. NOT tested: a 
 online match. Records library was backed up and restored around the save test (it was at 20/20, so
 a save prunes the oldest). Also fixed: `WeaponTrail.OnDisable` MissingReferenceException on
 leaving play mode (ribbons destroyed first).
+
+### 2026-11-05 — v0.5.0 released (Windows, Android, Mac)
+Weapon VFX + no foot sliding + Bjorn spins, story still Editor-only. Removed 5 duplicate NetSession
+components from testarena first. Android build sat on the "Unsupported Input Handling" dialog (answered
+Ignore); see ProjectNotes. Release: https://github.com/mmamdouhmma-cmd/crucible-honorable-souls/releases/tag/v0.5.0

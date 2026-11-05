@@ -1803,3 +1803,8 @@ tuning, arenas, online or builds.
 - The Special wind-up dust is NOT re-raised remotely (it is already a recorded/forwarded Dust).
 - CLI test note: an eval round trip here is ~3.6 s, longer than the guest deadline - send the
   begin and check within one call, or expect the timeout.
+- **Android build from the CLI stalls on a modal (2026-11-05)**: Unity 6.4 shows "Unsupported Input
+  Handling on Android" (activeInputHandler is Both, which the keyboard path needs) and waits with no CPU
+  and no log output; the MCP eval then times out after 30 min. Answer **Ignore** (same as every shipped
+  APK). The dialog can sit behind other windows. The "4 errors" in that build were the old
+  `wind_01.ogg` FSBTool import error (3 lines) plus the dropped MCP connection - not build problems.
