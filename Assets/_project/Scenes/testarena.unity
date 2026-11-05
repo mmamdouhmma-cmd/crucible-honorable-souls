@@ -9680,13 +9680,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 270900237}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.579228, y: -0.40557984, z: 0.579228, w: 0.40557978}
+  m_LocalRotation: {x: 0.053436555, y: -0.64122176, z: 0.04483859, w: 0.76417845}
   m_LocalPosition: {x: 0.00013, y: 0.0006, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 551943444}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 8, y: -80, z: 0}
 --- !u!1001 &271780039
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17699,13 +17699,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 488093557}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.36004218, y: 0.30337182, z: 0.1966282, w: 0.8600422}
+  m_LocalRotation: {x: 0.26952466, y: 0.584275, z: 0.21922988, w: 0.73342854}
   m_LocalPosition: {x: 0.001, y: -0.0002, z: -0.00025}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1369717003}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 8, y: 80, z: 40}
 --- !u!1001 &492162362
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -53524,7 +53524,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1348053404}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c2f0fbc58f7120542a3c3213e2c5ea66, type: 3}
   m_Name: 
@@ -67168,13 +67168,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1688638822}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.579228, y: -0.40557984, z: 0.579228, w: 0.40557978}
+  m_LocalRotation: {x: 0.053436555, y: -0.64122176, z: 0.04483859, w: 0.76417845}
   m_LocalPosition: {x: 0.00013, y: 0.0006, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 722756096}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 8, y: -80, z: 0}
 --- !u!1001 &1688927375
 PrefabInstance:
   m_ObjectHideFlags: 0

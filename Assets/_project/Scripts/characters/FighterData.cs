@@ -26,6 +26,17 @@ public class FighterData : ScriptableObject
     [SerializeField] private int movementSpeed = 40;
     [SerializeField] private int dashDistance = 30;
 
+    // Measured by Crucible > Animation > Measure locomotion strides, never typed: the ground speed
+    // (world units/s PER UNIT OF ROOT SCALE) the planted foot covers with the clip at x1. Fighter
+    // plays the walk/run at actual ground speed / stride, so the feet stick at any speed.
+    [Header("Locomotion strides (measured)")]
+    [Tooltip("Walk forward at x1: planted-foot ground speed / root scale. Written by Measure locomotion strides.")]
+    [SerializeField] private float walkStrideForward = 0f;
+    [Tooltip("Walk back at x1: planted-foot ground speed / root scale. Written by Measure locomotion strides.")]
+    [SerializeField] private float walkStrideBack = 0f;
+    [Tooltip("Run at x1: planted-foot ground speed / root scale. Written by Measure locomotion strides.")]
+    [SerializeField] private float runStride = 0f;
+
     /// <summary>Display name (e.g. "Bjorn Ironside").</summary>
     public string FighterName => fighterName;
 
@@ -52,4 +63,13 @@ public class FighterData : ScriptableObject
 
     /// <summary>Dash distance (raw integer for designer tuning).</summary>
     public int DashDistance => dashDistance;
+
+    /// <summary>Walk-forward stride at x1, world units/s per unit of root scale (0 = not measured).</summary>
+    public float WalkStrideForward => walkStrideForward;
+
+    /// <summary>Walk-back stride at x1, world units/s per unit of root scale (0 = not measured).</summary>
+    public float WalkStrideBack => walkStrideBack;
+
+    /// <summary>Run stride at x1, world units/s per unit of root scale (0 = not measured).</summary>
+    public float RunStride => runStride;
 }

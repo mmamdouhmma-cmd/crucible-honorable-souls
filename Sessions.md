@@ -4907,6 +4907,12 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
 - The straight dojo -> plaza line passes under something 7.8 up; any scripted walker needs a route, not a line.
 
 
+### 2026-11-05 — Foot sliding fixed for the whole roster
+- Split CLAUDE.md: the durable facts moved to ProjectNotes.md.
+- Whole roster on the shield-pack walk/run (Richard's run for everyone); walk/run speed driven from the ground actually
+  covered over measured strides; new FootLock IK pins planted feet. Details and gotchas: ProjectNotes "Locomotion: no foot sliding".
+- Test harness scripts lived in the session scratchpad (slipgame/footdiag): real match, AI input, per-frame foot speed.
+
 ### 2026-11-05 — Combat VFX: weapon trails, contact effects, quality presets
 - Brief: hybrid realistic/cinematic weapon VFX, 4 tiers (Light/Medium/Heavy/Special - no signature attacks),
   per-character profiles, hit/block/guard-break/parry/dodge feedback, 4 quality presets, pooling.

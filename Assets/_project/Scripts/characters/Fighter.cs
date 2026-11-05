@@ -134,6 +134,16 @@ public class Fighter : MonoBehaviour
     private const string ANIM_DASH = "Dash";         // trigger: a dash just started
     private const string ANIM_DASH_DIR = "DashDir";  // int: 0 forward, 1 back, 2 left, 3 right (relative to facing)
     private const string ANIM_RUNNING = "Running";   // bool: held double-flick run toward the opponent
+    private const string ANIM_WALK_PACE = "WalkPace"; // float: walk playback = ground speed / stride
+    private const string ANIM_RUN_PACE = "RunPace";   // float: run playback = ground speed / stride
+    private const float LOCO_SMOOTHING = 15f;         // 1/s: how fast the measured ground speed settles
+    private bool animatorHasWalkPace, animatorHasRunPace;
+    private float walkIntent;    // this frame's walk input toward (+1) / away (-1), 0 = none
+    private float groundSpeed;   // smoothed ground actually covered along facing, units/s
+    /// <summary>True while walking or running for real (not stuck, not attacking): FootLock pins planted feet then.</summary>
+    public bool FeetLockable { get; private set; }
+    /// <summary>Smoothed ground covered along his facing this frame, units/s (+ toward the foe's side he faces).</summary>
+    public float GroundSpeed => groundSpeed;
     private const string ANIM_PARRY_SUCCESS = "ParrySuccess"; // trigger: a parry caught a strike
     private const string ANIM_PARRY_SPEED = "ParrySpeed";     // float: Parry_Success playback speed
     private const string ANIM_DEATH = "Death";                // trigger: health reached zero
@@ -420,6 +430,10 @@ public class Fighter : MonoBehaviour
             ? animator.GetLayerIndex(BLOCK_LEGS_LAYER) : -1;
         animatorHasDash = HasAnimatorParameters(ANIM_DASH, ANIM_DASH_DIR);
         animatorHasRunning = HasAnimatorParameters(ANIM_RUNNING);
+        animatorHasWalkPace = HasAnimatorParameters(ANIM_WALK_PACE);
+        animatorHasRunPace = HasAnimatorParameters(ANIM_RUN_PACE);
+        if (animator != null && animator.gameObject == gameObject && GetComponent<FootLock>() == null)
+            gameObject.AddComponent<FootLock>();   // pins planted feet while walking/running
         animatorHasParry = HasAnimatorParameters(ANIM_PARRY_SUCCESS);
         animatorHasDeath = HasAnimatorParameters(ANIM_DEATH);
         ResolveIdleState();
@@ -481,6 +495,7 @@ public class Fighter : MonoBehaviour
         {
             dashVelocity = Vector3.zero;
             knockbackVelocity = Vector3.zero;
+            FeetLockable = false;   // the death clip owns his feet
             if (animator != null && animator.runtimeAnimatorController != null) animator.SetFloat("MoveSpeed", 0f);
             return;
         }
@@ -515,11 +530,11 @@ public class Fighter : MonoBehaviour
         HandleStaminaRecovery();
         HandleParry();
         HandleBlock();
-        UpdateBlockLegs();
         HandleCombatInput();
         BlockObstacles();
         ClampToArena();
         CheckRingOut();
+        UpdateLocomotionPace();   // last: it reads the ground this frame ACTUALLY covered
 
     }
 
@@ -739,18 +754,71 @@ public class Fighter : MonoBehaviour
     }
 
     /// <summary>
-    /// Drives the BlockLegs layer: while the guard is up AND the fighter is walking, the
-    /// lower-body walk blend fades in over the block pose, so the feet step instead of sliding.
-    /// Standing still (or doing anything else) fades it straight back out and the full authored
-    /// block stance returns.
+    /// Keeps the feet planted (the user's call, 2026-11-05: "make sure it does not happen to any
+    /// character"). Runs LAST in Update, after the obstacle block and the arena clamp, so it sees the
+    /// ground this frame really covered, not the ground the input asked for:
+    ///   - walk and run play at ground speed / the fighter's measured stride (FighterData, written by
+    ///     Crucible > Animation > Measure locomotion strides), through the WalkPace / RunPace
+    ///     parameters that scale those states, so guard walk, back walk and any speed change all
+    ///     stay stuck to the floor;
+    ///   - a walk that is held but goes nowhere (the opponent's body, a wall, the arena edge) drops
+    ///     MoveSpeed to 0, so he stands instead of treading in place;
+    ///   - every fighter's walk is the straight-stepping shield-pack walk (the two-handed packs' walks
+    ///     stepped 26-58 deg off straight and slid sideways at ~2 units/s; TwoHandGrip keeps the off
+    ///     hand on the hilt), and the BlockLegs layer (legs-only, the same clips) is up whenever he
+    ///     walks, so a guard walk steps with the same legs under the Block_Hold upper body;
+    ///   - FeetLockable tells FootLock to pin each planted foot, which removes the creep left over
+    ///     from retargeting one clip onto differently-proportioned legs (3-27% of walk speed).
     /// </summary>
-    private void UpdateBlockLegs()
+    private void UpdateLocomotionPace()
     {
-        if (blockLegsLayer < 0 || animator == null) return;
-        bool walking = isBlocking && !IsInHitstun && Mathf.Abs(currentInput.moveDirection) > 0.05f;
-        float target = walking ? 1f : 0f;
-        blockLegsWeight = Mathf.MoveTowards(blockLegsWeight, target, Time.deltaTime / 0.12f);
-        animator.SetLayerWeight(blockLegsLayer, blockLegsWeight);
+        if (animator == null || animator.runtimeAnimatorController == null) return;
+        float dt = Time.deltaTime;
+        if (dt <= 0f) return;
+
+        Vector3 fwd = transform.forward;
+        fwd.y = 0f;
+        fwd = fwd.sqrMagnitude > 1e-6f ? fwd.normalized : Vector3.forward;
+        float v = Vector3.Dot(transform.position - frameStart, fwd) / dt;
+        groundSpeed = Mathf.Lerp(groundSpeed, v, 1f - Mathf.Exp(-LOCO_SMOOTHING * dt));
+
+        float scale = Mathf.Max(0.01f, transform.lossyScale.y);
+        float intent = walkIntent;
+        bool busy = isDashing || isRunning || IsInHitstun || (combatSystem != null && combatSystem.IsAttacking);
+        bool walking = intent != 0f && !busy;
+
+        if (walking)
+        {
+            // Held but going nowhere: stand. A quarter of the intended speed is well above the
+            // jitter of a blocked step and well below any real walk (guard x0.88, back x0.85).
+            float intended = fighterData.MovementSpeed / 10f;
+            if (Mathf.Abs(groundSpeed) < 0.25f * intended || Mathf.Sign(groundSpeed) != Mathf.Sign(intent))
+            {
+                walking = false;
+                animator.SetFloat("MoveSpeed", 0f);
+            }
+            else if (animatorHasWalkPace)
+            {
+                float stride = (intent > 0f ? fighterData.WalkStrideForward : fighterData.WalkStrideBack) * scale;
+                float pace = stride > 0.01f ? Mathf.Abs(groundSpeed) / stride : 1f;
+                animator.SetFloat(ANIM_WALK_PACE, Mathf.Clamp(pace, 0.2f, 3f));
+            }
+        }
+
+        if (isRunning && animatorHasRunPace)
+        {
+            float stride = fighterData.RunStride * scale;
+            float pace = stride > 0.01f ? Mathf.Max(0f, groundSpeed) / stride : 1.1f;
+            animator.SetFloat(ANIM_RUN_PACE, Mathf.Clamp(pace, 0.2f, 3f));
+        }
+
+        FeetLockable = walking || isRunning;
+
+        if (blockLegsLayer >= 0)
+        {
+            blockLegsWeight = Mathf.MoveTowards(blockLegsWeight, walking ? 1f : 0f, dt / 0.12f);
+            animator.SetLayerWeight(blockLegsLayer, blockLegsWeight);
+        }
     }
 
     /// <summary>
@@ -1264,7 +1332,7 @@ private void HandleMovement()
 {
     float moveSpeed = fighterData.MovementSpeed / 10f;
 
-    // Guard up = slower feet (the BlockLegs layer animates them; see UpdateBlockLegs).
+    // Guard up = slower feet (the BlockLegs layer animates them; see UpdateLocomotionPace).
     if (isBlocking) moveSpeed *= BalanceConfig.BLOCK_WALK_SPEED_MULTIPLIER;
 
     // Input is screen-based (-1 = left, +1 = right); convert it to toward/away
@@ -1296,6 +1364,8 @@ private void HandleMovement()
     }
 
     transform.position += desiredMove;
+
+    walkIntent = forwardAmount;   // UpdateLocomotionPace checks it against the ground really covered
 
     // Send movement to Animator for walk animations
     if (animator != null)

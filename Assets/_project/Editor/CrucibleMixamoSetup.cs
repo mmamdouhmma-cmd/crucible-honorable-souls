@@ -37,10 +37,10 @@ public static class CrucibleMixamoSetup
         // AxePack2H = the axe pack carry re-posed in Blender (mixamo_carry2h.py) so the weapon sits in front of
         // the belly where the left-hand IK can reach the haft
         ("Bjorn_Idle",                   "AxePack2H", "standing idle",                   true),
-        ("Bjorn_Walk_Forward",           "AxePack2H", "standing walk forward",           true),
+        ("Bjorn_Walk_Forward",           "SwordShieldPack", "sword and shield walk",           true),   // straight-stepping walk, whole roster (2026-11-05, foot sliding)
         // the PLAIN barbarian walk back (the user's call, 2026-10-25), not the re-posed 2H carry;
         // TwoHandGrip puts the left hand back on the haft whatever the clip does with the arms
-        ("Bjorn_Walk_Back",              "AxePack", "standing walk back",                true),
+        ("Bjorn_Walk_Back",              "SwordShieldPack", "sword and shield walk (2)",                true),   // straight-stepping walk, whole roster (2026-11-05, foot sliding)
         ("Bjorn_Light_Slash",            "AxePack", "standing melee attack horizontal",  false),
         ("Bjorn_Medium_SpinningSlash",   "AxePack", "standing melee attack 360 low",     false),   // the user's call (2026-10-26): the SAME spin as his SP+Medium (Hewing Charge) - the special only hits harder
         ("Bjorn_Heavy_OverheadDoubleAxe","GreatSwordPack", "great sword slash",       false),   // two-handed overhead that comes down in front; the axe pack's chop bottoms out by the left hip
@@ -72,14 +72,14 @@ public static class CrucibleMixamoSetup
         ("Dash_Left",                    "AxePack2H", "standing walk left",              false),
         ("Dash_Right",                   "AxePack2H", "standing walk right",             false),
         // the held double-flick run (Fighter.HandleRun): the full run cycle, looping
-        ("Run_Forward",                  "AxePack", "standing run forward",              true),
+        ("Run_Forward",                  "SwordShieldPack", "sword and shield run",              true),   // Richard's run, whole roster (2026-11-05)
     };
     static readonly (string state, string pack, string clip, bool loop)[] P2Map =
     {
         // locomotion from the (male) axe pack: the Great Sword walk is Maria's, with a feminine sway.
         ("Miyamoto_Idle",                "AxePack2H", "standing idle",                   true),
-        ("Miyamoto_Walk_Forward",        "AxePack2H", "standing walk forward",           true),
-        ("Miyamoto_Walk_Back",           "AxePack2H", "standing walk back",              true),
+        ("Miyamoto_Walk_Forward",        "SwordShieldPack", "sword and shield walk",           true),   // straight-stepping walk, whole roster (2026-11-05, foot sliding)
+        ("Miyamoto_Walk_Back",           "SwordShieldPack", "sword and shield walk (2)",              true),   // straight-stepping walk, whole roster (2026-11-05, foot sliding)
         // strikes chosen by hand-trajectory analysis (swing_analysis / strike_analysis in the session notes):
         // light = horizontal middle slash, medium = overhead diagonal, heavy = spinning strike
         ("Miyamoto_Light_Thrust",        "GreatSwordPack", "great sword slash (3)",     false),
@@ -113,7 +113,7 @@ public static class CrucibleMixamoSetup
         ("Dash_Back",                    "AxePack2H", "standing walk back",              false),
         ("Dash_Left",                    "AxePack2H", "standing walk left",              false),
         ("Dash_Right",                   "AxePack2H", "standing walk right",             false),
-        ("Run_Forward",                  "AxePack", "standing run forward",              true),
+        ("Run_Forward",                  "SwordShieldPack", "sword and shield run",              true),   // Richard's run, whole roster (2026-11-05)
     };
 
     // The story Sensei (Ch1_Sensei, the user's picks 2026-10-29): Miyamoto's movement, Bjorn's
@@ -125,8 +125,8 @@ public static class CrucibleMixamoSetup
     static readonly (string state, string pack, string clip, bool loop)[] P7Map =
     {
         ("Sensei_Idle",                    "AxePack2H", "standing idle",                   true),
-        ("Sensei_Walk_Forward",            "AxePack2H", "standing walk forward",           true),
-        ("Sensei_Walk_Back",               "AxePack2H", "standing walk back",              true),
+        ("Sensei_Walk_Forward",            "SwordShieldPack", "sword and shield walk",           true),   // straight-stepping walk, whole roster (2026-11-05, foot sliding)
+        ("Sensei_Walk_Back",               "SwordShieldPack", "sword and shield walk (2)",              true),   // straight-stepping walk, whole roster (2026-11-05, foot sliding)
         ("Sensei_Light_FallingBranch",     "SwordShieldPack", "sword and shield slash",    false),  // Richard's Heavy
         ("Sensei_Medium_TempleBell",       "SwordShieldPack", "sword and shield slash",    false),  // Salaadin's Heavy
         ("Sensei_Heavy_MountainSplitter",  "GreatSwordPack",  "great sword slash",         false),  // Bjorn's Heavy
@@ -144,7 +144,7 @@ public static class CrucibleMixamoSetup
         ("Dash_Back",                      "AxePack2H", "standing walk back",              false),
         ("Dash_Left",                      "AxePack2H", "standing walk left",              false),
         ("Dash_Right",                     "AxePack2H", "standing walk right",             false),
-        ("Run_Forward",                    "AxePack", "standing run forward",              true),
+        ("Run_Forward",                    "SwordShieldPack", "sword and shield run",              true),   // Richard's run, whole roster (2026-11-05)
     };
 
     // The story boss ARIMA KIHEI (Chapter One, the user's picks 2026-11-04): Miyamoto's movement and
@@ -154,8 +154,8 @@ public static class CrucibleMixamoSetup
     static readonly (string state, string pack, string clip, bool loop)[] P8Map =
     {
         ("Arima_Idle",                     "AxePack2H", "standing idle",                   true),
-        ("Arima_Walk_Forward",             "AxePack2H", "standing walk forward",           true),
-        ("Arima_Walk_Back",                "AxePack2H", "standing walk back",              true),
+        ("Arima_Walk_Forward",             "SwordShieldPack", "sword and shield walk",           true),   // straight-stepping walk, whole roster (2026-11-05, foot sliding)
+        ("Arima_Walk_Back",                "SwordShieldPack", "sword and shield walk (2)",              true),   // straight-stepping walk, whole roster (2026-11-05, foot sliding)
         ("Arima_Light_ProudEdge",          "AxePack",   "standing melee attack horizontal", false),   // Bjorn's Light
         ("Arima_Medium_SeveringCut",       "SwordShieldPack", "sword and shield slash (5)", false),   // Richard's Medium
         ("Arima_Heavy_ArimasVerdict",      "AxePack",   "standing melee attack downward",  false),   // Richard's Light, the barbarian overhead (2026-11-04: the 2H chop it replaced stayed 1.5 above Musashi's head through its whole hit window - the user saw it pass over him every time)
@@ -173,7 +173,7 @@ public static class CrucibleMixamoSetup
         ("Dash_Back",                      "AxePack2H", "standing walk back",              false),
         ("Dash_Left",                      "AxePack2H", "standing walk left",              false),
         ("Dash_Right",                     "AxePack2H", "standing walk right",             false),
-        ("Run_Forward",                    "AxePack", "standing run forward",              true),
+        ("Run_Forward",                    "SwordShieldPack", "sword and shield run",              true),   // Richard's run, whole roster (2026-11-05)
     };
 
     // Richard: the Pro Sword and Shield pack, plus the four clips it does not contain
@@ -281,8 +281,8 @@ public static class CrucibleMixamoSetup
     static readonly (string state, string pack, string clip, bool loop)[] P5Map =
     {
         ("Genghis_Idle",                   "AxePack2H", "standing idle",                   true),
-        ("Genghis_Walk_Forward",           "AxePack2H", "standing walk forward",           true),
-        ("Genghis_Walk_Back",              "AxePack2H", "standing walk back",              true),
+        ("Genghis_Walk_Forward",           "SwordShieldPack", "sword and shield walk",           true),   // straight-stepping walk, whole roster (2026-11-05, foot sliding)
+        ("Genghis_Walk_Back",              "SwordShieldPack", "sword and shield walk (2)",              true),   // straight-stepping walk, whole roster (2026-11-05, foot sliding)
         ("Genghis_Light_SteppeCut",        "GreatSwordPack", "great sword slash (3)",     false),  // the horizontal middle slash
         ("Genghis_Medium_HordeSlash",      "GreatSwordPack", "great sword slash",         false),  // the diagonal
         ("Genghis_Heavy_KhanCleave",       "GreatSwordPack", "great sword casting",       false),  // the only non-spinning overhead in the pack
@@ -302,7 +302,7 @@ public static class CrucibleMixamoSetup
         ("Dash_Back",                      "AxePack2H", "standing walk back",              false),
         ("Dash_Left",                      "AxePack2H", "standing walk left",              false),
         ("Dash_Right",                     "AxePack2H", "standing walk right",             false),
-        ("Run_Forward",                    "AxePack", "standing run forward",              true),
+        ("Run_Forward",                    "SwordShieldPack", "sword and shield run",              true),   // Richard's run, whole roster (2026-11-05)
     };
 
     // Buwaka: a shield fighter on the SwordShieldPack locomotion (shared with Richard and
@@ -386,27 +386,11 @@ public static class CrucibleMixamoSetup
         }
     }
 
-    // How much ground each fighter's walk covers at x1, world units/s (forward, back): the speed his
-    // PLANTED foot travels backward relative to his root while the walk plays in place, measured in play
-    // on 2026-10-27 against the HD bodies. A walk state plays at groundSpeed / stride so the feet stick,
-    // held to WalkAnimSpeedRange; past the cap the feet slide a little rather than the legs blur.
-    // Re-measure after a body's size or a walk clip changes.
-    static readonly Dictionary<string, (float fwd, float back)> WalkStride = new Dictionary<string, (float, float)>
-    {
-        { "Bjorn",    (1.17f, 0.75f) },
-        { "Miyamoto", (1.11f, 0.76f) },
-        { "Richard",  (1.50f, 1.26f) },
-        { "Salaadin", (1.74f, 1.51f) },
-        { "Genghis",  (1.02f, 0.67f) },
-        { "Buwaka",   (1.74f, 1.52f) },
-        { "Sensei",   (1.11f, 0.76f) },   // Miyamoto's walks; not yet re-measured on his body
-        { "Arima",    (1.11f, 0.76f) },   // Miyamoto's walks; not yet re-measured on Kojiro's body
-    };
-    static readonly Vector2 WalkAnimSpeedRange = new Vector2(0.8f, 2.0f);
-    const float BackWalkSpeedMultiplier = 0.85f;   // mirrors BalanceConfig.BACK_WALK_SPEED_MULTIPLIER (the editor asmdef cannot see it)
+    // Walk and run playback is no longer a table here: Fighter.UpdateLocomotionPace plays them at
+    // ground speed / the stride Crucible > Animation > Measure locomotion strides writes into each
+    // FighterData (2026-11-05). This table had gone stale - it under-read the shield walk by a third.
 
     const float ContactSpeed = 1.8f;   // playback speed used for contact-calibrated windows
-    const float RunAnimSpeed = 1.1f;   // Run_Forward playback: +10% over the clip's own pace (the user's call, 2026-10-25)
     const float ReactDuration = 0.45f; // seconds a get-hit flinch takes on screen
     const float ParryDuration = 0.40f; // base on-screen length of the parry catch; Fighter's
                                        // parryAnimSpeed (the ParrySpeed parameter) multiplies it
@@ -715,27 +699,35 @@ public static class CrucibleMixamoSetup
                 cs.state.speed = clip.length / ReactDuration;
                 Debug.Log($"{m.state}: react {clip.length:F2}s fitted to {ReactDuration:F2}s, speed x{cs.state.speed:F2}");
             }
-            // walks: playback fitted to the ground the fighter actually covers, so the feet stick
+            // walks (2026-11-05): the state runs off the WalkPace parameter, which Fighter sets every
+            // frame to ground speed / measured stride. The LEGS are the BlockLegs layer's shield-pack
+            // walk; this base state only carries the upper body, so its fixed speed makes ONE of its
+            // cycles last as long as one legs cycle and the two stay in step at any pace.
             int walkAt = m.state.IndexOf("_Walk_");
-            if (walkAt > 0 && walkSpeed > 0f && WalkStride.TryGetValue(m.state.Substring(0, walkAt), out var stride))
+            if (walkAt > 0)
             {
                 bool back = m.state.EndsWith("_Back");
-                float ground = back ? walkSpeed * BackWalkSpeedMultiplier : walkSpeed;
-                cs.state.speed = Mathf.Clamp(ground / (back ? stride.back : stride.fwd), WalkAnimSpeedRange.x, WalkAnimSpeedRange.y);
-                Debug.Log($"{m.state}: walk {ground:F2} u/s over a {(back ? stride.back : stride.fwd):F2} u/s stride, speed x{cs.state.speed:F2}");
+                var legs = CrucibleBlockLegs.LegsClip(back);
+                cs.state.speed = legs != null && legs.length > 0.05f ? clip.length / legs.length : 1f;
+                cs.state.speedParameterActive = true;
+                cs.state.speedParameter = CrucibleBlockLegs.WalkPaceParam;
+                CrucibleBlockLegs.EnsureFloat(ac, CrucibleBlockLegs.WalkPaceParam);
+                Debug.Log($"{m.state}: upper body x{cs.state.speed:F2} (cycle matched to the legs) x WalkPace");
             }
             if (m.state.StartsWith("Dash_") && clip.length > 0.05f)
             {
                 cs.state.speed = clip.length / Mathf.Max(dashDuration, 0.05f);
                 Debug.Log($"{m.state}: one stride {clip.length:F2}s fitted to the {dashDuration:F2}s dash, speed x{cs.state.speed:F2}");
             }
-            // The held run: the clip loops for as long as the Running bool is up, a touch faster
-            // than authored so the stride reads urgent. The MOVEMENT speed is independent
-            // (BalanceConfig.RUN_SPEED_MULTIPLIER x walk, in Fighter.HandleRun).
+            // The held run: loops while the Running bool is up, at the RunPace parameter (Fighter:
+            // ground speed / measured stride), so the feet stick at every fighter's own run speed.
             if (m.state == "Run_Forward")
             {
-                cs.state.speed = RunAnimSpeed;
-                Debug.Log($"{m.state}: looping run at x{RunAnimSpeed:F2}");
+                cs.state.speed = 1f;
+                cs.state.speedParameterActive = true;
+                cs.state.speedParameter = CrucibleBlockLegs.RunPaceParam;
+                CrucibleBlockLegs.EnsureFloat(ac, CrucibleBlockLegs.RunPaceParam);
+                Debug.Log($"{m.state}: looping run x RunPace");
             }
             // attack states: fit the clip to the AttackData frame count
             var atk = attacks.FirstOrDefault(a => a.name == m.state);

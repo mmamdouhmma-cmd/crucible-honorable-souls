@@ -21,3 +21,6 @@ MonoBehaviour:
   attackSpeed: 100
   movementSpeed: 25
   dashDistance: 30
+  walkStrideForward: 0.6594791
+  walkStrideBack: 0.56325305
+  runStride: 2.3999877

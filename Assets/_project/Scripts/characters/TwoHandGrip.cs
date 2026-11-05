@@ -478,7 +478,7 @@ public class TwoHandGrip : MonoBehaviour
     /// <paramref name="target"/> whenever the target is inside the arm's reach, and the arm
     /// straightens toward it when it is not.
     /// </summary>
-    private static void SolveTwoBone(Transform root, Transform mid, Transform tip,
+    internal static void SolveTwoBone(Transform root, Transform mid, Transform tip,
                                      Vector3 target, bool usePole, Vector3 pole, float weight)
     {
         Vector3 a = root.position, b = mid.position, c = tip.position;
