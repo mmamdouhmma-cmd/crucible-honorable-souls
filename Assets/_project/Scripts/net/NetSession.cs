@@ -371,6 +371,10 @@ public class NetSession : MonoBehaviour
     public static bool Forwarding => !MuteForward && Instance != null && Instance.CurrentRole == Role.Host &&
                                      Instance.CurrentPhase == Phase.Playing && Instance.PeerConnected;
 
+    /// <summary>True on the guest during a fight: it shows the host's state and runs no combat.</summary>
+    public static bool GuestPlaying => Instance != null && Instance.CurrentRole == Role.Guest &&
+                                       Instance.CurrentPhase == Phase.Playing;
+
     static string N(float v) => v.ToString("0.###", CultureInfo.InvariantCulture);
     static string V(Vector3 v) => N(v.x) + " " + N(v.y) + " " + N(v.z);
     static string C(Color c) => N(c.r) + " " + N(c.g) + " " + N(c.b);
@@ -378,6 +382,14 @@ public class NetSession : MonoBehaviour
     public static void ForwardFx(ReplayRecorder.Fx kind, Vector3 point, Vector3 dir, float radius, float strength)
     {
         if (Forwarding) Instance.Send("E f " + (int)kind + " " + V(point) + " " + V(dir) + " " + N(radius) + " " + N(strength));
+    }
+
+    /// <summary>A weapon-trail edge (the hitbox went live / stopped): the guest's CombatSystems are
+    /// off, so its trails follow these instead.</summary>
+    public static void ForwardTrail(Fighter f, bool on, AttackType type, bool cut)
+    {
+        if (Forwarding && f != null)
+            Instance.Send("E w " + f.PlayerNumber + " " + (on ? 1 : 0) + " " + (int)type + " " + (cut ? 1 : 0));
     }
 
     public static void ForwardBlood(Fighter target, Fighter attacker, Color color)
@@ -431,6 +443,7 @@ public class NetSession : MonoBehaviour
                     case ReplayRecorder.Fx.Parry: HitEffects.SpawnParryFlash(at, dir, radius, strength); break;
                     case ReplayRecorder.Fx.Dust: HitEffects.SpawnDust(at, radius, strength); break;
                     case ReplayRecorder.Fx.Dodge: HitEffects.SpawnDodgeBurst(at, radius, strength); break;
+                    default: HitEffects.PlayContactFx((ReplayRecorder.Fx)(int)F(p[2]), at, dir, radius, strength); break;
                 }
                 break;
             }
@@ -444,6 +457,15 @@ public class NetSession : MonoBehaviour
             case "i" when p.Length >= 5:
                 if (FightCamera.Instance != null) FightCamera.Instance.OnImpact((int)F(p[2]), (AttackType)(int)F(p[3]), p[4] == "1");
                 break;
+            case "w" when p.Length >= 6:
+            {
+                var f = ByNumber((int)F(p[2]));
+                var trail = f != null ? f.GetComponent<WeaponTrail>() : null;
+                if (trail == null) break;
+                if (p[3] == "1") trail.RemoteBegin((AttackType)(int)F(p[4]));
+                else trail.RemoteEnd(p[5] == "1");
+                break;
+            }
             case "c":
                 if (FightCamera.Instance != null) FightCamera.Instance.OnClash();
                 break;

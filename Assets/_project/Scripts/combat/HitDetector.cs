@@ -96,6 +96,16 @@ public class HitDetector : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Blade box ends in world space (read-only; the weapon trail samples this). Says nothing about
+    /// which end is the tip - the caller decides that from the grip hand.
+    /// </summary>
+    public void GetBladeSegment(out Vector3 a, out Vector3 b)
+    {
+        if (hitbox == null) hitbox = GetComponent<BoxCollider>();
+        BladeSegment(out a, out b);
+    }
+
     /// <summary>Blade box ends in world space: the box's local extent along its longest axis.</summary>
     private void BladeSegment(out Vector3 a, out Vector3 b)
     {

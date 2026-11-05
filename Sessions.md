@@ -4906,3 +4906,26 @@ diorama reference. Nothing in testarena, the scripts or the combat camera was to
   `guides` in play. `AssetDatabase.ImportAsset(path, ForceUpdate)` before testing.
 - The straight dojo -> plaza line passes under something 7.8 up; any scripted walker needs a route, not a line.
 
+
+### 2026-11-05 — Combat VFX: weapon trails, contact effects, quality presets
+- Brief: hybrid realistic/cinematic weapon VFX, 4 tiers (Light/Medium/Heavy/Special - no signature attacks),
+  per-character profiles, hit/block/guard-break/parry/dodge feedback, 4 quality presets, pooling.
+- Built on what existed (code-built `HitEffects`, the off-by-default `WeaponTrail`) rather than VFX Graph: no new
+  packages, works in the WebGL/Android builds through the same two always-included URP unlit shaders.
+- Play-verified in the Editor (Miyamoto vs Bjorn, CLI): trail emits exactly on the live window and is gone when idle;
+  blocked / guard-broken / parried / clean hits each spawned the right effect on the next frame; pool reuse; Low caps
+  a Heavy at 1 layer. Not measured: frame time / draw calls in a build (the CLI Editor runs ~4-17 fps).
+- Karen (named in the brief) is not in the project; no dual-wielder in the roster yet (`WeaponTrail.extraWeapons`
+  takes grip/tip anchors for one).
+
+### 2026-11-05 — Weapon trails replicated to replays and the online guest
+
+Trails now show in replays (live, exported, saved `.crec`) and on the online guest, driven by
+recorded / forwarded stroke edges (details in ProjectNotes "Weapon trails in replays and online").
+Verified in the Editor: a Bjorn Heavy recorded as one span (0.37 s), replay drew it only inside the
+span and aged it with the playhead; save -> load kept the span; a pre-change record still loads;
+guest simulation (role forced by reflection, `E w` lines fed to `PlayForwarded`) began a Special
+stroke with combat off and stopped at once on an interrupted end. NOT tested: a real two-machine
+online match. Records library was backed up and restored around the save test (it was at 20/20, so
+a save prunes the oldest). Also fixed: `WeaponTrail.OnDisable` MissingReferenceException on
+leaving play mode (ribbons destroyed first).

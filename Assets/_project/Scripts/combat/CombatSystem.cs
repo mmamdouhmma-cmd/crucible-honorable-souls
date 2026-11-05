@@ -67,9 +67,28 @@ public class CombatSystem : MonoBehaviour
     [Tooltip("Size of the parry flash. 1 = the ordinary block spark; higher adds particles, spread and a ring of embers where the blades met.")]
     [Range(1f, 5f)]
     [SerializeField] private float parrySparkStrength = 3f;
-    [Tooltip("Blade trail while the hitbox is live (needs a WeaponTrail on the fighter; added automatically).")]
-    [SerializeField] private bool bladeTrail = false;
+    [Header("Weapon VFX (cosmetic only)")]
+    [Tooltip("Weapon trail while the hitbox is live (a WeaponTrail is added automatically). Never touches hits or timing.")]
+    [SerializeField] private bool weaponTrails = true;
+    [Tooltip("Look of this fighter's trails and contact effects. Empty = the built-in default for the character.")]
+    [SerializeField] private WeaponVfxProfile vfxProfile;
+    [Tooltip("Contact bursts on a landed hit, a blocked hit and a guard break (scaled by attack tier and the profile).")]
+    [SerializeField] private bool impactEffects = true;
     private WeaponTrail weaponTrail;
+
+    /// <summary>True while this fighter's hitbox is armed (the padded active window). Read-only, for VFX.</summary>
+    public bool HitboxLive => hitboxActive;
+
+    /// <summary>The fighter's weapon-VFX profile (assigned, or the character default).</summary>
+    public WeaponVfxProfile VfxProfile
+    {
+        get
+        {
+            if (weaponTrail != null) return weaponTrail.Profile;
+            if (vfxProfile == null) vfxProfile = WeaponVfxProfile.ForCharacter(fighter != null ? fighter.CharacterName : name);
+            return vfxProfile;
+        }
+    }
 
     [Header("Debug")]
     [SerializeField] private bool debugLogs = true;
@@ -169,10 +188,12 @@ public class CombatSystem : MonoBehaviour
             hitDetector = GetComponentInChildren<HitDetector>();
         }
 
-        if (bladeTrail)
+        weaponTrail = GetComponent<WeaponTrail>();
+        if (weaponTrail == null && weaponTrails) weaponTrail = gameObject.AddComponent<WeaponTrail>();
+        if (weaponTrail != null)
         {
-            weaponTrail = GetComponent<WeaponTrail>();
-            if (weaponTrail == null) weaponTrail = gameObject.AddComponent<WeaponTrail>();
+            weaponTrail.SetProfile(vfxProfile);
+            weaponTrail.enabled = weaponTrails;
         }
     }
 
@@ -315,7 +336,6 @@ public class CombatSystem : MonoBehaviour
             }
             hitboxStarted = true;
             hitboxActive = true;
-            if (weaponTrail != null && weaponTrail.enabled) weaponTrail.Begin();
 
             // The air cut, on EVERY swing - a landed hit layers its own sound over it a few frames
             // later, which is the usual fighting-game read. Weight scales it: Bjorn's axe lower
@@ -382,7 +402,6 @@ public class CombatSystem : MonoBehaviour
                 hitDetector.Deactivate();
             }
             hitboxActive = false;
-            if (weaponTrail != null) weaponTrail.End();
 
             // A whiff extends the move's OWN recovery by a fraction of itself, so a missed
             // heavy is held open longer than a missed light (Plan_Balance 2.1). A dodged swing
@@ -1209,10 +1228,10 @@ public class CombatSystem : MonoBehaviour
             fighter.NotifyClash(away);
             other.fighter.NotifyClash(-away);
 
-            if (sparksOnBlock || other.sparksOnBlock)
+            if (sparksOnBlock || other.sparksOnBlock || impactEffects)
             {
                 Vector3 mid = (HitEffects.Chest(fighter) + HitEffects.Chest(other.fighter)) * 0.5f;
-                HitEffects.SpawnSparks(mid, Vector3.up, fighter.BodyRadius);
+                HitEffects.SpawnSparks(mid, Vector3.up, fighter.BodyRadius, impactEffects ? 1.3f : 1f);
             }
             if (FightCamera.Instance != null) FightCamera.Instance.OnClash();
 
@@ -1432,7 +1451,8 @@ public class CombatSystem : MonoBehaviour
         {
             HitEffects.SpawnBlood(target, fighter, bloodColor);
         }
-        if (blocked && sparksOnBlock)
+        SpawnContactVfx(target, blocked ? HitOutcome.Blocked : guardBroken ? HitOutcome.GuardBroken : HitOutcome.Hit);
+        if (blocked && sparksOnBlock && !impactEffects)
         {
             Vector3 at = HitEffects.Chest(target) + (fighter.transform.position - target.transform.position).normalized * target.BodyRadius;
             HitEffects.SpawnSparks(at, Vector3.up + (target.transform.position - fighter.transform.position).normalized, target.BodyRadius);
@@ -1487,6 +1507,51 @@ public class CombatSystem : MonoBehaviour
                 $"from the {currentAttack.HitSide} for {finalDamage} dmg{counterNote}{blockNote} " +
                 $"(target HP: {target.Stats.currentHealth}/{target.Stats.maxHealth}, " +
                 $"stamina: {target.Stats.currentStamina}/{target.Stats.maxStamina})");
+        }
+    }
+
+    /// <summary>
+    /// Cosmetic contact burst for a strike that was just RESOLVED (called after Report, never from
+    /// an animation): where the blade tip met the target's body, thrown along the blade's travel.
+    /// Size follows the attack tier and this fighter's <see cref="WeaponVfxProfile"/>. Changes nothing
+    /// about the hit.
+    /// </summary>
+    private void SpawnContactVfx(Fighter target, HitOutcome outcome)
+    {
+        if (!impactEffects || target == null || currentAttack == null || fighter == null) return;
+        WeaponVfxProfile prof = VfxProfile;
+        TrailTier tier = prof.Tier(currentAttack.AttackType);
+        float r = Mathf.Max(target.BodyRadius, 0.2f);
+        Vector3 toAttacker = fighter.transform.position - target.transform.position;
+        toAttacker.y = 0f;
+        toAttacker = toAttacker.sqrMagnitude > 1e-6f ? toAttacker.normalized : target.transform.forward;
+
+        bool weapon = currentAttack.HitsWithWeapon;
+        Vector3 at = HitEffects.Chest(target) + toAttacker * r;
+        if (weapon && hitDetector != null && hitDetector.FollowWeapon)
+        {
+            CapsuleCollider cap = target.GetComponent<CapsuleCollider>();
+            if (cap != null && cap.enabled) at = cap.ClosestPoint(hitDetector.TipPosition);
+        }
+        Vector3 travel = weaponTrail != null ? weaponTrail.TipVelocity : Vector3.zero;
+        Vector3 dir = travel.sqrMagnitude > 0.25f ? travel.normalized : -toAttacker;
+        dir = (dir + Vector3.up * 0.25f).normalized;
+        float s = Mathf.Max(0.2f, tier.impactStrength * prof.impactScale);
+        bool weighty = currentAttack.AttackType == AttackType.Heavy || currentAttack.IsSpecial;
+
+        switch (outcome)
+        {
+            case HitOutcome.Hit:
+                HitEffects.SpawnImpact(at, dir, r, s, weapon && tier.impactDebris);
+                if (prof.impactDust && weighty) HitEffects.SpawnDust(target.FeetPosition(), r, 0.9f);
+                break;
+            case HitOutcome.Blocked:
+                // Met the guard: smaller than a parry (which keeps its own flash), thrown back at the attacker.
+                HitEffects.SpawnBlock(at, (toAttacker + Vector3.up * 0.4f).normalized, r, s * 0.7f, weapon && prof.metallic);
+                break;
+            case HitOutcome.GuardBroken:
+                HitEffects.SpawnGuardBreak(at, dir, r, Mathf.Max(1.4f, s * 1.3f), weapon && prof.metallic);
+                break;
         }
     }
 

@@ -88,7 +88,7 @@ public class ReplayRecorder : MonoBehaviour
     }
 
     /// <summary>The visual effects the record can replay (hooked inside HitEffects' spawns).</summary>
-    public enum Fx : byte { Sparks, Parry, Dust, Dodge, Blood }
+    public enum Fx : byte { Sparks, Parry, Dust, Dodge, Blood, Impact, ImpactDebris, Block, BlockDull, GuardBreak, GuardBreakDull }   // append only: recorded by index
 
     struct FxEvent
     {
@@ -111,6 +111,18 @@ public class ReplayRecorder : MonoBehaviour
     readonly List<Marker> markers = new List<Marker>();
     readonly List<FxEvent> fxEvents = new List<FxEvent>();
     readonly List<SoundEvent> soundEvents = new List<SoundEvent>();
+
+    /// <summary>One weapon-trail stroke: the span a fighter's hitbox was live (WeaponTrail's edges).
+    /// Playback drives the trail from these, since the replayed fighters run no combat.</summary>
+    struct TrailSpan
+    {
+        public float t0, t1;        // on the Frame.t clock; t1 = MaxValue while still open
+        public int who;             // cast index
+        public AttackType type;
+        public bool cut;            // ended by an interruption: no follow-through tail
+    }
+
+    readonly List<TrailSpan> trailSpans = new List<TrailSpan>();
     float lastEventT;               // absolute record time of the last Apply, for event firing
     int[] savedHp = new int[0];     // the real stats, remembered across a playback
     int[] savedSt = new int[0];
@@ -181,6 +193,30 @@ public class ReplayRecorder : MonoBehaviour
         Instance.soundEvents.Add(new SoundEvent { t = Instance.clock, clip = clip, volume = volume, pitch = pitch });
     }
 
+    /// <summary>Records a weapon-trail edge: <paramref name="on"/> opens a stroke, off closes the
+    /// fighter's open one (<paramref name="cut"/>: interrupted).</summary>
+    public static void NoteTrail(Fighter f, bool on, AttackType type, bool cut)
+    {
+        if (!Noting) return;
+        var r = Instance;
+        int c = r.CastIndex(f);
+        if (c < 0) return;
+        r.CloseTrail(c, cut);
+        if (on) r.trailSpans.Add(new TrailSpan { t0 = r.clock, t1 = float.MaxValue, who = c, type = type });
+    }
+
+    void CloseTrail(int c, bool cut)
+    {
+        for (int i = trailSpans.Count - 1; i >= 0; i--)
+        {
+            var s = trailSpans[i];
+            if (s.who != c || s.t1 != float.MaxValue) continue;
+            s.t1 = clock;
+            s.cut = cut;
+            trailSpans[i] = s;
+        }
+    }
+
     int CastIndex(Fighter f)
     {
         for (int i = 0; i < cast.Length; i++) if (cast[i] == f) return i;
@@ -242,6 +278,7 @@ public class ReplayRecorder : MonoBehaviour
         markers.Clear();
         fxEvents.Clear();
         soundEvents.Clear();
+        trailSpans.Clear();
         playhead = 0;
         clock = 0f;
         lastSampleT = -1f;
@@ -249,7 +286,11 @@ public class ReplayRecorder : MonoBehaviour
     }
 
     /// <summary>Stops sampling; the buffer is kept until the next <see cref="BeginRecording"/>.</summary>
-    public void StopRecording() => recording = false;
+    public void StopRecording()
+    {
+        if (recording) for (int c = 0; c < cast.Length; c++) CloseTrail(c, false);
+        recording = false;
+    }
 
     void LateUpdate()
     {
@@ -299,6 +340,7 @@ public class ReplayRecorder : MonoBehaviour
                 markers.RemoveAll(m => m.t < frames[0].t);
                 fxEvents.RemoveAll(e => e.t < frames[0].t);
                 soundEvents.RemoveAll(e => e.t < frames[0].t);
+                trailSpans.RemoveAll(e => e.t1 < frames[0].t);
             }
         }
     }
@@ -312,7 +354,7 @@ public class ReplayRecorder : MonoBehaviour
     public void BeginPlayback()
     {
         if (PlaybackActive || !HasRecording) return;
-        recording = false;
+        StopRecording();
         PlaybackActive = true;
 
         savedBehaviours.Clear();
@@ -445,7 +487,39 @@ public class ReplayRecorder : MonoBehaviour
                     s.currentStamina = a.st[i];
                 }
             }
+            DriveTrails(t);
             FireEvents(t);
+        }
+    }
+
+    /// <summary>
+    /// Hands each replayed fighter's weapon trail its recorded stroke at the playhead. A stroke
+    /// that began and ended between two rendered frames still counts (span overlap, not a point
+    /// test) while playback flows; a scrub or a jump only shows a stroke the playhead is inside.
+    /// The trail ages with the playback's own step, so a paused replay holds its arc and an export
+    /// draws it in lockstep with the captured frames.
+    /// </summary>
+    void DriveTrails(float absT)
+    {
+        float step = absT - lastEventT;
+        bool flowing = step > 0f && step <= 0.5f;
+        float from = flowing ? lastEventT : absT;
+        float dt = flowing ? step : (step == 0f ? 0f : 1f);   // a jump ages any old arc away
+        for (int c = 0; c < cast.Length; c++)
+        {
+            var trail = cast[c] != null ? cast[c].GetComponent<WeaponTrail>() : null;
+            if (trail == null) continue;
+            int live = -1, last = -1;
+            for (int i = 0; i < trailSpans.Count; i++)
+            {
+                var s = trailSpans[i];
+                if (s.who != c || s.t0 > absT) continue;
+                if (s.t1 >= from) live = i;
+                else last = i;
+            }
+            if (live >= 0) trail.SetRemoteStroke(live, true, trailSpans[live].type, false, dt);
+            else if (last >= 0) trail.SetRemoteStroke(last, false, trailSpans[last].type, trailSpans[last].cut, dt);
+            else trail.SetRemoteStroke(-1, false, AttackType.Light, true, dt);
         }
     }
 
@@ -474,6 +548,7 @@ public class ReplayRecorder : MonoBehaviour
                     case Fx.Parry: HitEffects.SpawnParryFlash(e.point, e.dir, e.radius, e.strength); break;
                     case Fx.Dust: HitEffects.SpawnDust(e.point, e.radius, e.strength); break;
                     case Fx.Dodge: HitEffects.SpawnDodgeBurst(e.point, e.radius, e.strength); break;
+                    default: HitEffects.PlayContactFx(e.kind, e.point, e.dir, e.radius, e.strength); break;
                 }
             }
             // The export mixes its own soundtrack sample-exact instead; live playback hears them.
@@ -864,6 +939,15 @@ public class ReplayRecorder : MonoBehaviour
                     w.Write(e.clip != null ? e.clip.name : "");
                     w.Write(e.volume); w.Write(e.pitch);
                 }
+                // Appended after the version-1 body (same FileVersion): an older build stops reading
+                // before it, and a record saved by an older build simply has no strokes.
+                float tEnd = frames.Count > 0 ? frames[frames.Count - 1].t : clock;
+                w.Write(trailSpans.Count);
+                foreach (var e in trailSpans)
+                {
+                    w.Write(e.t0); w.Write(Mathf.Min(e.t1, tEnd));
+                    w.Write((byte)e.who); w.Write((byte)e.type); w.Write(e.cut);
+                }
             }
             Prune();
             return path;
@@ -1044,6 +1128,18 @@ public class ReplayRecorder : MonoBehaviour
                     if (clip != null) newSounds.Add(new SoundEvent { t = t, clip = clip, volume = vol, pitch = pitch });
                 }
 
+                var newTrails = new List<TrailSpan>();
+                try
+                {
+                    int nT = r.ReadInt32();
+                    for (int i = 0; i < nT && i < 100_000; i++)
+                    {
+                        var e = new TrailSpan { t0 = r.ReadSingle(), t1 = r.ReadSingle(), who = r.ReadByte(), type = (AttackType)r.ReadByte(), cut = r.ReadBoolean() };
+                        if (e.who < nCast) newTrails.Add(e);
+                    }
+                }
+                catch (EndOfStreamException) { /* saved before weapon trails were recorded */ }
+
                 // Everything read clean - only now does the live buffer change hands.
                 cast = newCast;
                 tracks = newTracks;
@@ -1052,6 +1148,7 @@ public class ReplayRecorder : MonoBehaviour
                 markers.Clear(); markers.AddRange(newMarkers);
                 fxEvents.Clear(); fxEvents.AddRange(newFx);
                 soundEvents.Clear(); soundEvents.AddRange(newSounds);
+                trailSpans.Clear(); trailSpans.AddRange(newTrails);
                 cam = camera != null ? camera : Camera.main;
                 playhead = 0;
             }

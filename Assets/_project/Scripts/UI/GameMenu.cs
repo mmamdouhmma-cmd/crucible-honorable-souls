@@ -53,6 +53,7 @@ public class GameMenu : MonoBehaviour
         public float voiceVolume = 1f;
         public float gameSpeed = 0.85f;
         public bool blood = true;
+        public int vfxQuality = -1;       // VfxQualityLevel; -1 = auto (Medium on phones/web, High elsewhere)
         public bool healthRegen = true;   // passive hp per second; dodge/parry heals are separate
         public int padPlayer = 2;
         public int touchButtons = 0;   // 0 auto (touch devices only), 1 always on, 2 off
@@ -1175,6 +1176,15 @@ public class GameMenu : MonoBehaviour
     float GameSpeed() => Mathf.Clamp(netRole != NetSession.Role.None ? onlineSpeed : settings.gameSpeed, 0.5f, MaxGameSpeed);
     const float MaxGameSpeed = 2f;   // Settings slider tops out at 200% (the user's call, 2026-10-27)
 
+    /// <summary>Settings > Effects quality: Low / Medium / High / Cinematic, wrapping. Cosmetic only.</summary>
+    void StepVfxQuality(int d)
+    {
+        int q = ((int)VfxQuality.Level + (d >= 0 ? 1 : 3)) % 4;
+        settings.vfxQuality = q;
+        ApplySettings();
+        SaveSettings();
+    }
+
     void ApplySettings()
     {
         AudioListener.volume = Mathf.Clamp01(settings.volume);
@@ -1192,6 +1202,7 @@ public class GameMenu : MonoBehaviour
             var fi = typeof(CombatSystem).GetField("bloodOnHit", BindingFlags.NonPublic | BindingFlags.Instance);
             if (fi != null) fi.SetValue(cs, settings.blood);
         }
+        if (settings.vfxQuality >= 0) VfxQuality.Level = (VfxQualityLevel)Mathf.Clamp(settings.vfxQuality, 0, 3);
         if (InputManager.Instance != null) InputManager.Instance.Bindings.firstPadPlayer = settings.padPlayer == 1 ? 1 : 2;
     }
 
@@ -1769,6 +1780,9 @@ public class GameMenu : MonoBehaviour
                 items.Add(new Item { label = "Blood", value = () => OnOff(settings.blood),
                     adjust = d => { settings.blood = !settings.blood; ApplySettings(); SaveSettings(); },
                     confirm = () => { settings.blood = !settings.blood; ApplySettings(); SaveSettings(); Rebuild(); } });
+                items.Add(new Item { label = "Effects quality", value = () => VfxQuality.Label(VfxQuality.Level),
+                    adjust = d => StepVfxQuality(d),
+                    confirm = () => { StepVfxQuality(1); Rebuild(); } });
                 items.Add(new Item { label = "On-screen buttons",
                     value = () => settings.touchButtons == 1 ? "Always" : settings.touchButtons == 2 ? "Off" : "Auto (phones)",
                     adjust = d => { settings.touchButtons = (settings.touchButtons + (d > 0 ? 1 : 2)) % 3; ApplySettings(); SaveSettings(); },

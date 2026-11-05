@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b5829a0cc3a42c4c9db7f395f5c56df, type: 3}
+  m_Name: Richard_Vfx
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponVfxProfile
+  bodyColor: {r: 0.86, g: 0.87, b: 0.9, a: 1}
+  coreColor: {r: 1, g: 0.97, b: 0.92, a: 1}
+  waveColor: {r: 0.82, g: 0.84, b: 0.9, a: 1}
+  streakColor: {r: 1, g: 0.9, b: 0.7, a: 1}
+  lifetimeScale: 1.1
+  thrustWeapon: 0
+  metallic: 1
+  impactScale: 1.5
+  impactDust: 0
+  light:
+    lifetime: 0.14
+    opacity: 0.32
+    innerFraction: 0.47000003
+    layers: 1
+    streakRate: 0
+    impactStrength: 0.6
+    impactDebris: 0
+    tailSeconds: 0.03
+  medium:
+    lifetime: 0.2
+    opacity: 0.45
+    innerFraction: 0.33999997
+    layers: 2
+    streakRate: 18
+    impactStrength: 0.9
+    impactDebris: 0
+    tailSeconds: 0.03
+  heavy:
+    lifetime: 0.28
+    opacity: 0.58
+    innerFraction: 0.22000001
+    layers: 2
+    streakRate: 35
+    impactStrength: 1.4
+    impactDebris: 1
+    tailSeconds: 0.05
+  special:
+    lifetime: 0.34
+    opacity: 0.7
+    innerFraction: 0.14
+    layers: 3
+    streakRate: 60
+    impactStrength: 1.8
+    impactDebris: 1
+    tailSeconds: 0.06

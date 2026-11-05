@@ -4420,7 +4420,9 @@ MonoBehaviour:
   sparksOnBlock: 0
   sparksOnParry: 1
   parrySparkStrength: 3
-  bladeTrail: 0
+  weaponTrails: 1
+  vfxProfile: {fileID: 11400000, guid: 7e7e0ec48f38f144eb5780f9f8baaaba, type: 2}
+  impactEffects: 1
   debugLogs: 1
   stringLockout: 0
   sameAttackLockout: 0
@@ -25558,7 +25560,9 @@ MonoBehaviour:
   sparksOnBlock: 0
   sparksOnParry: 1
   parrySparkStrength: 3
-  bladeTrail: 0
+  weaponTrails: 1
+  vfxProfile: {fileID: 11400000, guid: 22b7c9ab62406b9438db8b957f42d509, type: 2}
+  impactEffects: 1
   debugLogs: 1
   stringLockout: 0
   sameAttackLockout: 0
@@ -48493,7 +48497,9 @@ MonoBehaviour:
   sparksOnBlock: 0
   sparksOnParry: 1
   parrySparkStrength: 3
-  bladeTrail: 0
+  weaponTrails: 1
+  vfxProfile: {fileID: 11400000, guid: 0ee27ac767492aa48a9f91b316776302, type: 2}
+  impactEffects: 1
   debugLogs: 1
   stringLockout: 0
   sameAttackLockout: 0
@@ -52420,7 +52426,9 @@ MonoBehaviour:
   sparksOnBlock: 0
   sparksOnParry: 1
   parrySparkStrength: 3
-  bladeTrail: 0
+  weaponTrails: 1
+  vfxProfile: {fileID: 11400000, guid: 3459cbc66009c1f4cb65b8f6fdda7818, type: 2}
+  impactEffects: 1
   debugLogs: 1
   stringLockout: 0
   sameAttackLockout: 0
@@ -55207,7 +55215,9 @@ MonoBehaviour:
   sparksOnBlock: 0
   sparksOnParry: 1
   parrySparkStrength: 3
-  bladeTrail: 0
+  weaponTrails: 1
+  vfxProfile: {fileID: 11400000, guid: f99dd33e7f7a79f40bffb04683f52691, type: 2}
+  impactEffects: 1
   debugLogs: 1
   stringLockout: 0
   sameAttackLockout: 0
@@ -71541,7 +71551,9 @@ MonoBehaviour:
   sparksOnBlock: 0
   sparksOnParry: 1
   parrySparkStrength: 3
-  bladeTrail: 0
+  weaponTrails: 1
+  vfxProfile: {fileID: 11400000, guid: 9a5538d9a23b6014caa18537c02350f7, type: 2}
+  impactEffects: 1
   debugLogs: 1
   stringLockout: 0
   sameAttackLockout: 0
@@ -77913,7 +77925,9 @@ MonoBehaviour:
   sparksOnBlock: 0
   sparksOnParry: 1
   parrySparkStrength: 3
-  bladeTrail: 0
+  weaponTrails: 1
+  vfxProfile: {fileID: 11400000, guid: 284a4ab5de271ed49aebefbd89fad0a1, type: 2}
+  impactEffects: 1
   debugLogs: 1
   stringLockout: 0
   sameAttackLockout: 0

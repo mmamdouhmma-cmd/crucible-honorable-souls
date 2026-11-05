@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -96,7 +97,7 @@ public static class HitEffects
 
     // The body, shared with the parry flash so ITS sparks are not recorded a second time
     // (the parry event alone replays the whole flash, sparks included).
-    static void SparksCore(Vector3 point, Vector3 direction, float bodyRadius, float strength)
+    static void SparksCore(Vector3 point, Vector3 direction, float bodyRadius, float strength, float cone = 55f)
     {
         float s = Mathf.Max(0.1f, strength);
         float scale = Mathf.Sqrt(s);
@@ -110,7 +111,7 @@ public static class HitEffects
         main.gravityModifier = 1.5f;
         main.maxParticles = Mathf.Max(160, Mathf.RoundToInt(60 * s));
         Burst(ps, Mathf.RoundToInt(24 * s), Mathf.RoundToInt(40 * s), 0f);
-        Cone(ps, 55f, r * 0.05f);
+        Cone(ps, cone, r * 0.05f);
         Stretch(ps, 0.08f, 2f);
         ps.Play();
     }
@@ -125,6 +126,13 @@ public static class HitEffects
     {
         ReplayRecorder.NoteFx(ReplayRecorder.Fx.Parry, point, direction, bodyRadius, strength);
         NetSession.ForwardFx(ReplayRecorder.Fx.Parry, point, direction, bodyRadius, strength);
+        essential = true;
+        try { ParryCore(point, direction, bodyRadius, strength); }
+        finally { essential = false; }
+    }
+
+    static void ParryCore(Vector3 point, Vector3 direction, float bodyRadius, float strength)
+    {
         float s = Mathf.Max(0.1f, strength);
         float scale = Mathf.Sqrt(s);
         SparksCore(point, direction, bodyRadius, s);
@@ -210,6 +218,13 @@ public static class HitEffects
     {
         ReplayRecorder.NoteFx(ReplayRecorder.Fx.Dodge, point, Vector3.up, bodyRadius, strength);
         NetSession.ForwardFx(ReplayRecorder.Fx.Dodge, point, Vector3.up, bodyRadius, strength);
+        essential = true;
+        try { DodgeCore(point, bodyRadius, strength); }
+        finally { essential = false; }
+    }
+
+    static void DodgeCore(Vector3 point, float bodyRadius, float strength)
+    {
         float s = Mathf.Max(0.1f, strength);
         float scale = Mathf.Sqrt(s);
         float r = Mathf.Max(bodyRadius, 0.2f);
@@ -243,6 +258,150 @@ public static class HitEffects
         ring.Play();
     }
 
+    // ---------------------------------------------------------------- contact effects (weapon VFX)
+
+    /// <summary>
+    /// A clean hit's contact: a tight directional burst of short white-hot streaks along the blade's
+    /// travel and a small low-glow pop - the "cut" read, deliberately smaller than block sparks (blood
+    /// carries the flesh). <paramref name="debris"/> adds grit for heavy weapon mass.
+    /// </summary>
+    public static void SpawnImpact(Vector3 point, Vector3 direction, float bodyRadius, float strength, bool debris)
+    {
+        var kind = debris ? ReplayRecorder.Fx.ImpactDebris : ReplayRecorder.Fx.Impact;
+        ReplayRecorder.NoteFx(kind, point, direction, bodyRadius, strength);
+        NetSession.ForwardFx(kind, point, direction, bodyRadius, strength);
+        ImpactCore(point, direction, bodyRadius, strength, debris);
+    }
+
+    static void ImpactCore(Vector3 point, Vector3 direction, float bodyRadius, float strength, bool debris)
+    {
+        float s = Mathf.Max(0.1f, strength), scale = Mathf.Sqrt(s), r = Mathf.Max(bodyRadius, 0.2f);
+        if (direction.sqrMagnitude < 0.0001f) direction = Vector3.up;
+        Quaternion rot = Quaternion.LookRotation(direction.normalized);
+
+        ParticleSystem streaks = NewSystem("ImpactStreaks", point, rot, new Color(1f, 0.93f, 0.8f), 0.5f, VfxMaterials.SoftDot(), true);
+        ParticleSystem.MainModule m = streaks.main;
+        m.startLifetime = new ParticleSystem.MinMaxCurve(0.06f, 0.14f * scale);
+        m.startSpeed = new ParticleSystem.MinMaxCurve(r * 6f * scale, r * 13f * scale);
+        m.startSize = new ParticleSystem.MinMaxCurve(r * 0.025f, r * 0.05f * scale);
+        m.gravityModifier = 0.6f;
+        Burst(streaks, Mathf.RoundToInt(7 * s), Mathf.RoundToInt(12 * s), 0f);
+        Cone(streaks, 28f, r * 0.04f);
+        Stretch(streaks, 0.06f, 2.4f);
+        streaks.Play();
+
+        ParticleSystem pop = NewSystem("ImpactPop", point, rot, new Color(1f, 0.95f, 0.88f, 0.55f), 0.3f, VfxMaterials.SoftDot(), true);
+        m = pop.main;
+        m.startLifetime = new ParticleSystem.MinMaxCurve(0.04f, 0.08f);
+        m.startSpeed = 0f;
+        m.startSize = new ParticleSystem.MinMaxCurve(r * 0.35f * scale, r * 0.6f * scale);
+        m.gravityModifier = 0f;
+        Burst(pop, 1, 2, 0f);
+        Sphere(pop, r * 0.05f);
+        pop.Play();
+
+        if (debris)
+        {
+            ParticleSystem grit = NewSystem("ImpactDebris", point, rot, new Color(0.36f, 0.31f, 0.26f, 0.9f), 1f, VfxMaterials.SoftDot());
+            m = grit.main;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.7f);
+            m.startSpeed = new ParticleSystem.MinMaxCurve(r * 3f * scale, r * 7f * scale);
+            m.startSize = new ParticleSystem.MinMaxCurve(r * 0.03f, r * 0.07f * scale);
+            m.gravityModifier = 3f;
+            Burst(grit, Mathf.RoundToInt(5 * s), Mathf.RoundToInt(9 * s), 0f);
+            Cone(grit, 45f, r * 0.08f);
+            grit.Play();
+        }
+    }
+
+    /// <summary>
+    /// A strike met a raised guard: a small spark spray (steel) or a puff of dull chips (wood),
+    /// clearly smaller than a parry's flash so the two never read alike.
+    /// </summary>
+    public static void SpawnBlock(Vector3 point, Vector3 direction, float bodyRadius, float strength, bool metallic)
+    {
+        var kind = metallic ? ReplayRecorder.Fx.Block : ReplayRecorder.Fx.BlockDull;
+        ReplayRecorder.NoteFx(kind, point, direction, bodyRadius, strength);
+        NetSession.ForwardFx(kind, point, direction, bodyRadius, strength);
+        float s = Mathf.Clamp(strength, 0.2f, 1.2f);
+        if (metallic) SparksCore(point, direction, bodyRadius, s * 0.6f, 40f);
+        else Chips(point, direction, bodyRadius, s);
+    }
+
+    /// <summary>
+    /// A guard that could not hold: a wide scatter of sparks (or chips), a warm flash and a flat
+    /// ring of amber streaks - louder than a block, warm where the parry is cold, short-lived.
+    /// </summary>
+    public static void SpawnGuardBreak(Vector3 point, Vector3 direction, float bodyRadius, float strength, bool metallic)
+    {
+        var kind = metallic ? ReplayRecorder.Fx.GuardBreak : ReplayRecorder.Fx.GuardBreakDull;
+        ReplayRecorder.NoteFx(kind, point, direction, bodyRadius, strength);
+        NetSession.ForwardFx(kind, point, direction, bodyRadius, strength);
+        essential = true;
+        try { GuardBreakCore(point, direction, bodyRadius, strength, metallic); }
+        finally { essential = false; }
+    }
+
+    static void GuardBreakCore(Vector3 point, Vector3 direction, float bodyRadius, float strength, bool metallic)
+    {
+        float s = Mathf.Clamp(strength, 0.5f, 3f), scale = Mathf.Sqrt(s), r = Mathf.Max(bodyRadius, 0.2f);
+        if (metallic) SparksCore(point, direction, bodyRadius, s, 85f);
+        else Chips(point, direction, bodyRadius, s * 1.5f);
+
+        ParticleSystem flash = NewSystem("GuardBreakFlash", point, Quaternion.LookRotation(Vector3.up), new Color(1f, 0.85f, 0.6f, 0.8f), 0.4f, VfxMaterials.SoftDot(), true);
+        ParticleSystem.MainModule m = flash.main;
+        m.startLifetime = new ParticleSystem.MinMaxCurve(0.06f, 0.12f);
+        m.startSpeed = 0f;
+        m.startSize = new ParticleSystem.MinMaxCurve(r * 0.9f * scale, r * 1.5f * scale);
+        m.gravityModifier = 0f;
+        Burst(flash, 2, 3, 0f);
+        Sphere(flash, r * 0.1f);
+        flash.Play();
+
+        ParticleSystem ring = NewSystem("GuardBreakRing", point, Quaternion.LookRotation(Vector3.up), new Color(1f, 0.68f, 0.32f), 0.6f, VfxMaterials.SoftDot(), true);
+        m = ring.main;
+        m.startLifetime = new ParticleSystem.MinMaxCurve(0.15f, 0.26f);
+        m.startSpeed = new ParticleSystem.MinMaxCurve(r * 7f * scale, r * 11f * scale);
+        m.startSize = new ParticleSystem.MinMaxCurve(r * 0.08f, r * 0.16f * scale);
+        m.gravityModifier = 0f;
+        Burst(ring, Mathf.RoundToInt(12 * s), Mathf.RoundToInt(18 * s), 0f);
+        ParticleSystem.ShapeModule shape = ring.shape;
+        shape.shapeType = ParticleSystemShapeType.Circle;    // local XY; the system faces up, so the ring lies level
+        shape.radius = r * 0.15f;
+        Stretch(ring, 0.1f, 2.4f);
+        ring.Play();
+    }
+
+    /// <summary>Dull wooden chips (a bokken meeting a guard: no steel, no sparks).</summary>
+    static void Chips(Vector3 point, Vector3 direction, float bodyRadius, float strength)
+    {
+        float s = Mathf.Max(0.2f, strength), scale = Mathf.Sqrt(s), r = Mathf.Max(bodyRadius, 0.2f);
+        if (direction.sqrMagnitude < 0.0001f) direction = Vector3.up;
+        ParticleSystem chips = NewSystem("Chips", point, Quaternion.LookRotation(direction.normalized), new Color(0.72f, 0.6f, 0.44f, 0.9f), 0.9f, VfxMaterials.SoftDot());
+        ParticleSystem.MainModule m = chips.main;
+        m.startLifetime = new ParticleSystem.MinMaxCurve(0.25f, 0.55f);
+        m.startSpeed = new ParticleSystem.MinMaxCurve(r * 3f * scale, r * 7f * scale);
+        m.startSize = new ParticleSystem.MinMaxCurve(r * 0.03f, r * 0.08f * scale);
+        m.gravityModifier = 2.5f;
+        Burst(chips, Mathf.RoundToInt(8 * s), Mathf.RoundToInt(14 * s), 0f);
+        Cone(chips, 50f, r * 0.05f);
+        chips.Play();
+    }
+
+    /// <summary>Plays a recorded/forwarded contact event (the kinds added with the weapon-VFX system).</summary>
+    public static void PlayContactFx(ReplayRecorder.Fx kind, Vector3 point, Vector3 dir, float radius, float strength)
+    {
+        switch (kind)
+        {
+            case ReplayRecorder.Fx.Impact: SpawnImpact(point, dir, radius, strength, false); break;
+            case ReplayRecorder.Fx.ImpactDebris: SpawnImpact(point, dir, radius, strength, true); break;
+            case ReplayRecorder.Fx.Block: SpawnBlock(point, dir, radius, strength, true); break;
+            case ReplayRecorder.Fx.BlockDull: SpawnBlock(point, dir, radius, strength, false); break;
+            case ReplayRecorder.Fx.GuardBreak: SpawnGuardBreak(point, dir, radius, strength, true); break;
+            case ReplayRecorder.Fx.GuardBreakDull: SpawnGuardBreak(point, dir, radius, strength, false); break;
+        }
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private static Vector3 Flat(Vector3 v, Vector3 fallback)
@@ -259,13 +418,62 @@ public static class HitEffects
         return f.transform.position + Vector3.up * (Mathf.Max(f.BodyRadius, 0.2f) * 4f);
     }
 
+    // ---------------------------------------------------------------- pooling
+    // Effects are pooled by name: a spent system is deactivated and handed out again instead of
+    // being destroyed and rebuilt, so a long exchange allocates nothing new after the first few hits.
+    // A scene change destroys the pooled objects with the scene; dead entries are skipped.
+
+    const int PoolCap = 16;
+    static readonly Dictionary<string, Stack<ParticleSystem>> pool = new Dictionary<string, Stack<ParticleSystem>>();
+    static readonly ParticleSystem.Burst[] noBursts = new ParticleSystem.Burst[0];
+    static bool essential;   // inside a parry / dodge / guard-break burst: keep >= 80% of its particles on Low
+
+    internal static void Release(PooledFx fx)
+    {
+        if (fx == null) return;
+        ParticleSystem ps = fx.System;
+        if (ps == null) return;
+        if (!pool.TryGetValue(fx.Key, out var stack)) pool[fx.Key] = stack = new Stack<ParticleSystem>();
+        if (stack.Count >= PoolCap) { Object.Destroy(fx.gameObject); return; }
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        fx.gameObject.SetActive(false);
+        stack.Push(ps);
+    }
+
     private static ParticleSystem NewSystem(string name, Vector3 pos, Quaternion rot, Color color, float life, Texture2D sprite, bool additive = false)
     {
-        GameObject go = new GameObject(name);
-        go.transform.position = pos;
-        go.transform.rotation = rot;
-        ParticleSystem ps = go.AddComponent<ParticleSystem>();
-        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        ParticleSystem ps = null;
+        if (pool.TryGetValue(name, out var stack))
+            while (ps == null && stack.Count > 0) ps = stack.Pop();   // destroyed entries compare == null
+
+        GameObject go;
+        PooledFx fx;
+        if (ps != null)
+        {
+            go = ps.gameObject;
+            fx = go.GetComponent<PooledFx>();
+            go.SetActive(true);
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            // Back to a blank system: callers only set what they need.
+            ParticleSystem.EmissionModule em = ps.emission;
+            em.SetBursts(noBursts);
+            ParticleSystem.ColorOverLifetimeModule col = ps.colorOverLifetime; col.enabled = false;
+            ParticleSystem.SizeOverLifetimeModule size = ps.sizeOverLifetime; size.enabled = false;
+            ParticleSystem.ShapeModule shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone; shape.angle = 25f; shape.radius = 1f;
+            ParticleSystem.MainModule mm = ps.main;
+            mm.startRotation = 0f;
+        }
+        else
+        {
+            go = new GameObject(name);
+            ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            fx = go.AddComponent<PooledFx>();
+            fx.Key = name;
+            fx.System = ps;
+        }
+        go.transform.SetPositionAndRotation(pos, rot);
 
         ParticleSystem.MainModule main = ps.main;
         main.duration = 0.2f;
@@ -280,16 +488,30 @@ public static class HitEffects
 
         ParticleSystemRenderer rend = go.GetComponent<ParticleSystemRenderer>();
         rend.renderMode = ParticleSystemRenderMode.Billboard;
-        rend.material = VfxMaterials.Unlit(Color.white, additive, sprite);
+        rend.sharedMaterial = VfxMaterials.Unlit(Color.white, additive, sprite);
         rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-        Object.Destroy(go, life);
+        fx.Arm(life);
         return ps;
+    }
+
+    private static void Sphere(ParticleSystem ps, float radius)
+    {
+        ParticleSystem.ShapeModule shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Sphere;
+        shape.radius = radius;
     }
 
     private static void Burst(ParticleSystem ps, int min, int max, float time)
     {
         ParticleSystem.EmissionModule emission = ps.emission;
+        // Effects quality (Settings): fewer or more particles, never zero, and the gameplay-critical
+        // bursts (parry, dodge, guard break) keep at least 80% on every level.
+        float q = essential ? VfxQuality.EssentialScale : VfxQuality.ParticleScale;
+        min = Mathf.Max(1, Mathf.RoundToInt(min * q));
+        max = Mathf.Max(min, Mathf.RoundToInt(max * q));
+        ParticleSystem.MainModule main = ps.main;
+        if (main.maxParticles < max * 2) main.maxParticles = max * 2;
         int n = emission.burstCount;
         ParticleSystem.Burst[] bursts = new ParticleSystem.Burst[n + 1];
         for (int i = 0; i < n; i++) bursts[i] = emission.GetBurst(i);
@@ -354,5 +576,21 @@ public class FadeAndDestroy : MonoBehaviour
         float a = Mathf.Clamp01(1f - (t - hold) / Mathf.Max(fade, 0.01f));
         rend.material.SetColor(colorProp, new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * a));
         if (a <= 0f) Destroy(gameObject);
+    }
+}
+
+/// <summary>Returns a one-shot effect to the <see cref="HitEffects"/> pool when its time is up.</summary>
+public class PooledFx : MonoBehaviour
+{
+    public string Key;
+    public ParticleSystem System;
+    private float left;
+
+    public void Arm(float seconds) { left = seconds; }
+
+    private void Update()
+    {
+        left -= Time.deltaTime;
+        if (left <= 0f) HitEffects.Release(this);
     }
 }
