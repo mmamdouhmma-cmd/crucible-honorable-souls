@@ -4,7 +4,7 @@ rem Bump the version and build (Crucible > Build > Windows app) before running t
 rem NOTES below are this version's notes; Enter at the prompt keeps them, typing replaces them.
 rem Keep them free of the characters cmd treats specially: ampersand, pipe, angle brackets, quotes.
 cd /d "%~dp0.."
-set "NOTES=v0.4.9 - The camera now circles with the fighters, like UFC games: you stay on your side of the screen, with no more slow-motion swaps. Fighter cards show an overall and five ratings - vitality, defense, attack, speed and stamina - under rewritten play styles. Buwaka is bigger with a longer spear and lunge, and now has the longest reach. Genghis attacks about 15 percent faster and has a slightly wider parry window. Richard and Genghis walk about 10 percent faster. Online players need the same version."
+set "NOTES=v0.5.0 - Weapon effects: every swing now leaves a trail that follows the real blade, thin and quick on light attacks and broad and layered on heavies and specials, with each fighter in their own style. Clean hits, blocks and guard breaks each have their own impact, and the trails also show in replays, saved records and online. New setting: Effects quality, Low to Cinematic. No more foot sliding - every fighter now plants their feet when walking and running. Bjorn spins all the way round with his sword arm straight. Online players need the same version."
 echo.
 echo Notes for this release:
 echo %NOTES%
