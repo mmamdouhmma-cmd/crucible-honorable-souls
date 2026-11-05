@@ -30,7 +30,11 @@ public class TwoHandGrip : MonoBehaviour
     [Tooltip("Base-layer states in which the off hand takes the grip. Empty = always (the roster's two-handers). " +
              "The story Sensei fights one-handed and grips with both hands only on his overhead.")]
     [SerializeField] private string[] onlyInStates = new string[0];
-    [Tooltip("Seconds to blend the grip in or out when onlyInStates is in use.")]
+    [Tooltip("Base-layer states in which the off hand LETS GO and the clip's own arm plays (one-handed moves on a " +
+             "two-hander, e.g. Bjorn's spins: the socket swings to the far side of the body and the arm was dragged " +
+             "through the torso to reach it). Checked after onlyInStates.")]
+    [SerializeField] private string[] exceptInStates = new string[0];
+    [Tooltip("Seconds to blend the grip in or out when onlyInStates or exceptInStates is in use.")]
     [SerializeField] private float stateBlendTime = 0.12f;
     private float stateWeight = 1f;
 
@@ -196,10 +200,16 @@ public class TwoHandGrip : MonoBehaviour
     private void LateUpdate()
     {
         if (animator == null || leftGrip == null || positionWeight <= 0f) return;
-        if (onlyInStates != null && onlyInStates.Length > 0)
+        bool hasOnly = onlyInStates != null && onlyInStates.Length > 0;
+        bool hasExcept = exceptInStates != null && exceptInStates.Length > 0;
+        if (hasOnly || hasExcept)
         {
-            bool want = InGripState(animator.GetCurrentAnimatorStateInfo(0)) ||
-                        (animator.IsInTransition(0) && InGripState(animator.GetNextAnimatorStateInfo(0)));
+            var cur = animator.GetCurrentAnimatorStateInfo(0);
+            bool trans = animator.IsInTransition(0);
+            var next = trans ? animator.GetNextAnimatorStateInfo(0) : cur;
+            bool want = !hasOnly || InStates(onlyInStates, cur) || (trans && InStates(onlyInStates, next));
+            // let go as soon as a free-hand state is entered, take hold again only once it is left
+            if (hasExcept && (InStates(exceptInStates, cur) || (trans && InStates(exceptInStates, next)))) want = false;
             stateWeight = Mathf.MoveTowards(stateWeight, want ? 1f : 0f, Time.deltaTime / Mathf.Max(stateBlendTime, 1e-3f));
             if (stateWeight <= 0f) { OffHandMiss = 0f; return; }
         }
@@ -233,9 +243,9 @@ public class TwoHandGrip : MonoBehaviour
         CloseFingers();
     }
 
-    private bool InGripState(AnimatorStateInfo info)
+    private static bool InStates(string[] names, AnimatorStateInfo info)
     {
-        foreach (var n in onlyInStates) if (!string.IsNullOrEmpty(n) && info.IsName(n)) return true;
+        foreach (var n in names) if (!string.IsNullOrEmpty(n) && info.IsName(n)) return true;
         return false;
     }
 

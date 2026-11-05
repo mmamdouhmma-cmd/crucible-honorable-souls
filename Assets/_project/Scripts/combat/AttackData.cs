@@ -189,6 +189,11 @@ public class AttackData : ScriptableObject
              "or interrupt the swing. A parry still beats it outright. For the big, slow specials.")]
     [SerializeField] private bool hyperArmor = false;
 
+    [Tooltip("Judge this swing on REACH, the way Overhead/Low/Uppercut strikes are, whatever its height. For a " +
+             "straight-armed spin: its head travels ~2 out from the body, so an opponent standing closer is cut by the " +
+             "haft and arm, which the blade-only check never sees.")]
+    [SerializeField] private bool judgedOnReach = false;
+
     [Header("Hitbox")]
     [Tooltip("How far the hitbox reaches in front of the attacker, in world units (the same units as dash distance " +
              "and fighter radius). The fighter's model scale does not change it. Select the fighter to preview it in the Scene view.")]
@@ -316,6 +321,8 @@ public class AttackData : ScriptableObject
 
     /// <summary>Incoming hits damage but never flinch or interrupt this attack while it runs.</summary>
     public bool HyperArmor => hyperArmor;
+    /// <summary>Landed on horizontal reach like an overhead, not by the blade's path alone.</summary>
+    public bool JudgedOnReach => judgedOnReach;
 
     /// <summary>Reach along the attacker's forward axis, in the fighter's local units.</summary>
     public float HitboxRange => hitboxRange;

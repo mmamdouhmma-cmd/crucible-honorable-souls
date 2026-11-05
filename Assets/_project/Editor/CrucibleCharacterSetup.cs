@@ -220,6 +220,26 @@ public static class CrucibleCharacterSetup
                                 "Arima_Light_ProudEdge", "Arima_Heavy_ArimasVerdict", "Arima_Special_WhirlwindAdvance" } },
     };
 
+    // The opposite: a two-hander whose off hand LETS GO in these states (TwoHandGrip.exceptInStates).
+    // Bjorn's two spins play the one-handed AxePack 360: the haft swings to the far side of his body and the
+    // grip dragged his left arm through his torso to reach it - the arm "disappeared" (the user, 2026-11-05).
+    // Measured: the socket sat 1.2-1.6 world units from the clip's left hand from the windup to the end.
+    public static readonly System.Collections.Generic.Dictionary<string, string[]> GripExceptInStates = new System.Collections.Generic.Dictionary<string, string[]>
+    {
+        { "Bjorn", new[] { "Bjorn_Medium_SpinningSlash", "Bjorn_Special_HewingCharge" } },
+    };
+
+    /// <summary>Writes the free-hand list onto a live TwoHandGrip (also run by the rebuild).</summary>
+    public static void ApplyGripExcept(Component grip, string charName)
+    {
+        var sg = new SerializedObject(grip);
+        var ex = sg.FindProperty("exceptInStates");
+        var states = GripExceptInStates.TryGetValue(charName, out var gs) ? gs : new string[0];
+        ex.arraySize = states.Length;
+        for (int i = 0; i < states.Length; i++) ex.GetArrayElementAtIndex(i).stringValue = states[i];
+        sg.ApplyModifiedProperties();
+    }
+
     [MenuItem("Crucible/Characters/Rebuild Player1 (Bjorn new body)")]
     public static void RebuildP1() => Rebuild("Player1", "Bjorn");
 
@@ -812,6 +832,7 @@ public static class CrucibleCharacterSetup
         only.arraySize = states.Length;
         for (int i = 0; i < states.Length; i++) only.GetArrayElementAtIndex(i).stringValue = states[i];
         sg.ApplyModifiedProperties();
+        ApplyGripExcept(grip, charName);
 
         // weapon aim toward the opponent during strikes
         var aim = player.GetComponent(RuntimeType("WeaponAim"));

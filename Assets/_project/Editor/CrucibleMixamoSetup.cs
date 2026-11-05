@@ -695,6 +695,7 @@ public static class CrucibleMixamoSetup
             if (cs.state == null) { Debug.LogWarning($"{Path.GetFileName(ctrlPath)}: no state {m.state}"); continue; }
             var clip = LoadClip($"{PackDir(m.pack)}/{m.clip}.fbx", m.state);
             if (clip == null) { Debug.LogError($"{m.clip}: clip {m.state} failed to import"); continue; }
+            clip = FinishTurnClip(m.state, clip);   // same length, so every speed fit below still holds
             cs.state.motion = clip;
             cs.state.speed = m.state == "Block_Impact" ? CrucibleBlockSpeed.BlockSpeedUp : 1f;
             // The parry catch is a 1.3 s performance: fit it to ParryDuration, then let the
@@ -751,6 +752,183 @@ public static class CrucibleMixamoSetup
             }
         }
         EditorUtility.SetDirty(ac);
+    }
+
+    // A spin whose mocap stops SHORT of a full turn: the fighter ends with his back half to the opponent and
+    // the blend back to the idle whips him round in a handful of frames (the user, 2026-11-05: "he does not
+    // complete the spin ... he just flips back to idle"). The AxePack 360 low turns only ~300 deg in its whole
+    // take, so no trim window can finish it. This adds the missing yaw to the clip's BODY rotation (RootQ)
+    // from `from` (normalized clip time, after the hit) to the end, eased in and out, so he keeps spinning the
+    // way he was and settles facing the opponent. Everything else stays the mocap's own.
+    // The result is a derived .anim (Clips/Derived/<state>_FullTurn.anim), rebuilt on every run from the
+    // trimmed FBX clip, so the source pack clip - shared with Hewing Charge, Buwaka and Arima - is untouched.
+    // `guardFrom`: from there to the end every muscle eases onto the GUARD clip's first frame (the idle the
+    // state blends back into), so the arms fold the weapon back to the guard during the extra turn instead of
+    // the axe whipping across in the 6-frame blend (measured: the head travelled ~3 units in it). The left
+    // arm arrives where TwoHandGrip takes the haft again. Root curves are left to the turn above.
+    static readonly Dictionary<string, (float degrees, float from, float guardFrom, string guardPack, string guardClip, string guardState)> FinishTurn =
+        new Dictionary<string, (float, float, float, string, string, string)>
+    {
+        // measured: pelvis ends 149 deg short of the idle's facing; 150 overshot by 15 in the blend
+        { "Bjorn_Medium_SpinningSlash", (140f, 0.55f, 0.76f, "AxePack2H", "standing idle", "Bjorn_Idle") },
+        // the same clip on a longer window (10.8-59.8 against 13.5-48.5); 128 overshot the idle by 44
+        { "Bjorn_Special_HewingCharge", (85f, 0.50f, 0.68f, "AxePack2H", "standing idle", "Bjorn_Idle") },
+    };
+    const string DerivedDir = "Assets/_project/Animation/Clips/Derived";
+    // HOLD muscles AT a value (not an offset) inside an envelope - the user, 2026-11-05: "he bends back his arm
+    // before finishing the spin, he should keep the arm straight till it slashes through his opponent's whole
+    // body". The mocap pulls the hand in to 0.6-0.9 from his root as the axe crosses the front, so the axe
+    // ran past the opponent's side. Holding the elbow straight and the arm out at shoulder height carries the
+    // haft through him; the guard ease (later now) folds it back afterwards.
+    static readonly (string, float)[] StraightArm =
+    {
+        ("Right Forearm Stretch", 1.0f), ("Right Arm Down-Up", 0.4f), ("Right Arm Front-Back", 0.0f),
+    };
+    static readonly Dictionary<string, (float start, float full0, float full1, float end, (string muscle, float value)[] holds)> Hold =
+        new Dictionary<string, (float, float, float, float, (string, float)[])>
+    {
+        { "Bjorn_Medium_SpinningSlash", (0.36f, 0.44f, 0.72f, 0.86f, StraightArm) },
+        { "Bjorn_Special_HewingCharge", (0.28f, 0.35f, 0.64f, 0.78f, StraightArm) },
+    };
+
+    // RAISE a swing (the user, 2026-11-05: Bjorn's spins "higher - body/head, not low"). The AxePack 360 low drops
+    // the right shoulder, bends the wrist so the head points at the floor and folds the chest forward, so the
+    // axe passes the opponent's shins. These muscle offsets are ADDED to the mocap inside an envelope - eased in
+    // from `start` to `full0`, held to `full1`, eased out by `end` (normalized clip time) - so the wind-up and
+    // the follow-through stay the mocap's own. Applied before the guard ease, which still wins at the end.
+    // declared BEFORE Raise: static fields initialize in file order, and Raise captured a null here
+    static readonly (string, float)[] RaiseSpin =
+    {
+        // The ARM PATH is left as the mocap's: lifting the shoulder and arm (+1.0 / +0.5) bent the arc so the head
+        // went UP over his left side instead of across the front, and the medium (a Mid, judged by the blade
+        // alone) missed everyone at 1.0+. The wrist and chest only tilt the axe up on the same arc.
+        ("Right Hand In-Out", -0.8f), ("Right Hand Down-Up", 0.4f),
+        ("UpperChest Front-Back", 0.3f), ("Chest Front-Back", 0.15f),
+    };
+    static readonly Dictionary<string, (float start, float full0, float full1, float end, (string muscle, float add)[] offsets)> Raise =
+        new Dictionary<string, (float, float, float, float, (string, float)[])>
+    {
+        { "Bjorn_Medium_SpinningSlash", (0.25f, 0.38f, 0.62f, 0.75f, RaiseSpin) },
+        { "Bjorn_Special_HewingCharge", (0.18f, 0.30f, 0.52f, 0.66f, RaiseSpin) },
+    };
+
+
+    static AnimationClip FinishTurnClip(string state, AnimationClip src)
+    {
+        if (!FinishTurn.TryGetValue(state, out var ft) || src == null) return src;
+        var binds = AnimationUtility.GetCurveBindings(src);
+        var names = new[] { "RootQ.x", "RootQ.y", "RootQ.z", "RootQ.w" };
+        var bq = names.Select(n => binds.FirstOrDefault(b => b.propertyName == n)).ToArray();
+        if (bq.Any(b => b.propertyName == null)) { Debug.LogError($"{state}: no RootQ curves, turn not finished"); return src; }
+        var cq = bq.Select(b => AnimationUtility.GetEditorCurve(src, b)).ToArray();
+
+        var clip = Object.Instantiate(src);
+        clip.name = state;
+        int n = Mathf.Max(2, Mathf.CeilToInt(src.length * 60f) + 1);
+        var keys = new Keyframe[4][];
+        for (int k = 0; k < 4; k++) keys[k] = new Keyframe[n];
+        Quaternion prev = Quaternion.identity;
+        for (int i = 0; i < n; i++)
+        {
+            float t = Mathf.Min(src.length, i / 60f);
+            var q = new Quaternion(cq[0].Evaluate(t), cq[1].Evaluate(t), cq[2].Evaluate(t), cq[3].Evaluate(t));
+            float u = Mathf.Clamp01((t / src.length - ft.from) / Mathf.Max(1e-4f, 1f - ft.from));
+            float e = u * u * (3f - 2f * u);
+            q = Quaternion.AngleAxis(ft.degrees * e, Vector3.up) * q;
+            if (i > 0 && Quaternion.Dot(prev, q) < 0f) q = new Quaternion(-q.x, -q.y, -q.z, -q.w);   // keep the curves continuous
+            prev = q;
+            keys[0][i] = new Keyframe(t, q.x); keys[1][i] = new Keyframe(t, q.y);
+            keys[2][i] = new Keyframe(t, q.z); keys[3][i] = new Keyframe(t, q.w);
+        }
+        for (int k = 0; k < 4; k++)
+        {
+            var c = new AnimationCurve(keys[k]);
+            for (int i = 0; i < c.length; i++) c.SmoothTangents(i, 0f);
+            AnimationUtility.SetEditorCurve(clip, bq[k], c);
+        }
+        // raise the swing: muscle offsets inside an envelope
+        if (Raise.TryGetValue(state, out var rz))
+        {
+            foreach (var (muscle, add) in rz.offsets)
+            {
+                var b = binds.FirstOrDefault(x => x.propertyName == muscle);
+                if (b.propertyName == null) { Debug.LogWarning($"{state}: no muscle curve {muscle}"); continue; }
+                var sc = AnimationUtility.GetEditorCurve(src, b);
+                var ks = new Keyframe[n];
+                for (int i = 0; i < n; i++)
+                {
+                    float t = Mathf.Min(src.length, i / 60f), x = t / src.length;
+                    float up = Mathf.Clamp01((x - rz.start) / Mathf.Max(1e-4f, rz.full0 - rz.start));
+                    float dn = Mathf.Clamp01((rz.end - x) / Mathf.Max(1e-4f, rz.end - rz.full1));
+                    float w = Mathf.Min(up * up * (3f - 2f * up), dn * dn * (3f - 2f * dn));
+                    ks[i] = new Keyframe(t, sc.Evaluate(t) + add * w);
+                }
+                var c = new AnimationCurve(ks);
+                for (int i = 0; i < c.length; i++) c.SmoothTangents(i, 0f);
+                AnimationUtility.SetEditorCurve(clip, b, c);
+            }
+            src = Object.Instantiate(clip);   // the guard ease below reads the RAISED curves
+        }
+        // hold muscles at a value: the straight sword arm
+        if (Hold.TryGetValue(state, out var hd))
+        {
+            foreach (var (muscle, value) in hd.holds)
+            {
+                var b = binds.FirstOrDefault(x => x.propertyName == muscle);
+                if (b.propertyName == null) { Debug.LogWarning($"{state}: no muscle curve {muscle}"); continue; }
+                var sc = AnimationUtility.GetEditorCurve(src, b);
+                var ks = new Keyframe[n];
+                for (int i = 0; i < n; i++)
+                {
+                    float t = Mathf.Min(src.length, i / 60f), x = t / src.length;
+                    float up = Mathf.Clamp01((x - hd.start) / Mathf.Max(1e-4f, hd.full0 - hd.start));
+                    float dn = Mathf.Clamp01((hd.end - x) / Mathf.Max(1e-4f, hd.end - hd.full1));
+                    float w = Mathf.Min(up * up * (3f - 2f * up), dn * dn * (3f - 2f * dn));
+                    ks[i] = new Keyframe(t, Mathf.Lerp(sc.Evaluate(t), value, w));
+                }
+                var c = new AnimationCurve(ks);
+                for (int i = 0; i < c.length; i++) c.SmoothTangents(i, 0f);
+                AnimationUtility.SetEditorCurve(clip, b, c);
+            }
+            src = Object.Instantiate(clip);
+        }
+        // ...and back to the guard: every non-root curve eased onto the guard clip's first frame
+        var guard = string.IsNullOrEmpty(ft.guardPack) ? null : LoadClip($"{PackDir(ft.guardPack)}/{ft.guardClip}.fbx", ft.guardState);
+        if (guard != null)
+        {
+            var gb = AnimationUtility.GetCurveBindings(guard).ToDictionary(b => b.propertyName);
+            int eased = 0;
+            foreach (var b in binds)
+            {
+                if (b.propertyName.StartsWith("RootT.") || b.propertyName.StartsWith("RootQ.")) continue;
+                if (!gb.TryGetValue(b.propertyName, out var g)) continue;
+                var sc = AnimationUtility.GetEditorCurve(src, b);
+                float target = AnimationUtility.GetEditorCurve(guard, g).Evaluate(0f);
+                var ks = new Keyframe[n];
+                for (int i = 0; i < n; i++)
+                {
+                    float t = Mathf.Min(src.length, i / 60f);
+                    float u = Mathf.Clamp01((t / src.length - ft.guardFrom) / Mathf.Max(1e-4f, 1f - ft.guardFrom));
+                    ks[i] = new Keyframe(t, Mathf.Lerp(sc.Evaluate(t), target, u * u * (3f - 2f * u)));
+                }
+                var c = new AnimationCurve(ks);
+                for (int i = 0; i < c.length; i++) c.SmoothTangents(i, 0f);
+                AnimationUtility.SetEditorCurve(clip, b, c);
+                eased++;
+            }
+            Debug.Log($"{state}: {eased} curves eased onto {ft.guardState} from {ft.guardFrom:P0}");
+        }
+        else if (!string.IsNullOrEmpty(ft.guardPack)) Debug.LogWarning($"{state}: guard clip {ft.guardState} not found, arms left as the mocap ends");
+        AnimationUtility.SetAnimationClipSettings(clip, AnimationUtility.GetAnimationClipSettings(src));
+
+        if (!AssetDatabase.IsValidFolder(DerivedDir)) AssetDatabase.CreateFolder("Assets/_project/Animation/Clips", "Derived");
+        string path = $"{DerivedDir}/{state}_FullTurn.anim";
+        var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
+        if (existing != null) { EditorUtility.CopySerialized(clip, existing); Object.DestroyImmediate(clip); clip = existing; EditorUtility.SetDirty(existing); }
+        else AssetDatabase.CreateAsset(clip, path);
+        AssetDatabase.SaveAssets();
+        Debug.Log($"{state}: turn finished +{ft.degrees:F0} deg from {ft.from:P0} of the clip -> {path}");
+        return clip;
     }
 
     static AnimationClip LoadClip(string path, string name = null)

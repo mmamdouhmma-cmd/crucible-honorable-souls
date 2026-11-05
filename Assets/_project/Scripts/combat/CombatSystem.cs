@@ -341,8 +341,8 @@ public class CombatSystem : MonoBehaviour
         // Mid and High cuts stay purely physical: a slash that passes over his head is a miss.
         // (This replaced the old "uneven ground" fallback, which judged every move by the box.)
         bool bodyAttack = currentAttack != null && !currentAttack.HitsWithWeapon;
-        bool slowFrame = Time.unscaledDeltaTime > BalanceConfig.SLOW_FRAME_SECONDS;
-        bool rangeJudged = currentAttack != null && IsRangeJudged(currentAttack.AttackHeight);
+        bool slowFrame = Time.unscaledDeltaTime > BalanceConfig.SLOW_FRAME_SECONDS && !TestPhysicalHitsOnly;
+        bool rangeJudged = currentAttack != null && (IsRangeJudged(currentAttack.AttackHeight) || currentAttack.JudgedOnReach);
         if (hitboxActive && hitDetector != null && hitDetector.FollowWeapon && !hitDetector.HasHit && !swingEvaded &&
             (IsInActivePhase() || rangeJudged))
         {
@@ -547,6 +547,12 @@ public class CombatSystem : MonoBehaviour
     /// through whoever stands under it, a low cut sweeps the legs, an uppercut rises through the
     /// body. These land on horizontal reach; Mid and High stay physical (see Update).
     /// </summary>
+    /// <summary>TEST ONLY: the Editor under a CLI harness runs every frame "slow", so the slow-frame
+    /// front-box fallback decides hits the real 60 fps game judges by the blade alone - a move can pass a
+    /// CLI hit test and miss in play (Bjorn's raised spins at &lt;1.5, 2026-11-05). Set true to judge like
+    /// the shipped game. Never set in game code; static, so a domain reload resets it.</summary>
+    public static bool TestPhysicalHitsOnly;
+
     public static bool IsRangeJudged(AttackHeight height) =>
         height == AttackHeight.Overhead || height == AttackHeight.Low || height == AttackHeight.Uppercut;
 

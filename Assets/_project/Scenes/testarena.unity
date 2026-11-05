@@ -4526,6 +4526,9 @@ MonoBehaviour:
   leftElbowHint: {fileID: 931130263}
   socketName: LeftGrip
   onlyInStates: []
+  exceptInStates:
+  - Bjorn_Medium_SpinningSlash
+  - Bjorn_Special_HewingCharge
   stateBlendTime: 0.12
   strikeReachWeight: 0
   bladeOverlap: 0.5
@@ -25434,6 +25437,7 @@ MonoBehaviour:
   - Sensei_Walk_Back
   - Sensei_Heavy_MountainSplitter
   - Sensei_Special_FinalLesson
+  exceptInStates: []
   stateBlendTime: 0.12
   strikeReachWeight: 0
   bladeOverlap: 0.5
@@ -53531,6 +53535,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameMenu
   openOnBattleSetup: 0
+  storyScene: 0
   p1Mark: {x: -0.217, y: 0.24, z: -0.209}
   p1Yaw: 90
   p2Mark: {x: 2.078, y: 0.75, z: -0.065}
@@ -55081,6 +55086,7 @@ MonoBehaviour:
   leftElbowHint: {fileID: 347767443}
   socketName: LeftGrip
   onlyInStates: []
+  exceptInStates: []
   stateBlendTime: 0.12
   strikeReachWeight: 0
   bladeOverlap: 0.5
@@ -78017,6 +78023,7 @@ MonoBehaviour:
   leftElbowHint: {fileID: 1823804309}
   socketName: LeftGrip
   onlyInStates: []
+  exceptInStates: []
   stateBlendTime: 0.12
   strikeReachWeight: 0
   bladeOverlap: 0.5

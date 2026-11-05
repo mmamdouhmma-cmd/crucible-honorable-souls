@@ -1752,6 +1752,34 @@ Durable facts belong up here instead; the log is for narrative and for the gotch
   **Keep every clip map in the one `ImportAll` call** - leaving a map out rewrites the shared pack importers
   without that fighter's takes.
 
+- **A pack clip can be EDITED into a derived .anim instead of replaced** (2026-11-05, Bjorn's two spins).
+  `CrucibleMixamoSetup.FinishTurnClip` (run inside `Wire`, so `Use Mixamo packs` rebuilds it) takes the
+  trimmed FBX clip and writes `Animation/Clips/Derived/<state>_FullTurn.anim`. It can add body yaw to `RootQ`
+  after the hit (`FinishTurn`), add muscle OFFSETS inside a time envelope (`Raise`), HOLD muscles AT a value
+  inside one (`Hold`), and ease every muscle onto the idle's first frame at the end. The length is the same,
+  so speed and contact are unchanged, and the shared pack FBX is untouched. Bjorn's spins: the AxePack 360
+  low turns only ~300 deg, so they flipped back to idle with his back to the foe; they now get +140/+85 deg,
+  the axe is tilted up by the wrist and chest only, and `StraightArm` holds the elbow straight and the arm at
+  shoulder height through the cut (the user: "keep the arm straight till it slashes through his whole body").
+  **Raising the SHOULDER/ARM bent the arc up over his left side and the head never crossed the front**, so the
+  arm path stays the mocap's. **Static fields initialize in FILE order**: `RaiseSpin`/`StraightArm` must sit
+  above `Raise`/`Hold`, or the tables capture null.
+  - **A straight-armed spin needs `AttackData.judgedOnReach`.** The head travels ~2.0 out from his root and the
+    lunge stops the foe at 0.7-0.9, so the head passes a metre BEHIND him while the haft cuts through, and the
+    blade-only check missed at every gap. The flag judges the swing on reach like Overhead/Low/Uppercut
+    (`CombatSystem` ORs it into `rangeJudged`). Medium measured with `TestPhysicalHitsOnly`: lands 0.7-2.6 on
+    Miyamoto and Richard, whiffs at 4.5 and 6.0.
+  - **`CombatSystem.TestPhysicalHitsOnly`** switches off the slow-frame box fallback. Without it EVERY CLI hit
+    test passes, because the CLI Editor's frames are always "slow" - the old "hits unchanged" claim was that.
+  - **Bjorn's axe edge is local +y** (the crescent; -y is the spike, photographed). Test which face LEADS as
+    `dot(axe.up, headVelocity perpendicular to the haft)` over the armed frames: both spins lead with the edge
+    at roll 0 (mean +0.48 / +0.31), so neither is rolled. **`WeaponAim.ApplyRoll` rolls about the HAFT axis
+    now**, not the blade box's longest axis: on an axe that is the head's width, and a 180 roll swung the whole
+    axe over his shoulder. Swords/saber/spear/bokken have both on local z, so only Bjorn changed.
+  `TwoHandGrip.exceptInStates` frees the off hand during listed states: on Bjorn's spins the grip
+  dragged the left arm 1.2-1.6 units through his torso. Hand-keying moves from scratch in code was
+  tried first and lost to the mocap on every count; edit mocap, do not author it.
+
 ## Testing the game from the CLI (hard-won, still true)
 
 - **Set `Time.timeScale` directly, AFTER `GameMenu.StartMatch`.** `DebugTimeScale` only applies

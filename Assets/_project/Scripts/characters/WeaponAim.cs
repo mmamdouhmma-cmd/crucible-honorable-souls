@@ -271,7 +271,10 @@ public class WeaponAim : MonoBehaviour
         if (atk == null) return;
         float roll = atk.AimRollDegrees * w;
         if (Mathf.Abs(roll) < 0.01f) return;
-        Vector3 axis = weapon.TransformDirection(bladeAxisLocal).normalized;
+        // About the HANDLE, not the blade box's long axis: on an axe the head is widest ACROSS the haft, so
+        // that axis is the head's own, and a 180 roll about it swung the whole axe back over Bjorn's
+        // shoulder (2026-11-05). Every sword, saber and spear has both on local z, so nothing else moved.
+        Vector3 axis = weapon.TransformDirection(haftAxisLocal).normalized;
         if (axis.sqrMagnitude < 1e-6f) return;
         RotateAbout(Pivot, Quaternion.AngleAxis(roll, axis));
     }
